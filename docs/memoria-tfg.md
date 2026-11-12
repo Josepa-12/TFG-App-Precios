@@ -80,6 +80,8 @@ Apartados previstos (hay que documentarlos con fuentes reales y fechas de consul
 - Mapa: *(pendiente)*. Requisito: mapa real, 2.5D y con estilo editable
 - Asistente de IA: Claude Code, usado para el análisis, la documentación y la programación *(detallar según la política del tutor)*
 - Metodología de desarrollo asistido por IA: **BMAD Method** v6.12.4 (agentes de análisis, producto, arquitectura, UX y desarrollo)
+- Diseño de interfaz: skill **UI/UX Pro Max** (guías de estilo, paletas, tipografías y accesibilidad)
+- Pruebas de interfaz: **Playwright** (automatización del navegador vía MCP)
 - Control de versiones: **Git** + repositorio público en **GitHub**: https://github.com/Josepa-12/TFG-App-Precios
 
 ### 3.3 Limitaciones del entorno
