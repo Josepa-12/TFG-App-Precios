@@ -79,6 +79,8 @@ Apartados previstos (hay que documentarlos con fuentes reales y fechas de consul
 - Motor / framework: *(pendiente de la decisión sobre el mapa, ver 5.1)*
 - Mapa: *(pendiente)*. Requisito: mapa real, 2.5D y con estilo editable
 - Asistente de IA: Claude Code, usado para el análisis, la documentación y la programación *(detallar según la política del tutor)*
+- Metodología de desarrollo asistido por IA: **BMAD Method** v6.12.4 (agentes de análisis, producto, arquitectura, UX y desarrollo)
+- Control de versiones: **Git** + repositorio público en **GitHub**: https://github.com/Josepa-12/TFG-App-Precios
 
 ### 3.3 Limitaciones del entorno
 - Desarrollo en Windows y móvil personal iPhone: desde Windows no se pueden compilar apps de iOS. *(Anotar qué solución se adopta: Android prestado, Mac, versión web o GPS simulado.)*
@@ -255,3 +257,4 @@ Ideas de trabajo futuro ya identificadas:
 | 12/11/2026 | Hostelería: solo rango por persona, con valoración | El gasto varía según lo que se pida |
 | 12/11/2026 | Ocio: precio total en espacios y por persona en actividades, con valoración | Así cobran realmente estos negocios |
 | 12/11/2026 | 3 criterios de valoración por categoría | Valorar rápido sin perder información útil |
+| 12/11/2026 | BMAD Method como metodología y repositorio público en GitHub | Trabajo estructurado con IA y trazabilidad del desarrollo |
