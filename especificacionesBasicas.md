@@ -29,6 +29,8 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
 - Valoración (decidido): 3 criterios por categoría, de 1 a 5 estrellas.
   - Hostelería: calidad (comida/bebida), servicio, ambiente.
   - Ocio / deporte: instalaciones, atención, calidad-precio.
+- Identidad visual (12/11/2026): paleta B (azul #2F5BEA + amarillo #FFC93C, fondo #F3F5FB, texto #13235B) en modo claro y paleta D (fondo #0F1424, acento #4C7DFF, amarillo #FFD166, texto #E6ECFA) en modo oscuro. Tipografía Varela Round + Nunito Sans. Ver docs/diseno/.
+- Prototipo navegable web en `prototipo/`, situado en Sanlúcar de Barrameda, con mapa real 2.5D (MapLibre + OpenFreeMap) y establecimientos inventados.
 - Modelo unificado: establecimiento → lista de conceptos con precio (ver [docs/estudio-tipos-negocio.md](docs/estudio-tipos-negocio.md)).
 - El negocio puede declarar un precio inicial (opcional). El poder está en los clientes: si reportan un precio distinto, la app actualiza el precio mostrado.
 - Pregunta de un solo toque: "¿el coste fue X?" / "¿sigue costando X?".

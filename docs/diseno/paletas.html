@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paletas de color</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Varela+Round&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito Sans', sans-serif; background: #FAFAFA; color: #1F2937; padding: 32px 24px; }
+  h1 { font-family: 'Varela Round', sans-serif; font-size: 28px; margin-bottom: 6px; }
+  .sub { color: #4B5563; margin-bottom: 28px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .col h2 { font-family: 'Varela Round', sans-serif; font-size: 20px; }
+  .col .tag { font-size: 13px; color: #4B5563; margin: 2px 0 12px; min-height: 36px; }
+  .sw { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 14px; }
+  .sw div { height: 54px; border-radius: 8px; border: 1px solid rgba(0,0,0,.08); display: flex; align-items: flex-end; padding: 4px; font-size: 9px; font-weight: 700; }
+  .roles { font-size: 11px; color: #4B5563; margin-bottom: 14px; line-height: 1.5; }
+
+  /* Mock-up de la pantalla de mapa */
+  .phone { width: 100%; aspect-ratio: 9/18; border-radius: 28px; border: 8px solid #111; overflow: hidden; position: relative; background: var(--bg); }
+  .map { position: absolute; inset: 0; background: var(--map); overflow: hidden; }
+  .road { position: absolute; background: var(--road); }
+  .blk { position: absolute; background: var(--block); border-radius: 3px; box-shadow: 2px 3px 0 var(--blockShadow); }
+  .search { position: absolute; top: 14px; left: 12px; right: 12px; height: 40px; border-radius: 20px; background: var(--surface); display: flex; align-items: center; padding: 0 14px; font-size: 12px; color: var(--muted); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+  .coins { position: absolute; top: 62px; right: 12px; background: var(--surface); color: var(--text); border-radius: 14px; padding: 4px 10px; font-size: 11px; font-weight: 800; display: flex; gap: 5px; align-items: center; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+  .coin { width: 12px; height: 12px; border-radius: 50%; background: var(--reward); border: 2px solid var(--rewardEdge); }
+  .pin { position: absolute; background: var(--accent); color: var(--onAccent); font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,.25); }
+  .pin::after { content: ""; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: var(--accent); }
+  .pin.alt { background: var(--secondary); color: var(--onSecondary); }
+  .pin.alt::after { border-top-color: var(--secondary); }
+  .me { position: absolute; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 20px 20px 0 0; padding: 12px 14px 16px; box-shadow: 0 -4px 14px rgba(0,0,0,.15); }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--muted); opacity: .4; margin: 0 auto 10px; }
+  .sheet .cat { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--accent2); }
+  .sheet h3 { font-family: 'Varela Round', sans-serif; font-size: 15px; color: var(--text); margin: 2px 0 8px; }
+  .row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text); padding: 6px 10px; background: var(--chip); border-radius: 10px; margin-bottom: 5px; }
+  .row b { font-size: 14px; }
+  .src { font-size: 10px; color: var(--muted); margin: 4px 0 10px; }
+  .btn { height: 40px; border-radius: 12px; background: var(--accent); color: var(--onAccent); font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .contrast { font-size: 11px; color: #374151; margin-top: 10px; line-height: 1.5; }
+  .ok { color: #047857; font-weight: 700; } .warn { color: #B45309; font-weight: 700; }
+
+  /* Paletas */
+  .p1 { --bg:#CBCBCB; --map:#CBCBCB; --road:#E6E6E6; --block:#AFC3DD; --blockShadow:#8FA6C4; --surface:#FFFFFF; --text:#054777; --muted:#4A5F75; --accent:#243ECD; --onAccent:#FFFFFF; --accent2:#243ECD; --secondary:#054777; --onSecondary:#FFFFFF; --chip:#E4EBF5; --reward:#AFC3DD; --rewardEdge:#243ECD; }
+  .p2 { --bg:#F3F5FB; --map:#E9EDF7; --road:#FFFFFF; --block:#D3DCF2; --blockShadow:#B4C2E6; --surface:#FFFFFF; --text:#13235B; --muted:#4B5878; --accent:#2F5BEA; --onAccent:#FFFFFF; --accent2:#2F5BEA; --secondary:#FFC93C; --onSecondary:#13235B; --chip:#EEF2FC; --reward:#FFC93C; --rewardEdge:#C99300; }
+  .p3 { --bg:#F1F5F2; --map:#E3ECE6; --road:#FFFFFF; --block:#CFE6DC; --blockShadow:#A9CDBE; --surface:#FFFFFF; --text:#0B3B2E; --muted:#4A6359; --accent:#0F7B5F; --onAccent:#FFFFFF; --accent2:#0F7B5F; --secondary:#F28C28; --onSecondary:#2B1600; --chip:#EAF3EE; --reward:#F28C28; --rewardEdge:#B45F0F; }
+  .p4 { --bg:#0F1424; --map:#141B30; --road:#222C48; --block:#2A3A63; --blockShadow:#0A0F1C; --surface:#1A2238; --text:#E6ECFA; --muted:#9AA6C4; --accent:#4C7DFF; --onAccent:#FFFFFF; --accent2:#8FB0FF; --secondary:#FFD166; --onSecondary:#1A1300; --chip:#232D49; --reward:#FFD166; --rewardEdge:#C99A2E; }
+</style>
+</head>
+<body>
+<h1>Paletas de color — App de precios locales</h1>
+<p class="sub">Cada paleta aplicada a la pantalla principal: mapa, precios sobre los establecimientos, monedas y ficha inferior.</p>
+
+<div class="grid">
+<!-- Plantilla repetida 4 veces -->
+<section class="col p1">
+  <h2>A · Tu paleta (azul y gris)</h2>
+  <p class="tag">Fondo gris #CBCBCB, acento #243ECD. Sobria y profesional.</p>
+  <div class="sw"><div style="background:#CBCBCB">CBCBCB</div><div style="background:#243ECD;color:#fff">243ECD</div><div style="background:#AFC3DD">AFC3DD</div><div style="background:#054777;color:#fff">054777</div><div style="background:#fff">FFFFFF</div></div>
+  <p class="roles">Fondo/mapa · Acento · Edificios/chips · Texto · Tarjetas</p>
+  <div class="phone"></div>
+  <p class="contrast">Blanco sobre acento: <span class="ok">7,9:1</span> · Acento sobre gris: <span class="ok">4,9:1</span> · Texto sobre gris: <span class="ok">6,0:1</span><br>Sin color de recompensa: las monedas no destacan.</p>
+</section>
+
+<section class="col p2">
+  <h2>B · Azul y amarillo</h2>
+  <p class="tag">Tu idea "azul y amarillo": azul para la acción, amarillo para monedas y logros.</p>
+  <div class="sw"><div style="background:#F3F5FB">F3F5FB</div><div style="background:#2F5BEA;color:#fff">2F5BEA</div><div style="background:#FFC93C">FFC93C</div><div style="background:#13235B;color:#fff">13235B</div><div style="background:#D3DCF2">D3DCF2</div></div>
+  <p class="roles">Fondo · Acento · Recompensa · Texto · Edificios</p>
+  <div class="phone"></div>
+  <p class="contrast">Blanco sobre acento: <span class="ok">5,5:1</span> · Texto sobre amarillo: <span class="ok">9,6:1</span> · Texto sobre fondo: <span class="ok">13,6:1</span></p>
+</section>
+
+<section class="col p3">
+  <h2>C · Verde local</h2>
+  <p class="tag">Verde de "ubicación / ahorro" con naranja de acción. Recomendada por la skill para servicios locales.</p>
+  <div class="sw"><div style="background:#F1F5F2">F1F5F2</div><div style="background:#0F7B5F;color:#fff">0F7B5F</div><div style="background:#F28C28">F28C28</div><div style="background:#0B3B2E;color:#fff">0B3B2E</div><div style="background:#CFE6DC">CFE6DC</div></div>
+  <p class="roles">Fondo · Acento · Recompensa · Texto · Edificios</p>
+  <div class="phone"></div>
+  <p class="contrast">Blanco sobre acento: <span class="ok">5,3:1</span> · Texto sobre fondo: <span class="ok">11,4:1</span></p>
+</section>
+
+<section class="col p4">
+  <h2>D · Navegación nocturna</h2>
+  <p class="tag">Modo oscuro tipo GPS: cansa menos la vista al conducir y destaca los precios.</p>
+  <div class="sw"><div style="background:#0F1424;color:#fff">0F1424</div><div style="background:#4C7DFF;color:#fff">4C7DFF</div><div style="background:#FFD166">FFD166</div><div style="background:#E6ECFA">E6ECFA</div><div style="background:#2A3A63;color:#fff">2A3A63</div></div>
+  <p class="roles">Fondo · Acento · Recompensa · Texto · Edificios</p>
+  <div class="phone"></div>
+  <p class="contrast">Texto sobre fondo: <span class="ok">15,8:1</span> · Blanco sobre acento: <span class="ok">3,7:1</span> <span class="warn">(solo texto grande/negrita)</span></p>
+</section>
+</div>
+
+<template id="screen">
+  <div class="map">
+    <div class="road" style="left:0;right:0;top:38%;height:12px"></div>
+    <div class="road" style="left:0;right:0;top:66%;height:8px"></div>
+    <div class="road" style="top:0;bottom:0;left:30%;width:10px"></div>
+    <div class="road" style="top:0;bottom:0;left:72%;width:8px"></div>
+    <div class="blk" style="left:6%;top:16%;width:20%;height:18%"></div>
+    <div class="blk" style="left:36%;top:18%;width:32%;height:16%"></div>
+    <div class="blk" style="left:78%;top:14%;width:18%;height:20%"></div>
+    <div class="blk" style="left:6%;top:44%;width:20%;height:18%"></div>
+    <div class="blk" style="left:36%;top:44%;width:14%;height:18%"></div>
+    <div class="blk" style="left:54%;top:46%;width:14%;height:16%"></div>
+    <div class="blk" style="left:78%;top:42%;width:18%;height:20%"></div>
+    <div class="pin" style="left:8%;top:28%">40 €</div>
+    <div class="pin alt" style="left:56%;top:30%">20–30 €</div>
+    <div class="pin" style="left:74%;top:52%">desde 10 €</div>
+    <div class="me" style="left:33%;top:57%"></div>
+  </div>
+  <div class="search">Buscar un servicio o lugar</div>
+  <div class="coins"><span class="coin"></span>240 · Nv 3</div>
+  <div class="sheet">
+    <div class="grab"></div>
+    <div class="cat">Ocio · Polideportivo</div>
+    <h3>Polideportivo Norte</h3>
+    <div class="row"><span>Pista fútbol 7 A</span><b>12 €/h</b></div>
+    <div class="row"><span>Pista fútbol 7 B</span><b>10 €/h</b></div>
+    <p class="src">Según 6 usuarios · últimos 3 meses</p>
+    <div class="btn">Ir aquí</div>
+  </div>
+</template>
+<script>
+  const t = document.getElementById('screen');
+  document.querySelectorAll('.phone').forEach(p => p.appendChild(t.content.cloneNode(true)));
+</script>
+</body>
+</html>

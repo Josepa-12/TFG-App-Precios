@@ -162,7 +162,7 @@ Además:
 
 *(Pendiente: fijar los valores concretos de N y X y justificarlos con la simulación.)*
 
-### 4.7 Gamificación **[Pendiente]**
+### 4.7 Gamificación **[Parcial]**
 Decidido: puntos, niveles y monedas canjeables por **cosméticos del mapa/GPS**. *(Pendiente: cuántos puntos da cada acción, curva de niveles, lista de cosméticos y medidas contra las aportaciones falsas para ganar puntos.)*
 
 ### 4.8 Mapa **[Parcial]**
@@ -180,7 +180,67 @@ Principios propuestos:
 - Sin seguimiento en segundo plano.
 - Aportaciones no vinculadas a la identidad en categorías sensibles (psicología).
 
-### 4.10 Alcance del prototipo **[Parcial]**
+### 4.10 Identidad visual **[Redactado]**
+Se generó un sistema de diseño de partida con la skill UI/UX Pro Max. Para una app de consumo y mapas recomendó:
+- un estilo vivo y con bloques de color;
+- alto contraste;
+- tipografía amable.
+
+Se compararon **cuatro paletas** aplicadas a la pantalla del mapa (ver [diseno/paletas.png](diseno/paletas.png)):
+- A: la paleta inicial del autor, en azul y gris;
+- B: azul y amarillo;
+- C: verde local;
+- D: navegación nocturna.
+
+| Modo | Paleta | Fondo | Acento | Recompensa | Texto |
+|---|---|---|---|---|---|
+| Claro | **B · Azul y amarillo** | #F3F5FB | #2F5BEA | #FFC93C | #13235B |
+| Oscuro | **D · Navegación nocturna** | #0F1424 | #4C7DFF | #FFD166 | #E6ECFA |
+
+**Por qué se descartó la A:** no tenía un color de recompensa, y las monedas, que son el núcleo de la gamificación, no destacaban.
+
+**Por qué B y D:** comparten el azul como color de acción y el amarillo como recompensa, así que la app se reconoce igual en los dos modos.
+
+**Decisiones de diseño:**
+- El **amarillo** se reserva para monedas, logros y el rango de precios de la hostelería.
+- El **azul** se usa para las acciones, el resto de precios y la ruta.
+- El modo oscuro reduce el deslumbramiento al usar el GPS de noche.
+
+**Tipografía:** Varela Round para títulos y Nunito Sans para el texto. Las dos son redondeadas y cercanas.
+
+**Accesibilidad:**
+- Contraste de 4,5:1 como mínimo en el texto. En el modo oscuro, el blanco sobre el acento (3,7:1) solo se usa en texto en negrita y de tamaño grande.
+- Zonas táctiles de 44 px como mínimo.
+- Iconos SVG en lugar de emojis.
+- Se respeta la preferencia `prefers-reduced-motion`.
+
+### 4.11 Prototipo navegable **[Redactado]**
+Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con establecimientos inventados. Código en [prototipo/](../prototipo/) y 20 capturas en [diseno/capturas/](diseno/capturas/).
+
+- **Mapa real en 2.5D** con MapLibre GL y teselas vectoriales de OpenFreeMap (OpenStreetMap), con cámara inclinada y edificios extruidos. El estilo se **recolorea por código** con las paletas B y D. Además, se ocultan los negocios reales del mapa base para que solo aparezcan los precios de la app. Esto demuestra el requisito de un mapa real con estilo editable.
+- **Pantallas:**
+  - bienvenida con el aviso de privacidad;
+  - mapa con precios, filtros y buscador;
+  - fichas de las tres plantillas;
+  - navegación con GPS simulado;
+  - preguntas al llegar (con flujos distintos según la plantilla);
+  - valoración;
+  - recompensa;
+  - tienda de cosméticos;
+  - perfil con selector de tema.
+- **Gamificación del prototipo:**
+  - confirmar un precio: +10 monedas y +15 XP;
+  - aportar un precio nuevo: +15 monedas y +20 XP;
+  - valorar: +5 monedas y +10 XP;
+  - cada nivel son 150 XP.
+  - Los cosméticos (marcador de posición y estilo de la ruta) **se ven en el mapa** en cuanto se equipan. *(Valores provisionales, pendientes de equilibrar con la simulación.)*
+- **Pruebas automáticas con Playwright:** un script recorre todo el flujo en Microsoft Edge y genera las capturas. En las pruebas aparecieron fallos que se corrigieron:
+  - la tecla Escape no cerraba el buscador;
+  - MapLibre sobrescribía el texto accesible de los marcadores;
+  - el sentido del giro era incorrecto al ir hacia el sur;
+  - aparecían tramas rayadas del mapa base en el modo oscuro.
+
+### 4.12 Alcance del prototipo **[Parcial]**
 **Dentro:**
 - Las tres plantillas, con un establecimiento de ejemplo de cada una, incluido un polideportivo con varias pistas.
 - Pregunta al llegar.
@@ -200,7 +260,7 @@ Principios propuestos:
 
 ## 5. Desarrollo **[Pendiente]**
 
-- **5.1 Elección de tecnología y prueba técnica del mapa:** opciones valoradas (Unity + Mapbox SDK frente a una app fuera de Unity con Mapbox GL o MapLibre), criterios y resultado.
+- **5.1 Elección de tecnología y prueba técnica del mapa:** opciones valoradas (Unity + Mapbox SDK frente a una app fuera de Unity con Mapbox GL o MapLibre), criterios y resultado. *Primer dato:* el prototipo web (4.11) demuestra que con MapLibre + OpenFreeMap se consigue un mapa real en 2.5D, con estilo propio, sin cuenta y sin coste.
 - **5.2 Arquitectura:** estructura del proyecto y módulos.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
@@ -260,3 +320,6 @@ Ideas de trabajo futuro ya identificadas:
 | 12/11/2026 | Ocio: precio total en espacios y por persona en actividades, con valoración | Así cobran realmente estos negocios |
 | 12/11/2026 | 3 criterios de valoración por categoría | Valorar rápido sin perder información útil |
 | 12/11/2026 | BMAD Method como metodología y repositorio público en GitHub | Trabajo estructurado con IA y trazabilidad del desarrollo |
+| 12/11/2026 | Skill UI/UX Pro Max y Playwright | Guías de diseño y pruebas automáticas de la interfaz |
+| 12/11/2026 | Paleta B (azul y amarillo) en modo claro y D (navegación nocturna) en modo oscuro | Color de recompensa propio para la gamificación; mismo lenguaje de color en los dos modos |
+| 12/11/2026 | Prototipo navegable web en Sanlúcar de Barrameda con mapa real 2.5D | Validar el concepto y el flujo antes de elegir la tecnología final |
