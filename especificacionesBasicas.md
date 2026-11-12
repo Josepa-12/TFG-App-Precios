@@ -39,6 +39,14 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
   - **Botón € pequeño y circular:** solo funciona si hay visitas pendientes (las que se dejaron en "Más tarde"). Avisa con un punto rojo pequeño.
 - Para introducir un precio distinto se usa una regla deslizable y se puede escribir el número. Sustituye a los botones de +1/−1.
 - Función "Avísame si cambia" en la ficha de cada sitio.
+- El buscador se queda a la altura donde se suelta:
+  - un lanzamiento rápido lo abre o lo cierra del todo;
+  - cerca de abajo se pliega y cerca de arriba se abre del todo;
+  - se puede buscar a media altura;
+  - se arrastra también desde la lista.
+- Coche o a pie se elige en la ficha del sitio (coche por defecto), no en los ajustes.
+- Burbuja de sonido (silenciar o activar) encima de la burbuja de precios.
+- La pregunta "¿has ido?" sale 1 minuto después de llegar (provisional, se ampliará). Si hay una ruta en curso, pasa a pendientes.
 - Modelo unificado: establecimiento → lista de conceptos con precio (ver [docs/estudio-tipos-negocio.md](docs/estudio-tipos-negocio.md)).
 - El negocio puede declarar un precio inicial (opcional). El poder está en los clientes: si reportan un precio distinto, la app actualiza el precio mostrado.
 - Pregunta de un solo toque: "¿el coste fue X?" / "¿sigue costando X?".

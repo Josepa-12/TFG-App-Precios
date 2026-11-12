@@ -37,10 +37,14 @@
         </button>
       </div>
 
-      <!-- Botón de precios pendientes: solo funciona si hay visitas sin responder -->
-      <button class="price-fab" id="priceFab" aria-label="Precios pendientes">
-        <span>€</span><i class="red-dot" id="priceDot" hidden></i>
-      </button>
+      <div class="fab-col">
+        <!-- Sonido de la app: burbuja encima de la de precios -->
+        <button class="bubble sound-btn" id="soundFab" aria-pressed="true" aria-label="Silenciar la app"></button>
+        <!-- Botón de precios pendientes: solo funciona si hay visitas sin responder -->
+        <button class="price-fab" id="priceFab" aria-label="Precios pendientes">
+          <span>€</span><i class="red-dot" id="priceDot" hidden></i>
+        </button>
+      </div>
 
       <div class="dock glass" id="dock">
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
@@ -69,6 +73,7 @@
         <svg class="ic big" id="navIconArrive" viewBox="0 0 24 24" style="display:none"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg>
         <div><div class="nav-dist" id="navDist">300 m</div><div class="nav-instr" id="navInstr">Gira a la derecha</div></div>
       </div>
+      <button class="bubble sound-btn nav-sound" aria-pressed="true" aria-label="Silenciar la app"></button>
       <div class="nav-card">
         <div class="nav-dest">
           <div><div class="nav-eta" id="navEta">4 min</div><div class="nav-to" id="navTo">Hacia …</div></div>

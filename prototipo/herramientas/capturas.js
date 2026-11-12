@@ -29,8 +29,12 @@ const path = require('path');
   await page.waitForFunction(() => window.__mapReady === true, null, { timeout: 30000 });
   await page.waitForTimeout(2500);
   await shot('01-bienvenida');
+  await page.evaluate(() => { window.__askDelayMs = 3500; }); // la pregunta real tarda 1 min; aquí se acorta
   await page.click('#onbStart');
   await shot('02-mapa-claro', 1200);
+  await page.click('#soundFab');
+  await shot('02b-app-silenciada', 300);
+  await page.click('#soundFab');
 
   await page.click('#catBtn');
   await shot('03-categorias', 400);
@@ -43,6 +47,21 @@ const path = require('path');
   await page.fill('#searchInput', 'fis');
   await shot('06-buscador-resultados', 300);
   await page.click('#searchCancel');
+  await page.waitForTimeout(500);
+
+  // Arrastrar el buscador a media altura, parar y soltar: se queda ahí y se puede buscar
+  const db = await page.locator('#dock').boundingBox();
+  const dx = db.x + 120, dy0 = db.y + 40;
+  await page.mouse.move(dx, dy0); await page.mouse.down();
+  for (let i = 1; i <= 30; i++) { await page.mouse.move(dx, dy0 - i * 12); await page.waitForTimeout(20); }
+  await page.waitForTimeout(200);
+  await page.mouse.up();
+  await page.waitForTimeout(500);
+  await page.click('#searchInput');
+  await page.fill('#searchInput', 'bar');
+  await shot('06b-buscador-media-altura', 400);
+  await page.click('#searchCancel');
+  await page.waitForTimeout(500);
 
   await page.click('.pin[data-place="marea"]');
   await shot('07-ficha-hosteleria', 1400);
@@ -52,13 +71,21 @@ const path = require('path');
   await page.click('[data-act="close"]');
   await page.evaluate(() => proto.openPlace('psico'));
   await shot('09-ficha-servicio', 1400);
+  await page.evaluate(() => document.querySelector('#placeSheet').scrollTo(0, 9999));
+  await shot('09b-ficha-coche-por-defecto', 300);
+  await page.click('[data-mode="pie"]');
+  await page.evaluate(() => document.querySelector('#placeSheet').scrollTo(0, 9999));
+  await shot('09c-ficha-a-pie', 300);
+  await page.click('[data-mode="coche"]');
 
   // Navegación real (con la animación) hasta Psicología
   await page.click('[data-act="go"]');
   await shot('10-navegacion', 1400);
   await page.click('#navSimulate');
-  await page.waitForSelector('#flowOverlay:not([hidden])', { timeout: 10000 });
-  await shot('11-llegada', 500);
+  await page.waitForFunction(() => document.querySelector('#navDist').textContent === 'Has llegado');
+  await shot('11a-has-llegado-espera', 300);
+  await page.waitForSelector('#flowOverlay:not([hidden])', { timeout: 15000 });
+  await shot('11-pregunta-tras-espera', 500);
 
   // "Más tarde" → queda pendiente en el botón €
   await page.click('[data-flow="later"]');

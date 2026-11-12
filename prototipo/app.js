@@ -68,8 +68,12 @@ const S = {
     { id: 'fisio', what: 'Confirmó 35 €', when: 'hace 2 semanas' },
     { id: 'marisma', what: 'Pista pádel 1 · 8 €', when: 'hace 3 semanas' },
   ],
-  settings: { buildings: true, reduceMotion: false, voice: true, mode: 'pie', notifPending: true, notifAlerts: true, anonAll: false },
+  travelMode: 'coche',                                 // se elige en la ficha; el coche es la opción principal
+  settings: { buildings: true, reduceMotion: false, voice: true, sound: true, notifPending: true, notifAlerts: true, anonAll: false },
 };
+// Tiempo desde que llegas hasta que la app pregunta "¿has ido?". 1 minuto para comprobarlo; se ampliará más adelante.
+const ASK_DELAY_MS = 60 * 1000;
+const askDelay = () => window.__askDelayMs ?? ASK_DELAY_MS; // las capturas automáticas lo acortan
 const level = xp => Math.floor(xp / XP_PER_LEVEL) + 1;
 
 // ---------- Utilidades ----------
@@ -110,7 +114,43 @@ const ICON = {
   info: svg('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'),
   out: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'),
   trash: svg('<path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'),
+  car: svg('<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>'),
+  walk: svg('<circle cx="13" cy="4" r="2"/><path d="m7 21 3-5 2 1 1 4M10 16l1-6 3 2 3 1M11 10 8 12l-1 3"/>'),
+  vol: svg('<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6M19.4 18.4a9 9 0 0 0 0-12.8"/>'),
+  volx: svg('<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="m22 9-6 6M16 9l6 6"/>'),
 };
+
+// ---------- Sonidos (Web Audio, sin archivos) ----------
+let actx;
+const SFX = {
+  arrive: [[660, .16, 0], [880, .16, .14], [1100, .3, .28]],
+  ask:    [[880, .14, 0], [660, .2, .12]],
+  coin:   [[988, .1, 0], [1319, .26, .08]],
+};
+function sfx(name) {
+  if (!S.settings.sound) return;
+  try {
+    actx ||= new (window.AudioContext || window.webkitAudioContext)();
+    const t = actx.currentTime;
+    for (const [f, d, at] of SFX[name]) {
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + at);
+      g.gain.exponentialRampToValueAtTime(0.14, t + at + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + at + d);
+      o.connect(g).connect(actx.destination); o.start(t + at); o.stop(t + at + d + 0.02);
+    }
+  } catch { /* sin audio */ }
+}
+function updateSound() {
+  const on = S.settings.sound;
+  $$('.sound-btn').forEach(b => {
+    b.innerHTML = on ? ICON.vol : ICON.volx;
+    b.classList.toggle('off', !on);
+    b.setAttribute('aria-pressed', on);
+    b.setAttribute('aria-label', on ? 'Silenciar la app' : 'Activar el sonido de la app');
+  });
+}
 const UNIT = { 'sesión': '/sesión', h: '/h', persona: '/persona', servicio: '' };
 const unitText = { 'sesión': 'por sesión', h: 'por hora', persona: 'por persona', servicio: '' };
 
@@ -283,62 +323,105 @@ function setFilter(k) {
 
 // ---------- Buscador (se despliega hacia arriba) ----------
 let panelT;
-function openSearch() {
+// top = null → abierto del todo; top = número → se queda a esa altura (posición intermedia)
+function openSearch(top = null) {
   clearTimeout(panelT);
   closePlace(); closeCatMenu();
-  $('#dock').classList.add('open'); $('#mapUI').classList.add('searching');
+  const dock = $('#dock');
+  dock.classList.add('open'); $('#mapUI').classList.add('searching');
+  dock.style.top = top == null ? '' : `${top}px`;
   $('#avatarBtn').hidden = true; $('#searchCancel').hidden = false; $('#searchPanel').hidden = false;
   renderSearch();
 }
 function closeSearch() {
   const si = $('#searchInput'); si.value = ''; si.blur();
+  $('#dock').removeAttribute('style');
   $('#dock').classList.remove('open'); $('#mapUI').classList.remove('searching');
   $('#avatarBtn').hidden = false; $('#searchCancel').hidden = true;
   // el contenido se oculta al terminar de bajar, para que no desaparezca a mitad de la animación
   clearTimeout(panelT); panelT = setTimeout(() => { if (!$('#dock').classList.contains('open')) $('#searchPanel').hidden = true; }, 340);
 }
 
-// Arrastre del buscador con el dedo: la hoja sigue al dedo y al soltar se abre o se cierra
-// según la posición y la velocidad (como en Mapas de Apple). Cerrado se arrastra desde cualquier
-// parte de la barra; abierto, desde el asa superior.
+// Arrastre del buscador (como en Mapas de Apple):
+//  - la hoja sigue al dedo y se QUEDA donde la sueltas;
+//  - lanzamiento rápido hacia arriba → se abre del todo; rápido hacia abajo → se cierra;
+//  - si la sueltas muy cerca de abajo se pliega, y muy cerca de arriba se abre del todo;
+//  - se puede arrastrar desde el asa, desde la fila del buscador y desde la propia lista.
+const SHEET = { OPEN_TOP: 64, CLOSED_H: 93, FLICK: 0.6, CLOSE_BELOW: 0.15, OPEN_ABOVE: 0.88 };
 function setupDockDrag() {
   const dock = $('#dock'), app = $('#app'), panel = $('#searchPanel'), ui = $('#mapUI');
-  const OPEN_TOP = 64, CLOSED_H = 93;
-  let st = null;
-  dock.addEventListener('pointerdown', e => {
-    if (e.button > 0 || e.target.closest('#avatarBtn, #searchCancel')) return;
-    const open = dock.classList.contains('open');
-    if (open && !e.target.closest('.grab-zone')) return;
+  const isFull = () => dock.classList.contains('open') && !dock.style.top;
+  let d = null, noClickUntil = 0;
+
+  function begin(y) {
     const ar = app.getBoundingClientRect();
-    st = { id: e.pointerId, y0: e.clientY, top0: dock.getBoundingClientRect().top - ar.top, open,
-      closedTop: ar.height - CLOSED_H, drag: false, k: open ? 1 : 0, py: e.clientY, pt: performance.now(), v: 0 };
+    d = { y0: y, top0: dock.getBoundingClientRect().top - ar.top, closedTop: ar.height - SHEET.CLOSED_H, top: 0, k: 0, v: 0, py: y, pt: performance.now() };
+    dock.classList.add('dragging'); clearTimeout(panelT);
+    if (!dock.classList.contains('open')) { closePlace(); closeCatMenu(); renderSearch(); panel.hidden = false; }
+  }
+  function move(y) {
+    const top = d.top = Math.min(d.closedTop, Math.max(SHEET.OPEN_TOP, d.top0 + (y - d.y0)));
+    const k = d.k = (d.closedTop - top) / (d.closedTop - SHEET.OPEN_TOP);
+    const s = Math.min(1, k / 0.15); // pasa enseguida de "cápsula" a "hoja" de ancho completo
+    const r = 28 - 2 * s, rb = 28 * (1 - s);
+    Object.assign(dock.style, { top: `${top}px`, left: `${10 * (1 - s)}px`, right: `${10 * (1 - s)}px`, bottom: `${14 * (1 - s)}px`, borderRadius: `${r}px ${r}px ${rb}px ${rb}px` });
+    ui.classList.toggle('searching', k > 0.1);
+    const now = performance.now();
+    if (now - d.pt > 4) { d.v = (y - d.py) / (now - d.pt); d.py = y; d.pt = now; }
+  }
+  function end() {
+    if (!d) return;
+    const { k, top } = d;
+    const v = performance.now() - d.pt > 90 ? 0 : d.v; // si el dedo se paró antes de soltar, no es un lanzamiento
+    d = null;
+    noClickUntil = performance.now() + 120; // que soltar no cuente como pulsar un resultado
+    dock.classList.remove('dragging'); dock.removeAttribute('style'); // la transición CSS termina el movimiento
+    const to = v < -SHEET.FLICK ? 'full' : v > SHEET.FLICK ? 'close'
+      : k < SHEET.CLOSE_BELOW ? 'close' : k > SHEET.OPEN_ABOVE ? 'full' : 'partial';
+    if (to === 'close') closeSearch();
+    else openSearch(to === 'full' ? null : top);
+  }
+
+  // Asa y fila del buscador (dedo y ratón)
+  let p = null;
+  dock.addEventListener('pointerdown', e => {
+    if (e.button > 0 || e.target.closest('#avatarBtn, #searchCancel, #searchPanel')) return;
+    if (dock.classList.contains('open') && e.target.closest('input')) return; // abierto: el campo es para escribir
+    p = { id: e.pointerId, y: e.clientY, on: false };
   });
   dock.addEventListener('pointermove', e => {
-    if (!st || e.pointerId !== st.id) return;
-    const dy = e.clientY - st.y0;
-    if (!st.drag) {
-      if (Math.abs(dy) < 6) return;
-      st.drag = true; dock.setPointerCapture(e.pointerId); dock.classList.add('dragging');
-      clearTimeout(panelT);
-      if (!st.open) { closePlace(); closeCatMenu(); renderSearch(); panel.hidden = false; }
-    }
-    const top = Math.min(st.closedTop, Math.max(OPEN_TOP, st.top0 + dy));
-    const k = st.k = (st.closedTop - top) / (st.closedTop - OPEN_TOP);
-    const r = 28 - 2 * k, rb = 28 * (1 - k);
-    Object.assign(dock.style, { top: `${top}px`, left: `${10 * (1 - k)}px`, right: `${10 * (1 - k)}px`, bottom: `${14 * (1 - k)}px`, borderRadius: `${r}px ${r}px ${rb}px ${rb}px` });
-    ui.classList.toggle('searching', k > 0.3);
-    const now = performance.now();
-    if (now > st.pt) { st.v = (e.clientY - st.py) / (now - st.pt); st.py = e.clientY; st.pt = now; }
+    if (!p || e.pointerId !== p.id) return;
+    if (!p.on) { if (Math.abs(e.clientY - p.y) < 6) return; p.on = true; dock.setPointerCapture(e.pointerId); $('#searchInput').blur(); begin(p.y); }
+    move(e.clientY);
   });
-  const end = () => {
-    const s = st; st = null;
-    if (!s || !s.drag) return;
-    const toOpen = s.v < -0.35 ? true : s.v > 0.35 ? false : s.k > 0.4; // lanzamiento rápido o posición
-    dock.classList.remove('dragging'); dock.removeAttribute('style'); // la transición CSS termina el movimiento
-    if (toOpen) openSearch(); else closeSearch();
-  };
-  dock.addEventListener('pointerup', end);
-  dock.addEventListener('pointercancel', end);
+  const pEnd = () => { if (p?.on) end(); p = null; };
+  dock.addEventListener('pointerup', pEnd); dock.addEventListener('pointercancel', pEnd);
+
+  // Lista con el dedo: si la hoja no está abierta del todo, arrastrar mueve la hoja;
+  // si está abierta, la lista se desplaza normal y solo baja la hoja al tirar hacia abajo estando arriba del todo.
+  const decide = dy => !isFull() || (panel.scrollTop <= 0 && dy > 0);
+  let t = null;
+  panel.addEventListener('touchstart', e => { t = { y: e.touches[0].clientY, decided: false, drag: false }; }, { passive: true });
+  panel.addEventListener('touchmove', e => {
+    if (!t) return;
+    const y = e.touches[0].clientY;
+    if (!t.decided) { if (Math.abs(y - t.y) < 6) return; t.decided = true; t.drag = decide(y - t.y); if (t.drag) { $('#searchInput').blur(); begin(t.y); } }
+    if (t.drag) { e.preventDefault(); move(y); }
+  }, { passive: false });
+  const tEnd = () => { if (t?.drag) end(); t = null; };
+  panel.addEventListener('touchend', tEnd); panel.addEventListener('touchcancel', tEnd);
+
+  // Lista con ratón (para probar en el ordenador)
+  let m = null;
+  panel.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse' && e.button === 0) m = { id: e.pointerId, y: e.clientY, decided: false, drag: false }; });
+  panel.addEventListener('pointermove', e => {
+    if (!m || e.pointerId !== m.id) return;
+    if (!m.decided) { if (Math.abs(e.clientY - m.y) < 6) return; m.decided = true; m.drag = decide(e.clientY - m.y); if (m.drag) { panel.setPointerCapture(e.pointerId); begin(m.y); } }
+    if (m.drag) move(e.clientY);
+  });
+  const mEnd = () => { if (m?.drag) end(); m = null; };
+  panel.addEventListener('pointerup', mEnd); panel.addEventListener('pointercancel', mEnd);
+  panel.addEventListener('click', e => { if (performance.now() < noClickUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
 }
 function resultRow(p, sub, icon = ICON.pin) {
   return `<button class="result" data-place="${p.id}"><i class="r-ic">${icon}</i><span>${p.name}<small>${sub}</small></span><b>${pinLabel(p)}</b></button>`;
@@ -365,6 +448,7 @@ function renderSearch() {
 // ---------- Ficha del establecimiento ----------
 function openPlace(id) {
   const p = placeById(id); S.place = id;
+  S.travelMode = 'coche'; // el coche es la opción principal; se puede cambiar a pie en la ficha
   closeCatMenu(); if ($('#dock').classList.contains('open')) closeSearch();
   $('#app').classList.add('place-open');
   $$('.pin').forEach(el => el.classList.toggle('selected', el.dataset.place === id));
@@ -402,8 +486,14 @@ function renderPlace() {
     ${price}${srcHTML(p.src)}
     <button class="alert-row" data-act="alert">${ICON.bell}<span>Avísame si cambia el precio<small>Te avisamos cuando los clientes reporten un precio distinto</small></span><i class="switch" role="switch" aria-checked="${alert}"></i></button>
     ${ratings}${note}
-    <button class="btn primary" data-act="go">${ICON.nav} Ir aquí</button>`;
+    <div class="mode-pick" role="radiogroup" aria-label="Cómo vas">
+      ${[['coche', 'En coche', ICON.car], ['pie', 'A pie', ICON.walk]].map(([m, l, ic]) =>
+        `<button role="radio" aria-checked="${S.travelMode === m}" class="${S.travelMode === m ? 'on' : ''}" data-mode="${m}">${ic}<span>${l}<small>${etaMin(p, m)} min</small></span></button>`).join('')}
+    </div>
+    <button class="btn primary" data-act="go">${ICON.nav} ${S.travelMode === 'coche' ? 'Ir en coche' : 'Ir a pie'}</button>`;
 }
+function routeDist(p) { const mid = [USER_POS[0], p.pos[1]]; return distM(USER_POS, mid) + distM(mid, p.pos); }
+const etaMin = (p, m) => Math.max(1, Math.round(routeDist(p) / SPEED[m]));
 function closePlace() {
   $('#placeSheet').hidden = true; S.place = null;
   $('#app').classList.remove('place-open');
@@ -425,6 +515,7 @@ function startNav() {
   S.navigating = { id: p.id, coords };
   closePlace();
   $('#mapUI').hidden = true; $('#navUI').hidden = false; $('#navSimulate').disabled = false;
+  $('#app').classList.add('navigating');
   const mid = [USER_POS[0], p.pos[1]];
   const total = distM(USER_POS, mid) + distM(mid, p.pos);
   // Sentido del giro: producto vectorial entre el primer y el segundo tramo
@@ -432,7 +523,7 @@ function startNav() {
   const right = cross < 0;
   S.navigating.turn = right ? 'derecha' : 'izquierda';
   setNavBanner(fmtDist(distM(USER_POS, mid)), `Luego gira a la ${S.navigating.turn}`, right ? 'right' : 'left');
-  $('#navEta').textContent = `${Math.max(1, Math.round(total / SPEED[S.settings.mode]))} min · ${fmtDist(total)}`;
+  $('#navEta').textContent = `${etaMin(p, S.travelMode)} min ${S.travelMode === 'coche' ? 'en coche' : 'a pie'} · ${fmtDist(total)}`;
   $('#navTo').textContent = `Hacia ${p.name}`;
   markers[p.id].getElement().classList.add('dest');
   map?.getSource('ruta')?.setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: coords } });
@@ -452,6 +543,7 @@ function stopNav() {
   map?.getSource('ruta')?.setData({ type: 'FeatureCollection', features: [] });
   userMarker.setLngLat(USER_POS);
   $('#navUI').hidden = true; $('#mapUI').hidden = false;
+  $('#app').classList.remove('navigating');
   map?.easeTo({ ...HOME, duration: 900 });
 }
 function simulateArrival(fast) {
@@ -472,9 +564,27 @@ function simulateArrival(fast) {
     if (idx < half) setNavBanner(fmtDist(distM(cs[idx], cs[half])), `Luego gira a la ${nav.turn}`, nav.turn === 'derecha' ? 'right' : 'left');
     else setNavBanner(fmtDist(distM(cs[idx], cs[cs.length - 1])), 'Sigue recto hasta el destino', 'straight');
     if (k < 1) requestAnimationFrame(step);
-    else { $('#navSimulate').disabled = false; setNavBanner('Has llegado', placeById(nav.id).name, 'arrive'); addVisit(nav.id); startFlow(nav.id); }
+    else {
+      $('#navSimulate').disabled = false; setNavBanner('Has llegado', placeById(nav.id).name, 'arrive');
+      addVisit(nav.id); sfx('arrive'); scheduleAsk(nav.id);
+      setTimeout(() => { if (S.navigating === nav) stopNav(); }, 2500); // vuelve al mapa tras ver "Has llegado"
+    }
   };
   requestAnimationFrame(step);
+}
+
+// La pregunta "¿has ido?" no sale al llegar: se lanza pasado ASK_DELAY_MS (1 min por ahora),
+// para dar tiempo a entrar en el sitio. Si en ese momento ya hay otra pregunta abierta, queda pendiente.
+function scheduleAsk(id) {
+  const ms = askDelay();
+  toast(ms >= 60000 ? `Has llegado · te preguntaremos por el precio en ${Math.round(ms / 60000)} min` : 'Has llegado');
+  setTimeout(() => {
+    if (S.flow || S.navigating) { // nunca interrumpir otra pregunta ni una ruta en curso (seguridad al conducir)
+      if (!S.pending.some(x => x.id === id)) S.pending.unshift({ id, when: 'hoy' });
+      return updatePriceFab();
+    }
+    sfx('ask'); startFlow(id);
+  }, ms);
 }
 function addVisit(id) {
   const v = S.visits.find(x => x.id === id);
@@ -502,7 +612,7 @@ function startFlow(id, fromPending = false) {
   S.flow = { id, fromPending, step: 'visited', item: null, value: null, rating: [0, 0, 0], earned: { c: 0, xp: 0 }, changed: false };
   renderFlow();
 }
-function endFlow() { S.flow = null; $('#flowOverlay').hidden = true; stopNav(); updateHUD(); }
+function endFlow() { S.flow = null; $('#flowOverlay').hidden = true; updateHUD(); }
 
 function rulerHTML(value, max) {
   const STEP = 12, nums = [];
@@ -560,7 +670,7 @@ function renderFlow() {
     const pend = S.pending.find(x => x.id === p.id);
     html = f.fromPending
       ? `${stepTag}<h2>¿Fuiste a ${p.name}?</h2><p>Lo dejaste pendiente ${pend ? pend.when : ''}. Cuéntanos el precio y gana monedas.</p>`
-      : `${stepTag}<h2>Has llegado a ${p.name}</h2><p>¿Has entrado finalmente? Tu respuesta ayuda a mantener los precios al día.</p>`;
+      : `${stepTag}<h2>¿Has ido a ${p.name}?</h2><p>Llegaste hace un momento. Tu respuesta ayuda a mantener los precios al día.</p>`;
     html += `<div class="flow-actions"><button class="btn primary" data-flow="yes">Sí, he ido</button>
       <button class="btn secondary" data-flow="later">Más tarde</button><button class="btn ghost" data-flow="no">No he ido</button></div>`;
   } else if (f.step === 'choose') {
@@ -606,6 +716,7 @@ function renderFlow() {
       <div class="flow-actions"><button class="btn primary" data-flow="done">Volver al mapa</button><button class="btn secondary" data-flow="shop">Ir a la tienda</button></div>`;
   }
   card.innerHTML = html;
+  if (f.step === 'reward') sfx('coin');
 }
 
 function grant(r) { S.coins += r.c; S.xp += r.xp; S.flow.earned.c += r.c; S.flow.earned.xp += r.xp; }
@@ -730,8 +841,9 @@ function renderProfile() {
     body = grp('', `<div class="seg-label">Modo</div>${seg('theme', [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']])}`
       + sw('buildings', 'Edificios en 3D', 'Muestra el mapa en 2.5D con edificios extruidos'));
   } else if (pg === 'navegacion') {
-    body = grp('', `<div class="seg-label">Cómo te desplazas</div>${seg('mode', [['pie', 'A pie'], ['coche', 'En coche']])}`
-      + sw('voice', 'Indicaciones por voz', 'Lee los giros en voz alta durante la ruta'));
+    body = grp('', sw('sound', 'Sonidos de la app', 'También con la burbuja del altavoz en el mapa')
+      + sw('voice', 'Indicaciones por voz', 'Lee los giros en voz alta durante la ruta'))
+      + `<div class="text-card" style="margin-top:10px">Si vas en coche o a pie se elige en la ficha de cada sitio, antes de pulsar "Ir". Por defecto, en coche.</div>`;
   } else if (pg === 'notificaciones') {
     body = grp('', sw('notifPending', 'Recordar precios pendientes', 'Punto rojo en el botón € del mapa')
       + sw('notifAlerts', 'Cambios de precio', 'Avisos de los sitios que vigilas'));
@@ -776,6 +888,7 @@ function onProfileClick(e) {
     if (d.set === 'buildings' && map?.getLayer('edificios-3d')) map.setLayoutProperty('edificios-3d', 'visibility', S.settings.buildings ? 'visible' : 'none');
     if (d.set === 'reduceMotion') document.documentElement.classList.toggle('reduce-motion', S.settings.reduceMotion);
     if (d.set === 'notifPending') updatePriceFab();
+    if (d.set === 'sound') updateSound();
     return renderProfile();
   }
   if (d.seg) {
@@ -828,7 +941,14 @@ function bind() {
     else if (a === 'go') startNav();
     else if (a === 'fav') { toast(toggleList(S.favs, S.place) ? 'Añadido a favoritos' : 'Quitado de favoritos'); renderPlace(); }
     else if (a === 'alert') { toast(toggleList(S.alerts, S.place) ? 'Te avisaremos si cambia el precio' : 'Aviso desactivado'); renderPlace(); }
+    const m = e.target.closest('[data-mode]')?.dataset.mode;
+    if (m) { S.travelMode = m; renderPlace(); }
   });
+  $$('.sound-btn').forEach(b => b.addEventListener('click', () => {
+    S.settings.sound = !S.settings.sound; updateSound();
+    toast(S.settings.sound ? 'Sonido activado' : 'App silenciada');
+    if (S.page) renderProfile();
+  }));
   $('#navExit').addEventListener('click', stopNav);
   $('#navSimulate').addEventListener('click', () => simulateArrival(false));
   $('#flowCard').addEventListener('click', onFlowClick);
@@ -858,6 +978,7 @@ applyTheme();
 bind();
 initMap();
 setFilter('todos');
+updateSound();
 updateHUD();
 
 // Ganchos para las capturas automáticas (Playwright)

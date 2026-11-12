@@ -83,8 +83,15 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .ctrl-stack button { width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; color: var(--accent-text); }
 .ctrl-stack button + button { border-top: 1px solid var(--border); }
 
+/* Columna de burbujas: sonido encima de precios */
+.fab-col { position: absolute; right: 14px; bottom: 104px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.bubble { width: 46px; height: 46px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); color: var(--accent-text); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: transform .15s; }
+.bubble:active { transform: scale(.94); }
+.bubble.off { color: var(--muted); }
+.nav-sound { position: absolute; right: 14px; bottom: 172px; }
+
 /* Botón de precios pendientes (circular, pequeño) */
-.price-fab { position: absolute; right: 14px; bottom: 98px; width: 46px; height: 46px; border-radius: 50%; background: var(--reward); border: 2px solid var(--reward-edge); color: var(--reward-ink); font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: transform .15s, filter .2s, opacity .2s; }
+.price-fab { position: relative; width: 46px; height: 46px; border-radius: 50%; background: var(--reward); border: 2px solid var(--reward-edge); color: var(--reward-ink); font-weight: 800; font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: transform .15s, filter .2s, opacity .2s; }
 .price-fab:active { transform: scale(.94); }
 .price-fab.empty { background: var(--surface); border-color: var(--border); color: var(--muted); opacity: .85; }
 .red-dot { position: absolute; top: 1px; right: 1px; width: 11px; height: 11px; border-radius: 50%; background: #E5383B; border: 2px solid var(--surface); }
@@ -117,8 +124,9 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .dock.open { top: 64px; left: 0; right: 0; bottom: 0; border-radius: 26px 26px 0 0; background: var(--surface); padding: 0 14px 0; }
 [data-theme="dark"] .dock.open .search { background: var(--surface2); }
 .dock.open .search { border: 2px solid var(--accent); }
-.map-ui.searching .cat-dd, .map-ui.searching .ctrl-stack, .map-ui.searching .price-fab { display: none; }
-.search-panel { flex: 1; overflow-y: auto; padding: 4px 2px 20px; margin-top: 4px; }
+.map-ui.searching .cat-dd, .map-ui.searching .ctrl-stack, .map-ui.searching .fab-col { display: none; }
+.dock .grab-zone, .dock .dock-line { touch-action: none; } /* el arrastre lo gestiona la app */
+.search-panel { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 4px 2px 20px; margin-top: 4px; }
 .sp-title { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-weight: 800; margin: 16px 0 10px; }
 .sp-title small { font-weight: 600; color: var(--muted); font-size: 12px; }
 .favs { display: flex; gap: 14px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
@@ -139,7 +147,14 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .empty-note { padding: 14px 4px; color: var(--muted); }
 
 /* Al abrir una ficha se oculta el dock */
-.app.place-open .dock, .app.place-open .price-fab { display: none; }
+.app.place-open .dock, .app.place-open .fab-col { display: none; }
+
+/* Elegir coche o a pie en la ficha */
+.mode-pick { display: flex; gap: 8px; margin-bottom: 12px; }
+.mode-pick button { flex: 1; min-height: 58px; border-radius: 14px; border: 2px solid var(--border); background: var(--surface2); display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 800; font-size: 15px; transition: border-color .2s, background .2s; }
+.mode-pick button small { display: block; font-weight: 600; font-size: 12px; color: var(--muted); text-align: left; }
+.mode-pick button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.mode-pick button.on .ic { color: var(--accent-text); }
 
 /* ===== Botones ===== */
 .btn { height: 52px; border-radius: 14px; font-weight: 800; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; transition: filter .2s, background .2s; }
@@ -156,6 +171,8 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 /* ===== Ficha (bottom sheet) ===== */
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 72%; overflow-y: auto; background: var(--surface); border-radius: 24px 24px 0 0; box-shadow: 0 -6px 24px rgba(0,0,0,.18); padding: 10px 18px 22px; z-index: 25; animation: up .25s ease-out; }
 @keyframes up { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet .grab { margin: 0 auto 10px; }
+.app.navigating .toast { bottom: 190px; }
 .sheet-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .head-btns { display: flex; gap: 8px; }
 .close, .fav-btn { width: 40px; height: 40px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; flex: none; }

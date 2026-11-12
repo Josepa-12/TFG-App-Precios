@@ -263,11 +263,26 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
   - antes de escribir muestra favoritos, búsqueda por tipo y lugares frecuentes o visitados;
   - al escribir funciona como un buscador normal.
 - **Gesto de arrastre del buscador**, como en Mapas de Apple:
-  - la hoja **sigue al dedo** mientras se arrastra;
-  - al soltar se abre o se cierra según la **posición** (más del 40 % del recorrido) o la **velocidad** del gesto: un lanzamiento rápido basta aunque sea corto;
-  - abierto, se cierra arrastrando el asa hacia abajo;
+  - la hoja **sigue al dedo** y **se queda a la altura donde se suelta**;
+  - las excepciones son tres:
+    - un **lanzamiento rápido** (más de 0,6 px/ms) la abre del todo hacia arriba o la cierra hacia abajo;
+    - si se suelta **muy cerca de abajo** (menos del 15 % del recorrido), se pliega;
+    - si se suelta **muy cerca de arriba** (más del 88 %), se abre del todo;
+  - si el dedo se para antes de soltar, no cuenta como lanzamiento;
+  - **se puede buscar a media altura**, sin abrir la hoja del todo;
+  - se puede arrastrar desde el asa, desde la fila del buscador y **desde la propia lista**. Con la hoja a media altura, arrastrar la lista mueve la hoja; con la hoja abierta del todo, la lista se desplaza con normalidad y la hoja solo baja si se tira hacia abajo estando la lista arriba del todo;
   - si se abre arrastrando, no aparece el teclado; solo aparece al tocar el campo de texto;
-  - técnicamente, se usan eventos *pointer*, que sirven para el dedo y para el ratón. Mientras se arrastra se desactiva la transición CSS y, al soltar, la misma transición completa el movimiento.
+  - técnicamente, en la lista se usan eventos *touch*: así se decide en cada gesto si se mueve la hoja o se deja el desplazamiento nativo de la lista. En el asa se usan eventos *pointer*, que sirven para el dedo y para el ratón. Mientras se arrastra se desactiva la transición CSS y, al soltar, la misma transición completa el movimiento;
+  - se ha probado con gestos táctiles simulados (Playwright y el protocolo de Chrome, CDP).
+- **Coche o a pie:**
+  - se elige **en la ficha del sitio**, antes de pulsar "Ir", con el tiempo estimado de cada opción;
+  - el **coche es la opción por defecto**;
+  - ya no está en los ajustes de navegación.
+- **Burbuja de sonido:** es igual que la de precios y está **encima de ella**. Silencia o activa los sonidos de la app (llegada, pregunta y monedas), que se generan con Web Audio, sin archivos. También aparece durante la navegación.
+- **La pregunta "¿has ido?" se retrasa:**
+  - ya no sale al llegar, sino **1 minuto después**, para dar tiempo a entrar en el sitio. El tiempo es provisional y está en la constante `ASK_DELAY_MS`;
+  - al llegar se muestra "Has llegado" y la app vuelve al mapa;
+  - si al cumplirse el minuto hay otra pregunta abierta o una **ruta en curso**, la visita pasa a pendientes (botón €) en lugar de interrumpir. Así no se distrae a quien conduce.
 - **Perfil:** se abre desde el avatar y reúne la actividad (pendientes, aportaciones, favoritos, avisos, insignias), la **tienda** y unos **ajustes agrupados por secciones**, tomando Discord como referencia:
   - Apariencia;
   - Navegación y voz (a pie / en coche, que cambia la ETA);
@@ -280,7 +295,7 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
 - **Fallo corregido en la simulación de la ruta:** a veces la animación se paraba sin llegar al destino.
   - *Causa:* la marca de tiempo que recibe `requestAnimationFrame` puede ser anterior al instante en que se guardaba el inicio. El progreso salía negativo y se pedía la posición `-1` de la ruta.
   - *Solución:* el inicio se toma del primer fotograma y el progreso se limita a [0, 1]. Además, "Salir" ahora cancela la simulación.
-- 24 capturas regeneradas con Playwright, sin errores en la consola.
+- 29 capturas regeneradas con Playwright, sin errores en la consola.
 
 ### 4.12 Alcance del prototipo **[Parcial]**
 **Dentro:**
@@ -371,3 +386,7 @@ Ideas de trabajo futuro ya identificadas:
 | 12/11/2026 | Perfil desde un avatar con anillo de XP; tienda y ajustes dentro del perfil | Quitar la barra de pestañas y dejar el mapa despejado |
 | 12/11/2026 | Categorías en un desplegable y buscador que se despliega hacia arriba (favoritos, tipos, visitados) | Menos elementos fijos en pantalla y acceso rápido a los sitios habituales |
 | 12/11/2026 | Función "Avísame si cambia" en los sitios | Refuerza la idea de precios al día y da un motivo para volver a la app |
+| 12/11/2026 | El buscador se queda a la altura donde se suelta (con lanzamiento y extremos) y se puede arrastrar desde la lista | Comportamiento esperado por quien usa Mapas de Apple; se puede buscar sin tapar todo el mapa |
+| 12/11/2026 | Coche o a pie se elige en la ficha, con el coche por defecto | Se decide al elegir destino, no en los ajustes |
+| 12/11/2026 | Burbuja de sonido encima de la de precios | Silenciar rápido sin entrar en los ajustes |
+| 12/11/2026 | La pregunta "¿has ido?" sale 1 minuto después de llegar (provisional, se ampliará) | Dar tiempo a entrar; no interrumpir una ruta en curso |
