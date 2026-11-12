@@ -27,3 +27,6 @@ node_modules/
 # Editores
 .vs/
 .vscode/
+
+# Python
+__pycache__/
