@@ -90,8 +90,15 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .red-dot { position: absolute; top: 1px; right: 1px; width: 11px; height: 11px; border-radius: 50%; background: #E5383B; border: 2px solid var(--surface); }
 
 /* Dock inferior: buscador + avatar */
-.dock { position: absolute; left: 10px; right: 10px; bottom: 14px; border-radius: 28px; padding: 6px 10px 10px; display: flex; flex-direction: column; transition: top .25s ease, left .25s, right .25s, bottom .25s, border-radius .25s; }
-.grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border); margin: 0 auto 8px; flex: none; }
+/* Cerrado: top explícito (no "auto") para que la apertura y el cierre se puedan animar y arrastrar */
+.dock { position: absolute; left: 10px; right: 10px; top: calc(100% - 93px); bottom: 14px; border-radius: 28px; padding: 0 10px 10px; display: flex; flex-direction: column; overflow: hidden;
+  transition: top .32s cubic-bezier(.2, .8, .2, 1), left .32s, right .32s, bottom .32s, border-radius .32s, background-color .32s; }
+.dock.dragging { transition: none; }
+.dock:not(.open) { touch-action: none; cursor: grab; }
+.dock:not(.open) .search input { pointer-events: none; } /* el toque lo recoge la etiqueta; así arrastrar no abre el teclado */
+.grab-zone { height: 21px; flex: none; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; }
+.grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border); flex: none; }
+.dock .dock-line { flex: none; }
 .dock-line { display: flex; align-items: center; gap: 8px; }
 .search { flex: 1; min-width: 0; height: 46px; border-radius: 23px; background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--muted); cursor: text; }
 [data-theme="dark"] .search { background: var(--surface2); }
@@ -107,7 +114,7 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .avatar-btn .face { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-family: 'Varela Round', sans-serif; font-size: 16px; }
 
 /* Buscador desplegado hacia arriba */
-.dock.open { top: 64px; left: 0; right: 0; bottom: 0; border-radius: 26px 26px 0 0; background: var(--surface); padding: 8px 14px 0; }
+.dock.open { top: 64px; left: 0; right: 0; bottom: 0; border-radius: 26px 26px 0 0; background: var(--surface); padding: 0 14px 0; }
 [data-theme="dark"] .dock.open .search { background: var(--surface2); }
 .dock.open .search { border: 2px solid var(--accent); }
 .map-ui.searching .cat-dd, .map-ui.searching .ctrl-stack, .map-ui.searching .price-fab { display: none; }

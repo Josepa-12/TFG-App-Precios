@@ -38,7 +38,7 @@ const path = require('path');
   await shot('04-filtro-hosteleria', 500);
   await page.click('#catBtn'); await page.click('#catMenu [data-cat="todos"]');
 
-  await page.click('#searchInput');
+  await page.click('.dock .search'); // con el buscador cerrado, el toque lo recibe la etiqueta
   await shot('05-buscador', 500);
   await page.fill('#searchInput', 'fis');
   await shot('06-buscador-resultados', 300);

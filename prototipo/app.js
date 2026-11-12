@@ -282,7 +282,9 @@ function setFilter(k) {
 }
 
 // ---------- Buscador (se despliega hacia arriba) ----------
+let panelT;
 function openSearch() {
+  clearTimeout(panelT);
   closePlace(); closeCatMenu();
   $('#dock').classList.add('open'); $('#mapUI').classList.add('searching');
   $('#avatarBtn').hidden = true; $('#searchCancel').hidden = false; $('#searchPanel').hidden = false;
@@ -291,7 +293,52 @@ function openSearch() {
 function closeSearch() {
   const si = $('#searchInput'); si.value = ''; si.blur();
   $('#dock').classList.remove('open'); $('#mapUI').classList.remove('searching');
-  $('#avatarBtn').hidden = false; $('#searchCancel').hidden = true; $('#searchPanel').hidden = true;
+  $('#avatarBtn').hidden = false; $('#searchCancel').hidden = true;
+  // el contenido se oculta al terminar de bajar, para que no desaparezca a mitad de la animación
+  clearTimeout(panelT); panelT = setTimeout(() => { if (!$('#dock').classList.contains('open')) $('#searchPanel').hidden = true; }, 340);
+}
+
+// Arrastre del buscador con el dedo: la hoja sigue al dedo y al soltar se abre o se cierra
+// según la posición y la velocidad (como en Mapas de Apple). Cerrado se arrastra desde cualquier
+// parte de la barra; abierto, desde el asa superior.
+function setupDockDrag() {
+  const dock = $('#dock'), app = $('#app'), panel = $('#searchPanel'), ui = $('#mapUI');
+  const OPEN_TOP = 64, CLOSED_H = 93;
+  let st = null;
+  dock.addEventListener('pointerdown', e => {
+    if (e.button > 0 || e.target.closest('#avatarBtn, #searchCancel')) return;
+    const open = dock.classList.contains('open');
+    if (open && !e.target.closest('.grab-zone')) return;
+    const ar = app.getBoundingClientRect();
+    st = { id: e.pointerId, y0: e.clientY, top0: dock.getBoundingClientRect().top - ar.top, open,
+      closedTop: ar.height - CLOSED_H, drag: false, k: open ? 1 : 0, py: e.clientY, pt: performance.now(), v: 0 };
+  });
+  dock.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    const dy = e.clientY - st.y0;
+    if (!st.drag) {
+      if (Math.abs(dy) < 6) return;
+      st.drag = true; dock.setPointerCapture(e.pointerId); dock.classList.add('dragging');
+      clearTimeout(panelT);
+      if (!st.open) { closePlace(); closeCatMenu(); renderSearch(); panel.hidden = false; }
+    }
+    const top = Math.min(st.closedTop, Math.max(OPEN_TOP, st.top0 + dy));
+    const k = st.k = (st.closedTop - top) / (st.closedTop - OPEN_TOP);
+    const r = 28 - 2 * k, rb = 28 * (1 - k);
+    Object.assign(dock.style, { top: `${top}px`, left: `${10 * (1 - k)}px`, right: `${10 * (1 - k)}px`, bottom: `${14 * (1 - k)}px`, borderRadius: `${r}px ${r}px ${rb}px ${rb}px` });
+    ui.classList.toggle('searching', k > 0.3);
+    const now = performance.now();
+    if (now > st.pt) { st.v = (e.clientY - st.py) / (now - st.pt); st.py = e.clientY; st.pt = now; }
+  });
+  const end = () => {
+    const s = st; st = null;
+    if (!s || !s.drag) return;
+    const toOpen = s.v < -0.35 ? true : s.v > 0.35 ? false : s.k > 0.4; // lanzamiento rápido o posición
+    dock.classList.remove('dragging'); dock.removeAttribute('style'); // la transición CSS termina el movimiento
+    if (toOpen) openSearch(); else closeSearch();
+  };
+  dock.addEventListener('pointerup', end);
+  dock.addEventListener('pointercancel', end);
 }
 function resultRow(p, sub, icon = ICON.pin) {
   return `<button class="result" data-place="${p.id}"><i class="r-ic">${icon}</i><span>${p.name}<small>${sub}</small></span><b>${pinLabel(p)}</b></button>`;
@@ -793,6 +840,7 @@ function bind() {
   si.addEventListener('input', renderSearch);
   si.addEventListener('keydown', e => { if (e.key === 'Escape') closeSearch(); });
   $('#searchCancel').addEventListener('click', closeSearch);
+  setupDockDrag();
   $('#searchPanel').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.place) { closeSearch(); openPlace(b.dataset.place); }

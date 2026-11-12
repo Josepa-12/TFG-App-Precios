@@ -262,6 +262,12 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
 - **Buscador que se despliega hacia arriba:**
   - antes de escribir muestra favoritos, búsqueda por tipo y lugares frecuentes o visitados;
   - al escribir funciona como un buscador normal.
+- **Gesto de arrastre del buscador**, como en Mapas de Apple:
+  - la hoja **sigue al dedo** mientras se arrastra;
+  - al soltar se abre o se cierra según la **posición** (más del 40 % del recorrido) o la **velocidad** del gesto: un lanzamiento rápido basta aunque sea corto;
+  - abierto, se cierra arrastrando el asa hacia abajo;
+  - si se abre arrastrando, no aparece el teclado; solo aparece al tocar el campo de texto;
+  - técnicamente, se usan eventos *pointer*, que sirven para el dedo y para el ratón. Mientras se arrastra se desactiva la transición CSS y, al soltar, la misma transición completa el movimiento.
 - **Perfil:** se abre desde el avatar y reúne la actividad (pendientes, aportaciones, favoritos, avisos, insignias), la **tienda** y unos **ajustes agrupados por secciones**, tomando Discord como referencia:
   - Apariencia;
   - Navegación y voz (a pie / en coche, que cambia la ETA);
