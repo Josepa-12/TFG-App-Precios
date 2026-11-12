@@ -17,32 +17,45 @@
     <div id="map" aria-label="Mapa de Sanlúcar de Barrameda"></div>
     <div class="map-error" id="mapError" hidden>No se pudo cargar el mapa. Comprueba la conexión a internet.</div>
 
-    <!-- Interfaz sobre el mapa -->
+    <!-- Interfaz sobre el mapa (estilo Mapas de Apple) -->
     <div class="map-ui" id="mapUI">
-      <div class="topbar">
-        <label class="search" for="searchInput">
-          <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <input id="searchInput" type="search" placeholder="Buscar servicio o lugar" autocomplete="off" aria-label="Buscar un servicio o lugar">
-        </label>
-        <button class="coins-chip" data-go="perfil" aria-label="Monedas y nivel">
-          <span class="coin"></span><span id="coinsTop">240</span><span class="lvl" id="lvlTop">Nv 3</span>
+      <div class="cat-dd">
+        <button class="pill glass" id="catBtn" aria-haspopup="listbox" aria-expanded="false">
+          <span class="dot-cat" id="catDot"></span><span id="catLabel">Todos</span>
+          <svg class="ic sm chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
         </button>
+        <div class="cat-menu" id="catMenu" role="listbox" aria-label="Filtrar por tipo" hidden></div>
       </div>
-      <div class="chips" role="tablist" aria-label="Filtrar por tipo">
-        <button class="chip active" data-filter="todos">Todos</button>
-        <button class="chip" data-filter="servicio">Servicios</button>
-        <button class="chip" data-filter="hosteleria">Hostelería</button>
-        <button class="chip" data-filter="ocio">Ocio</button>
-      </div>
-      <div class="search-results" id="searchResults" hidden></div>
-      <div class="fabs">
-        <button class="fab" id="themeFab" aria-label="Cambiar modo claro u oscuro">
+
+      <div class="ctrl-stack glass">
+        <button id="themeFab" aria-label="Cambiar modo claro u oscuro">
           <svg class="ic ic-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
           <svg class="ic ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
         </button>
-        <button class="fab" id="locateFab" aria-label="Centrar en mi posición">
-          <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M22 12h-4M6 12H2M12 6V2M12 22v-4"/></svg>
+        <button id="locateFab" aria-label="Centrar en mi posición">
+          <svg class="ic" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
         </button>
+      </div>
+
+      <!-- Botón de precios pendientes: solo funciona si hay visitas sin responder -->
+      <button class="price-fab" id="priceFab" aria-label="Precios pendientes">
+        <span>€</span><i class="red-dot" id="priceDot" hidden></i>
+      </button>
+
+      <div class="dock glass" id="dock">
+        <div class="grab"></div>
+        <div class="dock-line">
+          <label class="search" for="searchInput">
+            <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input id="searchInput" type="search" placeholder="Buscar servicio o lugar" autocomplete="off" aria-label="Buscar un servicio o lugar">
+          </label>
+          <button class="cancel" id="searchCancel" hidden>Cancelar</button>
+          <button class="avatar-btn" id="avatarBtn" aria-label="Abrir perfil">
+            <svg viewBox="0 0 44 44" aria-hidden="true"><circle class="ring-bg" cx="22" cy="22" r="20"/><circle class="ring-xp" id="ringXp" cx="22" cy="22" r="20"/></svg>
+            <span class="face" id="avatarLv">3</span>
+          </button>
+        </div>
+        <div class="search-panel" id="searchPanel" hidden></div>
       </div>
     </div>
 
@@ -68,25 +81,8 @@
       </div>
     </div>
 
-    <!-- Pantallas -->
-    <section class="screen" id="screen-tienda" hidden></section>
+    <!-- Perfil (incluye tienda y ajustes) -->
     <section class="screen" id="screen-perfil" hidden></section>
-
-    <!-- Barra inferior -->
-    <nav class="tabbar" id="tabbar" aria-label="Navegación principal">
-      <button class="tab active" data-go="map">
-        <svg class="ic" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15M9 3.236v15"/></svg>
-        <span>Mapa</span>
-      </button>
-      <button class="tab" data-go="tienda">
-        <svg class="ic" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-        <span>Tienda</span>
-      </button>
-      <button class="tab" data-go="perfil">
-        <svg class="ic" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        <span>Perfil</span>
-      </button>
-    </nav>
 
     <!-- Preguntas al llegar -->
     <div class="overlay" id="flowOverlay" hidden>
@@ -113,6 +109,8 @@
       <button class="btn primary" id="onbStart">Aceptar y empezar</button>
     </section>
 
+    <!-- Notificación dentro de la app (ejemplo de "Avísame si cambia") -->
+    <button class="notif" id="notif" hidden></button>
     <div class="toast" id="toast" role="status" hidden></div>
   </div>
 </div>

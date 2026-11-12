@@ -148,6 +148,13 @@ La app pregunta **solo cuando el usuario ha navegado hasta el sitio con ella**, 
 
 Decisión a justificar: en hostelería se usan tramos en lugar de mostrar un precio, para **reducir el sesgo de confirmación** (que el usuario conteste "sí" a lo que se le propone).
 
+**"Más tarde" (decidido 12/11/2026):** la visita queda guardada como **pendiente**. En el mapa, el botón circular amarillo **€** muestra un punto rojo pequeño, discreto a propósito. Al pulsarlo se retoman las preguntas; si hay varias pendientes, primero se elige cuál. El botón **solo funciona si hay alguna pendiente**: sin pendientes aparece apagado. Así no se pueden aportar precios sin una visita verificada. *(Pendiente: decidir si las pendientes caducan pasado un tiempo.)*
+
+**Introducir un precio distinto (decidido 12/11/2026):** sustituye a los botones de +1/−1, que eran lentos con precios altos.
+- Una **regla deslizable** de 1 € por marca, que con el dedo permite saltos grandes.
+- El número se puede **pulsar para escribirlo** con el teclado numérico.
+- Botones con los precios que ya han dicho otros usuarios.
+
 ### 4.6 Reglas de cálculo del precio **[Parcial]**
 | Forma | Precio mostrado |
 |---|---|
@@ -215,7 +222,7 @@ Se compararon **cuatro paletas** aplicadas a la pantalla del mapa (ver [diseno/p
 - Se respeta la preferencia `prefers-reduced-motion`.
 
 ### 4.11 Prototipo navegable **[Redactado]**
-Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con establecimientos inventados. Código en [prototipo/](../prototipo/) y 20 capturas en [diseno/capturas/](diseno/capturas/).
+Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con establecimientos inventados. Código en [prototipo/](../prototipo/) y 24 capturas en [diseno/capturas/](diseno/capturas/). *(La lista de pantallas de abajo describe la primera versión; los cambios de la segunda iteración se detallan al final del apartado.)*
 
 - **Mapa real en 2.5D** con MapLibre GL y teselas vectoriales de OpenFreeMap (OpenStreetMap), con cámara inclinada y edificios extruidos. El estilo se **recolorea por código** con las paletas B y D. Además, se ocultan los negocios reales del mapa base para que solo aparezcan los precios de la app. Esto demuestra el requisito de un mapa real con estilo editable.
 - **Pantallas:**
@@ -239,6 +246,35 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
   - MapLibre sobrescribía el texto accesible de los marcadores;
   - el sentido del giro era incorrecto al ir hacia el sur;
   - aparecían tramas rayadas del mapa base en el modo oscuro.
+
+**Segunda iteración (12/11/2026), tras la revisión del autor:**
+- **Bocetos previos:** antes de rediseñar se compararon tres propuestas de pantalla principal (ver [diseno/bocetos/bocetos-interfaz.png](diseno/bocetos/bocetos-interfaz.png)):
+  - A: inspirada en Mapas de Apple;
+  - B: inspirada en Waze;
+  - C: un híbrido de las dos.
+
+  Se eligió la **A**, con un botón de precios pequeño y circular tomado de Waze.
+- **Pantalla del GPS limpia:**
+  - se quita la barra inferior de pestañas;
+  - abajo queda una **cápsula de cristal** con el buscador y el **avatar**;
+  - el avatar muestra el nivel, con la **experiencia como anillo** alrededor;
+  - los filtros pasan a un **desplegable** ("Todos ▾") que indica cuántos sitios hay de cada tipo.
+- **Buscador que se despliega hacia arriba:**
+  - antes de escribir muestra favoritos, búsqueda por tipo y lugares frecuentes o visitados;
+  - al escribir funciona como un buscador normal.
+- **Perfil:** se abre desde el avatar y reúne la actividad (pendientes, aportaciones, favoritos, avisos, insignias), la **tienda** y unos **ajustes agrupados por secciones**, tomando Discord como referencia:
+  - Apariencia;
+  - Navegación y voz (a pie / en coche, que cambia la ETA);
+  - Notificaciones;
+  - Privacidad y ubicación;
+  - Accesibilidad (reducir animaciones);
+  - Idioma;
+  - Ayuda sobre cómo se calculan los precios.
+- **Nueva función, "Avísame si cambia":** desde la ficha de un sitio se activa un aviso para cuando los clientes confirmen un precio distinto.
+- **Fallo corregido en la simulación de la ruta:** a veces la animación se paraba sin llegar al destino.
+  - *Causa:* la marca de tiempo que recibe `requestAnimationFrame` puede ser anterior al instante en que se guardaba el inicio. El progreso salía negativo y se pedía la posición `-1` de la ruta.
+  - *Solución:* el inicio se toma del primer fotograma y el progreso se limita a [0, 1]. Además, "Salir" ahora cancela la simulación.
+- 24 capturas regeneradas con Playwright, sin errores en la consola.
 
 ### 4.12 Alcance del prototipo **[Parcial]**
 **Dentro:**
@@ -323,3 +359,9 @@ Ideas de trabajo futuro ya identificadas:
 | 12/11/2026 | Skill UI/UX Pro Max y Playwright | Guías de diseño y pruebas automáticas de la interfaz |
 | 12/11/2026 | Paleta B (azul y amarillo) en modo claro y D (navegación nocturna) en modo oscuro | Color de recompensa propio para la gamificación; mismo lenguaje de color en los dos modos |
 | 12/11/2026 | Prototipo navegable web en Sanlúcar de Barrameda con mapa real 2.5D | Validar el concepto y el flujo antes de elegir la tecnología final |
+| 12/11/2026 | Interfaz principal estilo Mapas de Apple (propuesta A) con botón € circular pequeño | Pantalla del GPS limpia; el botón de Waze se reduce para que no moleste |
+| 12/11/2026 | El botón € solo funciona con visitas pendientes ("Más tarde"), avisando con un punto rojo | Solo se aportan precios de visitas verificadas; recordatorio discreto |
+| 12/11/2026 | Regla deslizable + escribir el número para introducir el precio | Los botones de +1/−1 eran lentos con precios altos |
+| 12/11/2026 | Perfil desde un avatar con anillo de XP; tienda y ajustes dentro del perfil | Quitar la barra de pestañas y dejar el mapa despejado |
+| 12/11/2026 | Categorías en un desplegable y buscador que se despliega hacia arriba (favoritos, tipos, visitados) | Menos elementos fijos en pantalla y acceso rápido a los sitios habituales |
+| 12/11/2026 | Función "Avísame si cambia" en los sitios | Refuerza la idea de precios al día y da un motivo para volver a la app |

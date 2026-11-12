@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bocetos de interfaz</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800&family=Varela+Round&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5FB;--surface:#FFFFFF;--surface2:#EEF2FC;--border:#D3DCF2;--text:#13235B;--muted:#4B5878;
+  --accent:#2F5BEA;--reward:#FFC93C;--reward-edge:#C99300;--reward-ink:#3A2A00;--danger:#D6334A;
+  --glass:rgba(255,255,255,.72);--glass-b:rgba(255,255,255,.9);
+}
+.dark{
+  --bg:#0F1424;--surface:#1A2238;--surface2:#232D49;--border:#2A3A63;--text:#E6ECFA;--muted:#9AA6C4;
+  --accent:#4C7DFF;--reward:#FFD166;--reward-edge:#B8860B;--danger:#FF6B81;
+  --glass:rgba(26,34,56,.72);--glass-b:rgba(76,125,255,.25);
+}
+*{box-sizing:border-box}
+body{margin:0;background:#E6EAF5;color:#13235B;font-family:'Nunito Sans',system-ui,sans-serif;padding:32px 16px 64px}
+h1,h2,h3{font-family:'Varela Round',sans-serif;font-weight:400;margin:0}
+.page{max-width:1100px;margin:0 auto}
+.page>header h1{font-size:30px}
+.page>header p{color:#4B5878;max-width:720px;line-height:1.5}
+section{margin-top:40px}
+section>h2{font-size:22px;margin-bottom:6px}
+section>p{color:#4B5878;margin:0 0 18px;max-width:760px;line-height:1.5}
+.row{display:flex;flex-wrap:wrap;gap:28px;justify-content:flex-start}
+figure{margin:0;width:300px}
+figcaption{margin-top:12px;font-size:14px;line-height:1.45;color:#4B5878}
+figcaption b{display:block;color:#13235B;font-size:16px;font-family:'Varela Round';font-weight:400;margin-bottom:4px}
+figcaption ul{margin:6px 0 0;padding-left:18px}
+.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:#2F5BEA;color:#fff;margin-left:6px;vertical-align:middle}
+
+/* ---------- Teléfono ---------- */
+.phone{width:300px;height:650px;border-radius:42px;border:8px solid #0B1020;position:relative;overflow:hidden;
+  background:var(--bg) url(fondo-claro.jpg) center/cover;color:var(--text);box-shadow:0 20px 40px -18px rgba(19,35,91,.45)}
+.phone.dark{background-image:url(fondo-oscuro.jpg)}
+.phone.plain{background-image:none;background:var(--bg)}
+.status{position:absolute;top:0;left:0;right:0;height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:12px;font-weight:800;z-index:5}
+.island{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:84px;height:24px;border-radius:14px;background:#000;z-index:6}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s{width:14px;height:14px}
+.glass{background:var(--glass);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid var(--glass-b);box-shadow:0 6px 18px -8px rgba(19,35,91,.35)}
+.solid{background:var(--surface);box-shadow:0 6px 18px -8px rgba(19,35,91,.35)}
+
+/* Avatar con anillo de XP */
+.ring{position:relative;display:grid;place-items:center;flex:none}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring .face{border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:'Varela Round';}
+.ring.sm{width:42px;height:42px}.ring.sm .face{width:32px;height:32px;font-size:14px}
+.ring.lg{width:84px;height:84px}.ring.lg .face{width:68px;height:68px;font-size:28px}
+.ring .lv{position:absolute;bottom:-3px;right:-4px;background:var(--reward);color:#3A2A00;font-size:9px;font-weight:800;padding:1px 5px;border-radius:999px;border:2px solid var(--surface)}
+
+/* Elementos comunes */
+.pill{display:flex;align-items:center;gap:6px;border-radius:999px;padding:8px 12px;font-size:13px;font-weight:700}
+.ctrl-stack{position:absolute;right:12px;top:48px;border-radius:14px;display:flex;flex-direction:column}
+.ctrl-stack span{width:40px;height:40px;display:grid;place-items:center;color:var(--accent)}
+.ctrl-stack span+span{border-top:1px solid var(--border)}
+.fab-y{position:absolute;width:58px;height:58px;border-radius:18px;background:var(--reward);border:2px solid var(--reward-edge);color:#3A2A00;display:grid;place-items:center;font-weight:800;font-size:20px;box-shadow:0 8px 18px -6px rgba(201,147,0,.6)}
+.fab-y small{display:block;font-size:9px;margin-top:-4px}
+.round{position:absolute;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--accent)}
+.search{display:flex;align-items:center;gap:8px;border-radius:999px;padding:0 14px;height:42px;font-size:13px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;min-width:0}
+.search .mic{margin-left:auto}
+.dock{position:absolute;left:10px;right:10px;bottom:14px;border-radius:28px;padding:8px 10px 10px}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 8px}
+.dock .line{display:flex;align-items:center;gap:8px}
+.homebar{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:100px;height:4px;border-radius:2px;background:var(--text);opacity:.5}
+
+/* Hoja Waze */
+.wsheet{position:absolute;left:0;right:0;bottom:0;border-radius:22px 22px 0 0;padding:8px 14px 22px}
+.wsheet .search{background:var(--surface2);border-radius:14px;height:44px}
+.shortcuts{display:flex;gap:8px;margin-top:10px}
+.shortcuts div{flex:1;border:1px solid var(--border);border-radius:12px;padding:8px 6px;font-size:11px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text)}
+.shortcuts svg{color:var(--accent)}
+
+/* Desplegable de categorías */
+.dropdown{position:absolute;left:12px;top:48px}
+.menu{margin-top:6px;border-radius:16px;padding:6px;width:200px}
+.menu div{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;font-size:13px;font-weight:700}
+.menu div.on{background:var(--surface2)}
+.menu small{margin-left:auto;color:var(--muted);font-weight:600}
+.dot{width:10px;height:10px;border-radius:50%}
+
+/* Buscador desplegado */
+.bigsheet{position:absolute;left:0;right:0;bottom:0;top:70px;border-radius:24px 24px 0 0;padding:8px 14px;overflow:hidden}
+.bigsheet .search{flex:none;background:var(--surface2);color:var(--text)}
+.cancel{color:var(--accent);font-size:13px;font-weight:700;margin-left:8px}
+.h-sec{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 8px;font-size:13px;font-weight:800}
+.h-sec a{font-weight:700;color:var(--accent);font-size:12px}
+.favs{display:flex;gap:12px}
+.fav{display:flex;flex-direction:column;align-items:center;gap:4px;width:52px;font-size:10px;font-weight:700;text-align:center;line-height:1.15}
+.fav i{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:var(--surface2);color:var(--accent)}
+.fav i.add{border:1.5px dashed var(--border);background:none;color:var(--muted)}
+.cats{display:flex;gap:6px;flex-wrap:wrap}
+.cats span{border:1px solid var(--border);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:700}
+.list div{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;font-weight:700}
+.list div i{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:var(--surface2);color:var(--muted);flex:none}
+.list small{display:block;font-weight:600;color:var(--muted);font-size:11px}
+.list b{margin-left:auto;color:var(--accent);font-size:13px;white-space:nowrap}
+
+/* Perfil / ajustes */
+.screen{position:absolute;inset:0;padding:40px 14px 14px;overflow:hidden}
+.topnav{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;margin-bottom:10px}
+.topnav span{margin-left:auto;color:var(--accent);font-size:13px}
+.phead{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:18px;padding:12px}
+.phead h3{font-size:17px}
+.phead p{margin:2px 0 6px;font-size:12px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--surface2);overflow:hidden;width:150px}
+.bar i{display:block;height:100%;width:47%;background:var(--accent)}
+.coinrow{display:flex;gap:6px;margin-top:8px}
+.coin{width:12px;height:12px;border-radius:50%;background:var(--reward);border:2px solid var(--reward-edge);display:inline-block;vertical-align:-1px}
+.grp{margin-top:10px}
+.grp>small{display:block;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 4px 4px}
+.grp>div{background:var(--surface);border-radius:14px;overflow:hidden}
+.it{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12.5px;font-weight:700}
+.it+.it{border-top:1px solid var(--border)}
+.it svg{color:var(--muted)}
+.it .badge{margin-left:auto;background:var(--accent);color:#fff;font-size:10px;padding:1px 7px;border-radius:999px}
+.it .chev{margin-left:auto;color:var(--muted)}
+.it.red{color:var(--danger)}.it.red svg{color:var(--danger)}
+
+/* Entrada de precio */
+.flow{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:24px 24px 0 0;padding:14px 16px 20px;box-shadow:0 -10px 30px -12px rgba(19,35,91,.4)}
+.flow .step{font-size:10px;font-weight:800;color:var(--muted);letter-spacing:.05em}
+.flow h3{font-size:18px;margin:4px 0 2px}
+.flow p{margin:0 0 10px;font-size:12px;color:var(--muted)}
+.price-edit{display:flex;align-items:center;justify-content:center;gap:4px;font-family:'Varela Round';font-size:44px;border:2px solid var(--accent);border-radius:16px;padding:0 0 12px;position:relative}
+.price-edit .caret{width:2px;height:40px;background:var(--accent);animation:b 1s steps(1) infinite}
+@keyframes b{50%{opacity:0}}
+.price-edit small{position:absolute;left:0;right:0;text-align:center;bottom:-1px;font-family:'Nunito Sans';font-size:10px;color:var(--muted);font-weight:700}
+.quick{display:flex;gap:6px;margin-top:8px}
+.quick span{flex:1;text-align:center;border:1px solid var(--border);border-radius:10px;padding:7px 0;font-size:12px;font-weight:800}
+.quick span.sug{background:var(--surface2);border-color:transparent}
+.lbl{font-size:10px;font-weight:800;color:var(--muted);margin-top:10px}
+.btnp{margin-top:10px;background:var(--accent);color:#fff;text-align:center;border-radius:14px;padding:11px;font-weight:800;font-size:13px}
+.keys{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:10px}
+.keys span{background:var(--surface2);border-radius:8px;text-align:center;padding:7px 0;font-weight:800;font-size:14px}
+.ruler{position:relative;height:64px;margin-top:6px;overflow:hidden;border-radius:12px;background:var(--surface2)}
+.ticks{position:absolute;left:-40px;right:-40px;bottom:0;height:40px;background:
+  repeating-linear-gradient(90deg,var(--muted) 0 1px,transparent 1px 12px) bottom/100% 12px no-repeat,
+  repeating-linear-gradient(90deg,var(--text) 0 2px,transparent 2px 60px) bottom/100% 22px no-repeat;opacity:.55}
+.ruler .nums{position:absolute;top:6px;left:0;right:0;display:flex;justify-content:space-around;font-size:11px;font-weight:800;color:var(--muted)}
+.ruler .needle{position:absolute;left:50%;top:18px;bottom:0;width:3px;margin-left:-1.5px;background:var(--accent);border-radius:2px}
+.bigval{text-align:center;font-family:'Varela Round';font-size:40px}
+.bigval small{font-size:12px;color:var(--muted);font-family:'Nunito Sans';font-weight:700;display:block;margin-top:-4px}
+.scrim{position:absolute;inset:0;background:rgba(10,15,31,.25)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3"/></symbol>
+    <symbol id="i-loc" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5 14.9 8.4l6.5.9-4.7 4.6 1.1 6.5L12 17.3l-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9Z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-food" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></symbol>
+    <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m12 7 4 3-1.5 5h-5L8 10Z"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c.93 0 1.5-.75 1.5-1.66 0-.43-.18-.82-.44-1.12-.3-.3-.45-.67-.45-1.12a1.64 1.64 0 0 1 1.67-1.67h2A5.56 5.56 0 0 0 22 10.92C22 6 17.5 2 12 2Z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="i-nav" viewBox="0 0 24 24"><path d="M3 11h4l3-8 4 18 3-10h4"/></symbol>
+    <symbol id="i-access" viewBox="0 0 24 24"><circle cx="12" cy="4" r="2"/><path d="M5 8h14M12 8v6m-4 8 4-8 4 8"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20"/></symbol>
+    <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="m2 7 4.4-4.4A2 2 0 0 1 7.8 2h8.4a2 2 0 0 1 1.4.6L22 7M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M2 7h20v3a2 2 0 0 1-4 0 2 2 0 0 1-4 0 2 2 0 0 1-4 0 2 2 0 0 1-4 0 2 2 0 0 1-4 0Z"/></symbol>
+    <symbol id="i-pend" viewBox="0 0 24 24"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"/><path d="M12 8v4M12 16h.01"/></symbol>
+  </defs>
+</svg>
+
+<!-- Plantilla del anillo de XP: 70/150 XP = 47 % -->
+<template id="ring"></template>
+
+<div class="page">
+<header>
+  <h1>Bocetos de la interfaz principal</h1>
+  <p>Tres propuestas para la pantalla del mapa, inspiradas en Mapas de Apple y Waze. En las tres desaparece la barra inferior de pestañas: el perfil (con la tienda y los ajustes dentro) se abre desde el avatar con el anillo de experiencia, y los filtros pasan a un desplegable. Debajo están las pantallas comunes y dos formas de introducir el precio.</p>
+</header>
+
+<section>
+  <h2>1 · Pantalla principal</h2>
+  <p>El avatar muestra tu nivel; el anillo azul es la experiencia que llevas hacia el siguiente nivel (aquí 70 de 150 XP).</p>
+  <div class="row">
+
+    <!-- A: Mapas de Apple -->
+    <figure>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="dropdown"><div class="pill glass">Todos <svg class="i s"><use href="#i-down"/></svg></div></div>
+        <div class="ctrl-stack glass"><span><svg class="i"><use href="#i-moon"/></svg></span><span><svg class="i"><use href="#i-loc"/></svg></span></div>
+        <div class="dock glass">
+          <div class="grab"></div>
+          <div class="line">
+            <div class="search solid" style="box-shadow:none"><svg class="i"><use href="#i-search"/></svg>Buscar servicio o lugar<svg class="i mic"><use href="#i-mic"/></svg></div>
+            <div class="ring sm"><svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="19" stroke="var(--surface2)" stroke-width="3" fill="none"/><circle cx="21" cy="21" r="19" stroke="var(--accent)" stroke-width="3" fill="none" stroke-dasharray="56 120" stroke-linecap="round"/></svg><div class="face">3</div></div>
+          </div>
+        </div>
+        <div class="homebar"></div>
+      </div>
+      <figcaption><b>A · Estilo Mapas de Apple</b>
+        <ul><li>Buscador en una cápsula de cristal abajo, con el avatar al lado.</li><li>Controles agrupados arriba a la derecha.</li><li>Muy limpio: casi todo es mapa.</li></ul></figcaption>
+    </figure>
+
+    <!-- B: Waze -->
+    <figure>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>16:38</span><span>72%</span></div>
+        <div class="round solid" style="left:12px;top:46px;border-radius:14px;width:48px;height:48px">
+          <div class="ring sm"><svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="19" stroke="var(--surface2)" stroke-width="3" fill="none"/><circle cx="21" cy="21" r="19" stroke="var(--accent)" stroke-width="3" fill="none" stroke-dasharray="56 120" stroke-linecap="round"/></svg><div class="face">3</div></div>
+        </div>
+        <div class="round solid" style="left:14px;top:104px"><svg class="i"><use href="#i-loc"/></svg></div>
+        <div class="round solid" style="right:12px;top:46px"><svg class="i"><use href="#i-layers"/></svg></div>
+        <div class="round solid" style="right:12px;top:98px"><svg class="i"><use href="#i-moon"/></svg></div>
+        <div class="fab-y" style="right:14px;bottom:170px"><div style="text-align:center;line-height:1">+€<small>Precio</small></div></div>
+        <div class="wsheet solid">
+          <div class="grab"></div>
+          <div class="search"><svg class="i"><use href="#i-search"/></svg>¿Adónde vas?<svg class="i mic"><use href="#i-mic"/></svg></div>
+          <div class="shortcuts">
+            <div><svg class="i"><use href="#i-heart"/></svg>Favoritos</div>
+            <div><svg class="i"><use href="#i-food"/></svg>Comer</div>
+            <div><svg class="i"><use href="#i-ball"/></svg>Pistas</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>B · Estilo Waze</b>
+        <ul><li>Avatar arriba a la izquierda (donde Waze pone el menú).</li><li>Hoja blanca abajo con "¿Adónde vas?" y accesos rápidos.</li><li>Botón amarillo grande para aportar un precio.</li></ul></figcaption>
+    </figure>
+
+    <!-- C: Híbrido -->
+    <figure>
+      <div class="phone dark">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="dropdown"><div class="pill glass">Todos <svg class="i s"><use href="#i-down"/></svg></div></div>
+        <div class="ctrl-stack glass"><span><svg class="i"><use href="#i-moon"/></svg></span><span><svg class="i"><use href="#i-loc"/></svg></span></div>
+        <div class="fab-y" style="right:14px;bottom:96px"><div style="text-align:center;line-height:1">+€<small>Precio</small></div></div>
+        <div class="dock glass">
+          <div class="grab"></div>
+          <div class="line">
+            <div class="search" style="background:var(--surface2);color:var(--muted)"><svg class="i"><use href="#i-search"/></svg>Buscar servicio o lugar<svg class="i mic"><use href="#i-mic"/></svg></div>
+            <div class="ring sm"><svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="19" stroke="var(--surface2)" stroke-width="3" fill="none"/><circle cx="21" cy="21" r="19" stroke="var(--accent)" stroke-width="3" fill="none" stroke-dasharray="56 120" stroke-linecap="round"/></svg><div class="face">3</div></div>
+          </div>
+        </div>
+        <div class="homebar"></div>
+      </div>
+      <figcaption><b>C · Híbrido <span class="tag">Recomendado</span></b>
+        <ul><li>Base de Apple (cápsula de cristal + avatar) en modo oscuro D.</li><li>Botón amarillo de Waze para aportar un precio sin navegar.</li><li>Equilibrio entre limpieza y la parte de juego.</li></ul></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>2 · Pantallas comunes a las tres</h2>
+  <p>El buscador se despliega hacia arriba. Antes de escribir muestra tus accesos; al escribir pasa a ser un buscador normal. Las categorías son un desplegable. El perfil reúne la tienda y unos ajustes organizados por grupos, como en Discord.</p>
+  <div class="row">
+
+    <!-- Buscador desplegado -->
+    <figure>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="scrim"></div>
+        <div class="bigsheet solid">
+          <div class="grab"></div>
+          <div style="display:flex;align-items:center"><div class="search" style="border:2px solid var(--accent)"><svg class="i"><use href="#i-search"/></svg><span style="color:var(--muted)">Buscar servicio o lugar</span></div><span class="cancel">Cancelar</span></div>
+          <div class="h-sec">Favoritos <a>Ver todo</a></div>
+          <div class="favs">
+            <div class="fav"><i><svg class="i"><use href="#i-food"/></svg></i>Casa Marea</div>
+            <div class="fav"><i><svg class="i"><use href="#i-heart"/></svg></i>Fisio Guadal.</div>
+            <div class="fav"><i><svg class="i"><use href="#i-ball"/></svg></i>Marisma</div>
+            <div class="fav"><i class="add"><svg class="i"><use href="#i-plus"/></svg></i>Añadir</div>
+          </div>
+          <div class="h-sec">Buscar por tipo</div>
+          <div class="cats"><span>Restaurantes</span><span>Bares de copas</span><span>Fisioterapia</span><span>Pistas</span><span>Peluquerías</span></div>
+          <div class="h-sec">Frecuentes y visitados</div>
+          <div class="list">
+            <div><i><svg class="i s"><use href="#i-clock"/></svg></i><span>Barbería El Faro<small>Visitado hace 3 días · 250 m</small></span><b>12 €</b></div>
+            <div><i><svg class="i s"><use href="#i-clock"/></svg></i><span>Azotea Poniente<small>Visitado 4 veces · 300 m</small></span><b>7–12 €</b></div>
+            <div><i><svg class="i s"><use href="#i-clock"/></svg></i><span>Enigma del Galeón<small>Visitado el mes pasado</small></span><b>15 €</b></div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>Buscador desplegado hacia arriba</b>Favoritos, tipos de sitio y lugares frecuentes o visitados. Al escribir, esta lista cambia a resultados normales.</figcaption>
+    </figure>
+
+    <!-- Desplegable de categorías -->
+    <figure>
+      <div class="phone">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="dropdown">
+          <div class="pill glass">Hostelería <svg class="i s" style="transform:rotate(180deg)"><use href="#i-down"/></svg></div>
+          <div class="menu solid">
+            <div><span class="dot" style="background:var(--muted)"></span>Todos<small>7</small></div>
+            <div><span class="dot" style="background:var(--accent)"></span>Servicios locales<small>3</small></div>
+            <div class="on"><span class="dot" style="background:var(--reward)"></span>Hostelería<small>2</small></div>
+            <div><span class="dot" style="background:#22A06B"></span>Ocio<small>2</small></div>
+          </div>
+        </div>
+        <div class="ctrl-stack glass"><span><svg class="i"><use href="#i-moon"/></svg></span><span><svg class="i"><use href="#i-loc"/></svg></span></div>
+        <div class="dock glass"><div class="grab"></div><div class="line"><div class="search solid" style="box-shadow:none"><svg class="i"><use href="#i-search"/></svg>Buscar servicio o lugar</div>
+          <div class="ring sm"><svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="19" stroke="var(--surface2)" stroke-width="3" fill="none"/><circle cx="21" cy="21" r="19" stroke="var(--accent)" stroke-width="3" fill="none" stroke-dasharray="56 120" stroke-linecap="round"/></svg><div class="face">3</div></div></div></div>
+      </div>
+      <figcaption><b>Categorías en un desplegable</b>Cerrado solo ocupa una cápsula pequeña. Al abrirlo muestra cada tipo con cuántos sitios hay.</figcaption>
+    </figure>
+
+    <!-- Perfil -->
+    <figure>
+      <div class="phone plain">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="screen">
+          <div class="topnav"><svg class="i"><use href="#i-back"/></svg>Perfil<span>Editar</span></div>
+          <div class="phead">
+            <div class="ring lg"><svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="39" stroke="var(--surface2)" stroke-width="5" fill="none"/><circle cx="42" cy="42" r="39" stroke="var(--accent)" stroke-width="5" fill="none" stroke-dasharray="115 260" stroke-linecap="round"/></svg><div class="face">3</div></div>
+            <div><h3>Nivel 3</h3><p>Colaborador local · 70/150 XP</p><div class="bar"><i></i></div>
+              <div class="coinrow"><span class="coin"></span><b style="font-size:13px">240</b><span style="font-size:12px;color:var(--muted)">· 12 aportes</span></div></div>
+          </div>
+          <div class="grp"><small>Tu actividad</small><div>
+            <div class="it"><svg class="i s"><use href="#i-pend"/></svg>Precios pendientes<span class="badge">2</span></div>
+            <div class="it"><svg class="i s"><use href="#i-list"/></svg>Mis aportaciones<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-award"/></svg>Insignias<svg class="i s chev"><use href="#i-right"/></svg></div>
+          </div></div>
+          <div class="grp"><small>Tienda</small><div>
+            <div class="it"><svg class="i s"><use href="#i-store"/></svg>Tienda de cosméticos<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-bag"/></svg>Mis cosméticos<svg class="i s chev"><use href="#i-right"/></svg></div>
+          </div></div>
+          <div class="grp"><small>Ajustes de la app</small><div>
+            <div class="it"><svg class="i s"><use href="#i-palette"/></svg>Apariencia<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-nav"/></svg>Navegación y voz<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-bell"/></svg>Notificaciones<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-shield"/></svg>Privacidad y ubicación<svg class="i s chev"><use href="#i-right"/></svg></div>
+          </div></div>
+        </div>
+      </div>
+      <figcaption><b>Perfil con tienda y ajustes</b>Se abre al pulsar el avatar. Los ajustes van en grupos con título, como en Discord (sigue más abajo: Accesibilidad, Idioma, Ayuda, Cerrar sesión).</figcaption>
+    </figure>
+
+    <!-- Ajustes (continuación) -->
+    <figure>
+      <div class="phone plain dark">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="screen">
+          <div class="topnav"><svg class="i"><use href="#i-back"/></svg>Perfil</div>
+          <div class="grp"><small>Ajustes de la app</small><div>
+            <div class="it"><svg class="i s"><use href="#i-palette"/></svg>Apariencia<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-nav"/></svg>Navegación y voz<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-bell"/></svg>Notificaciones<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-shield"/></svg>Privacidad y ubicación<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-access"/></svg>Accesibilidad<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-globe"/></svg>Idioma y unidades<svg class="i s chev"><use href="#i-right"/></svg></div>
+          </div></div>
+          <div class="grp"><small>Soporte</small><div>
+            <div class="it"><svg class="i s"><use href="#i-help"/></svg>Ayuda y cómo funcionan los precios<svg class="i s chev"><use href="#i-right"/></svg></div>
+            <div class="it"><svg class="i s"><use href="#i-shield"/></svg>Términos y datos<svg class="i s chev"><use href="#i-right"/></svg></div>
+          </div></div>
+          <div class="grp"><div><div class="it red"><svg class="i s"><use href="#i-out"/></svg>Cerrar sesión</div></div></div>
+          <div class="grp"><small>Apariencia (abierto)</small><div>
+            <div class="it">Modo<span class="chev" style="font-size:12px">Automático</span></div>
+            <div class="it">Tamaño del texto<span class="chev" style="font-size:12px">Normal</span></div>
+            <div class="it">Edificios en 3D<span class="chev" style="font-size:12px">Sí</span></div>
+          </div></div>
+        </div>
+      </div>
+      <figcaption><b>Ajustes (continuación, modo oscuro)</b>Ejemplo de lo que hay dentro de "Apariencia": modo claro/oscuro, tamaño del texto y edificios en 3D.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <h2>3 · Introducir un precio distinto</h2>
+  <p>Sustituye al botón de +1 / −1. En las dos se puede pulsar el número para escribirlo con el teclado numérico.</p>
+  <div class="row">
+    <figure>
+      <div class="phone dark">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="scrim"></div>
+        <div class="flow">
+          <div class="step">PASO 2 DE 2</div>
+          <h3>¿Cuánto te costó?</h3><p>Sesión individual · por sesión</p>
+          <div class="price-edit">42<span class="caret"></span> €<small>toca para escribir</small></div>
+          <div class="lbl">PRECIOS QUE HAN DICHO OTROS</div>
+          <div class="quick"><span class="sug">40 €</span><span class="sug">45 €</span><span class="sug">50 €</span><span class="sug">55 €</span></div>
+          <div class="quick"><span>−5</span><span>−1</span><span>+1</span><span>+5</span></div>
+          <div class="keys"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>,</span><span>0</span><span>⌫</span></div>
+          <div class="btnp">Enviar precio</div>
+        </div>
+      </div>
+      <figcaption><b>P1 · Escribir + atajos <span class="tag">Recomendado</span></b>Número editable con teclado, precios que ya han dicho otros usuarios con un toque, y botones de ±1 / ±5 para ajustar.</figcaption>
+    </figure>
+    <figure>
+      <div class="phone dark">
+        <div class="island"></div><div class="status"><span>16:28</span><span>73%</span></div>
+        <div class="scrim"></div>
+        <div class="flow">
+          <div class="step">PASO 2 DE 2</div>
+          <h3>¿Cuánto te costó?</h3><p>Sesión individual · por sesión</p>
+          <div class="bigval">45 €<small>toca para escribir</small></div>
+          <div class="ruler"><div class="nums"><span>30</span><span>40</span><span>50</span><span>60</span></div><div class="ticks"></div><div class="needle"></div></div>
+          <div class="quick" style="margin-top:10px"><span class="sug">40 €</span><span class="sug">45 €</span><span class="sug">50 €</span></div>
+          <div class="btnp">Enviar precio</div>
+        </div>
+      </div>
+      <figcaption><b>P2 · Regla deslizable</b>Arrastras una regla con el dedo (rápido para saltos grandes) y el número también se puede escribir. Más "de juego", menos preciso.</figcaption>
+    </figure>
+  </div>
+</section>
+</div>
+</body>
+</html>

@@ -1,4 +1,5 @@
-﻿// Uso: node capture.js <index.html> <carpeta-salida>
+﻿// Uso: node capturas.js <index.html> <carpeta-salida>
+// Recorre todo el prototipo con Microsoft Edge y guarda una captura de cada pantalla.
 const { chromium } = require('playwright');
 const { pathToFileURL } = require('url');
 const path = require('path');
@@ -17,74 +18,100 @@ const path = require('path');
     await page.screenshot({ path: path.join(outDir, name + '.png') });
     console.log('ok', name);
   };
-  const idle = async () => {
-    await page.waitForFunction(() => window.__mapReady === true, null, { timeout: 30000 });
-    await page.waitForTimeout(2500);
+  const arrive = async id => {
+    await page.evaluate(id => { proto.openPlace(id); proto.startNav(); }, id);
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => proto.simulateArrival(true));
+    await page.waitForSelector('#flowOverlay:not([hidden])');
   };
 
   await page.goto(pathToFileURL(src).href, { waitUntil: 'load' });
-  await idle();
+  await page.waitForFunction(() => window.__mapReady === true, null, { timeout: 30000 });
+  await page.waitForTimeout(2500);
   await shot('01-bienvenida');
   await page.click('#onbStart');
   await shot('02-mapa-claro', 1200);
 
+  await page.click('#catBtn');
+  await shot('03-categorias', 400);
+  await page.click('#catMenu [data-cat="hosteleria"]');
+  await shot('04-filtro-hosteleria', 500);
+  await page.click('#catBtn'); await page.click('#catMenu [data-cat="todos"]');
+
   await page.click('#searchInput');
+  await shot('05-buscador', 500);
   await page.fill('#searchInput', 'fis');
-  await shot('03-busqueda', 400);
-  await page.keyboard.press('Escape');
-  await page.click('.chip[data-filter="todos"]');
+  await shot('06-buscador-resultados', 300);
+  await page.click('#searchCancel');
 
   await page.click('.pin[data-place="marea"]');
-  await shot('04-ficha-hosteleria', 1500);
+  await shot('07-ficha-hosteleria', 1400);
   await page.click('[data-act="close"]');
-
-  await page.evaluate(() => proto.openPlace('fisio'));
-  await shot('05-ficha-servicio', 1500);
-  await page.click('[data-act="close"]');
-
   await page.evaluate(() => proto.openPlace('marisma'));
-  await shot('06-ficha-ocio', 1500);
-
-  await page.click('[data-act="go"]');
-  await shot('07-navegacion', 2500);
-  await page.click('#navSimulate');
-  await page.waitForSelector('#flowOverlay:not([hidden])', { timeout: 15000 });
-  await shot('08-llegada', 800);
-  await page.click('[data-flow="yes"]');
-  await shot('09-que-usaste', 400);
-  await page.click('[data-item="0"]');
-  await shot('10-confirmar-precio', 400);
-  await page.click('[data-flow="diff"]');
-  await page.click('[data-step="1"]');
-  await page.click('[data-step="1"]');
-  await shot('11-otro-precio', 400);
-  await page.click('[data-flow="sendPrice"]');
-  for (const [c, s] of [[0, 4], [1, 5], [2, 4]]) await page.click(`[data-crit="${c}"][data-star="${s}"]`);
-  await shot('12-valoracion', 400);
-  await page.click('[data-flow="sendRate"]');
-  await shot('13-recompensa', 1200);
-  await page.click('[data-flow="shop"]');
-  await shot('14-tienda', 600);
-  await page.click('[data-buy="flecha-dorada"]');
-  await shot('15-tienda-comprado', 600);
-  await page.click('.tab[data-go="perfil"]');
-  await shot('16-perfil', 600);
-  await page.click('[data-theme-pref="dark"]');
-  await shot('17-perfil-oscuro', 600);
-  await page.click('.tab[data-go="map"]');
-  await shot('18-mapa-oscuro', 2500);
-  await page.click('.pin[data-place="marea"]');
-  await shot('19-ficha-hosteleria-oscuro', 1500);
+  await shot('08-ficha-ocio', 1400);
   await page.click('[data-act="close"]');
   await page.evaluate(() => proto.openPlace('psico'));
+  await shot('09-ficha-servicio', 1400);
+
+  // Navegación real (con la animación) hasta Psicología
   await page.click('[data-act="go"]');
-  await page.waitForTimeout(1500);
+  await shot('10-navegacion', 1400);
   await page.click('#navSimulate');
-  await page.waitForSelector('#flowOverlay:not([hidden])', { timeout: 15000 });
+  await page.waitForSelector('#flowOverlay:not([hidden])', { timeout: 10000 });
+  await shot('11-llegada', 500);
+
+  // "Más tarde" → queda pendiente en el botón €
+  await page.click('[data-flow="later"]');
+  await shot('12-pendiente-en-boton', 1500);
+
+  // Con dos pendientes, el botón € deja elegir
+  await page.click('#priceFab');
+  await shot('13-pendientes-elegir', 500);
+  await page.click('[data-pend="psico"]');
   await page.click('[data-flow="yes"]');
-  await shot('20-confirmar-anonimo-oscuro', 600);
+  await shot('14-confirmar-precio', 400);
+  await page.click('[data-flow="diff"]');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => { const r = document.querySelector('#ruler'); r.scrollLeft += 12 * 7; });
+  await shot('15-regla-precio', 500);
+  await page.click('[data-flow="sendPrice"]');
+  await shot('16-recompensa', 700);
+  await page.click('[data-flow="done"]');
+  await page.waitForTimeout(1000);
 
-  console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores de consola');
+  // Hostelería: tramos de gasto y valoración
+  await arrive('marea');
+  await page.click('[data-flow="yes"]');
+  await shot('17-hosteleria-gasto', 400);
+  await page.click('[data-bucket="25"]');
+  for (const [c, s] of [[0, 5], [1, 4], [2, 5]]) await page.click(`[data-crit="${c}"][data-star="${s}"]`);
+  await shot('18-valoracion', 300);
+  await page.click('[data-flow="sendRate"]');
+  await page.click('[data-flow="done"]');
+  await page.waitForTimeout(1000);
+
+  // Perfil, tienda y ajustes
+  await page.click('#avatarBtn');
+  await shot('19-perfil', 500);
+  await page.click('[data-page="tienda"]');
+  await page.click('[data-buy="ruta-discont"]');
+  await shot('20-tienda', 500);
+  await page.click('[data-back="main"]');
+  await page.click('[data-page="apariencia"]');
+  await page.click('[data-seg="theme"][data-v="dark"]');
+  await shot('21-ajustes-apariencia-oscuro', 600);
+  await page.click('[data-back="main"]');
+  await page.evaluate(() => document.querySelector('#screen-perfil').scrollTo(0, 9999));
+  await shot('22-perfil-ajustes-oscuro', 400);
+  await page.click('[data-page="avisos"]');
+  await page.click('[data-act="demoAlert"]');
+  await shot('23-aviso-cambio-precio', 1500);
+  await page.waitForTimeout(800);
+  await page.click('#notif').catch(() => {});
+  await page.waitForTimeout(400);
+  await page.click('[data-act="close"]').catch(() => {});
+  await shot('24-mapa-oscuro', 2000);
+
+  console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores en consola');
   await browser.close();
-})().catch(e => { console.error(e); process.exit(1); });
-
+})();

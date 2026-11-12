@@ -31,6 +31,14 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
   - Ocio / deporte: instalaciones, atención, calidad-precio.
 - Identidad visual (12/11/2026): paleta B (azul #2F5BEA + amarillo #FFC93C, fondo #F3F5FB, texto #13235B) en modo claro y paleta D (fondo #0F1424, acento #4C7DFF, amarillo #FFD166, texto #E6ECFA) en modo oscuro. Tipografía Varela Round + Nunito Sans. Ver docs/diseno/.
 - Prototipo navegable web en `prototipo/`, situado en Sanlúcar de Barrameda, con mapa real 2.5D (MapLibre + OpenFreeMap) y establecimientos inventados.
+- Interfaz principal (12/11/2026), estilo Mapas de Apple (propuesta A de [docs/diseno/bocetos/](docs/diseno/bocetos/)):
+  - **Barra inferior:** cápsula de cristal con el buscador y el avatar. El avatar muestra el nivel y lleva la XP como anillo alrededor. Al pulsarlo se abre el perfil.
+  - **Sin pestañas:** la tienda y los ajustes están dentro del perfil. Los ajustes van agrupados por secciones, tomando Discord como referencia.
+  - **Categorías:** en un desplegable.
+  - **Buscador:** se despliega hacia arriba y muestra favoritos, búsqueda por tipo y lugares frecuentes o visitados. Al escribir funciona como un buscador normal.
+  - **Botón € pequeño y circular:** solo funciona si hay visitas pendientes (las que se dejaron en "Más tarde"). Avisa con un punto rojo pequeño.
+- Para introducir un precio distinto se usa una regla deslizable y se puede escribir el número. Sustituye a los botones de +1/−1.
+- Función "Avísame si cambia" en la ficha de cada sitio.
 - Modelo unificado: establecimiento → lista de conceptos con precio (ver [docs/estudio-tipos-negocio.md](docs/estudio-tipos-negocio.md)).
 - El negocio puede declarar un precio inicial (opcional). El poder está en los clientes: si reportan un precio distinto, la app actualiza el precio mostrado.
 - Pregunta de un solo toque: "¿el coste fue X?" / "¿sigue costando X?".
@@ -63,7 +71,7 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
 - Móvil: **iPhone**. Desde Windows no se pueden compilar apps iOS (hace falta un Mac con Xcode). Opciones pendientes de decidir: Mac prestado o de la universidad, Android prestado para las pruebas, o desarrollar con GPS simulado en el editor.
 
 ## Estado
-Fase de definición del concepto y alcance. Sin código ni prototipo todavía. Hay un resumen de 5 líneas para el tutor.
+Concepto definido. Hay un prototipo web navegable (segunda iteración, 12/11/2026). Falta elegir la tecnología final del mapa y hacer la prueba técnica.
 
 ## Pendiente
 1. ~~Enviar al tutor el tema~~ (enviado). Esperar aprobación. Temas a tratar: gamificación como eje, Unity vs nativo, política de uso de IA, requisitos de pruebas con usuarios, peso desarrollo/memoria.
@@ -73,3 +81,4 @@ Fase de definición del concepto y alcance. Sin código ni prototipo todavía. H
 5. Decidir si se incluye un modo "negocio" mínimo.
 6. Escribir en C# las reglas de actualización de precios y el sistema de monedas/niveles, con una simulación para obtener resultados.
 7. Preparar el anteproyecto o el correo al tutor.
+8. Decidir si las visitas pendientes ("Más tarde") caducan y cuándo.
