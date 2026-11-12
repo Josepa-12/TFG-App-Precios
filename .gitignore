@@ -1,0 +1,29 @@
+# Configuración personal (no subir)
+_bmad/config.user.toml
+_bmad/custom/config.user.toml
+.claude/settings.local.json
+
+# Sistema operativo
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Node
+node_modules/
+
+# Unity (para cuando se cree el proyecto)
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+*.csproj
+*.sln
+*.apk
+*.aab
+
+# Editores
+.vs/
+.vscode/
