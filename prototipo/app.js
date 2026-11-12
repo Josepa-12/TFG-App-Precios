@@ -71,9 +71,12 @@ const S = {
   travelMode: 'coche',                                 // se elige en la ficha; el coche es la opción principal
   settings: { buildings: true, reduceMotion: false, voice: true, sound: true, notifPending: true, notifAlerts: true, anonAll: false },
 };
-// Tiempo desde que llegas hasta que la app pregunta "¿has ido?". 1 minuto para comprobarlo; se ampliará más adelante.
-const ASK_DELAY_MS = 60 * 1000;
+// Tiempo desde que llegas hasta que la app pregunta "¿has ido?": 1 hora, para que dé tiempo a recibir el servicio.
+const ASK_DELAY_MS = 60 * 60 * 1000;
+// Al llegar, la ruta sigue en pantalla hasta pulsar "He finalizado" o hasta que pase este tiempo.
+const ARRIVE_END_MS = 60 * 1000;
 const askDelay = () => window.__askDelayMs ?? ASK_DELAY_MS; // las capturas automáticas lo acortan
+const fmtDelay = ms => ms >= 3600000 ? `${+(ms / 3600000).toFixed(1)} h` : ms >= 60000 ? `${Math.round(ms / 60000)} min` : `${Math.round(ms / 1000)} s`;
 const level = xp => Math.floor(xp / XP_PER_LEVEL) + 1;
 
 // ---------- Utilidades ----------
@@ -285,8 +288,11 @@ function initMap() {
 
   const me = document.createElement('div');
   me.className = 'me';
-  userMarker = new maplibregl.Marker({ element: me }).setLngLat(USER_POS).addTo(map);
+  me.innerHTML = '<div class="me-cone"></div><div class="me-dot"></div><svg class="me-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 19.5 20.5 12 16.6 4.5 20.5Z"/></svg>';
+  // rotationAlignment 'map': la rotación es un rumbo respecto al norte (0° = norte), aunque el mapa gire
+  userMarker = new maplibregl.Marker({ element: me, rotationAlignment: 'map', pitchAlignment: 'viewport' }).setLngLat(USER_POS).addTo(map);
   applyCosmetics();
+  updateMe();
 
   for (const p of PLACES) {
     const el = document.createElement('button');
@@ -301,8 +307,49 @@ function initMap() {
 
 function applyCosmetics() {
   const el = userMarker?.getElement(); if (!el) return;
-  el.className = `me ${S.equipped.flecha}`;
+  el.dataset.skin = S.equipped.flecha;
   if (map?.isStyleLoaded()) styleRoute();
+}
+
+// ---------- Indicador de posición: círculo, cono (brújula) o flecha (coche) ----------
+// - Navegando en coche: flecha que apunta hacia donde vas (rumbo de la ruta).
+// - Navegando a pie: círculo con un cono translúcido hacia donde mira el móvil (brújula);
+//   si el dispositivo no tiene brújula (ordenador), el cono sigue la dirección de la ruta.
+// - Sin navegar: círculo, con cono si hay datos de brújula (como en Mapas de Apple).
+function updateMe() {
+  const el = userMarker?.getElement(); if (!el) return;
+  const nav = S.navigating;
+  let mode = 'dot', rot = 0;
+  if (nav && nav.mode === 'coche') { mode = 'arrow'; rot = nav.heading; }
+  else if (nav) { mode = 'cone'; rot = S.compass ?? nav.heading; }
+  else if (S.compass != null) { mode = 'cone'; rot = S.compass; }
+  el.dataset.mode = mode;
+  userMarker.setRotation(rot || 0);
+}
+
+// Brújula del móvil. iOS da el rumbo en webkitCompassHeading (pide permiso con un toque del usuario);
+// Android da "deviceorientationabsolute" con alpha (sentido antihorario) → rumbo = 360 − alpha.
+// Requiere HTTPS (o localhost) en el móvil.
+function onOrientation(e) {
+  let h = null;
+  if (typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+  else if (e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;
+  if (h == null) return;
+  h += screen.orientation?.angle || 0; // móvil en horizontal
+  S.compass = (h + 360) % 360;
+  updateMe();
+}
+let compassOn = false;
+function startCompass() { // llamar desde un toque del usuario (requisito de iOS)
+  if (compassOn) return;
+  const listen = () => {
+    compassOn = true;
+    window.addEventListener('deviceorientationabsolute', onOrientation);
+    window.addEventListener('deviceorientation', onOrientation);
+  };
+  const DOE = window.DeviceOrientationEvent;
+  if (DOE && typeof DOE.requestPermission === 'function') DOE.requestPermission().then(r => { if (r === 'granted') listen(); }).catch(() => {});
+  else listen();
 }
 
 // ---------- Desplegable de categorías ----------
@@ -347,7 +394,7 @@ function closeSearch() {
 //  - lanzamiento rápido hacia arriba → se abre del todo; rápido hacia abajo → se cierra;
 //  - si la sueltas muy cerca de abajo se pliega, y muy cerca de arriba se abre del todo;
 //  - se puede arrastrar desde el asa, desde la fila del buscador y desde la propia lista.
-const SHEET = { OPEN_TOP: 64, CLOSED_H: 93, FLICK: 0.6, CLOSE_BELOW: 0.15, OPEN_ABOVE: 0.88 };
+const SHEET = { OPEN_TOP: 64, CLOSED_H: 76, FLICK: 0.6, CLOSE_BELOW: 0.15, OPEN_ABOVE: 0.88 };
 function setupDockDrag() {
   const dock = $('#dock'), app = $('#app'), panel = $('#searchPanel'), ui = $('#mapUI');
   const isFull = () => dock.classList.contains('open') && !dock.style.top;
@@ -512,9 +559,12 @@ function routeCoords(a, b) {
 function startNav() {
   const p = placeById(S.place);
   const coords = routeCoords(USER_POS, p.pos);
-  S.navigating = { id: p.id, coords };
+  S.navigating = { id: p.id, coords, mode: S.travelMode, heading: bearing(USER_POS, coords[40]), arrived: false, endT: null };
+  if (S.travelMode === 'pie') startCompass(); // a pie el cono sigue la brújula del móvil
+  updateMe();
   closePlace();
   $('#mapUI').hidden = true; $('#navUI').hidden = false; $('#navSimulate').disabled = false;
+  $('#navSimulate').hidden = false; $('#navFinish').hidden = true;
   $('#app').classList.add('navigating');
   const mid = [USER_POS[0], p.pos[1]];
   const total = distM(USER_POS, mid) + distM(mid, p.pos);
@@ -538,8 +588,10 @@ function setNavBanner(dist, instr, icon) {
 }
 function stopNav() {
   if (!S.navigating) return;
+  clearTimeout(S.navigating.endT);
   markers[S.navigating.id]?.getElement().classList.remove('dest');
   S.navigating = null;
+  updateMe();
   map?.getSource('ruta')?.setData({ type: 'FeatureCollection', features: [] });
   userMarker.setLngLat(USER_POS);
   $('#navUI').hidden = true; $('#mapUI').hidden = false;
@@ -559,7 +611,10 @@ function simulateArrival(fast) {
     const k = Math.max(0, Math.min(1, (now - t0) / dur));
     const idx = Math.min(cs.length - 1, Math.floor(k * (cs.length - 1)));
     userMarker.setLngLat(cs[idx]);
-    map?.jumpTo({ center: cs[idx], bearing: bearing(cs[idx], cs[Math.min(cs.length - 1, idx + 5)]) || map.getBearing() });
+    const nxt = cs[Math.min(cs.length - 1, idx + 5)];
+    if (nxt !== cs[idx]) nav.heading = bearing(cs[idx], nxt); // rumbo actual; en el último tramo se conserva el anterior
+    updateMe();
+    map?.jumpTo({ center: cs[idx], bearing: nav.heading });
     const half = Math.floor(cs.length / 2);
     if (idx < half) setNavBanner(fmtDist(distM(cs[idx], cs[half])), `Luego gira a la ${nav.turn}`, nav.turn === 'derecha' ? 'right' : 'left');
     else setNavBanner(fmtDist(distM(cs[idx], cs[cs.length - 1])), 'Sigue recto hasta el destino', 'straight');
@@ -567,7 +622,13 @@ function simulateArrival(fast) {
     else {
       $('#navSimulate').disabled = false; setNavBanner('Has llegado', placeById(nav.id).name, 'arrive');
       addVisit(nav.id); sfx('arrive'); scheduleAsk(nav.id);
-      setTimeout(() => { if (S.navigating === nav) stopNav(); }, 2500); // vuelve al mapa tras ver "Has llegado"
+      // La ruta sigue en pantalla hasta pulsar "He finalizado" o hasta que pase ARRIVE_END_MS
+      nav.arrived = true;
+      $('#navSimulate').hidden = true; $('#navFinish').hidden = false;
+      const endMs = window.__arriveEndMs ?? ARRIVE_END_MS;
+      $('#navEta').textContent = 'Has llegado';
+      $('#navTo').textContent = `La ruta se cierra sola en ${fmtDelay(endMs)}`;
+      nav.endT = setTimeout(() => { if (S.navigating === nav) stopNav(); }, endMs);
     }
   };
   requestAnimationFrame(step);
@@ -577,7 +638,7 @@ function simulateArrival(fast) {
 // para dar tiempo a entrar en el sitio. Si en ese momento ya hay otra pregunta abierta, queda pendiente.
 function scheduleAsk(id) {
   const ms = askDelay();
-  toast(ms >= 60000 ? `Has llegado · te preguntaremos por el precio en ${Math.round(ms / 60000)} min` : 'Has llegado');
+  toast(`Has llegado · te preguntaremos por el precio en ${fmtDelay(ms)}`);
   setTimeout(() => {
     if (S.flow || S.navigating) { // nunca interrumpir otra pregunta ni una ruta en curso (seguridad al conducir)
       if (!S.pending.some(x => x.id === id)) S.pending.unshift({ id, when: 'hoy' });
@@ -928,7 +989,8 @@ function updateHUD() {
 
 // ---------- Eventos ----------
 function bind() {
-  $('#onbStart').addEventListener('click', () => { $('#screen-onboarding').hidden = true; store.set('pl-onb', '1'); });
+  $('#onbStart').addEventListener('click', () => { $('#screen-onboarding').hidden = true; store.set('pl-onb', '1'); startCompass(); });
+  $('#locateFab').addEventListener('click', startCompass); // también al centrar en tu posición (toque del usuario)
   $('#catBtn').addEventListener('click', e => { e.stopPropagation(); $('#catMenu').hidden ? openCatMenu() : closeCatMenu(); });
   $('#catMenu').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) setFilter(b.dataset.cat); });
   $('#themeFab').addEventListener('click', () => { S.themePref = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pl-theme', S.themePref); applyTheme(); });
@@ -950,6 +1012,7 @@ function bind() {
     if (S.page) renderProfile();
   }));
   $('#navExit').addEventListener('click', stopNav);
+  $('#navFinish').addEventListener('click', stopNav);
   $('#navSimulate').addEventListener('click', () => simulateArrival(false));
   $('#flowCard').addEventListener('click', onFlowClick);
   $('#screen-perfil').addEventListener('click', onProfileClick);

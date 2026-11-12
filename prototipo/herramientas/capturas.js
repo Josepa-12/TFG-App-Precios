@@ -22,6 +22,8 @@ const path = require('path');
     await page.evaluate(id => { proto.openPlace(id); proto.startNav(); }, id);
     await page.waitForTimeout(1000);
     await page.evaluate(() => proto.simulateArrival(true));
+    await page.waitForSelector('#navFinish:not([hidden])');
+    await page.click('#navFinish');
     await page.waitForSelector('#flowOverlay:not([hidden])');
   };
 
@@ -76,14 +78,24 @@ const path = require('path');
   await page.click('[data-mode="pie"]');
   await page.evaluate(() => document.querySelector('#placeSheet').scrollTo(0, 9999));
   await shot('09c-ficha-a-pie', 300);
-  await page.click('[data-mode="coche"]');
 
-  // Navegación real (con la animación) hasta Psicología
+  // A pie: círculo con cono (sin brújula en el ordenador, el cono sigue la ruta)
   await page.click('[data-act="go"]');
-  await shot('10-navegacion', 1400);
+  await shot('10b-a-pie-cono', 1400);
+  await page.click('#navExit');
+  await page.waitForTimeout(1000);
+
+  // En coche (por defecto): flecha. Navegación real con la animación hasta Psicología
+  await page.evaluate(() => proto.openPlace('psico'));
+  await page.waitForTimeout(800);
+  await page.click('[data-act="go"]');
+  await shot('10-navegacion-coche-flecha', 1400);
   await page.click('#navSimulate');
+  await page.waitForTimeout(1500);
+  await shot('10c-coche-flecha-girando', 0);
   await page.waitForFunction(() => document.querySelector('#navDist').textContent === 'Has llegado');
-  await shot('11a-has-llegado-espera', 300);
+  await shot('11a-has-llegado-ruta-sigue', 300);
+  await page.click('#navFinish');
   await page.waitForSelector('#flowOverlay:not([hidden])', { timeout: 15000 });
   await shot('11-pregunta-tras-espera', 500);
 

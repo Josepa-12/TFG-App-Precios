@@ -280,9 +280,28 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
   - ya no está en los ajustes de navegación.
 - **Burbuja de sonido:** es igual que la de precios y está **encima de ella**. Silencia o activa los sonidos de la app (llegada, pregunta y monedas), que se generan con Web Audio, sin archivos. También aparece durante la navegación.
 - **La pregunta "¿has ido?" se retrasa:**
-  - ya no sale al llegar, sino **1 minuto después**, para dar tiempo a entrar en el sitio. El tiempo es provisional y está en la constante `ASK_DELAY_MS`;
-  - al llegar se muestra "Has llegado" y la app vuelve al mapa;
-  - si al cumplirse el minuto hay otra pregunta abierta o una **ruta en curso**, la visita pasa a pendientes (botón €) en lugar de interrumpir. Así no se distrae a quien conduce.
+  - ya no sale al llegar, sino **1 hora después** (`ASK_DELAY_MS`), para que el usuario tenga tiempo de **recibir el servicio** antes de valorar el precio. En una primera versión se probó con 1 minuto;
+  - si al cumplirse la hora hay otra pregunta abierta o una **ruta en curso**, la visita pasa a pendientes (botón €) en lugar de interrumpir. Así no se distrae a quien conduce;
+  - *limitación del prototipo:* el temporizador solo funciona con la página abierta. En la app real tendría que ser una **notificación programada**, porque la app puede estar cerrada.
+- **La ruta no desaparece al llegar:**
+  - se muestra "Has llegado" con el botón **"He finalizado"**;
+  - si no se pulsa, la ruta se cierra sola **1 minuto después de llegar** (`ARRIVE_END_MS`).
+- **Indicador de posición según el modo** (como en Mapas de Apple y Waze):
+  - **en coche**, el círculo se convierte en una **flecha** que apunta hacia donde vas;
+  - **a pie**, se mantiene el **círculo con un cono translúcido** que indica hacia dónde mira el móvil;
+  - el rumbo se obtiene de la **brújula del dispositivo**:
+    - en iOS, con `webkitCompassHeading`, que exige pedir permiso tras un toque del usuario;
+    - en Android, con el evento `deviceorientationabsolute`, donde el rumbo es 360° − alpha;
+    - en ambos casos se corrige la orientación de la pantalla;
+  - si el dispositivo no tiene brújula, como un ordenador, el cono sigue la dirección de la ruta;
+  - fuera de la navegación, el cono aparece solo si hay datos de brújula;
+  - el marcador gira con `rotationAlignment: 'map'`, así que el rumbo es respecto al norte aunque el mapa esté girado;
+  - los cosméticos de la tienda (dorado, neón) se aplican al círculo, al cono y a la flecha;
+  - *requisito:* la brújula del navegador solo funciona con **HTTPS**, así que para probarla en el móvil hay que publicar el prototipo (por ejemplo, en GitHub Pages).
+- **Barra del buscador fina y simétrica:**
+  - cerrada, deja el **mismo hueco (7 px) por encima y por debajo** del campo de búsqueda;
+  - el asa va superpuesta en el borde, así que no añade altura;
+  - al abrirse, el asa recupera su espacio.
 - **Perfil:** se abre desde el avatar y reúne la actividad (pendientes, aportaciones, favoritos, avisos, insignias), la **tienda** y unos **ajustes agrupados por secciones**, tomando Discord como referencia:
   - Apariencia;
   - Navegación y voz (a pie / en coche, que cambia la ETA);
@@ -295,7 +314,7 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
 - **Fallo corregido en la simulación de la ruta:** a veces la animación se paraba sin llegar al destino.
   - *Causa:* la marca de tiempo que recibe `requestAnimationFrame` puede ser anterior al instante en que se guardaba el inicio. El progreso salía negativo y se pedía la posición `-1` de la ruta.
   - *Solución:* el inicio se toma del primer fotograma y el progreso se limita a [0, 1]. Además, "Salir" ahora cancela la simulación.
-- 29 capturas regeneradas con Playwright, sin errores en la consola.
+- 31 capturas regeneradas con Playwright, sin errores en la consola.
 
 ### 4.12 Alcance del prototipo **[Parcial]**
 **Dentro:**
@@ -390,3 +409,7 @@ Ideas de trabajo futuro ya identificadas:
 | 12/11/2026 | Coche o a pie se elige en la ficha, con el coche por defecto | Se decide al elegir destino, no en los ajustes |
 | 12/11/2026 | Burbuja de sonido encima de la de precios | Silenciar rápido sin entrar en los ajustes |
 | 12/11/2026 | La pregunta "¿has ido?" sale 1 minuto después de llegar (provisional, se ampliará) | Dar tiempo a entrar; no interrumpir una ruta en curso |
+| 12/11/2026 | La pregunta pasa a salir 1 hora después de llegar | Que dé tiempo a recibir el servicio antes de preguntar el precio |
+| 12/11/2026 | La ruta sigue al llegar hasta pulsar "He finalizado" o pasar 1 minuto | No cortar la guía de golpe al llegar |
+| 12/11/2026 | Flecha de rumbo en coche; círculo con cono de brújula a pie | Lenguaje visual habitual de los GPS; a pie importa hacia dónde miras |
+| 12/11/2026 | Barra del buscador fina y simétrica | Más espacio para el mapa y un aspecto más limpio |

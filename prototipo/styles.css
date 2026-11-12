@@ -44,7 +44,7 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 #map { position: absolute; inset: 0; }
 .map-error { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 32px; color: var(--muted); }
 .maplibregl-ctrl-attrib { font-size: 10px; }
-.maplibregl-ctrl-bottom-left { bottom: 92px; }
+.maplibregl-ctrl-bottom-left { bottom: 80px; }
 
 .pin { background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 13px; padding: 6px 10px; border-radius: 14px; box-shadow: var(--shadow); white-space: nowrap; position: relative; cursor: pointer; border: 2px solid var(--surface); transition: transform .15s; min-height: 32px; display: flex; align-items: center; }
 .pin::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--accent); }
@@ -53,9 +53,22 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .pin.selected { transform: scale(1.12); outline: 3px solid var(--text); outline-offset: 1px; }
 .pin.dest { outline: 3px solid var(--reward); }
 
-.me { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); border: 4px solid #fff; box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 22%, transparent); }
-.me.flecha-dorada { background: #FFC93C; }
-.me.flecha-neon { background: #22D3EE; box-shadow: 0 0 0 10px rgba(34,211,238,.25), 0 0 18px #22D3EE; }
+/* Marcador de posición: el elemento entero gira con el rumbo (MapLibre, rotationAlignment: map).
+   data-mode: dot (círculo) · cone (círculo + cono de la brújula, a pie) · arrow (flecha, en coche) */
+.me { --me: var(--accent); width: 22px; height: 22px; position: relative; pointer-events: none; }
+.me[data-skin="flecha-dorada"] { --me: #FFC93C; }
+.me[data-skin="flecha-neon"] { --me: #22D3EE; }
+.me-dot { position: absolute; inset: 0; border-radius: 50%; background: var(--me); border: 4px solid #fff; box-shadow: 0 0 0 10px color-mix(in srgb, var(--me) 22%, transparent), 0 1px 4px rgba(0,0,0,.3); }
+.me[data-skin="flecha-neon"] .me-dot { box-shadow: 0 0 0 10px rgba(34,211,238,.25), 0 0 18px #22D3EE; }
+.me-cone { display: none; position: absolute; left: 50%; bottom: 50%; width: 84px; height: 70px; margin-left: -42px;
+  clip-path: polygon(50% 100%, 6% 0, 94% 0);
+  background: radial-gradient(ellipse 55% 100% at 50% 100%, color-mix(in srgb, var(--me) 75%, transparent) 0%, color-mix(in srgb, var(--me) 25%, transparent) 60%, transparent 100%); }
+.me-arrow { display: none; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.me-arrow path { fill: var(--me); stroke: #fff; stroke-width: 1.6; stroke-linejoin: round; }
+.me[data-skin="flecha-neon"] .me-arrow { filter: drop-shadow(0 0 6px #22D3EE); }
+.me[data-mode="cone"] .me-cone { display: block; }
+.me[data-mode="arrow"] .me-dot { display: none; }
+.me[data-mode="arrow"] .me-arrow { display: block; }
 
 /* ===== Interfaz sobre el mapa (estilo Mapas de Apple) ===== */
 .map-ui { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
@@ -84,7 +97,7 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .ctrl-stack button + button { border-top: 1px solid var(--border); }
 
 /* Columna de burbujas: sonido encima de precios */
-.fab-col { position: absolute; right: 14px; bottom: 104px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.fab-col { position: absolute; right: 14px; bottom: 90px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .bubble { width: 46px; height: 46px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); color: var(--accent-text); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow); transition: transform .15s; }
 .bubble:active { transform: scale(.94); }
 .bubble.off { color: var(--muted); }
@@ -98,13 +111,18 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 
 /* Dock inferior: buscador + avatar */
 /* Cerrado: top explícito (no "auto") para que la apertura y el cierre se puedan animar y arrastrar */
-.dock { position: absolute; left: 10px; right: 10px; top: calc(100% - 93px); bottom: 14px; border-radius: 28px; padding: 0 10px 10px; display: flex; flex-direction: column; overflow: hidden;
-  transition: top .32s cubic-bezier(.2, .8, .2, 1), left .32s, right .32s, bottom .32s, border-radius .32s, background-color .32s; }
+/* Cerrada: el mismo hueco arriba y abajo del buscador (7 px), lo más fina posible.
+   Alto total = 7 + 46 + 7 + 2 de borde = 62 px → top = 100% − 62 − 14 (margen inferior) = 100% − 76 px */
+.dock { position: absolute; left: 10px; right: 10px; top: calc(100% - 76px); bottom: 14px; border-radius: 31px; padding: 7px; display: flex; flex-direction: column; overflow: hidden;
+  transition: top .32s cubic-bezier(.2, .8, .2, 1), left .32s, right .32s, bottom .32s, border-radius .32s, padding .32s, background-color .32s; }
 .dock.dragging { transition: none; }
 .dock:not(.open) { touch-action: none; cursor: grab; }
 .dock:not(.open) .search input { pointer-events: none; } /* el toque lo recoge la etiqueta; así arrastrar no abre el teclado */
-.grab-zone { height: 21px; flex: none; display: flex; align-items: center; justify-content: center; touch-action: none; cursor: grab; }
-.grab { width: 40px; height: 5px; border-radius: 3px; background: var(--border); flex: none; }
+/* Asa: cerrada va superpuesta en el borde superior (no añade alto); abierta tiene su propio espacio */
+.grab-zone { position: absolute; top: 0; left: 0; right: 0; height: 7px; display: flex; justify-content: center; padding-top: 2px; touch-action: none; cursor: grab; z-index: 1; transition: height .32s, padding .32s; }
+.grab { width: 36px; height: 3px; border-radius: 2px; background: var(--border); flex: none; transition: width .32s, height .32s; }
+.dock.open .grab-zone { height: 24px; padding-top: 9px; }
+.dock.open .grab { width: 40px; height: 5px; }
 .dock .dock-line { flex: none; }
 .dock-line { display: flex; align-items: center; gap: 8px; }
 .search { flex: 1; min-width: 0; height: 46px; border-radius: 23px; background: var(--surface); display: flex; align-items: center; gap: 8px; padding: 0 14px; color: var(--muted); cursor: text; }
@@ -121,7 +139,7 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .avatar-btn .face { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: flex; align-items: center; justify-content: center; font-family: 'Varela Round', sans-serif; font-size: 16px; }
 
 /* Buscador desplegado hacia arriba */
-.dock.open { top: 64px; left: 0; right: 0; bottom: 0; border-radius: 26px 26px 0 0; background: var(--surface); padding: 0 14px 0; }
+.dock.open { top: 64px; left: 0; right: 0; bottom: 0; border-radius: 26px 26px 0 0; background: var(--surface); padding: 24px 14px 0; }
 [data-theme="dark"] .dock.open .search { background: var(--surface2); }
 .dock.open .search { border: 2px solid var(--accent); }
 .map-ui.searching .cat-dd, .map-ui.searching .ctrl-stack, .map-ui.searching .fab-col { display: none; }

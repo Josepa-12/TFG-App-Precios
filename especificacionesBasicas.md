@@ -46,7 +46,12 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
   - se arrastra también desde la lista.
 - Coche o a pie se elige en la ficha del sitio (coche por defecto), no en los ajustes.
 - Burbuja de sonido (silenciar o activar) encima de la burbuja de precios.
-- La pregunta "¿has ido?" sale 1 minuto después de llegar (provisional, se ampliará). Si hay una ruta en curso, pasa a pendientes.
+- La pregunta "¿has ido?" sale **1 hora después de llegar**, para dar tiempo a recibir el servicio. Si hay una ruta en curso, pasa a pendientes. En la app real será una notificación programada.
+- Al llegar, la ruta sigue en pantalla hasta pulsar "He finalizado" o hasta que pase 1 minuto.
+- Indicador de posición:
+  - **en coche**, una flecha de rumbo;
+  - **a pie**, un círculo con un cono translúcido que sigue la brújula del móvil. La brújula necesita HTTPS en el móvil.
+- Barra del buscador fina, con el mismo hueco arriba y abajo.
 - Modelo unificado: establecimiento → lista de conceptos con precio (ver [docs/estudio-tipos-negocio.md](docs/estudio-tipos-negocio.md)).
 - El negocio puede declarar un precio inicial (opcional). El poder está en los clientes: si reportan un precio distinto, la app actualiza el precio mostrado.
 - Pregunta de un solo toque: "¿el coste fue X?" / "¿sigue costando X?".

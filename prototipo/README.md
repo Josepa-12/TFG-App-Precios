@@ -27,7 +27,9 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
    - ocio: varios precios y 3 criterios de valoración.
 7. **Navegación con GPS simulado:**
    - en la ficha eliges **en coche** (por defecto) o **a pie**, y luego pulsas "Simular llegada";
-   - al llegar, la pregunta "¿has ido?" **sale al cabo de 1 minuto** (`ASK_DELAY_MS` en `app.js`);
+   - durante la ruta, **en coche** ves una flecha de rumbo y **a pie** un círculo con un cono que sigue la brújula del móvil (necesita HTTPS en el móvil; en el ordenador, el cono sigue la ruta);
+   - al llegar, la ruta sigue hasta pulsar **"He finalizado"** o se cierra sola en 1 minuto (`ARRIVE_END_MS`);
+   - la pregunta "¿has ido?" **sale 1 hora después de llegar** (`ASK_DELAY_MS` en `app.js`; solo con la página abierta);
    - la **burbuja del altavoz**, encima de la del €, silencia o activa los sonidos.
 8. **Preguntas al llegar:**
    1. ¿has ido?
@@ -52,4 +54,4 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
 npm install playwright@1.56.1
 node herramientas/capturas.js "<ruta>/prototipo/index.html" "<ruta>/docs/diseno/capturas"
 ```
-Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 29 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.
+Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 31 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.
