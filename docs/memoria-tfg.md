@@ -371,6 +371,34 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
 - **El precio fluctúa con los clientes.** Cada concepto guarda lo declarado y los aportes de los clientes por separado. Con 3 aportes o más (`MIN_REPORTS`), el precio mostrado pasa a ser la **mediana de lo que pagan los clientes**, o el **rango central** en hostelería, aunque el negocio haya declarado otro. Esto pone en práctica la decisión de que "el poder está en los clientes", y la ficha indica siempre de dónde sale el dato.
 - Tocar un negocio real en el mapa abre su ficha de precios. En "Encuentra cerca" no se repiten los que ya están en la app.
 
+### 4.11c Prototipo, quinta iteración: cuentas de cliente y de negocio **[Redactado]**
+**Dos tipos de cuenta** (13/11/2026), en `prototipo/cuentas.js`:
+- **Cliente:** descubre precios, aporta lo que paga al llegar con el GPS y gana monedas y niveles. El perfil muestra su nombre, su nivel, la tienda y su actividad.
+- **Negocio:**
+  1. busca su establecimiento entre los lugares del mapa y lo vincula, tras una verificación;
+  2. si no aparece, **lo da de alta a mano**: nombre, tipo de negocio (agrupado por plantilla de precio), dirección (búsqueda con Photon o el centro del mapa) y precios;
+  3. el negocio aparece en el mapa con el logo de su tipo, y su perfil muestra el estado de sus precios: declarados o confirmados por N clientes.
+
+  Las cuentas de negocio no tienen monedas ni tienda, no reciben la pregunta "¿has ido?" y solo gestionan su propio negocio. Así se evita que un negocio aporte precios de la competencia.
+
+**Inicio de sesión.**
+- La opción principal es **"Continuar con Google"**, y la alternativa, el correo. También se puede entrar sin cuenta para mirar.
+- En el prototipo es **simulado**. En la app real se usaría Google Identity Services o Firebase Authentication con el proveedor Google: la app recibe el nombre y el correo verificados, y no gestiona contraseñas.
+- La sesión del prototipo se guarda solo en el navegador (`localStorage`).
+
+**Verificación del negocio** (pendiente para la app real): un código enviado al teléfono o al correo del establecimiento, o la comprobación del CIF. En el prototipo se simula con un botón.
+
+**Origen del precio en la ficha.** Hay tres casos:
+- *publicado en la web del negocio*, con enlace y fecha de consulta;
+- *declarado por el negocio*;
+- *según N clientes*.
+
+Cuando el negocio revisa y publica sus precios desde su cuenta, dejan de mostrarse como "de su web" y pasan a "declarados por el negocio". En todos los casos, con 3 aportes de clientes manda lo que pagan ellos.
+
+**Clínicas privadas y centros públicos** (ver [estudio-puntos-interes.md](estudio-puntos-interes.md), 5c):
+- se añaden Clínica Areas, con sus tarifas oficiales agrupadas por área ("desde X €", "con bono", "Consultar"), y FisioSanlúcar;
+- los centros sanitarios públicos se ven en el mapa solo para saber dónde están, sin precios.
+
 ### 4.12 Alcance del prototipo **[Parcial]**
 **Dentro:**
 - Las tres plantillas, con un establecimiento de ejemplo de cada una, incluido un polideportivo con varias pistas.
@@ -476,3 +504,8 @@ Ideas de trabajo futuro ya identificadas:
 | 13/11/2026 | Marcadores de precio ocultos por defecto; desplegable "Precios" con opción "Ninguno" | Pantalla del GPS limpia; los precios se muestran solo si el usuario los pide |
 | 13/11/2026 | 121 lugares reales de Sanlúcar (OSM) en lugar de los 7 inventados; se incluyen instalaciones públicas que cobran | Prototipo realista, sin sitios falsos encima de los reales |
 | 13/11/2026 | Sin precios inventados: los declara el negocio o los aporta el primer cliente; con 3 aportes manda lo que pagan los clientes | No atribuir datos falsos a negocios reales (el repositorio es público) y dar veracidad al precio |
+| 13/11/2026 | Precios iniciales de internet solo si los publica el propio negocio en su web oficial (con enlace y fecha); se descartan los agregadores | Partir de datos fiables y comprobables; los agregadores suelen estar desfasados o ligados a una aseguradora |
+| 13/11/2026 | Nuevos tipos "Clínica privada" y "Fisioterapia"; se añaden Clínica Areas (con sus tarifas oficiales) y FisioSanlúcar | Definir mejor la salud privada, que sí tiene precio |
+| 13/11/2026 | Los centros sanitarios públicos aparecen en el mapa solo con su ubicación, sin precios | Son útiles como destino del GPS, pero no se paga en el momento |
+| 13/11/2026 | Dos tipos de cuenta: cliente y negocio. El negocio vincula su local o lo da de alta a mano y declara sus precios | Que los negocios pongan su precio inicial y que puedan aparecer los que faltan en el mapa |
+| 13/11/2026 | Inicio de sesión con Google como opción principal (simulado en el prototipo; Firebase Authentication en la app real) | Registro rápido, sin contraseñas, y correo verificado |

@@ -110,7 +110,7 @@ const PLACE_POICAT = {
   'Centro deportivo': 'deporte', 'Campo de fútbol': 'deporte', 'Pista de pádel': 'deporte', 'Pista de tenis': 'deporte', 'Recinto deportivo': 'deporte',
   Piscina: 'deporte', 'Club de golf': 'deporte', 'Club náutico': 'deporte',
   Cine: 'cultura', Teatro: 'cultura', Museo: 'cultura', 'Visita turística': 'cultura', Monumento: 'cultura', Aparcamiento: 'parking',
-  'Peluquería': 'belleza', 'Centro de belleza': 'belleza', 'Clínica dental': 'salud', 'Clínica médica': 'salud', Veterinario: 'salud',
+  'Peluquería': 'belleza', 'Centro de belleza': 'belleza', 'Clínica dental': 'salud', 'Clínica médica': 'salud', 'Clínica privada': 'salud', Fisioterapia: 'salud', Veterinario: 'salud',
   Taller: 'talleres', 'Lavado de coches': 'talleres', 'Lavandería': 'tiendas', Autoescuela: 'educacion',
 };
 const PLACE_GLYPH = { 'Campo de fútbol': 'ball', 'Pista de pádel': 'ball', 'Pista de tenis': 'ball', 'Recinto deportivo': 'ball', Monumento: 'landmark', Discoteca: 'martini' };
@@ -121,6 +121,8 @@ const PLACE_CONCEPTS = {
   'Centro de belleza': [['Manicura', 'servicio'], ['Depilación piernas', 'servicio'], ['Limpieza facial', 'servicio']],
   'Clínica dental': [['Revisión', 'servicio'], ['Limpieza dental', 'servicio'], ['Empaste', 'servicio']],
   'Clínica médica': [['Consulta general', 'sesión'], ['Consulta con especialista', 'sesión']],
+  'Clínica privada': [['Consulta con especialista', 'sesión'], ['Sesión de fisioterapia', 'sesión'], ['Prueba diagnóstica', 'servicio']],
+  Fisioterapia: [['Sesión de fisioterapia', 'sesión'], ['Osteopatía', 'sesión'], ['Valoración inicial', 'sesión']],
   Veterinario: [['Consulta', 'servicio'], ['Vacuna', 'servicio']],
   Taller: [['Cambio de aceite', 'servicio'], ['Revisión pre-ITV', 'servicio'], ['Mano de obra', 'h']],
   'Lavado de coches': [['Lavado exterior', 'servicio'], ['Lavado completo', 'servicio']],
@@ -190,10 +192,13 @@ function setPoiLayerCat(map, cat) {
   if (!map?.getLayer('poi-app')) return;
   map.setFilter('poi-app', cat ? ['==', CAT_EXPR, cat] : ['!=', CAT_EXPR, '']);
 }
+// Sanidad pública: aparece en el mapa para saber dónde está, pero nunca lleva precios
+const PUBLIC_HEALTH = /consultorio|centro de salud|urgencias|hospital|ambulatorio|chare/i;
 function poiToSpot(f) {
   const p = f.properties, cat = poiCatOf(p), pos = f.geometry.coordinates.slice(0, 2);
   const name = p['name:es'] || p.name || POI_CATS[cat]?.one || 'Lugar';
-  return { kind: 'poi', key: `poi:${name}:${pos[0].toFixed(5)},${pos[1].toFixed(5)}`, name, pos, cat, sub: POI_CATS[cat]?.one || '' };
+  const pub = cat === 'salud' && PUBLIC_HEALTH.test(name);
+  return { kind: 'poi', key: `poi:${name}:${pos[0].toFixed(5)},${pos[1].toFixed(5)}`, name, pos, cat, sub: pub ? 'Centro sanitario público' : POI_CATS[cat]?.one || '', pub };
 }
 // Puntos de interés de una categoría en las teselas cargadas, ordenados por distancia (sin repetidos)
 function poisNear(map, src, cat, limit = 40) {

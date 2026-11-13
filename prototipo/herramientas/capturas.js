@@ -33,7 +33,12 @@ const path = require('path');
   await shot('01-bienvenida');
   await page.evaluate(() => { window.__askDelayMs = 3500; }); // la pregunta real tarda 1 min; aquí se acorta
   await page.click('#onbStart');
-  await shot('02-mapa-claro', 1200); // pantalla limpia: sin marcadores de precio
+  // Cuenta: cliente o negocio, con Google (simulado)
+  await shot('01b-crear-cuenta', 500);
+  await page.click('[data-a="google"]');
+  await shot('01c-google-simulado', 300);
+  await page.click('[data-a="loginOk"]');
+  await shot('02-mapa-claro', 2600); // pantalla limpia: sin marcadores de precio
   await page.click('#soundFab');
   await shot('02b-app-silenciada', 300);
   await page.click('#soundFab');
@@ -191,6 +196,49 @@ const path = require('path');
   await page.waitForTimeout(400);
   await page.click('[data-act="close"]').catch(() => {});
   await shot('24-mapa-oscuro', 2000);
+
+  // Clínica privada con los precios publicados en su web y centro público solo con su ubicación
+  await page.evaluate(() => proto.setTheme('light'));
+  await page.evaluate(() => proto.openPlace('clinica-areas'));
+  await shot('25-clinica-precios-web', 1600);
+  await page.evaluate(() => document.querySelector('#placeSheet').scrollTo(0, 9999));
+  await shot('25b-clinica-origen-web', 300);
+  await page.click('[data-act="close"]');
+  await page.evaluate(() => map.jumpTo({ center: [-6.3601, 36.7680], zoom: 16 }));
+  await page.waitForTimeout(2500);
+  await page.evaluate(() => { const s = poisNear(map, VSRC, 'salud', 200).find(x => x.pub); if (s) openDest(s); });
+  await shot('26-centro-publico-sin-precio', 1500);
+  await page.click('[data-act="close"]');
+
+  // Cuenta de negocio: vincular el negocio, revisar los precios y darlo de alta a mano si no aparece
+  await page.evaluate(() => proto.logout());
+  await page.click('[data-type="negocio"]');
+  await shot('27-cuenta-negocio', 300);
+  await page.click('[data-a="google"]'); await page.click('[data-a="loginOk"]');
+  await page.fill('#bizQ', 'areas');
+  await shot('28-buscar-mi-negocio', 400);
+  await page.click('[data-pick="clinica-areas"]');
+  await shot('29-verificar-negocio', 300);
+  await page.click('[data-a="verifyOk"]');
+  await shot('30-negocio-revisa-precios-web', 600);
+  await page.click('[data-flow="ownerSave"]');
+  await page.waitForTimeout(1200);
+  await page.click('[data-act="close"]');
+  await page.evaluate(() => proto.openProfile('main'));
+  await shot('31-perfil-negocio', 500);
+  await page.evaluate(() => proto.logout());
+  await page.click('[data-type="negocio"]'); await page.click('[data-a="google"]'); await page.click('[data-a="loginOk"]');
+  await page.click('[data-a="new"]');
+  await page.fill('input[name="name"]', 'Fisioterapia Bajo de Guía');
+  await page.selectOption('select[name="cat"]', 'Fisioterapia');
+  await page.fill('#newAddr', 'Calle Banda de la Playa 20');
+  await page.click('[data-a="addrSearch"]');
+  await page.waitForSelector('#addrList [data-addr="0"]', { timeout: 15000 }).catch(() => {});
+  await shot('32-alta-manual-negocio', 300);
+  await page.click('[data-a="create"]');
+  await page.fill('input[name="i0"]', '30'); await page.fill('input[name="i2"]', '35');
+  await page.click('[data-flow="ownerSave"]');
+  await shot('33-negocio-nuevo-en-el-mapa', 1600);
 
   console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores en consola');
   await browser.close();

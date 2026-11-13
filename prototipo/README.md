@@ -1,12 +1,21 @@
 ﻿# Prototipo navegable — PrecioLocal (nombre provisional)
 
-Prototipo web de la app, centrado en Sanlúcar de Barrameda. Los **121 lugares con precios son reales** (OpenStreetMap, `datos-lugares.js`), pero **ningún precio es inventado**: empiezan vacíos y los declara el negocio o los aporta el primer cliente.
+Prototipo web de la app, centrado en Sanlúcar de Barrameda. Los **lugares con precios son reales**: 121 de OpenStreetMap (`datos-lugares.js`) y 2 clínicas privadas añadidas a mano (`datos-precios-web.js`). **Ningún precio es inventado**:
+- los que el negocio publica en su **web oficial** se usan como precio inicial, con la página y la fecha (por ahora, las tarifas de Clínica Areas);
+- el resto empiezan vacíos, y los declara el negocio desde su cuenta o los aporta el primer cliente.
+
+Los **centros sanitarios públicos** aparecen en el mapa solo para saber dónde están, sin precios.
 
 ## Cómo abrirlo
 Abre `index.html` con doble clic en el navegador. Hace falta conexión a internet para cargar el mapa y las fuentes.
 
 ## Qué se puede hacer
-1. **Bienvenida** con el aviso de privacidad.
+1. **Bienvenida** con el aviso de privacidad y **creación de cuenta** (`cuentas.js`):
+   - **cliente:** descubre precios, aporta lo que paga y gana monedas;
+   - **negocio:** busca su local en el mapa y lo vincula, con una verificación simulada. Si no aparece, lo da de alta a mano con nombre, tipo, dirección y precios. Después gestiona sus precios desde el perfil;
+   - se entra con **"Continuar con Google"** (simulado) o con correo. También se puede seguir sin cuenta.
+
+   La sesión y los precios del negocio se guardan solo en ese navegador.
 2. **Mapa real en 2.5D** (MapLibre + OpenFreeMap) recoloreado con las paletas del proyecto: **B en modo claro** y **D en modo oscuro**.
 3. **Interfaz estilo Mapas de Apple:**
    - abajo, una cápsula de cristal con el buscador y el avatar, que muestra tu nivel con un anillo de experiencia;
@@ -32,7 +41,7 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
    - o abre `index.html?ll=36.7795,-6.3540&name=Casa%20de%20mam%C3%A1`.
 
    Las rutas siguen las calles reales (OSRM). Sin conexión, la ruta es aproximada. El código de lugares, direcciones y rutas está en `lugares.js`.
-8. **Fichas** de cada plantilla, con favorito (♥), "Avísame si cambia / cuando tenga precio" y **"¿Es tu negocio? Declara tus precios"** (modo negocio). Con 3 aportes de clientes, manda lo que pagan ellos:
+8. **Fichas** de cada plantilla, con favorito (♥), "Avísame si cambia / cuando tenga precio" y **"¿Es tu negocio? Crea tu cuenta de negocio"**. Los servicios pueden ir agrupados por área, con "desde X €" y "Consultar". La ficha indica el origen del precio: web del negocio, declarado por el negocio o aportado por clientes. Con 3 aportes de clientes, manda lo que pagan ellos:
    - servicio local: precio fijo y sin reseñas (psicología es anónima);
    - hostelería: rango por persona y 3 criterios de valoración;
    - ocio: varios precios y 3 criterios de valoración.
@@ -65,4 +74,4 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
 npm install playwright@1.56.1
 node herramientas/capturas.js "<ruta>/prototipo/index.html" "<ruta>/docs/diseno/capturas"
 ```
-Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 38 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.
+Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 52 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.

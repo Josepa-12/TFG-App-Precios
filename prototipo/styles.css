@@ -442,3 +442,65 @@ button.it:hover { background: var(--surface2); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Precios agrupados, "desde", "consultar" (13/11/2026) ---------- */
+.rows-group { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 12px 2px 6px; }
+.rows-group:first-of-type { margin-top: 2px; }
+.row b em { font-style: normal; font-size: 13px; font-weight: 600; color: var(--muted); }
+.row b.ask { font-size: 14px; color: var(--muted); font-weight: 700; }
+.about { font-size: 14px; line-height: 1.45; color: var(--muted); margin: -2px 0 12px; }
+.src a { color: var(--accent-text); font-weight: 700; word-break: break-all; }
+.src .ic { flex: none; }
+
+/* ---------- Cuentas: cliente / negocio ---------- */
+.avatar-btn.biz svg { display: none; }
+.avatar-btn.biz .face { width: 42px; height: 42px; background: var(--reward); color: var(--reward-ink); }
+.avatar-btn.biz .face .ic { width: 22px; height: 22px; }
+.biz-face { width: 66px; height: 66px; flex: none; border-radius: 20px; background: var(--reward); color: var(--reward-ink); display: flex; align-items: center; justify-content: center; }
+.biz-face .ic { width: 32px; height: 32px; }
+.biz-state { font-size: 13px; font-weight: 700; background: var(--accent-soft); color: var(--accent-text); border-radius: 10px; padding: 6px 10px; display: inline-block; }
+.account { z-index: 65; display: flex; flex-direction: column; gap: 10px; padding: 20px 20px 28px; }
+.account .topnav { margin-bottom: 0; }
+.acc-head { text-align: center; margin: 18px 0 8px; }
+.acc-head.left { text-align: left; margin-top: 0; }
+.acc-head .logo { display: flex; justify-content: center; margin-bottom: 12px; }
+.acc-head .logo svg { width: 64px; height: 64px; }
+.acc-head h1 { font-size: 26px; line-height: 1.2; margin-bottom: 6px; }
+.acc-head p { color: var(--muted); line-height: 1.45; }
+.acc-types { display: flex; flex-direction: column; gap: 10px; margin: 8px 0 8px; }
+.acc-type { display: flex; align-items: center; gap: 12px; text-align: left; background: var(--surface); border: 2px solid var(--border); border-radius: 18px; padding: 14px; transition: border-color .2s, background .2s; }
+.acc-type b { display: block; font-size: 17px; }
+.acc-type small { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; margin-top: 2px; }
+.acc-type > span:nth-child(2) { flex: 1; min-width: 0; }
+.acc-type.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); }
+.acc-ic { width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--accent-soft); color: var(--accent-text); display: flex; align-items: center; justify-content: center; }
+.acc-ic .ic { width: 22px; height: 22px; }
+.acc-type .radio { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--border); }
+.acc-type.on .radio { border: 7px solid var(--accent); }
+.btn.google { background: #FFFFFF; color: #1F1F1F; border: 1px solid #DADCE0; }
+.btn.google:hover { background: #F7F8F8; }
+.g-logo { width: 20px; height: 20px; flex: none; }
+.acc-legal { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: 6px; }
+.acc-legal .ic { flex: none; width: 18px; height: 18px; }
+.acc-sim { background: var(--surface); border-radius: 20px; padding: 18px; }
+.acc-sim h2 { font-size: 22px; margin: 10px 0 6px; }
+.acc-sim p { color: var(--muted); font-size: 14px; line-height: 1.5; margin-bottom: 14px; }
+.acc-sim-tag { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; color: var(--muted); background: var(--surface2); border-radius: 999px; padding: 6px 12px; }
+.acc-sim-tag .g-logo { width: 16px; height: 16px; }
+.acc-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.acc-field > span { font-size: 13px; font-weight: 700; color: var(--muted); }
+.acc-field .text-in { margin: 0; }
+select.text-in { appearance: auto; }
+.acc-row { display: flex; gap: 8px; align-items: center; }
+.acc-search { flex: none; height: 48px; border: 1.5px solid var(--border); }
+.acc-list { display: flex; flex-direction: column; background: var(--surface); border-radius: 16px; overflow: hidden; }
+.acc-list .it { display: flex; align-items: center; gap: 12px; padding: 10px 14px; min-height: 56px; text-align: left; border-bottom: 1px solid var(--border); }
+.acc-list .it:last-child { border-bottom: 0; }
+.acc-list .it .lbl { flex: 1; min-width: 0; font-weight: 700; }
+.acc-list .it small { display: block; color: var(--muted); font-weight: 600; font-size: 12px; }
+.acc-list .it.on { background: var(--accent-soft); }
+.acc-list .poi-ic { flex: none; }
+.acc-hint { color: var(--muted); font-size: 14px; padding: 14px; }
+.acc-place { display: flex; gap: 12px; align-items: center; background: var(--surface); border-radius: 16px; padding: 14px; }
+.acc-place small { display: block; color: var(--muted); font-size: 13px; }
+.acc-field > .text-in { flex: none; }

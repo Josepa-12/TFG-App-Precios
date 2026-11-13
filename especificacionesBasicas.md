@@ -71,6 +71,14 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
   - con **3 aportes**, manda lo que pagan los clientes.
 
   Se incluyen las instalaciones públicas que cobran y se excluye la sanidad pública.
+- Cambios del 13/11/2026, segunda parte (ver [docs/estudio-puntos-interes.md](docs/estudio-puntos-interes.md), 5c):
+  - **Precios iniciales de internet:** solo los que publica el propio negocio en su web oficial, con enlace y fecha. Nada de agregadores. Por ahora: tarifas de Clínica Areas.
+  - **Clínicas privadas:** tipos nuevos "Clínica privada" y "Fisioterapia". Se añaden Clínica Areas (no es solo fisioterapia: traumatología, suelo pélvico, readaptación, entrenamiento, obesidad) y FisioSanlúcar.
+  - **Centros sanitarios públicos** (el Hospital Virgen del Camino es público): salen en el mapa solo con su ubicación, sin precios.
+  - **Dos tipos de cuenta:**
+    - **cliente:** aporta precios y gana monedas;
+    - **negocio:** vincula su local o lo da de alta a mano si no aparece, y declara sus precios iniciales. No tiene monedas ni recibe la pregunta "¿has ido?".
+  - **Inicio de sesión:** "Continuar con Google" como opción principal. En el prototipo es simulado; en la app real, Firebase Authentication o Google Identity Services. La verificación del negocio queda pendiente para la app real.
 - Modelo unificado: establecimiento → lista de conceptos con precio (ver [docs/estudio-tipos-negocio.md](docs/estudio-tipos-negocio.md)).
 - El negocio puede declarar un precio inicial (opcional). El poder está en los clientes: si reportan un precio distinto, la app actualiza el precio mostrado.
 - Pregunta de un solo toque: "¿el coste fue X?" / "¿sigue costando X?".
@@ -110,7 +118,7 @@ Concepto definido. Hay un prototipo web navegable (segunda iteración, 12/11/202
 2. Elegir tecnología para el mapa real 2.5D con estilo editable y hacer la prueba técnica.
 3. ~~Fisioterapia: precio o valoración~~ → solo precio (decidido).
 4. ~~Valoración y criterios~~ (decidido).
-5. Decidir si se incluye un modo "negocio" mínimo.
+5. ~~Decidir si se incluye un modo "negocio" mínimo~~ → cuenta de negocio en el prototipo (13/11/2026). Pendiente: cómo verificar al dueño en la app real.
 6. Escribir en C# las reglas de actualización de precios y el sistema de monedas/niveles, con una simulación para obtener resultados.
 7. Preparar el anteproyecto o el correo al tutor.
 8. Decidir si las visitas pendientes ("Más tarde") caducan y cuándo.

@@ -137,6 +137,35 @@ Se ha generado la lista de **todos los lugares reales de Sanlúcar que encajan c
 
 **Ajustes manuales:** OSM marca "Padel La Jara" y "Piscina Municipal" como `sports_centre` (centro deportivo genérico). El generador afina el tipo por el nombre para sugerir conceptos adecuados.
 
+## 5c. Clínicas privadas, precios de internet y centros públicos (13/11/2026)
+**Lugares añadidos a mano** ([prototipo/datos-precios-web.js](../prototipo/datos-precios-web.js)), porque no salían en la extracción automática:
+- **Clínica Areas** (C/ Santo Domingo, 21-23), de tipo nuevo **"Clínica privada"**. No es solo de fisioterapia:
+  - servicios: traumatología, fisioterapia, suelo pélvico, readaptación, entrenamiento personal y tratamiento de la obesidad;
+  - equipo: médicos, fisioterapeutas, readaptadores, entrenadores, enfermeros, nutricionistas y psicólogos ([clinicaareas.com](https://clinicaareas.com/), [Top Doctors](https://www.topdoctors.es/centro/clinica-areas/)).
+- **Clínica FisioSanlúcar** (Av. del Quinto Centenario, 92), de tipo nuevo **"Fisioterapia"**: fisioterapia y osteopatía.
+
+Ambos tipos se tratan como **categoría sensible**: las aportaciones de precio son anónimas.
+
+**Precios iniciales tomados de internet.** Criterio: solo se usan los precios que **publica el propio negocio en su web oficial**, citando la página y la fecha de consulta.
+- **Clínica Areas** publica sus tarifas en [clinicaareas.com/tarifas](https://clinicaareas.com/tarifas):
+  - consulta de traumatología, 90 €;
+  - sesión de fisioterapia, desde 40 €;
+  - ondas de choque, 50 €;
+  - suelo pélvico, 35-45 €;
+  - entrenamiento personal, desde 22,50 € con bono;
+  - y otros.
+
+  Los servicios "a consultar" aparecen sin importe.
+- La ficha muestra *"Publicado en la web del negocio · consultado el 13/11/2026"*. Los clientes lo confirman o lo corrigen igual que un precio declarado.
+- **Se descartan los agregadores** (Doctoralia, Saludonnet, Masquemedicos, Cronoshare). Sus precios suelen estar desfasados o ligados a una aseguradora. Por ejemplo, FisioSanlúcar figura a 45 € en una página de DKV, y mostrarlo podría atribuir un precio falso a un negocio real.
+- **Sin precio oficial encontrado:** Castillo de Santiago, Palacio Ducal, Bodegas Hidalgo-La Gitana, barco Real Fernando, Multicines Al-Ándalus y Sanlúcar Club de Golf. Los declarará el negocio o los aportará el primer cliente.
+
+**Centros sanitarios públicos** (centros de salud, consultorios, urgencias, Hospital Comarcal Virgen del Camino):
+- **aparecen en el mapa** como puntos de interés, para saber dónde están e ir con el GPS;
+- su ficha indica que es un centro público y que **no se muestran precios**.
+
+**Negocios que no aparecen:** cualquier negocio puede darlo de alta desde una **cuenta de negocio**, con nombre, tipo, dirección y precios (ver la memoria, 4.11c).
+
 ## 6. Limitaciones
 - **Calidad de OSM:** depende de lo que hayan mapeado los voluntarios. Faltan gimnasios, algunos nombres están vacíos y las clasificaciones no siempre son correctas (p. ej. "Teatro Principal" aparece como centro comercial).
 - **Cobertura en el prototipo:** la lista "Encuentra cerca" solo incluye los puntos de las zonas del mapa que ya se han cargado. La app real necesitaría un servicio de lugares propio que consulte por radio.
