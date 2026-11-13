@@ -52,6 +52,25 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
   - **en coche**, una flecha de rumbo;
   - **a pie**, un círculo con un cono translúcido que sigue la brújula del móvil. La brújula necesita HTTPS en el móvil.
 - Barra del buscador fina, con el mismo hueco arriba y abajo.
+- Cambios del 13/11/2026 (ver [docs/estudio-puntos-interes.md](docs/estudio-puntos-interes.md)):
+  - **Mapa:** los establecimientos con precios se muestran con el **logo de su tipo de negocio** y una insignia €, no con el precio.
+  - **Puntos de interés:** los reales de OpenStreetMap (supermercados, gimnasios, farmacias, gasolineras…) van integrados en el mapa con icono y nombre, como en Mapas de Apple. Son 22 categorías.
+  - **"Encuentra cerca":** lista de categorías en el buscador (las de Mapas de Apple y más).
+  - **GPS a cualquier destino:**
+    - direcciones escritas (Photon);
+    - ubicaciones compartidas por WhatsApp o Google Maps (enlace o coordenadas);
+    - puntos marcados manteniendo pulsado el mapa;
+    - favoritos sin precio ("Casa de mamá").
+  - **Rutas:** por calles reales (OSRM), con indicaciones giro a giro. Las direcciones no se guardan en el historial.
+  - **Perfil:** la tienda va encima de "Tu actividad".
+- **Marcadores de precio ocultos por defecto.** El desplegable "Precios" (arriba a la izquierda) tiene las opciones Ninguno, Todos, Servicios locales, Hostelería y Ocio.
+- **121 lugares reales** de Sanlúcar con plantilla de precio (89 de hostelería, 21 de ocio y 11 servicios locales), en lugar de los 7 inventados. Ver [docs/estudio-puntos-interes.md](docs/estudio-puntos-interes.md) (5b).
+- **Sin precios inventados:**
+  - el **negocio** puede declarar su precio inicial;
+  - los **clientes** aportan lo que pagan (el primero, con recompensa extra);
+  - con **3 aportes**, manda lo que pagan los clientes.
+
+  Se incluyen las instalaciones públicas que cobran y se excluye la sanidad pública.
 - Modelo unificado: establecimiento → lista de conceptos con precio (ver [docs/estudio-tipos-negocio.md](docs/estudio-tipos-negocio.md)).
 - El negocio puede declarar un precio inicial (opcional). El poder está en los clientes: si reportan un precio distinto, la app actualiza el precio mostrado.
 - Pregunta de un solo toque: "¿el coste fue X?" / "¿sigue costando X?".
@@ -95,3 +114,7 @@ Concepto definido. Hay un prototipo web navegable (segunda iteración, 12/11/202
 6. Escribir en C# las reglas de actualización de precios y el sistema de monedas/niveles, con una simulación para obtener resultados.
 7. Preparar el anteproyecto o el correo al tutor.
 8. Decidir si las visitas pendientes ("Más tarde") caducan y cuándo.
+9. Puntos de interés (ver el estudio):
+   - qué categorías abren precios después de las tres plantillas actuales;
+   - si se importan los precios oficiales de las gasolineras;
+   - si se crea la categoría "Bodegas y enoturismo".

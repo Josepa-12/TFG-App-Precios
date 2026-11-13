@@ -274,6 +274,10 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
   - si se abre arrastrando, no aparece el teclado; solo aparece al tocar el campo de texto;
   - técnicamente, en la lista se usan eventos *touch*: así se decide en cada gesto si se mueve la hoja o se deja el desplazamiento nativo de la lista. En el asa se usan eventos *pointer*, que sirven para el dedo y para el ratón. Mientras se arrastra se desactiva la transición CSS y, al soltar, la misma transición completa el movimiento;
   - se ha probado con gestos táctiles simulados (Playwright y el protocolo de Chrome, CDP).
+  - **Fallo corregido (13/11/2026):** tras el primer deslizamiento no se podía volver a deslizar sin tocar antes el buscador.
+    - *Causa:* con la hoja abierta, el código ignoraba los arrastres que empezaban sobre el campo de texto, que ocupa casi toda la fila. Solo respondía el asa, de 24 px.
+    - *Solución:* el arrastre puede empezar en cualquier punto de la barra. Se distingue por el movimiento: más de 6 px es un deslizamiento, y entonces se quita el foco y no sale el teclado; si no hay movimiento, es un toque para escribir.
+    - Se añadió una prueba automática que encadena varios arrastres seguidos, con ratón y con dedo, sin tocar el campo entre medias.
 - **Coche o a pie:**
   - se elige **en la ficha del sitio**, antes de pulsar "Ir", con el tiempo estimado de cada opción;
   - el **coche es la opción por defecto**;
@@ -315,6 +319,57 @@ Prototipo web interactivo, situado en **Sanlúcar de Barrameda** y con estableci
   - *Causa:* la marca de tiempo que recibe `requestAnimationFrame` puede ser anterior al instante en que se guardaba el inicio. El progreso salía negativo y se pedía la posición `-1` de la ruta.
   - *Solución:* el inicio se toma del primer fotograma y el progreso se limita a [0, 1]. Además, "Salir" ahora cancela la simulación.
 - 31 capturas regeneradas con Playwright, sin errores en la consola.
+
+### 4.11b Prototipo, tercera iteración: puntos de interés y GPS a cualquier destino **[Redactado]**
+*(Tercera iteración, 13/11/2026. Estudio completo en [estudio-puntos-interes.md](estudio-puntos-interes.md).)*
+
+**Logos en lugar de precios en el mapa.**
+- Los establecimientos con precios se ven con el **logo de su tipo de negocio**: tijeras en la barbería, cubiertos en el restaurante, cerebro en psicología…
+- Llevan una pequeña **insignia "€"** que indica que tienen precios.
+- El color sigue la plantilla: azul para servicio local, naranja para hostelería y verde para ocio.
+- El precio se ve al abrir la ficha y en las listas.
+
+**Comercios y servicios reales integrados en el mapa.**
+- Se muestran los puntos de interés reales de OpenStreetMap: supermercados, farmacias, gasolineras, gimnasios, bancos…
+- Van como una capa de símbolos **dibujada dentro del propio mapa**: un círculo de color con el icono y el nombre al lado, como en Mapas de Apple.
+- No son marcadores flotantes, así que se distinguen de los establecimientos con precios.
+- **Censo de Sanlúcar:** 481 puntos en 98 tipos distintos, agrupados en 22 categorías. Las paradas de autobús (128) y las oficinas se ocultan para no saturar el mapa.
+- Los iconos se generan por código (SVG → imagen del mapa), sin archivos de imagen.
+
+**"Encuentra cerca".**
+- En el buscador hay una lista de categorías como la de Mapas de Apple: restaurantes, gasolineras, supermercados, parques, aparcamientos, hoteles, comida rápida, farmacias, bares, gimnasios, salud, cultura…
+- Al elegir una, el mapa muestra solo esa categoría.
+- Debajo aparece la lista ordenada por distancia: primero los establecimientos con precios y luego los del mapa.
+
+**GPS a cualquier destino, no solo a sitios con precios:**
+- **Direcciones escritas**, como la casa de un amigo, con el geocodificador **Photon** (komoot, datos de OSM). La búsqueda prioriza los resultados cercanos.
+- **Ubicaciones compartidas por WhatsApp:** WhatsApp comparte un enlace de Google Maps con las coordenadas. Se reconocen enlaces de Google Maps (`?q=`, `@lat,lng`, `!3d…!4d…`), de Apple Maps (`ll=`), `geo:` y coordenadas sueltas, pegándolos en el buscador o con el botón "Abrir una ubicación compartida".
+  - *Límite:* los enlaces cortos (`maps.app.goo.gl`) solo se pueden resolver desde un servidor o desde la app nativa.
+  - En la app real se registraría la app para abrir estos enlaces: "Compartir → PrecioLocal" en iOS y *intent filters* en Android.
+  - En el prototipo se simula con la URL `index.html?ll=LAT,LNG&name=…`.
+- **Mantener pulsado el mapa** marca un punto cualquiera, con su dirección obtenida por geocodificación inversa.
+- **Favoritos sin precio:** las direcciones y los lugares se pueden guardar con el corazón ("Casa de mamá").
+
+**Rutas por calles reales.**
+- Se sustituye la ruta en "L" por rutas reales de **OSRM**: el servidor público de demostración para ir en coche y el de FOSSGIS para ir a pie.
+- Las indicaciones son giro a giro y en castellano ("Gira a la derecha por Calle Carmen Viejo", "En la rotonda, toma la 2.ª salida"), y el tiempo estimado es real.
+- Si no hay conexión, se usa la ruta aproximada anterior.
+- La simulación de la llegada recorre la geometría real y su duración depende de la longitud de la ruta.
+
+**Privacidad.**
+- Las direcciones y ubicaciones a las que se navega **no se guardan en el historial** ni generan la pregunta del precio, que solo se hace en establecimientos con precios.
+- *Advertencia para la app real:* los servicios públicos de búsqueda y rutas reciben el texto buscado y las coordenadas. Una versión en producción debería usar **servidores propios** de Photon y OSRM, o calcular las rutas en el móvil. Los servidores de demostración, además, no permiten un uso intensivo.
+
+**Perfil.** La tienda pasa a estar **encima de "Tu actividad"**, para que se vea antes.
+
+**Cuarta iteración (13/11/2026): pantalla limpia y lugares reales.**
+- **Precios ocultos por defecto.** Los marcadores de precio ya no aparecen al abrir la app. El desplegable de arriba a la izquierda pasa a llamarse **"Precios"** y tiene las opciones *Ninguno* (por defecto), *Todos*, *Servicios locales*, *Hostelería* y *Ocio*. El sitio abierto en la ficha, o al que se navega, se ve siempre.
+- **121 lugares reales** de Sanlúcar sustituyen a los 7 inventados (ver [estudio-puntos-interes.md](estudio-puntos-interes.md), apartado 5b).
+- **Ningún precio inventado.** Todos los lugares empiezan vacíos, por dos vías:
+  - **Modo negocio:** el dueño declara su precio inicial y se muestra como "declarado por el negocio". En la app real habría que verificar al dueño, por ejemplo con un código enviado al establecimiento; en el prototipo se simula.
+  - **Primer cliente:** quien llega con el GPS aporta el primer precio ("¡Pionero!", recompensa extra). Elige un concepto sugerido o escribe "otra cosa" con su unidad.
+- **El precio fluctúa con los clientes.** Cada concepto guarda lo declarado y los aportes de los clientes por separado. Con 3 aportes o más (`MIN_REPORTS`), el precio mostrado pasa a ser la **mediana de lo que pagan los clientes**, o el **rango central** en hostelería, aunque el negocio haya declarado otro. Esto pone en práctica la decisión de que "el poder está en los clientes", y la ficha indica siempre de dónde sale el dato.
+- Tocar un negocio real en el mapa abre su ficha de precios. En "Encuentra cerca" no se repiten los que ya están en la app.
 
 ### 4.12 Alcance del prototipo **[Parcial]**
 **Dentro:**
@@ -413,3 +468,11 @@ Ideas de trabajo futuro ya identificadas:
 | 12/11/2026 | La ruta sigue al llegar hasta pulsar "He finalizado" o pasar 1 minuto | No cortar la guía de golpe al llegar |
 | 12/11/2026 | Flecha de rumbo en coche; círculo con cono de brújula a pie | Lenguaje visual habitual de los GPS; a pie importa hacia dónde miras |
 | 12/11/2026 | Barra del buscador fina y simétrica | Más espacio para el mapa y un aspecto más limpio |
+| 13/11/2026 | Tienda encima de "Tu actividad" en el perfil | Dar más visibilidad a la parte de recompensa |
+| 13/11/2026 | Logo del tipo de negocio (con insignia €) en lugar del precio en el mapa | Mapa más limpio y reconocible; el precio se consulta en la ficha |
+| 13/11/2026 | Puntos de interés reales de OSM integrados en el mapa (22 categorías) y "Encuentra cerca" | La app sirve como GPS completo y no solo para los sitios con precios |
+| 13/11/2026 | GPS a cualquier destino: direcciones, ubicaciones de WhatsApp y puntos marcados en el mapa | Uso diario como GPS ("ir a casa de un amigo") |
+| 13/11/2026 | Rutas reales con OSRM (servidores públicos) con alternativa sin conexión | Indicaciones y tiempos reales sin desarrollar un motor de rutas propio |
+| 13/11/2026 | Marcadores de precio ocultos por defecto; desplegable "Precios" con opción "Ninguno" | Pantalla del GPS limpia; los precios se muestran solo si el usuario los pide |
+| 13/11/2026 | 121 lugares reales de Sanlúcar (OSM) en lugar de los 7 inventados; se incluyen instalaciones públicas que cobran | Prototipo realista, sin sitios falsos encima de los reales |
+| 13/11/2026 | Sin precios inventados: los declara el negocio o los aporta el primer cliente; con 3 aportes manda lo que pagan los clientes | No atribuir datos falsos a negocios reales (el repositorio es público) y dar veracidad al precio |

@@ -1,6 +1,6 @@
 ﻿# Prototipo navegable — PrecioLocal (nombre provisional)
 
-Prototipo web de la app, centrado en Sanlúcar de Barrameda. Los establecimientos son **inventados**.
+Prototipo web de la app, centrado en Sanlúcar de Barrameda. Los **121 lugares con precios son reales** (OpenStreetMap, `datos-lugares.js`), pero **ningún precio es inventado**: empiezan vacíos y los declara el negocio o los aporta el primer cliente.
 
 ## Cómo abrirlo
 Abre `index.html` con doble clic en el navegador. Hace falta conexión a internet para cargar el mapa y las fuentes.
@@ -10,7 +10,7 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
 2. **Mapa real en 2.5D** (MapLibre + OpenFreeMap) recoloreado con las paletas del proyecto: **B en modo claro** y **D en modo oscuro**.
 3. **Interfaz estilo Mapas de Apple:**
    - abajo, una cápsula de cristal con el buscador y el avatar, que muestra tu nivel con un anillo de experiencia;
-   - arriba a la izquierda, el desplegable de categorías;
+   - arriba a la izquierda, el desplegable **"Precios"**: por defecto *Ninguno*, para que la pantalla quede limpia. Puedes mostrar todos, servicios locales, hostelería u ocio;
    - arriba a la derecha, los controles de tema y de ubicación.
 4. **Botón amarillo €** (pequeño y circular):
    - solo funciona si tienes visitas pendientes, es decir, si respondiste "Más tarde";
@@ -21,23 +21,34 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
    - se arrastra con el dedo (o con el ratón) y se queda donde lo sueltas;
    - si lo lanzas rápido se abre o se cierra del todo;
    - se puede buscar a media altura y también se arrastra desde la lista.
-6. **Fichas** de cada plantilla, con favorito (♥) y "Avísame si cambia el precio":
+6. **Mapa con logos y puntos de interés reales:**
+   - los lugares con precios se ven (si los activas) con el logo de su tipo de negocio; la insignia € indica que ya tienen precio;
+   - los comercios y servicios reales de OpenStreetMap (supermercados, gimnasios, farmacias…) aparecen integrados en el mapa con su icono, al acercar el zoom;
+   - en el buscador, **"Encuentra cerca"** filtra por categoría.
+7. **Ir a cualquier sitio**, no solo a los que tienen precios:
+   - escribe una dirección;
+   - pega un enlace de WhatsApp o Google Maps, o unas coordenadas;
+   - mantén pulsado el mapa (o haz clic derecho);
+   - o abre `index.html?ll=36.7795,-6.3540&name=Casa%20de%20mam%C3%A1`.
+
+   Las rutas siguen las calles reales (OSRM). Sin conexión, la ruta es aproximada. El código de lugares, direcciones y rutas está en `lugares.js`.
+8. **Fichas** de cada plantilla, con favorito (♥), "Avísame si cambia / cuando tenga precio" y **"¿Es tu negocio? Declara tus precios"** (modo negocio). Con 3 aportes de clientes, manda lo que pagan ellos:
    - servicio local: precio fijo y sin reseñas (psicología es anónima);
    - hostelería: rango por persona y 3 criterios de valoración;
    - ocio: varios precios y 3 criterios de valoración.
-7. **Navegación con GPS simulado:**
+9. **Navegación con GPS simulado:**
    - en la ficha eliges **en coche** (por defecto) o **a pie**, y luego pulsas "Simular llegada";
    - durante la ruta, **en coche** ves una flecha de rumbo y **a pie** un círculo con un cono que sigue la brújula del móvil (necesita HTTPS en el móvil; en el ordenador, el cono sigue la ruta);
    - al llegar, la ruta sigue hasta pulsar **"He finalizado"** o se cierra sola en 1 minuto (`ARRIVE_END_MS`);
    - la pregunta "¿has ido?" **sale 1 hora después de llegar** (`ASK_DELAY_MS` en `app.js`; solo con la página abierta);
    - la **burbuja del altavoz**, encima de la del €, silencia o activa los sonidos.
-8. **Preguntas al llegar:**
+10. **Preguntas al llegar:**
    1. ¿has ido?
    2. ¿qué usaste?
    3. ¿te costó X? Si no, se introduce otro precio con una **regla deslizable** o escribiendo el número. En hostelería se elige un tramo de gasto.
    4. Valoración opcional.
    5. Recompensa.
-9. **Perfil** (se abre desde el avatar):
+11. **Perfil** (se abre desde el avatar; la tienda va arriba):
    - **Actividad:** pendientes, aportaciones, favoritos, avisos de precio e insignias.
    - **Tienda** de cosméticos: marcador de posición y estilo de la ruta, que se ven en el mapa.
    - **Ajustes agrupados:**
@@ -54,4 +65,4 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
 npm install playwright@1.56.1
 node herramientas/capturas.js "<ruta>/prototipo/index.html" "<ruta>/docs/diseno/capturas"
 ```
-Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 31 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.
+Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 38 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.

@@ -46,12 +46,48 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .maplibregl-ctrl-attrib { font-size: 10px; }
 .maplibregl-ctrl-bottom-left { bottom: 80px; }
 
-.pin { background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 13px; padding: 6px 10px; border-radius: 14px; box-shadow: var(--shadow); white-space: nowrap; position: relative; cursor: pointer; border: 2px solid var(--surface); transition: transform .15s; min-height: 32px; display: flex; align-items: center; }
-.pin::after { content: ""; position: absolute; left: 50%; bottom: -7px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--accent); }
-.pin.hosteleria { background: var(--reward); color: var(--reward-ink); }
-.pin.hosteleria::after { border-top-color: var(--reward); }
-.pin.selected { transform: scale(1.12); outline: 3px solid var(--text); outline-offset: 1px; }
-.pin.dest { outline: 3px solid var(--reward); }
+/* Establecimientos con precios: logo del tipo de negocio + insignia "€" (marcador flotante) */
+.pin { --pin: var(--accent); width: 42px; height: 42px; border-radius: 14px; background: var(--pin); color: #fff; box-shadow: var(--shadow); position: relative; cursor: pointer; border: 2.5px solid #fff; transition: transform .15s; display: flex; align-items: center; justify-content: center; }
+.pin::after { content: ""; position: absolute; left: 50%; bottom: -8px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #fff; }
+.pin .pin-glyph { width: 22px; height: 22px; stroke-width: 2.2; }
+.pin.hosteleria { --pin: #E07B12; }
+.pin.ocio { --pin: var(--ocio); }
+.pin-eur { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; border-radius: 50%; background: var(--reward); color: var(--reward-ink); border: 2px solid #fff; font-style: normal; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.pin.selected { transform: scale(1.15); outline: 3px solid var(--text); outline-offset: 2px; }
+.pin.dest { outline: 3px solid var(--reward); outline-offset: 2px; }
+.pin[hidden] { display: none; }
+.pin.empty .pin-eur { display: none; } /* sin precio todavía: sin insignia € */
+.pin.empty { opacity: .82; }
+
+/* Ficha sin precios y modo negocio */
+.empty-price { background: var(--surface2); border: 1.5px dashed var(--border); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.empty-price b { color: var(--text); font-size: 16px; }
+.owner-row { width: 100%; display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: var(--surface2); text-align: left; font-weight: 700; font-size: 14px; }
+.owner-row > .ic:first-child { color: var(--accent-text); }
+.owner-row small { display: block; font-weight: 600; color: var(--muted); font-size: 12px; }
+.owner-row > span { flex: 1; }
+.owner-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 15px; }
+.owner-field small { display: block; font-weight: 600; font-size: 12px; color: var(--muted); }
+.num-in, .text-in { height: 44px; border-radius: 12px; border: 1.5px solid var(--border); background: var(--surface2); color: var(--text); font: inherit; font-size: 16px; padding: 0 12px; outline: none; }
+.num-in { width: 96px; text-align: right; }
+.text-in { flex: 1; min-width: 0; width: 100%; margin-bottom: 12px; }
+.owner-field .text-in { margin: 0; }
+.num-in:focus, .text-in:focus { border-color: var(--accent); }
+.range-in { display: flex; align-items: center; gap: 6px; }
+.range-in .num-in { width: 76px; }
+#ownerForm { margin-bottom: 12px; }
+.unit-pick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.unit-pick button { min-height: 38px; padding: 0 12px; border-radius: 19px; border: 1.5px solid var(--border); font-weight: 700; font-size: 13px; }
+.unit-pick button.on { border-color: var(--accent); background: var(--accent-soft); }
+
+/* Destino sin precios (dirección, lugar del mapa, ubicación compartida o marcada) */
+.dest-pin { width: 36px; height: 44px; display: flex; justify-content: center; color: #E5383B; filter: drop-shadow(0 3px 4px rgba(0,0,0,.35)); pointer-events: none; }
+.dest-pin .ic { width: 36px; height: 44px; fill: #E5383B; stroke: #fff; stroke-width: 1.6; }
+
+/* Icono de categoría (círculo de color con glifo blanco), igual que en el mapa */
+.poi-ic { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; flex: none; font-style: normal; }
+.poi-ic .ic { width: 19px; height: 19px; stroke-width: 2.2; }
+.poi-ic.addr { background: #E5383B; }
 
 /* Marcador de posición: el elemento entero gira con el rumbo (MapLibre, rotationAlignment: map).
    data-mode: dot (círculo) · cone (círculo + cono de la brújula, a pie) · arrow (flecha, en coche) */
@@ -82,7 +118,7 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .pill[aria-expanded="true"] .chev { transform: rotate(180deg); }
 .dot-cat { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
 .dot-cat.servicio { background: var(--accent); }
-.dot-cat.hosteleria { background: var(--reward); }
+.dot-cat.hosteleria { background: #E07B12; }
 .dot-cat.ocio { background: var(--ocio); }
 .cat-menu { margin-top: 8px; width: 220px; background: var(--surface); border-radius: 18px; padding: 6px; box-shadow: var(--shadow); animation: drop .18s ease-out; }
 @keyframes drop { from { transform: translateY(-6px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -90,6 +126,9 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .cat-menu button:hover { background: var(--surface2); }
 .cat-menu button.on { background: var(--surface2); }
 .cat-menu small { margin-left: auto; color: var(--muted); font-weight: 600; }
+.menu-title { font-size: 11px; font-weight: 800; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; padding: 8px 12px 4px; }
+.dot-cat.ninguno { background: transparent; border: 2px solid var(--muted); }
+.pill.off { color: var(--muted); }
 
 /* Controles */
 .ctrl-stack { position: absolute; top: 16px; right: 12px; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
@@ -115,7 +154,7 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
    Alto total = 7 + 46 + 7 + 2 de borde = 62 px → top = 100% − 62 − 14 (margen inferior) = 100% − 76 px */
 .dock { position: absolute; left: 10px; right: 10px; top: calc(100% - 76px); bottom: 14px; border-radius: 31px; padding: 7px; display: flex; flex-direction: column; overflow: hidden;
   transition: top .32s cubic-bezier(.2, .8, .2, 1), left .32s, right .32s, bottom .32s, border-radius .32s, padding .32s, background-color .32s; }
-.dock.dragging { transition: none; }
+.dock.dragging { transition: none; user-select: none; -webkit-user-select: none; }
 .dock:not(.open) { touch-action: none; cursor: grab; }
 .dock:not(.open) .search input { pointer-events: none; } /* el toque lo recoge la etiqueta; así arrastrar no abre el teclado */
 /* Asa: cerrada va superpuesta en el borde superior (no añade alto); abierta tiene su propio espacio */
@@ -163,6 +202,30 @@ h1, h2, h3 { font-family: 'Varela Round', sans-serif; font-weight: 400; }
 .result small { display: block; color: var(--muted); font-size: 12.5px; font-weight: 600; }
 .result b { white-space: nowrap; color: var(--accent-text); }
 .empty-note { padding: 14px 4px; color: var(--muted); }
+.fav i[style], .fav i.spot { color: #fff; }
+.fav i.spot { background: #E5383B; }
+.fav i .ic { width: 24px; height: 24px; }
+
+/* "Abrir una ubicación compartida" */
+.sp-action { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; margin-top: 8px; padding: 10px 12px; border-radius: 14px; background: var(--surface2); font-weight: 700; font-size: 14px; }
+.sp-action > .ic { color: var(--accent-text); }
+.sp-action small { display: block; font-weight: 600; font-size: 12px; color: var(--muted); }
+
+/* Lista "Encuentra cerca" (como en Mapas de Apple) */
+.near-list { background: var(--surface2); border-radius: 16px; overflow: hidden; }
+.near-list button { width: 100%; display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 8px 14px; text-align: left; font-weight: 700; font-size: 15px; }
+.near-list button + button { border-top: 1px solid var(--border); }
+.near-list button:hover { background: var(--accent-soft); }
+.near-head { display: flex; align-items: center; gap: 10px; margin: 8px 0 2px; }
+.near-head h3 { font-size: 18px; flex: 1; }
+.near-head small { color: var(--muted); font-weight: 700; }
+.back-mini { width: 36px; height: 36px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; color: var(--accent-text); flex: none; }
+.result .poi-ic { width: 34px; height: 34px; }
+
+/* Cabecera de ficha con icono */
+.spot-head { display: flex; gap: 12px; align-items: flex-start; min-width: 0; }
+.spot-head .poi-ic { width: 44px; height: 44px; margin-top: 2px; }
+.spot-head .poi-ic .ic { width: 22px; height: 22px; }
 
 /* Al abrir una ficha se oculta el dock */
 .app.place-open .dock, .app.place-open .fab-col { display: none; }
