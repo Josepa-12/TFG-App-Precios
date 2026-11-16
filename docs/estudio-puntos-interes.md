@@ -146,6 +146,8 @@ Se ha generado la lista de **todos los lugares reales de Sanlúcar que encajan c
 
 Ambos tipos se tratan como **categoría sensible**: las aportaciones de precio son anónimas.
 
+- **ChemaBarber** (16/11/2026), barbería junto a la Calle Mirto, con ubicación facilitada por el autor. Tiene el tipo nuevo **"Barbería"**, con corte de pelo, corte + barba y arreglo de barba. No publica precios en internet, así que empieza sin precio.
+
 **Precios iniciales tomados de internet.** Criterio: solo se usan los precios que **publica el propio negocio en su web oficial**, citando la página y la fecha de consulta.
 - **Clínica Areas** publica sus tarifas en [clinicaareas.com/tarifas](https://clinicaareas.com/tarifas):
   - consulta de traumatología, 90 €;

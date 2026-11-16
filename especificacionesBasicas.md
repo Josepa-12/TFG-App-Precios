@@ -62,6 +62,12 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
     - puntos marcados manteniendo pulsado el mapa;
     - favoritos sin precio ("Casa de mamá").
   - **Rutas:** por calles reales, con indicaciones giro a giro. Las direcciones no se guardan en el historial.
+  - **ChemaBarber** (16/11/2026): barbería junto a la Calle Mirto, con el tipo nuevo "Barbería", sin precio.
+- Funciones añadidas el 16/11/2026 (`prototipo/extras.js`):
+  - **Frescura del precio:** según el tipo de negocio (hostelería: al día menos de 30 días, antiguo más de 60; servicios y ocio: 3 y 6 meses). Confirmar precios viejos da monedas extra.
+  - **Ofertas del negocio:** con fecha de fin. Se ven en la ficha y con una etiqueta muy pequeña en una esquina del marcador. Se retiran con 3 avisos de "ya no está".
+  - **Plan de tarde:** se monta desde la ficha. Incluye personas, gasto estimado y ruta parada a parada.
+  - **"¿Algún precio está mal?":** avisos con peso según la reputación (×1, ×1,5 o ×2). Con 3 puntos, el precio queda "en revisión" y se pide a los siguientes clientes que lo confirmen.
   - **Desde el 16/11/2026, la ruta más corta respetando el sentido de las calles** (en coche nunca en contra dirección). Se calcula con Valhalla `shortest` y, como respaldo, con OSRM, quedándose con la más corta.
   - **Perfil:** la tienda va encima de "Tu actividad".
 - **Marcadores de precio ocultos por defecto.** El desplegable "Precios" (arriba a la izquierda) tiene las opciones Ninguno, Todos, Servicios locales, Hostelería y Ocio.

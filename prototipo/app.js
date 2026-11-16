@@ -23,7 +23,9 @@ const pct = (a, q) => { const s = [...a].sort((x, y) => x - y); return s[Math.mi
 // g: grupo (p. ej. "Fisioterapia"); desde: la web dice "desde X €"; nota: "con bono"; ask: el negocio lo da "a consultar".
 function mkItem(n, u, extra = {}) {
   return {
-    n, u, declared: null, reports: [], g: null, desde: false, nota: '', ask: false, ...extra,
+    n, u, declared: null, reports: [], g: null, desde: false, nota: '', ask: false,
+    at: null, flags: 0, review: false, // at: última confirmación (frescura); flags/review: avisos de precio incorrecto
+    ...extra,
     get p() { // precio que se muestra
       if (this.reports.length >= MIN_REPORTS || this.declared == null) return this.reports.length ? Math.round(median(this.reports) * 100) / 100 : null;
       return this.declared;
@@ -36,12 +38,13 @@ const HOSTELERIA_CATS = ['Restaurante', 'Taberna', 'Comida rápida', 'Cafetería
 const OCIO_POICATS = ['deporte', 'cultura', 'parking'];
 const tplOfCat = c => HOSTELERIA_CATS.includes(c) ? 'hosteleria' : OCIO_POICATS.includes(PLACE_POICAT[c]) ? 'ocio' : 'servicio';
 
+const dmy = t => { const [d, m, y] = t.split('/').map(Number); return new Date(y, m - 1, d, 12).getTime(); };
 function buildPlace(r) {
   const web = WEB_PRICES[r.id];
   let items = [];
   if (r.tpl !== 'hosteleria') {
     items = web
-      ? Object.entries(web.grupos).flatMap(([g, list]) => list.map(([n, u, v, o = {}]) => mkItem(n, u, { g, declared: v, desde: !!o.desde, nota: o.nota || '', ask: v == null })))
+      ? Object.entries(web.grupos).flatMap(([g, list]) => list.map(([n, u, v, o = {}]) => mkItem(n, u, { g, declared: v, desde: !!o.desde, nota: o.nota || '', ask: v == null, at: v == null ? null : dmy(web.fecha) })))
       : (PLACE_CONCEPTS[r.cat] || [['Precio', 'servicio']]).map(([n, u]) => mkItem(n, u));
   }
   return {
@@ -51,6 +54,8 @@ function buildPlace(r) {
     items,
     web: web ? { url: web.url, fecha: web.fecha } : null, // precios iniciales publicados en la web del negocio
     declaredRange: null, rangeReports: [],            // hostelería: rango por persona
+    rangeAt: null, rangeFlags: 0, rangeReview: false, // frescura y avisos del rango
+    offers: [], flagLog: [],                          // ofertas del negocio y avisos de clientes
     get range() {
       if (this.rangeReports.length >= MIN_REPORTS || !this.declaredRange) {
         return this.rangeReports.length ? [pct(this.rangeReports.map(b => b[0]), 0.25), pct(this.rangeReports.map(b => b[1]), 0.75)] : null;
@@ -376,6 +381,7 @@ function addPlaceMarker(p) {
   wrap.appendChild(el);
   // anchor 'bottom': la punta del marcador (parte baja del contenedor) cae justo en la coordenada del sitio
   markers[p.id] = new maplibregl.Marker({ element: wrap, anchor: 'bottom' }).setLngLat(p.pos).addTo(map);
+  window.updateOfferTag?.(p); // extras.js puede cargarse después que los marcadores
   wrap.removeAttribute('aria-label'); wrap.removeAttribute('role'); // el botón de dentro ya lo describe
 }
 const pinOf = id => markers[id]?.getElement().querySelector('.pin');
@@ -727,7 +733,12 @@ function openDest(d) {
   if (d.kind === 'place') hideDestMarker(); else showDestMarker(d.pos);
   renderPlace();
   $('#placeSheet').hidden = false; $('#placeSheet').scrollTop = 0;
-  map?.easeTo({ center: [d.pos[0], d.pos[1] - 0.0012], zoom: Math.max(map.getZoom(), 15.5), duration: 500 });
+  // El sitio queda centrado en la parte del mapa que no tapa la ficha (desplazamiento en píxeles,
+  // válido con el mapa inclinado o girado)
+  if (map) {
+    const h = map.getContainer().clientHeight, sheet = Math.min($('#placeSheet').offsetHeight, h * 0.62);
+    map.easeTo({ center: d.pos, offset: [0, -sheet / 2], zoom: Math.max(map.getZoom(), 15.5), duration: 500 });
+  }
   // se piden ya las rutas en coche y a pie para mostrar los tiempos reales en la ficha
   for (const m of ['coche', 'pie']) getRoute(USER_POS, d.pos, m).then(() => { if (S.dest === d && !$('#placeSheet').hidden) renderPlace(); });
 }
@@ -756,7 +767,7 @@ function renderSpot(d) {
     <div class="sheet-head"><div class="spot-head">${poiIconHTML(d.cat)}<div><div class="cat">${kindLabel}</div><h2>${d.name}</h2>
     <div class="meta">${fmtDist(distM(USER_POS, d.pos))}${d.sub && d.sub !== c?.one ? ` · ${d.sub}` : ''}</div></div></div>
     <div class="head-btns">${favBtnHTML(d)}<button class="close" data-act="close" aria-label="Cerrar">${ICON.x}</button></div></div>
-    ${note}${modePickHTML(d)}`;
+    ${planNextHTML(d)}${note}${modePickHTML(d)}${planBtnHTML(d)}`;
 }
 function renderPlace() {
   const d = S.dest; if (!d) return;
@@ -769,7 +780,7 @@ function renderPlace() {
     price = `<div class="empty-price"><b>Aún no hay precios</b>
       <span>Ve con el GPS de la app y, al rato de llegar, te preguntaremos cuánto pagaste: serás el primero en aportarlo${p.tpl === 'hosteleria' ? '' : ` (${p.items.map(i => i.n.toLowerCase()).join(', ')}…)`}.</span></div>`;
   } else if (p.tpl === 'hosteleria') {
-    price = `<div class="range"><strong>${p.range[0]}–${p.range[1]} €</strong><span>por persona</span></div>
+    price = `<div class="range"><strong>${p.range[0]}–${p.range[1]} €</strong><span>por persona</span>${freshDot(p, p.rangeAt)}${p.rangeReview ? reviewChip : ''}</div>
       <p class="hint">${nReports(p) >= MIN_REPORTS ? 'Rango calculado con el 50 % central de lo que gastan los clientes.' : 'Rango provisional: se ajusta con lo que gastan los clientes.'}</p>`;
   } else {
     // Servicios con precio y, si el negocio lo indica, los "a consultar". Agrupados por área si los hay.
@@ -777,8 +788,8 @@ function renderPlace() {
     const row = i => {
       const fromWeb = i.desde && i.p === i.declared; // "desde" solo mientras se muestra el precio publicado
       const small = [i.u === 'h' && p.tpl === 'ocio' ? 'precio total del espacio' : '', i.p === i.declared ? i.nota : ''].filter(Boolean).join(' · ');
-      return `<div class="row"><div>${i.n}${small ? `<small>${small}</small>` : ''}</div>
-        ${i.p == null ? '<b class="ask">Consultar</b>' : `<b>${fromWeb ? '<em>desde</em> ' : ''}${fmtEur(i.p)}<span>${UNIT[i.u]}</span></b>`}</div>`;
+      return `<div class="row"><div>${i.n}${i.review ? reviewChip : ''}${small ? `<small>${small}</small>` : ''}</div>
+        ${i.p == null ? '<b class="ask">Consultar</b>' : `<b>${freshDot(p, i.at)}${fromWeb ? '<em>desde</em> ' : ''}${fmtEur(i.p)}<span>${UNIT[i.u]}</span></b>`}</div>`;
     };
     const groups = [...new Set(shown.map(i => i.g))];
     price = groups.length > 1 || groups[0]
@@ -806,11 +817,14 @@ function renderPlace() {
     <div class="sheet-head"><div class="spot-head">${placeIconHTML(p)}<div><div class="cat">${TPL[p.tpl].label} · ${p.cat}</div><h2>${p.name}</h2>
     <div class="meta">${dist}${p.addr ? ` · ${p.addr}` : ''}</div></div></div>
     <div class="head-btns">${favBtnHTML(d)}<button class="close" data-act="close" aria-label="Cerrar">${ICON.x}</button></div></div>
+    ${planNextHTML(d)}
     ${p.about ? `<p class="about">${p.about}</p>` : ''}
-    ${price}${priced(p) ? srcHTML(p) : ''}
+    ${offersHTML(p, mine)}
+    ${price}${priced(p) ? srcHTML(p) + freshHTML(p) : ''}${mine ? '' : reportLinkHTML(p)}
     <button class="alert-row" data-act="alert">${ICON.bell}<span>${priced(p) ? 'Avísame si cambia el precio' : 'Avísame cuando tenga precio'}<small>${priced(p) ? 'Te avisamos cuando los clientes reporten un precio distinto' : 'Te avisamos cuando el negocio o un cliente lo aporte'}</small></span><i class="switch" role="switch" aria-checked="${alert}"></i></button>
     ${ratings}${note}
     ${modePickHTML(d)}
+    ${planBtnHTML(d)}
     ${owner}`;
 }
 // Minutos estimados: con la ruta real si ya está calculada; si no, aproximación por distancia
@@ -845,7 +859,8 @@ async function startNav() {
   applyMarkerVisibility();
   setNavBanner('…', 'Calculando la ruta', 'straight');
   $('#navEta').textContent = '…';
-  $('#navTo').textContent = `Hacia ${d.name}`;
+  $('#navTo').textContent = `${planNavText(d)}Hacia ${d.name}`;
+  updatePlanChip();
   updateMe();
 
   const r = await getRoute(USER_POS, d.pos, mode);
@@ -873,6 +888,7 @@ function setNavBanner(dist, instr, icon) {
 }
 function stopNav() {
   if (!S.navigating) return;
+  const was = S.navigating;
   clearTimeout(S.navigating.endT);
   if (S.navigating.id) pinOf(S.navigating.id)?.classList.remove('dest');
   S.navigating = null;
@@ -884,6 +900,8 @@ function stopNav() {
   $('#navUI').hidden = true; $('#mapUI').hidden = false;
   $('#app').classList.remove('navigating');
   map?.easeTo({ ...HOME, duration: 900 });
+  updatePlanChip();
+  planAfterNav(was); // plan de tarde: abre la siguiente parada
 }
 function simulateArrival(fast) {
   const nav = S.navigating; if (!nav || !nav.route) return;
@@ -1012,6 +1030,7 @@ function renderFlow() {
       <div class="flow-actions"><button class="btn ghost" data-flow="close">Cerrar</button></div>`;
     return;
   }
+  if (EXTRA_STEPS[f.step]) return EXTRA_STEPS[f.step](card); // ofertas, plan de tarde, avisos (extras.js)
   const p = placeById(f.id);
   if (f.step === 'owner') return renderOwner(p, card);
   const hasRating = !!TPL[p.tpl].ratings;
@@ -1043,6 +1062,7 @@ function renderFlow() {
     const it = p.items[f.item];
     html = `${stepTag}${privacy}<h2>¿Te costó esto?</h2><p>${it.n}${it.u === 'h' && p.tpl === 'ocio' ? ' (precio total del espacio)' : ''}</p>
       <div class="big-price">${fmtEur(it.p)} <span>${unitText[it.u]}</span></div>
+      ${it.review ? `<div class="note">${ICON.pending}<span>Varios usuarios avisan de que este precio podría haber cambiado: tu respuesta lo aclara.</span></div>` : REWARD_STALE[freshState(p, it.at)] ? `<div class="note">${ICON.clock}<span>Precio confirmado ${ageText(it.at)}: +${REWARD_STALE[freshState(p, it.at)].c} monedas extra por confirmarlo.</span></div>` : ''}
       <div class="flow-actions two"><button class="btn secondary" data-flow="diff">No, fue otro</button><button class="btn primary" data-flow="same">${ICON.check} Sí</button></div>`;
   } else if (f.step === 'input') {
     const it = p.items[f.item];
@@ -1057,6 +1077,7 @@ function renderFlow() {
     return setupRuler(max);
   } else if (f.step === 'range') {
     html = `${stepTag}<h2>¿Cuánto gastaste por persona?</h2><p>Aproximado, con bebida incluida.${p.range ? '' : ' Aún nadie lo ha aportado: serás el primero.'}</p>
+      ${p.rangeReview ? `<div class="note">${ICON.pending}<span>Varios usuarios avisan de que este rango podría haber cambiado: tu respuesta lo aclara.</span></div>` : ''}
       <div class="options">${BUCKETS.map(([l], i) => `<button class="option" data-bucket="${i}"><span>${l}</span></button>`).join('')}</div>`;
   } else if (f.step === 'rate') {
     const crit = TPL[p.tpl].ratings;
@@ -1072,6 +1093,7 @@ function renderFlow() {
       : 'Has confirmado el precio. ¡Gracias por mantenerlo al día!';
     html = `<div class="reward-burst"><div class="reward-coin">+${f.earned.c}</div><h2>${f.first ? '¡Pionero!' : '¡Gracias!'}</h2></div>
       <p style="text-align:center">${msg}</p>
+      ${f.bonus ? `<p class="bonus">Incluye +${f.bonus} monedas extra por actualizar un precio antiguo</p>` : ''}
       ${lv > lvBefore ? `<div class="levelup">¡Subes a nivel ${lv}!</div>` : ''}
       <div class="xp"><div class="xp-head"><span>Nivel ${lv}</span><span>+${f.earned.xp} XP · ${S.xp % XP_PER_LEVEL}/${XP_PER_LEVEL}</span></div>
       <div class="xp-bar"><i style="width:${pctXp}%"></i></div></div>
@@ -1090,7 +1112,7 @@ function renderOwner(p, card) {
   const field = (name, val, ph = '€') => `<input class="num-in" type="number" inputmode="decimal" min="0" step="0.5" name="${name}" value="${val ?? ''}" placeholder="${ph}">`;
   const body = p.tpl === 'hosteleria'
     ? `<div class="owner-field"><span>Gasto medio por persona</span><div class="range-in">${field('lo', p.declaredRange?.[0], 'desde')}<b>–</b>${field('hi', p.declaredRange?.[1], 'hasta')}<b>€</b></div></div>`
-    : p.items.map((it, i) => `<div class="owner-field"><span>${it.n}<small>${unitText[it.u] || 'precio único'}</small></span>${field('i' + i, it.declared)}</div>`).join('')
+    : p.items.map((it, i) => `<div class="owner-field"><span>${it.n}<small>${unitText[it.u] || 'precio único'}${it.review ? ' · <b class="rev-t">en revisión</b>' : ''}</small></span>${field('i' + i, it.declared)}</div>`).join('')
       + `<div class="owner-field"><input class="text-in" name="newName" placeholder="Añadir otro servicio…" maxlength="40">${field('newPrice', '')}</div>`;
   card.innerHTML = `<div class="flow-step">Modo negocio</div><h2>Precios de ${p.name}</h2>
     <p>Declara tu precio inicial. Se mostrará como <b>declarado por el negocio</b>; cuando ${MIN_REPORTS} clientes aporten lo que pagaron, mandará su precio real.</p>
@@ -1103,15 +1125,16 @@ function saveOwner(p) {
   if (p.tpl === 'hosteleria') {
     const lo = num('lo'), hi = num('hi');
     if (lo == null || hi == null || hi < lo) return toast('Indica el gasto mínimo y máximo por persona'), false;
-    p.declaredRange = [lo, hi];
+    p.declaredRange = [lo, hi]; p.rangeAt = Date.now();
   } else {
     p.items.forEach((it, i) => {
       const v = num('i' + i);
       if (v !== it.declared) { it.desde = false; it.nota = ''; } // el negocio fija un precio concreto
       it.declared = v; it.ask = false;
+      if (v != null) it.at = Date.now();
     });
     const nn = String(fd.get('newName') || '').trim(), np = num('newPrice');
-    if (nn && np != null) { const it = mkItem(nn, 'servicio', { g: p.items.some(i => i.g) ? 'Otros' : null }); it.declared = np; p.items.push(it); }
+    if (nn && np != null) { const it = mkItem(nn, 'servicio', { g: p.items.some(i => i.g) ? 'Otros' : null }); it.declared = np; it.at = Date.now(); p.items.push(it); }
     if (!p.items.some(it => it.declared != null)) return toast('Pon al menos un precio'), false;
   }
   p.owner = true;
@@ -1130,6 +1153,7 @@ function onFlowClick(e) {
     else if (b.dataset.flow === 'close') endFlow();
     return;
   }
+  if (EXTRA_STEPS[f.step]) return onExtraFlowClick(e, b);
   const p = placeById(f.id), act = b.dataset.flow;
   if (f.step === 'owner') {
     e.preventDefault();
@@ -1167,22 +1191,26 @@ function onFlowClick(e) {
     p.items.push(mkItem(name, f.unit)); f.item = p.items.length - 1; f.value = GUESS[f.unit] ?? 15; f.step = 'input';
   }
   else if (act === 'same') {
-    const it = p.items[f.item]; it.reports.push(it.p);
-    grant(REWARD.confirm); S.confirmed++; afterPrice(`Confirmó ${fmtEur(it.p)}`);
+    const it = p.items[f.item], st = freshState(p, it.at); it.reports.push(it.p); clearFlags(p, it);
+    grant(REWARD.confirm); if (REWARD_STALE[st]) { grant(REWARD_STALE[st]); f.bonus = REWARD_STALE[st].c; } S.confirmed++; afterPrice(`Confirmó ${fmtEur(it.p)}`);
   }
   else if (act === 'diff') { f.value = Math.round(p.items[f.item].p); f.step = 'input'; }
   else if (b.dataset.sug) return; // lo gestiona la regla
   else if (act === 'sendPrice') {
     const it = p.items[f.item], before = it.p;
     f.first = before == null; f.changed = !f.first && f.value !== before;
-    it.reports.push(f.value);
+    const st = freshState(p, it.at);
+    it.reports.push(f.value); clearFlags(p, it);
+    if (!f.first && REWARD_STALE[st]) { grant(REWARD_STALE[st]); f.bonus = REWARD_STALE[st].c; }
     grant(f.first ? REWARD.first : f.changed ? REWARD.newPrice : REWARD.confirm);
     afterPrice(`${it.n} · ${fmtEur(f.value)}`);
   }
   else if (b.dataset.bucket) {
     const [label, lo, hi] = BUCKETS[+b.dataset.bucket], before = p.range;
     f.first = !before; f.changed = !!before && (hi <= before[0] || lo >= before[1]);
-    p.rangeReports.push([lo, hi]);
+    const st = freshState(p, p.rangeAt);
+    p.rangeReports.push([lo, hi]); clearFlags(p);
+    if (!f.first && REWARD_STALE[st]) { grant(REWARD_STALE[st]); f.bonus = REWARD_STALE[st].c; }
     grant(f.first ? REWARD.first : REWARD.confirm); afterPrice(`Gasto ${label}`);
   }
   else if (b.dataset.star) { f.rating[+b.dataset.crit] = +b.dataset.star; }
@@ -1199,6 +1227,7 @@ function onFlowClick(e) {
 }
 // Tras un cambio de precio: actualizar la etiqueta accesible del marcador y la ficha si está abierta
 function refreshPlace(p) {
+  updateOfferTag(p);
   pinOf(p.id)?.setAttribute('aria-label', `${p.name} (${p.cat}): ${pinLabel(p)}`);
   pinOf(p.id)?.classList.toggle('empty', !priced(p));
   if (S.place === p.id && !$('#placeSheet').hidden) renderPlace();
@@ -1241,6 +1270,8 @@ function renderProfile() {
         ${p ? `<div class="biz-state">${st}</div>` : ''}</div></div>`
       + grp('Tu negocio', p
         ? it(ICON.list, 'Editar precios', { sub: p.tpl === 'hosteleria' ? 'Gasto medio por persona' : `${p.items.length} servicios`, attr: 'data-act="ownerEdit"' })
+          + it(ICON.store, 'Ofertas', { sub: activeOffers(p).length ? `${activeOffers(p).length} activa${activeOffers(p).length > 1 ? 's' : ''}` : 'Publica una oferta con fecha de fin', attr: 'data-act="offersEdit"' })
+          + it(ICON.pending, 'Avisos de clientes', { sub: inReview(p) ? 'Hay precios en revisión: actualízalos o espera a que los clientes los confirmen' : 'Ningún precio en revisión', count: p.flagLog.length || '', attr: 'data-act="ownerEdit"' })
           + it(ICON.pin, 'Ver la ficha en el mapa', { attr: `data-place="${p.id}"` })
           + it(ICON.users, 'Cómo lo ven los clientes', { go: 'ayuda', sub: 'Tu precio se confirma o se corrige con lo que pagan' })
         : it(ICON.building, 'Vincular o dar de alta mi negocio', { attr: 'data-act="linkBiz"' }))
@@ -1263,6 +1294,7 @@ function renderProfile() {
         + it(ICON.list, 'Mis aportaciones', { go: 'aportaciones', val: S.contributions })
         + it(ICON.heart, 'Favoritos', { go: 'favoritos', val: S.favs.length + S.spots.length })
         + it(ICON.bell, 'Avisos de precio', { go: 'avisos', val: S.alerts.length })
+        + it(ICON.users, 'Reputación', { val: reputation().name, sub: `Tus avisos de precio cuentan ×${fmtW(reputation().w)}${reputation().next ? ` · ${reputation().next} aportes más para subir` : ''}` })
         + it(ICON.award, 'Insignias', { go: 'insignias' }))
       + grp('Ajustes de la app',
         it(ICON.palette, 'Apariencia', { go: 'apariencia' })
@@ -1380,6 +1412,7 @@ function onProfileClick(e) {
   if (d.act === 'login') { closeProfile(); return openAccount(); }
   if (d.act === 'linkBiz') { closeProfile(); return openAccount({ type: 'negocio', step: 'business' }); }
   if (d.act === 'ownerEdit') { closeProfile(); return openOwner(S.account.business); }
+  if (d.act === 'offersEdit') { closeProfile(); return openOffers(S.account.business); }
   if (d.act === 'clearVisits') { S.visits = []; return toast('Historial de visitas borrado'); }
   if (d.act === 'demoAlert') {
     // Solo con datos reales de la sesión: no se inventan cambios de precio de negocios reales
@@ -1425,6 +1458,7 @@ function bind() {
     else if (a === 'alert') { toast(toggleList(S.alerts, S.place) ? (priced(placeById(S.place)) ? 'Te avisaremos si cambia el precio' : 'Te avisaremos cuando tenga precio') : 'Aviso desactivado'); renderPlace(); }
     else if (a === 'owner') openOwner(S.place);
     else if (a === 'claim') openAccount({ type: 'negocio', claim: S.place });
+    else if (a) onExtraAct(a, e.target.closest('[data-act]')); // plan, avisos y ofertas (extras.js)
     const m = e.target.closest('[data-mode]')?.dataset.mode;
     if (m) { S.travelMode = m; renderPlace(); }
   });

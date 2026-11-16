@@ -240,6 +240,60 @@ const path = require('path');
   await page.click('[data-flow="ownerSave"]');
   await shot('33-negocio-nuevo-en-el-mapa', 1600);
 
+  // Ofertas: el negocio publica una con fecha de fin; se ve en la ficha y con una etiqueta mínima en el marcador
+  await page.evaluate(() => { window.__askDelayMs = 99999999; setFilter('servicio'); }); // que no salte la pregunta de llegada
+  await page.evaluate(() => proto.openOffers(proto.S.account.business));
+  await page.fill('#offerForm [name="text"]', 'Primera sesión + valoración');
+  await page.fill('#offerForm [name="price"]', '45');
+  await shot('34-negocio-publica-oferta', 300);
+  await page.click('[data-flow="offerAdd"]');
+  await page.click('[data-flow="close"]');
+  await page.evaluate(() => proto.openPlace(proto.S.account.business));
+  await shot('35-oferta-en-ficha-y-marcador', 1500);
+  await page.click('[data-act="close"]');
+
+  // Cliente: frescura del precio (se simula el paso de 200 días), aviso de precio incorrecto y revisión
+  await page.evaluate(() => proto.logout());
+  await page.click('[data-a="google"]'); await page.click('[data-a="loginOk"]');
+  await page.evaluate(() => proto.ageDays('clinica-areas', 200));
+  await page.evaluate(() => proto.openPlace('clinica-areas'));
+  await page.waitForTimeout(1500);
+  await page.evaluate(() => { const el = document.querySelector('#placeSheet .freshness'); document.querySelector('#placeSheet').scrollTo(0, el.offsetTop - 330); });
+  await shot('36-precio-antiguo', 300);
+  await page.click('[data-act="report"]');
+  await page.click('[data-ritem="0"]');
+  await shot('37-avisar-precio-incorrecto', 300);
+  await page.click('[data-reason="changed"]');
+  await page.evaluate(() => proto.simReports('clinica-areas', 0, 2)); // avisos de otros dos usuarios
+  await page.evaluate(() => document.querySelector('#placeSheet').scrollTo(0, 200));
+  await shot('38-precio-en-revision', 2600);
+  await page.evaluate(() => proto.startFlow('clinica-areas'));
+  await page.click('[data-flow="yes"]'); await page.click('[data-item="0"]');
+  await shot('39-confirmar-precio-en-revision', 300);
+  await page.click('[data-flow="same"]');
+  await shot('40-recompensa-precio-antiguo', 600);
+  await page.click('[data-flow="done"]');
+  await page.waitForTimeout(500);
+
+  // Plan de tarde: paradas desde la ficha, gasto estimado y ruta parada a parada
+  for (const id of ['clinica-areas', 'chemabarber', 'padel-la-jara']) {
+    await page.evaluate(id => proto.openPlace(id), id);
+    await page.waitForTimeout(700);
+    await page.click('[data-act="plan"]');
+    if (id === 'clinica-areas') { await page.evaluate(() => document.querySelector('#placeSheet').scrollTo(0, 9999)); await shot('41-anadir-al-plan', 300); }
+    await page.click('[data-act="close"]');
+  }
+  await page.click('#planChip');
+  await page.selectOption('.plan-item[data-stop="0"]', '4');
+  await shot('42-plan-de-tarde', 400);
+  await page.click('[data-flow="planGo"]');
+  await page.waitForSelector('#navSimulate:not([disabled])', { timeout: 20000 });
+  await shot('43-plan-parada-1', 1200);
+  await page.evaluate(() => proto.simulateArrival(true));
+  await page.waitForTimeout(800);
+  await page.click('#navFinish');
+  await shot('44-plan-siguiente-parada', 2200);
+
   console.log(errors.length ? 'ERRORES:\n' + errors.join('\n') : 'Sin errores en consola');
   await browser.close();
 })();

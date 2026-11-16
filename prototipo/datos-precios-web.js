@@ -20,6 +20,12 @@ const EXTRA_PLACES = [
     addr: 'Av. del Quinto Centenario, 92 (edificio América)', pos: [-6.35918, 36.77846],
     about: 'Fisioterapia y osteopatía.',
   },
+  {
+    // Ubicación facilitada por el autor (enlace de Google Maps, 16/11/2026). No publica precios en internet.
+    id: 'chemabarber', tpl: 'servicio', cat: 'Barbería', name: 'ChemaBarber',
+    addr: 'Junto a la Calle Mirto', pos: [-6.3624415, 36.7601585],
+    about: 'Barbería: corte de pelo y barba.',
+  },
 ];
 
 // Precios publicados por el propio negocio. [nombre, unidad, precio, opciones]

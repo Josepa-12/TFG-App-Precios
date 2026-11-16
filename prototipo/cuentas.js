@@ -25,6 +25,8 @@ function loadAccount() {
   if (!p) return;
   if (biz.items) p.items = biz.items.map(i => mkItem(i.n, i.u, i));
   p.declaredRange = biz.declaredRange || null;
+  p.rangeAt = biz.rangeAt ?? null;
+  p.offers = biz.offers || [];
   p.web = biz.web ?? null;
   p.owner = !!biz.owner;
 }
@@ -32,8 +34,8 @@ function loadAccount() {
 function saveBusiness(p) {
   store.set('pl-negocio', JSON.stringify({
     id: p.id, custom: !!p.custom, tpl: p.tpl, cat: p.cat, name: p.name, addr: p.addr, pos: p.pos,
-    owner: p.owner, web: p.web, declaredRange: p.declaredRange,
-    items: p.items.map(({ n, u, declared, g, desde, nota, ask }) => ({ n, u, declared, g, desde, nota, ask })),
+    owner: p.owner, web: p.web, declaredRange: p.declaredRange, rangeAt: p.rangeAt, offers: p.offers,
+    items: p.items.map(({ n, u, declared, g, desde, nota, ask, at }) => ({ n, u, declared, g, desde, nota, ask, at })),
   }));
 }
 function saveAccount() { if (S.account) store.set('pl-account', JSON.stringify(S.account)); else unstore('pl-account'); }

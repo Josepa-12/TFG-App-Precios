@@ -399,6 +399,30 @@ Cuando el negocio revisa y publica sus precios desde su cuenta, dejan de mostrar
 - se añaden Clínica Areas, con sus tarifas oficiales agrupadas por área ("desde X €", "con bono", "Consultar"), y FisioSanlúcar;
 - los centros sanitarios públicos se ven en el mapa solo para saber dónde están, sin precios.
 
+**Sexta iteración (16/11/2026): frescura, ofertas, plan de tarde y avisos de precio incorrecto** (`prototipo/extras.js`).
+- **Frescura del precio.** Cada concepto guarda cuándo se confirmó por última vez: aporte o confirmación de un cliente, declaración del negocio o fecha de consulta de su web. La ficha pone un punto de color junto a cada precio y un resumen ("Al día · confirmado hace 3 días"). Los umbrales dependen del tipo de negocio, porque la hostelería cambia antes:
+
+  | Plantilla | Al día | Podría haber cambiado | Antiguo |
+  |---|---|---|---|
+  | Hostelería | < 30 días | 30-60 días | > 60 días |
+  | Servicios locales y ocio | < 3 meses | 3-6 meses | > 6 meses |
+
+  Confirmar un precio que "podría haber cambiado" da +5 monedas extra, y uno antiguo, +10. Así la gamificación empuja a mantener vivos los datos, y la frescura media sirve como indicador para la pregunta de investigación.
+- **Ofertas del negocio.**
+  - La cuenta de negocio publica ofertas con texto, precio opcional y fecha de fin.
+  - Se ven en la ficha y con una etiqueta "%" muy pequeña en la esquina inferior del marcador, para no recargar el mapa.
+  - Desaparecen al caducar o cuando 3 clientes avisan de que "ya no está".
+- **Plan de tarde.**
+  - Desde la ficha se añaden paradas. La tarjeta del plan permite ordenarlas, elegir el número de personas y qué se va a usar en cada sitio.
+  - Calcula el gasto estimado total: hostelería, rango × personas; entradas y servicios, × personas; pistas y aparcamientos, una vez para el grupo. También indica qué paradas aún no tienen precio.
+  - "Empezar ruta" guía parada a parada: al pulsar "He finalizado" se abre la siguiente.
+- **"¿Algún precio está mal?"**
+  - Cualquier cliente puede avisar de que un precio ha cambiado, de que ya no se ofrece el servicio o de que el negocio ha cerrado.
+  - Cada aviso pesa según la **reputación** del usuario, que sube con sus aportaciones: Nueva ×1, Fiable ×1,5 (5 aportes) y Experta ×2 (20 aportes).
+  - Con 3 puntos de aviso, el precio queda **"en revisión"**: se marca en la ficha y la pregunta de llegada pide a los siguientes clientes que lo confirmen. Cuando un cliente lo confirma o aporta otro, la revisión se cierra.
+  - El negocio ve en su perfil los avisos recibidos y qué precios están en revisión.
+- Para las capturas se simula el paso del tiempo (`proto.ageDays`) y los avisos de otros usuarios (`proto.simReports`). No se inventa ningún precio.
+
 **Rutas y marcadores (16/11/2026).**
 - **Ruta más corta y sin ir en contra dirección.** OSRM calcula la ruta más rápida y su servidor público no permite pedir la más corta. Por eso las rutas se piden primero a **Valhalla** (servidor público de FOSSGIS) con la opción `shortest`, que minimiza la distancia y respeta los sentidos de circulación de OpenStreetMap. A pie se puede ir por cualquier acera. Si Valhalla no responde, se usa OSRM y se elige la más corta de sus alternativas.
 - La ruta empieza y acaba en el punto de la calle más cercano. Antes se unía con líneas rectas a la posición exacta del usuario y del destino, y esos tramos cruzaban manzanas.
@@ -516,4 +540,10 @@ Ideas de trabajo futuro ya identificadas:
 | 13/11/2026 | Dos tipos de cuenta: cliente y negocio. El negocio vincula su local o lo da de alta a mano y declara sus precios | Que los negocios pongan su precio inicial y que puedan aparecer los que faltan en el mapa |
 | 13/11/2026 | Inicio de sesión con Google como opción principal (simulado en el prototipo; Firebase Authentication en la app real) | Registro rápido, sin contraseñas, y correo verificado |
 | 16/11/2026 | Rutas más cortas respetando el sentido de las calles: Valhalla con `shortest` (OSRM, la más corta de sus alternativas, como respaldo); la ruta empieza y acaba en la calle | El usuario quiere la ruta más corta y nunca en contra dirección; OSRM solo optimiza el tiempo y añadía tramos rectos fuera de las calles |
+| 16/11/2026 | Frescura del precio con umbrales según el tipo de negocio (hostelería: 30/60 días; servicios y ocio: 3/6 meses) y monedas extra por confirmar precios viejos | Mostrar cuánto de fiable es un dato e incentivar que se mantenga al día |
+| 16/11/2026 | Ofertas del negocio con fecha de fin, en la ficha y con una etiqueta muy pequeña en una esquina del marcador; se retiran con 3 avisos de "ya no está" | Dar valor a la cuenta de negocio sin recargar el mapa |
+| 16/11/2026 | Plan de tarde desde la ficha: paradas, personas, gasto estimado y ruta parada a parada | Usar los precios para planificar, no solo para consultar |
+| 16/11/2026 | Avisos de precio incorrecto con peso según la reputación; con 3 puntos el precio queda "en revisión" y se pide confirmarlo | Filtrar datos falsos o desfasados sin ocultar información |
+| 16/11/2026 | Se añade ChemaBarber (tipo nuevo "Barbería"), sin precio porque no lo publica | Ubicación facilitada por el autor; mismo criterio de no inventar precios |
+| 16/11/2026 | Al abrir un sitio, la cámara lo centra en la parte del mapa que no tapa la ficha (desplazamiento en píxeles) | Con el mapa inclinado, el desplazamiento fijo en grados dejaba el marcador debajo de la ficha |
 | 16/11/2026 | Corregido: los marcadores de precio salían desplazados y se movían con la cámara | El CSS del marcador (`position: relative`, transición y escala de `transform`) pisaba la posición que calcula MapLibre; ahora el marcador va dentro de un contenedor que solo mueve MapLibre |

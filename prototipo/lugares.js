@@ -110,7 +110,7 @@ const PLACE_POICAT = {
   'Centro deportivo': 'deporte', 'Campo de fútbol': 'deporte', 'Pista de pádel': 'deporte', 'Pista de tenis': 'deporte', 'Recinto deportivo': 'deporte',
   Piscina: 'deporte', 'Club de golf': 'deporte', 'Club náutico': 'deporte',
   Cine: 'cultura', Teatro: 'cultura', Museo: 'cultura', 'Visita turística': 'cultura', Monumento: 'cultura', Aparcamiento: 'parking',
-  'Peluquería': 'belleza', 'Centro de belleza': 'belleza', 'Clínica dental': 'salud', 'Clínica médica': 'salud', 'Clínica privada': 'salud', Fisioterapia: 'salud', Veterinario: 'salud',
+  'Peluquería': 'belleza', 'Barbería': 'belleza', 'Centro de belleza': 'belleza', 'Clínica dental': 'salud', 'Clínica médica': 'salud', 'Clínica privada': 'salud', Fisioterapia: 'salud', Veterinario: 'salud',
   Taller: 'talleres', 'Lavado de coches': 'talleres', 'Lavandería': 'tiendas', Autoescuela: 'educacion',
 };
 const PLACE_GLYPH = { 'Campo de fútbol': 'ball', 'Pista de pádel': 'ball', 'Pista de tenis': 'ball', 'Recinto deportivo': 'ball', Monumento: 'landmark', Discoteca: 'martini' };
@@ -118,6 +118,7 @@ const PLACE_GLYPH = { 'Campo de fútbol': 'ball', 'Pista de pádel': 'ball', 'Pi
 // Ocio: alquiler de espacios con precio TOTAL (por hora); actividades y entradas POR PERSONA.
 const PLACE_CONCEPTS = {
   'Peluquería': [['Corte de pelo', 'servicio'], ['Corte + barba', 'servicio'], ['Tinte', 'servicio']],
+  'Barbería': [['Corte de pelo', 'servicio'], ['Corte + barba', 'servicio'], ['Arreglo de barba', 'servicio']],
   'Centro de belleza': [['Manicura', 'servicio'], ['Depilación piernas', 'servicio'], ['Limpieza facial', 'servicio']],
   'Clínica dental': [['Revisión', 'servicio'], ['Limpieza dental', 'servicio'], ['Empaste', 'servicio']],
   'Clínica médica': [['Consulta general', 'sesión'], ['Consulta con especialista', 'sesión']],

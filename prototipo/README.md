@@ -69,9 +69,15 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
      - Idioma;
      - Ayuda.
 
+12. **Frescura, ofertas, plan de tarde y avisos** (`extras.js`):
+   - **Frescura:** cada precio lleva un punto verde, amarillo o gris según cuándo se confirmó. Los umbrales dependen del tipo de negocio. Confirmar precios viejos da monedas extra.
+   - **Ofertas:** la cuenta de negocio las publica con fecha de fin. Se ven en la ficha y con una etiqueta "%" mínima en el marcador.
+   - **Plan de tarde:** "Añadir al plan" en la ficha. El botón "Plan" de arriba a la izquierda abre las paradas, el número de personas, el gasto estimado y "Empezar ruta" (parada a parada).
+   - **"¿Algún precio está mal?":** avisos con peso según tu reputación. Con 3 puntos, el precio queda "en revisión".
+
 ## Capturas automáticas (Playwright)
 ```
 npm install playwright@1.56.1
 node herramientas/capturas.js "<ruta>/prototipo/index.html" "<ruta>/docs/diseno/capturas"
 ```
-Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 52 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.
+Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 63 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.
