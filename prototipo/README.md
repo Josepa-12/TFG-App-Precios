@@ -40,7 +40,7 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
    - mantén pulsado el mapa (o haz clic derecho);
    - o abre `index.html?ll=36.7795,-6.3540&name=Casa%20de%20mam%C3%A1`.
 
-   Las rutas siguen las calles reales (OSRM). Sin conexión, la ruta es aproximada. El código de lugares, direcciones y rutas está en `lugares.js`.
+   Las rutas siguen las calles reales y son **las más cortas respetando el sentido de las calles**: en coche nunca van en contra dirección. Se calculan con Valhalla (servidor público de FOSSGIS, opción `shortest`); si no responde, se usa OSRM, quedándose con la más corta de sus alternativas. Sin conexión, la ruta es aproximada. El código de lugares, direcciones y rutas está en `lugares.js`.
 8. **Fichas** de cada plantilla, con favorito (♥), "Avísame si cambia / cuando tenga precio" y **"¿Es tu negocio? Crea tu cuenta de negocio"**. Los servicios pueden ir agrupados por área, con "desde X €" y "Consultar". La ficha indica el origen del precio: web del negocio, declarado por el negocio o aportado por clientes. Con 3 aportes de clientes, manda lo que pagan ellos:
    - servicio local: precio fijo y sin reseñas (psicología es anónima);
    - hostelería: rango por persona y 3 criterios de valoración;

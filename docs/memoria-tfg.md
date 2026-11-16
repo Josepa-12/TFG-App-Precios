@@ -399,6 +399,12 @@ Cuando el negocio revisa y publica sus precios desde su cuenta, dejan de mostrar
 - se añaden Clínica Areas, con sus tarifas oficiales agrupadas por área ("desde X €", "con bono", "Consultar"), y FisioSanlúcar;
 - los centros sanitarios públicos se ven en el mapa solo para saber dónde están, sin precios.
 
+**Rutas y marcadores (16/11/2026).**
+- **Ruta más corta y sin ir en contra dirección.** OSRM calcula la ruta más rápida y su servidor público no permite pedir la más corta. Por eso las rutas se piden primero a **Valhalla** (servidor público de FOSSGIS) con la opción `shortest`, que minimiza la distancia y respeta los sentidos de circulación de OpenStreetMap. A pie se puede ir por cualquier acera. Si Valhalla no responde, se usa OSRM y se elige la más corta de sus alternativas.
+- La ruta empieza y acaba en el punto de la calle más cercano. Antes se unía con líneas rectas a la posición exacta del usuario y del destino, y esos tramos cruzaban manzanas.
+- Valhalla devuelve las maniobras con números de tipo. Se traducen al mismo formato de pasos que OSRM, así que las indicaciones en castellano y los iconos de giro no cambian.
+- **Error corregido en los marcadores de precio.** Salían en posiciones erróneas y parecían seguir a la cámara: unos 5.100 px de desvío medido con Playwright. La causa era que el estilo propio del marcador (`position: relative`, una transición y una escala en `transform`) pisaba el `position: absolute` y el `transform` con los que MapLibre lo coloca. Ahora el marcador visible va dentro de un contenedor que solo toca MapLibre, y el desvío es menor de 1 px al mover, girar e inclinar el mapa. Lo mismo se corrigió en el indicador de posición del usuario.
+
 ### 4.12 Alcance del prototipo **[Parcial]**
 **Dentro:**
 - Las tres plantillas, con un establecimiento de ejemplo de cada una, incluido un polideportivo con varias pistas.
@@ -509,3 +515,5 @@ Ideas de trabajo futuro ya identificadas:
 | 13/11/2026 | Los centros sanitarios públicos aparecen en el mapa solo con su ubicación, sin precios | Son útiles como destino del GPS, pero no se paga en el momento |
 | 13/11/2026 | Dos tipos de cuenta: cliente y negocio. El negocio vincula su local o lo da de alta a mano y declara sus precios | Que los negocios pongan su precio inicial y que puedan aparecer los que faltan en el mapa |
 | 13/11/2026 | Inicio de sesión con Google como opción principal (simulado en el prototipo; Firebase Authentication en la app real) | Registro rápido, sin contraseñas, y correo verificado |
+| 16/11/2026 | Rutas más cortas respetando el sentido de las calles: Valhalla con `shortest` (OSRM, la más corta de sus alternativas, como respaldo); la ruta empieza y acaba en la calle | El usuario quiere la ruta más corta y nunca en contra dirección; OSRM solo optimiza el tiempo y añadía tramos rectos fuera de las calles |
+| 16/11/2026 | Corregido: los marcadores de precio salían desplazados y se movían con la cámara | El CSS del marcador (`position: relative`, transición y escala de `transform`) pisaba la posición que calcula MapLibre; ahora el marcador va dentro de un contenedor que solo mueve MapLibre |

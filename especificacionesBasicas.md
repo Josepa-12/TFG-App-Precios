@@ -61,7 +61,8 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
     - ubicaciones compartidas por WhatsApp o Google Maps (enlace o coordenadas);
     - puntos marcados manteniendo pulsado el mapa;
     - favoritos sin precio ("Casa de mamá").
-  - **Rutas:** por calles reales (OSRM), con indicaciones giro a giro. Las direcciones no se guardan en el historial.
+  - **Rutas:** por calles reales, con indicaciones giro a giro. Las direcciones no se guardan en el historial.
+  - **Desde el 16/11/2026, la ruta más corta respetando el sentido de las calles** (en coche nunca en contra dirección). Se calcula con Valhalla `shortest` y, como respaldo, con OSRM, quedándose con la más corta.
   - **Perfil:** la tienda va encima de "Tu actividad".
 - **Marcadores de precio ocultos por defecto.** El desplegable "Precios" (arriba a la izquierda) tiene las opciones Ninguno, Todos, Servicios locales, Hostelería y Ocio.
 - **121 lugares reales** de Sanlúcar con plantilla de precio (89 de hostelería, 21 de ocio y 11 servicios locales), en lugar de los 7 inventados. Ver [docs/estudio-puntos-interes.md](docs/estudio-puntos-interes.md) (5b).

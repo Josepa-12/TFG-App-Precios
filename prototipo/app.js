@@ -363,14 +363,22 @@ function initMap() {
 let markersReady = false;
 function addPlaceMarker(p) {
   if (markers[p.id]) return;
+  // El contenedor lo posiciona MapLibre (con transform); el .pin va dentro para que sus estilos
+  // (escala al seleccionarlo, sombra…) no pisen esa posición y el marcador no se mueva con la cámara.
+  const wrap = document.createElement('div');
+  wrap.className = 'pin-wrap';
   const el = document.createElement('button');
   el.className = `pin ${p.tpl}${priced(p) ? '' : ' empty'}`;
   el.dataset.place = p.id;
   el.innerHTML = `${glyphSVG(PLACE_GLYPH[p.cat] || POI_CATS[p.poiCat]?.glyph, 'ic pin-glyph')}<i class="pin-eur" aria-hidden="true">€</i>`;
   el.addEventListener('click', e => { e.stopPropagation(); openPlace(p.id); });
-  markers[p.id] = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat(p.pos).addTo(map);
-  el.setAttribute('aria-label', `${p.name} (${p.cat}): ${pinLabel(p)}`); // MapLibre lo sobrescribe con "Map marker"
+  el.setAttribute('aria-label', `${p.name} (${p.cat}): ${pinLabel(p)}`);
+  wrap.appendChild(el);
+  // anchor 'bottom': la punta del marcador (parte baja del contenedor) cae justo en la coordenada del sitio
+  markers[p.id] = new maplibregl.Marker({ element: wrap, anchor: 'bottom' }).setLngLat(p.pos).addTo(map);
+  wrap.removeAttribute('aria-label'); wrap.removeAttribute('role'); // el botón de dentro ya lo describe
 }
+const pinOf = id => markers[id]?.getElement().querySelector('.pin');
 // Negocio dado de alta a mano desde una cuenta de negocio
 function addPlace(p) {
   PLACES.push(p);
@@ -833,7 +841,7 @@ async function startNav() {
   $('#mapUI').hidden = true; $('#navUI').hidden = false;
   $('#navSimulate').hidden = false; $('#navSimulate').disabled = true; $('#navFinish').hidden = true;
   $('#app').classList.add('navigating');
-  if (nav.id) markers[nav.id].getElement().classList.add('dest');
+  if (nav.id) pinOf(nav.id)?.classList.add('dest');
   applyMarkerVisibility();
   setNavBanner('…', 'Calculando la ruta', 'straight');
   $('#navEta').textContent = '…';
@@ -866,7 +874,7 @@ function setNavBanner(dist, instr, icon) {
 function stopNav() {
   if (!S.navigating) return;
   clearTimeout(S.navigating.endT);
-  if (S.navigating.id) markers[S.navigating.id]?.getElement().classList.remove('dest');
+  if (S.navigating.id) pinOf(S.navigating.id)?.classList.remove('dest');
   S.navigating = null;
   S.dest = null; hideDestMarker();
   applyMarkerVisibility();
@@ -1191,8 +1199,8 @@ function onFlowClick(e) {
 }
 // Tras un cambio de precio: actualizar la etiqueta accesible del marcador y la ficha si está abierta
 function refreshPlace(p) {
-  markers[p.id]?.getElement().setAttribute('aria-label', `${p.name} (${p.cat}): ${pinLabel(p)}`);
-  markers[p.id]?.getElement().classList.toggle('empty', !priced(p));
+  pinOf(p.id)?.setAttribute('aria-label', `${p.name} (${p.cat}): ${pinLabel(p)}`);
+  pinOf(p.id)?.classList.toggle('empty', !priced(p));
   if (S.place === p.id && !$('#placeSheet').hidden) renderPlace();
 }
 

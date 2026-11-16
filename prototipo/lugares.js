@@ -257,11 +257,65 @@ function parseLocation(text) {
 // Los enlaces cortos (maps.app.goo.gl) solo se pueden resolver desde un servidor o desde la app nativa.
 const isShortMapLink = t => /maps\.app\.goo\.gl|goo\.gl\/maps|maps\.apple\/p\//i.test(t || '');
 
-// ---------- Rutas por calles reales (OSRM) ----------
+// ---------- Rutas por calles reales ----------
+// 1.º Valhalla (servidor público de FOSSGIS) con "shortest": la ruta MÁS CORTA respetando el sentido de las
+//     calles (nunca en contra dirección en coche; a pie sí se puede ir por cualquier acera).
+// 2.º Si falla, OSRM: pide alternativas y se queda con la más corta (OSRM solo optimiza el tiempo).
+// 3.º Sin conexión: ruta aproximada en "L".
+const VALHALLA = 'https://valhalla1.openstreetmap.de/route';
+const VALHALLA_COSTING = { coche: 'auto', pie: 'pedestrian' };
 const ROUTERS = {
   coche: 'https://router.project-osrm.org/route/v1/driving/',            // demo pública de OSRM (solo coche)
   pie: 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/', // servidor de FOSSGIS para ir a pie
 };
+// Polilínea codificada con precisión 6 (formato de Valhalla) → [[lng, lat], …]
+function decodePolyline6(str) {
+  const out = []; let i = 0, lat = 0, lng = 0;
+  const next = () => { let r = 0, s = 0, b; do { b = str.charCodeAt(i++) - 63; r |= (b & 31) << s; s += 5; } while (b >= 32); return r & 1 ? ~(r >> 1) : r >> 1; };
+  while (i < str.length) { lat += next(); lng += next(); out.push([lng / 1e6, lat / 1e6]); }
+  return out;
+}
+// Tipos de maniobra de Valhalla → el formato de pasos de la app (el mismo que el de OSRM)
+const VH_TURN = { 9: 'slight right', 10: 'right', 11: 'sharp right', 12: 'uturn', 13: 'uturn', 14: 'sharp left', 15: 'left', 16: 'slight left' };
+function vhStep(m, at) {
+  const name = (m.street_names || [])[0] || '';
+  const t = m.type;
+  if (t >= 1 && t <= 3) return { at, type: 'depart', modifier: t === 2 ? 'right' : t === 3 ? 'left' : 'straight', name };
+  if (t >= 4 && t <= 6) return { at, type: 'arrive', name };
+  if (VH_TURN[t]) return { at, type: 'turn', modifier: VH_TURN[t], name };
+  if ([18, 20, 23].includes(t)) return { at, type: 'fork', modifier: 'slight right', name };
+  if ([19, 21, 24].includes(t)) return { at, type: 'fork', modifier: 'slight left', name };
+  if ([25, 37, 38].includes(t)) return { at, type: 'merge', name };
+  if (t === 26) return { at, type: 'roundabout', exit: m.roundabout_exit_count || 1, name };
+  if (t === 27) return null; // salida de la rotonda: ya se dijo al entrar
+  return { at, type: 'continue', modifier: 'straight', name };
+}
+async function routeValhalla(a, b, mode, signal) {
+  const q = {
+    locations: [{ lon: a[0], lat: a[1] }, { lon: b[0], lat: b[1] }],
+    costing: VALHALLA_COSTING[mode],
+    costing_options: { [VALHALLA_COSTING[mode]]: { shortest: true } },
+    language: 'es-ES', units: 'kilometers',
+  };
+  const j = await (await fetch(`${VALHALLA}?json=${encodeURIComponent(JSON.stringify(q))}`, { signal })).json();
+  const leg = j.trip?.legs?.[0]; if (!leg) throw new Error(j.error || 'sin ruta');
+  const coords = decodePolyline6(leg.shape), cum = cumDist(coords);
+  const steps = leg.maneuvers.map(m => vhStep(m, cum[Math.min(m.begin_shape_index, cum.length - 1)])).filter(Boolean);
+  steps[steps.length - 1].at = cum[cum.length - 1];
+  return { coords, cum, total: cum[cum.length - 1], duration: j.trip.summary.time, steps, real: true, via: 'valhalla' };
+}
+async function routeOSRM(a, b, mode, signal) {
+  const url = `${ROUTERS[mode]}${a[0]},${a[1]};${b[0]},${b[1]}?overview=full&geometries=geojson&steps=true&alternatives=3`;
+  const j = await (await fetch(url, { signal })).json();
+  if (!j.routes?.length) throw new Error(j.code || 'sin ruta');
+  const r = j.routes.reduce((x, y) => (y.distance < x.distance ? y : x)); // la más corta de las alternativas
+  const coords = r.geometry.coordinates, cum = cumDist(coords);
+  const steps = r.legs[0].steps.map(s => ({
+    at: cum[nearestIdx(coords, s.maneuver.location)], type: s.maneuver.type, modifier: s.maneuver.modifier, exit: s.maneuver.exit, name: s.name,
+  }));
+  steps[steps.length - 1].at = cum[cum.length - 1];
+  return { coords, cum, total: cum[cum.length - 1], duration: r.duration, steps, real: true, via: 'osrm' };
+}
 const routeCache = new Map();
 function cumDist(coords) { const c = [0]; for (let i = 1; i < coords.length; i++) c.push(c[i - 1] + distM(coords[i - 1], coords[i])); return c; }
 function nearestIdx(coords, p) { let bi = 0, bd = Infinity; coords.forEach((c, i) => { const d = distM(c, p); if (d < bd) { bd = d; bi = i; } }); return bi; }
@@ -275,23 +329,16 @@ async function getRoute(a, b, mode) {
   const key = `${a.join()}|${b.join()}|${mode}`;
   if (routeCache.has(key)) return routeCache.get(key);
   const p = (async () => {
-    try {
+    // La ruta empieza y acaba en la calle (punto de la vía más cercano), sin tramos rectos que crucen manzanas
+    for (const provider of [routeValhalla, routeOSRM]) {
       const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 7000);
-      const url = `${ROUTERS[mode]}${a[0]},${a[1]};${b[0]},${b[1]}?overview=full&geometries=geojson&steps=true`;
-      const j = await (await fetch(url, { signal: ctl.signal })).json();
-      clearTimeout(to);
-      const r = j.routes?.[0]; if (!r) throw new Error(j.code || 'sin ruta');
-      const coords = [a, ...r.geometry.coordinates, b], cum = cumDist(coords);
-      const steps = r.legs[0].steps.map(s => ({
-        at: cum[nearestIdx(coords, s.maneuver.location)], type: s.maneuver.type, modifier: s.maneuver.modifier, exit: s.maneuver.exit, name: s.name,
-      }));
-      steps[steps.length - 1].at = cum[cum.length - 1];
-      return { coords, cum, total: cum[cum.length - 1], duration: r.duration, steps, real: true };
-    } catch (e) {
-      console.warn('Ruta aproximada (sin servidor de rutas):', e.message);
-      routeCache.delete(key); // se reintentará la próxima vez
-      return fallbackRoute(a, b, mode);
+      try { return await provider(a, b, mode, ctl.signal); }
+      catch (e) { console.warn(`Ruta: ${provider.name} no disponible (${e.message})`); }
+      finally { clearTimeout(to); }
     }
+    console.warn('Ruta aproximada (sin servidor de rutas)');
+    routeCache.delete(key); // se reintentará la próxima vez
+    return fallbackRoute(a, b, mode);
   })();
   p.then(v => { if (v.real) p.done = v; }); // para consultar la ruta ya resuelta sin esperar
   routeCache.set(key, p);
