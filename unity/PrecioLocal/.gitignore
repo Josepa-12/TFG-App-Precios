@@ -1,0 +1,25 @@
+# Carpetas que genera Unity (no se suben al repositorio)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+*.csproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+*.apk
+*.aab
+.vs/
+.idea/
+crashlytics-build.properties
+
+# Token personal de Cesium ion (cada uno conecta su cuenta en Cesium ▸ Cesium)
+/Assets/CesiumSettings/
+/Assets/CesiumSettings.meta
