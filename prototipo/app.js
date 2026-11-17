@@ -32,7 +32,7 @@ function mkItem(n, u, extra = {}) {
     },
   };
 }
-const SENSITIVE_CATS = ['Clínica médica', 'Clínica privada', 'Fisioterapia']; // salud: aportes siempre anónimos
+const SENSITIVE_CATS = ['Clínica médica', 'Clínica privada', 'Fisioterapia', 'Clínica dental']; // salud (no veterinarios): aportaciones siempre anónimas
 // Tipo de negocio → plantilla de precios (para dar de alta negocios a mano)
 const HOSTELERIA_CATS = ['Restaurante', 'Taberna', 'Comida rápida', 'Cafetería', 'Heladería', 'Bar', 'Pub', 'Discoteca'];
 const OCIO_POICATS = ['deporte', 'cultura', 'parking'];
@@ -56,11 +56,20 @@ function buildPlace(r) {
     declaredRange: null, rangeReports: [],            // hostelería: rango por persona
     rangeAt: null, rangeFlags: 0, rangeReview: false, // frescura y avisos del rango
     offers: [], flagLog: [],                          // ofertas del negocio y avisos de clientes
+    // Rango mostrado: siempre dos números finitos. Si el percentil superior cae en el tramo abierto
+    // ("Más de 50 €", guardado con hi = null), el máximo es el inicio de ese tramo y rangeOpen = true.
     get range() {
       if (this.rangeReports.length >= MIN_REPORTS || !this.declaredRange) {
-        return this.rangeReports.length ? [pct(this.rangeReports.map(b => b[0]), 0.25), pct(this.rangeReports.map(b => b[1]), 0.75)] : null;
+        if (!this.rangeReports.length) return null;
+        const top = pct(this.rangeReports.map(b => b[1] ?? Infinity), 0.75);
+        const hi = isFinite(top) ? top : Math.max(...this.rangeReports.filter(b => b[1] == null).map(b => b[0]));
+        return [pct(this.rangeReports.map(b => b[0]), 0.25), hi];
       }
       return this.declaredRange;
+    },
+    get rangeOpen() { // el máximo del rango es "o más" (tramo abierto): no se inventa tope
+      if (!this.rangeReports.length || (this.rangeReports.length < MIN_REPORTS && this.declaredRange)) return false;
+      return !isFinite(pct(this.rangeReports.map(b => b[1] ?? Infinity), 0.75));
     },
     ratings: null, nRatings: 0, owner: false,
   };
@@ -101,11 +110,14 @@ const S = {
 };
 // Tiempo desde que llegas hasta que la app pregunta "¿has ido?": 1 hora, para que dé tiempo a recibir el servicio.
 const ASK_DELAY_MS = 60 * 60 * 1000;
-// Al llegar, la ruta sigue en pantalla hasta pulsar "He finalizado" o hasta que pase este tiempo.
+// Al llegar, la ruta sigue en pantalla hasta pulsar "Terminar ruta" o hasta que pase este tiempo.
 const ARRIVE_END_MS = 60 * 1000;
 const askDelay = () => window.__askDelayMs ?? ASK_DELAY_MS; // las capturas automáticas lo acortan
-const fmtDelay = ms => ms >= 3600000 ? `${+(ms / 3600000).toFixed(1)} h` : ms >= 60000 ? `${Math.round(ms / 60000)} min` : `${Math.round(ms / 1000)} s`;
+const fmtDelay = ms => ms >= 3600000 ? `${+(ms / 3600000).toFixed(1)} h` : ms >= 60000 ? `${Math.round(ms / 60000)} min` : `${Math.round(ms / 1000)} s`; // espacio no separable: "4 s" no se parte
 const level = xp => Math.floor(xp / XP_PER_LEVEL) + 1;
+// "Reducir animaciones" (ajuste de la app o preferencia del sistema): la cámara del mapa salta sin animar
+const reducedMotion = () => !!S.settings.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const motionMs = ms => (reducedMotion() ? 0 : ms);
 
 // ---------- Utilidades ----------
 const $ = s => document.querySelector(s);
@@ -114,14 +126,15 @@ const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* sin almacenamiento */ } },
 };
-const svg = (d, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24">${d}</svg>`;
+// Iconos decorativos: aria-hidden (el texto o la etiqueta del control ya dicen qué es)
+const svg = (d, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
 const ICON = {
   x: svg('<path d="M18 6 6 18M6 6l12 12"/>'),
   users: svg('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>', 'ic sm'),
   building: svg('<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/>', 'ic sm'),
   shield: svg('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>'),
   nav: svg('<polygon points="3 11 22 2 13 21 11 13 3 11"/>'),
-  star: '<svg viewBox="0 0 24 24"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>',
   check: svg('<path d="M20 6 9 17l-5-5"/>'),
   award: svg('<circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>'),
   lock: svg('<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
@@ -196,43 +209,119 @@ function distM(a, b) {
 const fmtDist = m => m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 const bearing = (a, b) => Math.atan2(b[0] - a[0], b[1] - a[1]) * 180 / Math.PI;
 const placeById = id => PLACES.find(p => p.id === id);
-const tplIcon = p => glyphSVG(PLACE_GLYPH[p.cat] || POI_CATS[p.poiCat]?.glyph); // logo del tipo de negocio
+const tplIcon = p => glyphSVG(PLACE_GLYPH[p.cat] || POI_CATS[p.poiCat]?.glyph); // logo del tipo de negocio (glyphSVG ya lo oculta a lectores)
 const priced = p => p.tpl === 'hosteleria' ? !!p.range : p.items.some(i => i.p != null);
 const nReports = p => p.tpl === 'hosteleria' ? p.rangeReports.length : p.items.reduce((a, i) => a + i.reports.length, 0);
 const isDeclared = p => p.tpl === 'hosteleria' ? !!p.declaredRange : p.items.some(i => i.declared != null);
 const fmtEur = v => `${(Number.isInteger(v) ? String(v) : v.toFixed(2)).replace('.', ',')} €`;
-const placeIconHTML = p => `<i class="poi-ic" style="background:${POI_CATS[p.poiCat].color}">${tplIcon(p)}</i>`;
+// Icono de un sitio de la app: mismo color que su marcador (servicio azul, hostelería naranja, ocio verde)
+const placeIconHTML = p => `<i class="poi-ic tpl-${p.tpl}" aria-hidden="true">${tplIcon(p)}</i>`;
 const placeDest = p => ({ kind: 'place', id: p.id, key: p.id, name: p.name, pos: p.pos });
 // ¿Este punto del mapa es uno de los negocios de la app? (mismo nombre y a menos de 80 m)
 const placeForSpot = s => PLACES.find(p => normTxt(p.name) === normTxt(s.name) && distM(p.pos, s.pos) < 80);
 
+// Rango por persona en texto. Tramo abierto: "Más de 50 €" (largo) / "50 €+" (corto), o "20–50+ €"
+function fmtRange(p, short = false) {
+  const [lo, hi] = p.range;
+  if (!p.rangeOpen) return `${lo}–${hi} €`;
+  return lo >= hi ? (short ? `${hi} €+` : `Más de ${hi} €`) : `${lo}–${hi}+ €`;
+}
 function pinLabel(p) {
   if (!priced(p)) return 'Sin precio';
-  if (p.tpl === 'hosteleria') return `${p.range[0]}–${p.range[1]} €`;
+  if (p.tpl === 'hosteleria') return fmtRange(p, true);
   const ps = p.items.filter(i => i.p != null).map(i => i.p);
   return ps.length === 1 ? fmtEur(ps[0]) : `desde ${fmtEur(Math.min(...ps))}`;
 }
 // De dónde sale el precio: declarado por el negocio, aportado por clientes o ambos
 function srcHTML(p) {
+  // Mismo patrón en los cuatro casos: "origen · estado de la confirmación por clientes"
   const n = nReports(p), dec = isDeclared(p), cl = n === 1 ? '1 cliente' : `${n} clientes`;
-  if (dec && n < MIN_REPORTS && p.web) return `<div class="src declared">${ICON.web}<span>Publicado en la web del negocio (<a href="${p.web.url}" target="_blank" rel="noopener">${p.web.url.replace(/^https?:\/\//, '')}</a>) · consultado el ${p.web.fecha}${n ? ` · ${cl} ya ${n === 1 ? 'ha' : 'han'} aportado precio` : ''}</span></div>`;
-  if (dec && n < MIN_REPORTS) return `<div class="src declared">${ICON.building} Declarado por el negocio${n ? ` · ${cl} ya ${n === 1 ? 'ha' : 'han'} aportado precio` : ' · pendiente de confirmar por clientes'}</div>`;
-  if (n >= MIN_REPORTS) return `<div class="src">${ICON.users} Según ${cl}${dec ? ' (manda sobre lo declarado)' : ''}</div>`;
-  return `<div class="src">${ICON.users} Aportado por ${cl} · faltan ${MIN_REPORTS - n} más para confirmarlo</div>`;
+  const conf = n ? ` · ${n} de ${MIN_REPORTS} clientes ${n === 1 ? 'lo ha' : 'lo han'} confirmado` : ' · pendiente de confirmar por clientes';
+  if (dec && n < MIN_REPORTS && p.web) return `<div class="src declared">${ICON.web}<span>Publicado en la web del negocio <span style="white-space:nowrap">(<a href="${p.web.url}" target="_blank" rel="noopener">${p.web.url.replace(/^https?:\/\//, '')}</a>)</span> · consultado el ${p.web.fecha}${n ? conf : ''}</span></div>`;
+  if (dec && n < MIN_REPORTS) return `<div class="src declared">${ICON.building}<span>Declarado por el negocio${conf}</span></div>`;
+  if (n >= MIN_REPORTS) return `<div class="src">${ICON.users}<span>Según lo que pagaron ${cl}</span></div>`;
+  return `<div class="src">${ICON.users}<span>Aportado por ${cl} · faltan ${MIN_REPORTS - n} más para confirmarlo</span></div>`;
 }
 
 let toastT;
 function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2400);
+  // El elemento queda siempre en el DOM (role=status anuncia cada texto nuevo); se muestra/oculta con .show
+  const t = $('#toast'); t.hidden = false; t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), msg.length > 60 ? 6000 : 4500);
 }
 let notifT;
 function notify(title, body, placeId) {
   const n = $('#notif');
   n.innerHTML = `<span class="n-ic">${ICON.bell}</span><div><b>${title}</b><span>${body}</span></div>`;
   n.dataset.place = placeId || ''; n.hidden = false;
-  clearTimeout(notifT); notifT = setTimeout(() => (n.hidden = true), 5000);
+  clearTimeout(notifT); notifT = setTimeout(() => (n.hidden = true), 6000);
 }
+
+// ---------- Accesibilidad: ventanas modales y foco ----------
+// Ventanas que tapan el mapa, de la más alta a la más baja. Mientras una está visible, el resto de la app
+// queda inerte (atributo inert: ni foco, ni clic, ni lector de pantalla) y el tabulador no sale de ella.
+const MODALS = ['#flowOverlay', '#screen-cuenta', '#screen-onboarding', '#screen-perfil'];
+const topModal = () => MODALS.map(s => $(s)).find(el => el && !el.hidden) || null;
+function syncModal() {
+  const top = topModal();
+  // Las regiones vivas (aviso y notificación) nunca se inertizan: deben poder anunciarse
+  for (const el of $('#app').children) if (!el.matches('#toast, .notif-live')) el.inert = !!top && el !== top;
+}
+const isShown = el => !!el && el.isConnected && !el.closest('[hidden], [inert]') && el.getClientRects().length > 0;
+const focusables = box => [...box.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
+  .filter(el => el.tabIndex >= 0 && !el.disabled && isShown(el) && getComputedStyle(el).visibility !== 'hidden');
+// Trampa de foco: Tab y Mayús+Tab dan la vuelta dentro de la ventana abierta
+function trapTab(e) {
+  if (e.key !== 'Tab') return;
+  const top = topModal(); if (!top) return;
+  const box = top.id === 'flowOverlay' ? $('#flowCard') : top, list = focusables(box), a = document.activeElement;
+  if (!list.length) { e.preventDefault(); return; }
+  if (!box.contains(a)) { e.preventDefault(); (e.shiftKey ? list[list.length - 1] : list[0]).focus(); return; }
+  // a puede ser un título con tabindex="-1" (no está en la lista): se mira qué controles hay antes y después
+  const before = list.some(x => x !== a && (x.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING));
+  const after = list.some(x => x !== a && (a.compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING));
+  if (e.shiftKey && !before) { e.preventDefault(); list[list.length - 1].focus(); }
+  else if (!e.shiftKey && !after) { e.preventDefault(); list[0].focus(); }
+}
+// Selector del "mismo" control tras volver a pintar (por sus atributos data-*), para no dejar el foco en <body>
+function ctlSig(el) {
+  if (!el || el === document.body) return null;
+  const data = [...el.attributes].filter(x => x.name.startsWith('data-')).map(x => `[${x.name}="${CSS.escape(x.value)}"]`).join('');
+  if (data) return el.tagName.toLowerCase() + data;
+  if (el.id) return `#${CSS.escape(el.id)}`;
+  return null;
+}
+// Primer selector que exista, esté visible y no esté desactivado
+const findCtl = (box, sels) => sels.filter(Boolean).map(s => box.querySelector(s)).find(t => t && !t.disabled && isShown(t)) || null;
+// Vuelve a pintar box y, si el foco estaba dentro, lo lleva al control equivalente (o al título)
+function keepFocus(box, draw, fallback = 'h2') {
+  const a = document.activeElement, had = !!a && box.contains(a), sig = had && ctlSig(a);
+  draw();
+  if (had && !box.contains(document.activeElement)) (findCtl(box, [sig]) || box.querySelector(fallback))?.focus();
+}
+// Lleva el foco a el si sigue en pantalla; si no, al primero de los alternativos que lo esté
+function focusBack(el, ...alts) {
+  const t = [el, ...alts.map(s => (typeof s === 'string' ? $(s) : s))].find(isShown);
+  t?.focus({ preventScroll: true });
+  return t;
+}
+// Errores junto al campo (modo negocio, ofertas, "Otra cosa"): texto bajo el campo, aria-invalid,
+// aria-describedby y foco al primer campo con error, además del aviso. errs: [[campo, mensaje], …]
+function fieldErrors(box, errs) {
+  box.querySelectorAll('.field-err').forEach(p => p.remove());
+  box.querySelectorAll('[aria-invalid]').forEach(el => { el.removeAttribute('aria-invalid'); if (el.getAttribute('aria-describedby')?.endsWith('Err')) el.removeAttribute('aria-describedby'); });
+  for (const [el, msg] of errs) {
+    if (!el) continue;
+    const p = document.createElement('p');
+    p.className = 'acc-err field-err'; p.id = `${el.id || el.name}Err`; p.textContent = msg;
+    (el.closest('.owner-field') || el.closest('.acc-row') || el.closest('.acc-field') || el).after(p);
+    el.setAttribute('aria-invalid', 'true'); el.setAttribute('aria-describedby', p.id);
+  }
+  if (errs.length) { errs[0][0]?.focus(); toast(errs[0][1]); }
+  return errs.length > 0;
+}
+// ¿El foco se ha perdido (en <body> o en algo oculto/inerte)?
+const focusLost = () => { const a = document.activeElement; return !a || a === document.body || !isShown(a); };
 
 // ---------- Tema ----------
 const MAP_THEME = {
@@ -321,8 +410,26 @@ function styleRoute() {
 function initMap() {
   if (!window.maplibregl) { $('#mapError').hidden = false; return; }
   map = new maplibregl.Map({
-    container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
+    container: 'map',
     center: HOME.center, zoom: HOME.zoom, pitch: HOME.pitch, bearing: HOME.bearing, attributionControl: false,
+    locale: { // textos accesibles de MapLibre en español
+      'Map.Title': 'Mapa', 'Marker.Title': 'Marcador del mapa', 'Popup.Close': 'Cerrar',
+      'AttributionControl.ToggleAttribution': 'Mostrar u ocultar atribución', 'AttributionControl.MapFeedback': 'Sugerir cambios en el mapa',
+      'NavigationControl.ZoomIn': 'Acercar', 'NavigationControl.ZoomOut': 'Alejar', 'NavigationControl.ResetBearing': 'Orientar al norte',
+      'GeolocateControl.FindMyLocation': 'Buscar mi ubicación', 'GeolocateControl.LocationNotAvailable': 'Ubicación no disponible',
+      'FullscreenControl.Enter': 'Pantalla completa', 'FullscreenControl.Exit': 'Salir de pantalla completa',
+      'LogoControl.Title': 'Logotipo de MapLibre', 'ScaleControl.Meters': 'm', 'ScaleControl.Kilometers': 'km',
+      'CooperativeGesturesHandler.WindowsHelpText': 'Usa Ctrl + rueda para hacer zoom', 'CooperativeGesturesHandler.MacHelpText': 'Usa ⌘ + rueda para hacer zoom',
+      'CooperativeGesturesHandler.MobileHelpText': 'Usa dos dedos para mover el mapa',
+    },
+  });
+  // Estilo base (OpenFreeMap liberty). Sus filtros de escudos de carretera comparan ["get","ref_length"] con un
+  // número y las vías sin ese dato daban avisos "Expected value to be of type number, but found null" en consola:
+  // se cambia por ["coalesce", …, 99] (sin dato = sin escudo, el mismo resultado sin avisos).
+  const fixNull = x => Array.isArray(x)
+    ? (x[0] === 'get' && x[1] === 'ref_length' && x.length === 2 ? ['coalesce', x, 99] : x.map(fixNull)) : x;
+  map.setStyle('https://tiles.openfreemap.org/styles/liberty', {
+    transformStyle: (_, next) => ({ ...next, layers: next.layers.map(l => (l.filter ? { ...l, filter: fixNull(l.filter) } : l)) }),
   });
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: 'Rutas: OSRM · FOSSGIS · Búsqueda: Photon (komoot)' }), 'bottom-left');
   map.on('error', e => console.warn('Mapa:', e.error?.message));
@@ -364,6 +471,8 @@ function initMap() {
   for (const p of PLACES) addPlaceMarker(p);
   markersReady = true;
   applyMarkerVisibility();
+  map.on('moveend', updatePinTabs); // pins fuera de la vista: no tabulables
+  map.on('idle', applyPoiDedup);    // teselas nuevas: se recalcula qué iconos del mapa base repiten un sitio de la app
 }
 let markersReady = false;
 function addPlaceMarker(p) {
@@ -408,15 +517,20 @@ function hideDestMarker() { destMarker?.remove(); }
 function dropPin(ll) {
   if (S.navigating || S.flow || !map) return;
   const pos = [ll.lng, ll.lat];
-  const spot = { kind: 'pin', key: `pin:${pos[0].toFixed(5)},${pos[1].toFixed(5)}`, name: 'Ubicación marcada', sub: 'Buscando la dirección…', pos };
+  // El título será la dirección en cuanto llegue (fillAddress); mientras, "Buscando la dirección…"
+  const spot = { kind: 'pin', key: `pin:${pos[0].toFixed(5)},${pos[1].toFixed(5)}`, name: 'Ubicación marcada', sub: '', resolving: true, pos };
   openDest(spot);
   fillAddress(spot);
 }
 function fillAddress(spot) { // completa la dirección de una ubicación (geocodificación inversa)
   reverseGeocode(spot.pos)
-    .then(a => { spot.sub = a ? [a.name, a.sub].filter(Boolean).join(', ') : `${spot.pos[1].toFixed(5)}, ${spot.pos[0].toFixed(5)}`; })
-    .catch(() => { spot.sub = `${spot.pos[1].toFixed(5)}, ${spot.pos[0].toFixed(5)}`; })
-    .finally(() => { if (S.dest === spot) renderPlace(); });
+    .then(a => {
+      const coords = `${spot.pos[1].toFixed(5)}, ${spot.pos[0].toFixed(5)}`;
+      if (spot.kind === 'pin') { spot.name = a?.name || a?.sub || coords; spot.sub = a?.name ? a.sub || '' : ''; } // la dirección pasa a ser el título
+      else spot.sub = a ? [a.name, a.sub].filter(Boolean).join(', ') : coords;
+    })
+    .catch(() => { const coords = `${spot.pos[1].toFixed(5)}, ${spot.pos[0].toFixed(5)}`; if (spot.kind === 'pin') spot.name = coords; else spot.sub = coords; })
+    .finally(() => { delete spot.resolving; if (S.dest === spot) renderPlace(); });
 }
 // Ubicación compartida al abrir la app: ?ll=LAT,LNG&name=… · ?q=<enlace de WhatsApp/Google Maps> · #geo:LAT,LNG
 function openIncomingLink(text) {
@@ -484,12 +598,35 @@ function startCompass() { // llamar desde un toque del usuario (requisito de iOS
 // Desplegable "Precios": por defecto no se muestra ningún marcador de precio (pantalla limpia);
 // solo aparecen si el usuario lo elige aquí.
 function renderCatMenu() {
-  const opts = [['ninguno', 'Ninguno', ''], ['todos', 'Todos', PLACES.length], ...Object.keys(TPL).map(k => [k, TPL[k].menu, PLACES.filter(p => p.tpl === k).length])];
-  $('#catMenu').innerHTML = `<div class="menu-title">Mostrar precios en el mapa</div>` + opts.map(([k, l, n]) =>
-    `<button role="option" aria-selected="${S.filter === k}" class="${S.filter === k ? 'on' : ''}" data-cat="${k}"><span class="dot-cat ${k}"></span>${l}<small>${n}</small></button>`).join('');
+  // Contadores reales: cuántos sitios hay y cuántos tienen ya precio
+  const count = list => { const m = list.filter(priced).length; return `${list.length} ${list.length === 1 ? 'sitio' : 'sitios'} · ${m} con precio`; };
+  const opts = [['ninguno', 'Ninguno', ''], ['todos', 'Todos', count(PLACES)], ...Object.keys(TPL).map(k => [k, TPL[k].menu, count(PLACES.filter(p => p.tpl === k))])];
+  // Lista de opciones (role=listbox): el título ya es el nombre de la lista; las opciones se recorren con
+  // las flechas (tabindex=-1, el foco lo mueve el script)
+  $('#catMenu').innerHTML = `<div class="menu-title" aria-hidden="true">Mostrar precios en el mapa</div>` + opts.map(([k, l, n]) =>
+    `<button role="option" tabindex="-1" aria-selected="${S.filter === k}" class="${S.filter === k ? 'on' : ''}" data-cat="${k}"><span class="dot-cat ${k}"></span><span class="cat-opt">${l}${n ? `<small>${n}</small>` : ''}</span></button>`).join('');
 }
-function openCatMenu() { renderCatMenu(); $('#catMenu').hidden = false; $('#catBtn').setAttribute('aria-expanded', 'true'); }
-function closeCatMenu() { $('#catMenu').hidden = true; $('#catBtn').setAttribute('aria-expanded', 'false'); }
+// focus: llevar el foco a la opción elegida (al abrir con teclado)
+function openCatMenu(focus = false) {
+  renderCatMenu(); $('#catMenu').hidden = false; $('#catBtn').setAttribute('aria-expanded', 'true');
+  if (focus) ($('#catMenu [aria-selected="true"]') || $('#catMenu [role="option"]'))?.focus();
+}
+function closeCatMenu(refocus = false) {
+  const was = !$('#catMenu').hidden, inside = $('#catMenu').contains(document.activeElement);
+  $('#catMenu').hidden = true; $('#catBtn').setAttribute('aria-expanded', 'false');
+  if (was && (refocus || inside)) $('#catBtn').focus({ preventScroll: true }); // el foco no se queda en una opción oculta
+}
+// Teclado en la lista: flechas, Inicio/Fin, Escape (Intro y Espacio ya pulsan el botón de la opción)
+function onCatMenuKey(e) {
+  const opts = $$('#catMenu [role="option"]'), i = opts.indexOf(document.activeElement);
+  const go = j => { e.preventDefault(); opts[(j + opts.length) % opts.length].focus(); };
+  if (e.key === 'ArrowDown') go(i + 1);
+  else if (e.key === 'ArrowUp') go(i < 0 ? opts.length - 1 : i - 1);
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(opts.length - 1);
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closeCatMenu(true); }
+  else if (e.key === 'Tab') closeCatMenu();
+}
 function applyMarkerVisibility() {
   for (const p of PLACES) {
     const chosen = S.filter !== 'ninguno' && (S.filter === 'todos' || p.tpl === S.filter) && (!S.poiCat || p.poiCat === S.poiCat);
@@ -497,11 +634,45 @@ function applyMarkerVisibility() {
     const show = chosen || p.id === S.place || p.id === S.navigating?.id;
     markers[p.id]?.getElement().toggleAttribute('hidden', !show);
   }
+  applyPoiDedup(); updatePinTabs();
+}
+// Con los marcadores de la app a la vista, se oculta el icono del mapa base del mismo sitio
+// (mismo nombre normalizado y a menos de 80 m) para que no salga dos veces. Se combina con el filtro
+// de categoría de lugares.js (setPoiLayerCat), que se vuelve a leer cada vez.
+// Se excluyen por id de elemento (no por nombre) para no ocultar otra sucursal con el mismo nombre.
+const DEDUP_TAG = -424242; // id ficticio que marca la condición añadida aquí
+function applyPoiDedup() {
+  if (!map?.getLayer('poi-app') || !VSRC) return;
+  const shown = PLACES.filter(p => markers[p.id] && !markers[p.id].getElement().hasAttribute('hidden'));
+  const names = new Set(); // ids de los elementos repetidos
+  if (shown.length) for (const f of map.querySourceFeatures(VSRC, { sourceLayer: 'poi' })) {
+    const pr = f.properties || {}, nm = pr['name:es'] || pr.name;
+    if (!nm || f.id == null || f.geometry.type !== 'Point' || names.has(f.id)) continue;
+    const n = normTxt(nm), pos = f.geometry.coordinates;
+    if (shown.some(p => normTxt(p.name) === n && distM(p.pos, pos) < 80)) names.add(f.id);
+  }
+  const cur = map.getFilter('poi-app'); let base = cur;
+  if (Array.isArray(cur) && cur[0] === 'all' && cur.length === 3 && JSON.stringify(cur[2]).includes(String(DEDUP_TAG))) base = cur[1];
+  const want = names.size
+    ? ['all', base, ['!', ['in', ['id'], ['literal', [DEDUP_TAG, ...[...names].sort((a, b) => a - b)]]]]]
+    : base;
+  if (JSON.stringify(want) !== JSON.stringify(cur)) map.setFilter('poi-app', want);
+}
+// Marcadores fuera de la parte visible del mapa: fuera del orden de tabulación
+function updatePinTabs() {
+  if (!map) return;
+  const c = map.getContainer(), W = c.clientWidth, H = c.clientHeight;
+  for (const p of PLACES) {
+    const el = pinOf(p.id); if (!el) continue;
+    const pt = map.project(p.pos);
+    el.tabIndex = pt.x >= 0 && pt.y >= 0 && pt.x <= W && pt.y <= H ? 0 : -1;
+  }
 }
 function setFilter(k) {
   S.filter = k;
   applyMarkerVisibility();
-  $('#catLabel').textContent = k === 'ninguno' ? 'Precios' : k === 'todos' ? 'Todos los precios' : TPL[k].menu;
+  $('#catLabel').textContent = k === 'ninguno' ? 'Ver precios' : k === 'todos' ? 'Todos los precios' : TPL[k].menu;
+  $('#catBtn').setAttribute('aria-label', k === 'ninguno' ? 'Ver precios en el mapa' : `Precios en el mapa: ${$('#catLabel').textContent}`);
   $('#catDot').className = `dot-cat ${k}`;
   $('#catBtn').classList.toggle('off', k === 'ninguno');
   closeCatMenu();
@@ -515,7 +686,7 @@ function setPoiCat(cat) {
     $('#searchInput').value = '';
     const h = $('#app').getBoundingClientRect().height;
     openSearch(Math.round(h * 0.5));
-    map?.easeTo({ center: USER_POS, zoom: 15.6, duration: 600 });
+    map?.easeTo({ center: USER_POS, zoom: 15.6, duration: motionMs(600) });
     // las teselas de alrededor tardan un momento en cargarse: se vuelve a pintar la lista al terminar
     map?.once('idle', () => { if (S.poiCat === cat && $('#dock').classList.contains('open')) renderSearch(); });
   }
@@ -635,7 +806,13 @@ function setupDockDrag() {
 // Filas de resultados. Los destinos sin precio se guardan en RESULTS para recuperarlos al pulsar.
 const RESULTS = new Map();
 function resultRow(p, sub, icon) {
-  return `<button class="result" data-place="${p.id}">${icon || placeIconHTML(p)}<span>${p.name}<small>${sub}</small></span><b>${pinLabel(p)}</b></button>`;
+  return `<button class="result" data-place="${p.id}">${icon || placeIconHTML(p)}<span>${p.name}<small>${sub}</small></span><b${priced(p) ? '' : ' class="no-price"'}>${pinLabel(p)}</b></button>`;
+}
+// Búsqueda por servicio: el primer concepto cuyo nombre contiene el texto (n ya normalizado)
+const itemMatch = (p, n) => p.tpl === 'hosteleria' ? null : p.items.find(i => normTxt(i.n).includes(n) && (i.p != null || i.ask)) || p.items.find(i => normTxt(i.n).includes(n));
+function itemPriceText(p, i) {
+  if (i.p == null) return i.ask ? 'a consultar' : 'sin precio';
+  return `${i.desde && i.p === i.declared ? 'desde ' : ''}${fmtEur(i.p)}`;
 }
 function spotRow(s, sub) {
   RESULTS.set(s.key, s);
@@ -648,21 +825,27 @@ function renderSearch() {
   if (q) { // buscador normal: ubicación compartida, sitios con precio, categorías, lugares del mapa y direcciones
     const n = normTxt(q);
     const loc = parseLocation(q);
-    const places = PLACES.filter(p => normTxt(`${p.name} ${p.cat}`).includes(n))
-      .sort((a, b) => distM(USER_POS, a.pos) - distM(USER_POS, b.pos)).slice(0, 8);
+    // Por nombre y tipo, y también por servicio (nombres de los conceptos) y por la descripción del negocio
+    const byName = p => normTxt(`${p.name} ${p.cat}`).includes(n);
+    const places = PLACES.filter(p => byName(p) || itemMatch(p, n) || (p.about && normTxt(p.about).includes(n)))
+      .sort((a, b) => (priced(b) - priced(a)) || (byName(b) - byName(a)) || distM(USER_POS, a.pos) - distM(USER_POS, b.pos)).slice(0, 8);
+    const placeSub = p => {
+      const i = !byName(p) && itemMatch(p, n), d = fmtDist(distM(USER_POS, p.pos));
+      return i ? `${i.n}${i.p != null || i.ask ? ` · ${itemPriceText(p, i)}` : ''} · ${d}` : `${p.cat} · ${d}`;
+    };
     const cats = Object.entries(POI_CATS).filter(([, c]) => normTxt(`${c.label} ${c.one}`).includes(n));
     const pois = poisByName(map, VSRC, q).filter(s => !placeForSpot(s));
     let html = '';
     if (loc) {
       const s = { kind: 'shared', key: `shared:${loc.pos[0].toFixed(5)},${loc.pos[1].toFixed(5)}`, name: 'Ubicación compartida', sub: `${loc.pos[1].toFixed(5)}, ${loc.pos[0].toFixed(5)}`, pos: loc.pos };
-      html += `<div class="sp-title">Ubicación compartida</div>${spotRow(s)}`;
+      html += `<h2 class="sp-title">Ubicación compartida</h2>${spotRow(s)}`;
     } else if (isShortMapLink(q)) {
       html += `<div class="note">${ICON.info}<span>Los enlaces cortos de Google Maps (maps.app.goo.gl) no se pueden abrir desde el navegador. En la app instalada se abrirían con "Compartir → PrecioLocal". Prueba con el enlace largo o con las coordenadas.</span></div>`;
     }
-    if (places.length) html += `<div class="sp-title">En PrecioLocal</div>${places.map(p => resultRow(p, `${p.cat} · ${fmtDist(distM(USER_POS, p.pos))}`)).join('')}`;
-    if (cats.length) html += `<div class="sp-title">Encuentra cerca</div>${cats.map(([k, c]) => `<button class="result" data-near="${k}">${poiIconHTML(k)}<span>${c.label}<small>Ver los más cercanos</small></span></button>`).join('')}`;
-    if (pois.length) html += `<div class="sp-title">Lugares</div>${pois.map(s => spotRow(s)).join('')}`;
-    if (!loc) html += `<div class="sp-title">Direcciones</div><div id="addrResults"><p class="empty-note">Buscando direcciones…</p></div>`;
+    if (places.length) html += `<h2 class="sp-title">En PrecioLocal</h2>${places.map(p => resultRow(p, placeSub(p))).join('')}`;
+    if (cats.length) html += `<h2 class="sp-title">Encuentra cerca</h2>${cats.map(([k, c]) => `<button class="result" data-near="${k}">${poiIconHTML(k)}<span>${c.label}<small>Ver los más cercanos</small></span></button>`).join('')}`;
+    if (pois.length) html += `<h2 class="sp-title">Lugares</h2>${pois.map(s => spotRow(s)).join('')}`;
+    if (!loc) html += `<h2 class="sp-title">Direcciones</h2><div id="addrResults"><p class="empty-note">Buscando direcciones…</p></div>`;
     box.innerHTML = html;
     if (!loc) searchAddr(q);
     return;
@@ -670,14 +853,14 @@ function renderSearch() {
   const favs = [...S.favs.map(id => ({ place: placeById(id) })), ...S.spots.map(s => ({ spot: s }))];
   box.innerHTML = `
     <button class="sp-action" data-act="paste">${glyphSVG('link')}<span>Abrir una ubicación compartida<small>Pega un enlace de WhatsApp o Google Maps, o unas coordenadas</small></span></button>
-    <div class="sp-title">Favoritos <small>${favs.length}</small></div>
+    <h2 class="sp-title">Favoritos <small>${favs.length}</small></h2>
     <div class="favs">${favs.map(f => f.place
-      ? `<button class="fav" data-place="${f.place.id}"><i style="background:${POI_CATS[f.place.poiCat].color}">${tplIcon(f.place)}</i>${f.place.name}</button>`
+      ? `<button class="fav" data-place="${f.place.id}"><i class="tpl-${f.place.tpl}" aria-hidden="true">${tplIcon(f.place)}</i>${f.place.name}</button>`
       : (RESULTS.set(f.spot.key, f.spot), `<button class="fav" data-key="${f.spot.key}"><i class="spot">${glyphSVG(f.spot.kind === 'poi' ? POI_CATS[f.spot.cat]?.glyph : 'home')}</i>${f.spot.name}</button>`)).join('')
       || '<p class="empty-note">Marca sitios con el corazón para verlos aquí.</p>'}</div>
-    <div class="sp-title">Encuentra cerca</div>
+    <h2 class="sp-title">Encuentra cerca</h2>
     <div class="near-list">${Object.entries(POI_CATS).filter(([, c]) => c.near).map(([k, c]) => `<button data-near="${k}">${poiIconHTML(k)}<span>${c.label}</span></button>`).join('')}</div>
-    <div class="sp-title">Frecuentes y visitados</div>
+    <h2 class="sp-title">Frecuentes y visitados</h2>
     ${S.visits.length ? S.visits.map(v => resultRow(placeById(v.id), `Visitado ${v.when}${v.n > 1 ? ` · ${v.n} veces` : ''}`)).join('') : '<p class="empty-note">Aún no has visitado ningún sitio.</p>'}`;
 }
 // Lista de "Encuentra cerca": primero los sitios con precios de esa categoría, luego los del mapa
@@ -686,9 +869,9 @@ function renderNear(cat) {
   const places = PLACES.filter(p => p.poiCat === cat);
   const pois = poisNear(map, VSRC, cat).filter(s => !placeForSpot(s)); // sin repetir los que ya están en la app
   $('#searchPanel').innerHTML = `
-    <div class="near-head"><button class="back-mini" data-clear-cat aria-label="Volver">${ICON.back}</button>${poiIconHTML(cat)}<h3>${c.label}</h3><small>${places.length + pois.length}</small></div>
-    ${places.length ? `<div class="sp-title">En PrecioLocal</div>${places.sort((a, b) => distM(USER_POS, a.pos) - distM(USER_POS, b.pos)).map(p => resultRow(p, `${p.cat} · ${fmtDist(distM(USER_POS, p.pos))}`)).join('')}` : ''}
-    <div class="sp-title">Cerca de ti</div>
+    <div class="near-head"><button class="back-mini" data-clear-cat aria-label="Volver">${ICON.back}</button>${poiIconHTML(cat)}<h2 tabindex="-1">${c.label}</h2><small>${places.length + pois.length}</small></div>
+    ${places.length ? `<h3 class="sp-title">En PrecioLocal</h3>${places.sort((a, b) => distM(USER_POS, a.pos) - distM(USER_POS, b.pos)).map(p => resultRow(p, `${p.cat} · ${fmtDist(distM(USER_POS, p.pos))}`)).join('')}` : ''}
+    <h3 class="sp-title">Cerca de ti</h3>
     ${pois.map(s => spotRow(s)).join('') || '<p class="empty-note">No hay ninguno en la zona cargada del mapa. Acerca o mueve el mapa.</p>'}`;
 }
 // Direcciones con Photon (con espera entre teclas para no saturar el servicio)
@@ -722,8 +905,11 @@ async function pasteLocation() {
 function openPlace(id) { openDest(placeDest(placeById(id))); }
 // Abre la ficha de cualquier destino: establecimiento con precios, lugar del mapa, dirección,
 // ubicación compartida o ubicación marcada en el mapa. Desde la ficha se puede ir con el GPS.
+let sheetOpener = null; // control que abrió la ficha (pin, fila de resultados…): recibe el foco al cerrarla
 function openDest(d) {
   if (S.navigating) return;
+  const a = document.activeElement, wasOpen = !$('#placeSheet').hidden;
+  if (!wasOpen) sheetOpener = a && a !== document.body && !$('#placeSheet').contains(a) ? a : null;
   S.dest = d; S.place = d.kind === 'place' ? d.id : null;
   S.travelMode = 'coche'; // el coche es la opción principal; se puede cambiar a pie en la ficha
   closeCatMenu(); if ($('#dock').classList.contains('open')) closeSearch();
@@ -733,21 +919,32 @@ function openDest(d) {
   if (d.kind === 'place') hideDestMarker(); else showDestMarker(d.pos);
   renderPlace();
   $('#placeSheet').hidden = false; $('#placeSheet').scrollTop = 0;
+  // El foco va al título de la ficha (no es modal: el resto de la app sigue disponible). Si hay una
+  // ventana encima (p. ej. el modo negocio se abre justo después), esa ventana se queda con el foco.
+  if (!topModal()) $('#sheetTitle')?.focus({ preventScroll: true });
   // El sitio queda centrado en la parte del mapa que no tapa la ficha (desplazamiento en píxeles,
   // válido con el mapa inclinado o girado)
   if (map) {
     const h = map.getContainer().clientHeight, sheet = Math.min($('#placeSheet').offsetHeight, h * 0.62);
-    map.easeTo({ center: d.pos, offset: [0, -sheet / 2], zoom: Math.max(map.getZoom(), 15.5), duration: 500 });
+    map.easeTo({ center: d.pos, offset: [0, -sheet / 2], zoom: Math.max(map.getZoom(), 15.5), duration: motionMs(500) });
   }
   // se piden ya las rutas en coche y a pie para mostrar los tiempos reales en la ficha
   for (const m of ['coche', 'pie']) getRoute(USER_POS, d.pos, m).then(() => { if (S.dest === d && !$('#placeSheet').hidden) renderPlace(); });
 }
+// Cerrar la ficha con Escape o con la X: el foco vuelve al pin o fila que la abrió (o al buscador)
+function closePlaceKb() {
+  const id = S.place;
+  closePlace();
+  focusBack(sheetOpener, id && pinOf(id), '#searchInput', '#mapTitle');
+  sheetOpener = null;
+}
 function modePickHTML(d) {
-  return `<div class="mode-pick" role="radiogroup" aria-label="Cómo vas">
+  // Fila de acciones bajo la cabecera (como en Mapas de Apple): coche / a pie con sus minutos y el botón "Ir"
+  return `<div class="go-row"><div class="mode-pick" role="radiogroup" aria-label="Cómo vas">
       ${[['coche', 'En coche', ICON.car], ['pie', 'A pie', ICON.walk]].map(([m, l, ic]) =>
-        `<button role="radio" aria-checked="${S.travelMode === m}" class="${S.travelMode === m ? 'on' : ''}" data-mode="${m}">${ic}<span>${l}<small>${etaMin(d, m)} min</small></span></button>`).join('')}
+        `<button role="radio" aria-checked="${S.travelMode === m}" aria-label="${l}, ${etaMin(d, m)} min" class="${S.travelMode === m ? 'on' : ''}" data-mode="${m}">${ic}<span>${etaMin(d, m)} min<small>${l}</small></span></button>`).join('')}
     </div>
-    <button class="btn primary" data-act="go">${ICON.nav} ${S.travelMode === 'coche' ? 'Ir en coche' : 'Ir a pie'}</button>`;
+    <button class="btn primary" data-act="go">${ICON.nav} ${S.travelMode === 'coche' ? 'Ir en coche' : 'Ir a pie'}</button></div>`;
 }
 const isSaved = d => d.kind === 'place' ? S.favs.includes(d.id) : S.spots.some(s => s.key === d.key);
 function favBtnHTML(d) {
@@ -763,13 +960,24 @@ function renderSpot(d) {
     : d.kind === 'poi'
     ? `<div class="note">${ICON.info}<span>Aún no hay precios de este sitio en PrecioLocal. Puedes ir igualmente con el GPS.</span></div>`
     : `<div class="note">${ICON.shield}<span>Las direcciones y ubicaciones a las que vas no se guardan en tu historial ni se usan para pedirte precios.</span></div>`;
-  $('#placeSheet').innerHTML = `<div class="grab"></div>
-    <div class="sheet-head"><div class="spot-head">${poiIconHTML(d.cat)}<div><div class="cat">${kindLabel}</div><h2>${d.name}</h2>
+  const title = d.resolving ? 'Buscando la dirección…' : d.name;
+  const sh = $('#placeSheet');
+  sh.innerHTML = `
+    <div class="sheet-head"><div class="spot-head">${poiIconHTML(d.cat)}<div><div class="cat">${kindLabel}</div><h2>${title}</h2>
     <div class="meta">${fmtDist(distM(USER_POS, d.pos))}${d.sub && d.sub !== c?.one ? ` · ${d.sub}` : ''}</div></div></div>
     <div class="head-btns">${favBtnHTML(d)}<button class="close" data-act="close" aria-label="Cerrar">${ICON.x}</button></div></div>
-    ${planNextHTML(d)}${note}${modePickHTML(d)}${planBtnHTML(d)}`;
+    ${planNextHTML(d)}${modePickHTML(d)}${note}${planBtnHTML(d)}`;
+  sheetA11y(sh);
 }
-function renderPlace() {
+// Iconos decorativos de la ficha ocultos a los lectores de pantalla (el texto de al lado ya lo dice)
+// El título (h2) da nombre a la ficha (aria-labelledby="sheetTitle") y recibe el foco al abrirla
+function sheetA11y(sh) {
+  sh.querySelectorAll('svg').forEach(s => s.setAttribute('aria-hidden', 'true'));
+  const h = sh.querySelector('h2'); if (h) { h.id = 'sheetTitle'; h.tabIndex = -1; }
+}
+// Al volver a pintar la ficha (favorito, avísame, coche/a pie, plan…) el foco sigue en el mismo control
+function renderPlace() { keepFocus($('#placeSheet'), drawPlace, '#sheetTitle'); }
+function drawPlace() {
   const d = S.dest; if (!d) return;
   if (d.kind !== 'place') return renderSpot(d);
   const p = placeById(d.id);
@@ -780,7 +988,7 @@ function renderPlace() {
     price = `<div class="empty-price"><b>Aún no hay precios</b>
       <span>Ve con el GPS de la app y, al rato de llegar, te preguntaremos cuánto pagaste: serás el primero en aportarlo${p.tpl === 'hosteleria' ? '' : ` (${p.items.map(i => i.n.toLowerCase()).join(', ')}…)`}.</span></div>`;
   } else if (p.tpl === 'hosteleria') {
-    price = `<div class="range"><strong>${p.range[0]}–${p.range[1]} €</strong><span>por persona</span>${freshDot(p, p.rangeAt)}${p.rangeReview ? reviewChip : ''}</div>
+    price = `<div class="range"><strong>${fmtRange(p)}</strong><span>por persona</span>${freshDot(p, p.rangeAt)}${p.rangeReview ? reviewChip : ''}</div>
       <p class="hint">${nReports(p) >= MIN_REPORTS ? 'Rango calculado con el 50 % central de lo que gastan los clientes.' : 'Rango provisional: se ajusta con lo que gastan los clientes.'}</p>`;
   } else {
     // Servicios con precio y, si el negocio lo indica, los "a consultar". Agrupados por área si los hay.
@@ -788,13 +996,14 @@ function renderPlace() {
     const row = i => {
       const fromWeb = i.desde && i.p === i.declared; // "desde" solo mientras se muestra el precio publicado
       const small = [i.u === 'h' && p.tpl === 'ocio' ? 'precio total del espacio' : '', i.p === i.declared ? i.nota : ''].filter(Boolean).join(' · ');
-      return `<div class="row"><div>${i.n}${i.review ? reviewChip : ''}${small ? `<small>${small}</small>` : ''}</div>
-        ${i.p == null ? '<b class="ask">Consultar</b>' : `<b>${freshDot(p, i.at)}${fromWeb ? '<em>desde</em> ' : ''}${fmtEur(i.p)}<span>${UNIT[i.u]}</span></b>`}</div>`;
+      return `<li class="row"><div>${i.n}${i.review ? reviewChip : ''}${small ? `<small>${small}</small>` : ''}</div>
+        ${i.p == null ? '<b class="ask">A consultar</b>' : `<b>${freshDot(p, i.at)}${fromWeb ? '<em>desde</em> ' : ''}${fmtEur(i.p)}<span>${UNIT[i.u]}</span></b>`}</li>`;
     };
+    // Grupos como encabezados y conceptos como lista (lectores de pantalla), con el mismo aspecto
     const groups = [...new Set(shown.map(i => i.g))];
     price = groups.length > 1 || groups[0]
-      ? groups.map(g => `<div class="rows-group">${g || 'Otros'}</div><div class="rows">${shown.filter(i => i.g === g).map(row).join('')}</div>`).join('')
-      : `<div class="rows">${shown.map(row).join('')}</div>`;
+      ? groups.map(g => `<h3 class="rows-group">${g || 'Otros'}</h3><ul class="rows">${shown.filter(i => i.g === g).map(row).join('')}</ul>`).join('')
+      : `<ul class="rows">${shown.map(row).join('')}</ul>`;
   }
   const acc = S.account, mine = acc?.type === 'negocio' && acc.business === p.id;
   const owner = mine
@@ -802,30 +1011,32 @@ function renderPlace() {
     : acc?.type === 'negocio' ? '' // una cuenta de negocio solo gestiona su propio negocio
     : `<button class="owner-row" data-act="claim">${ICON.building}<span>¿Es tu negocio? Crea tu cuenta de negocio<small>Declara tus precios iniciales; los clientes los confirmarán con lo que paguen</small></span>${ICON.chev}</button>`;
   let ratings = '';
-  if (TPL[p.tpl].ratings) {
-    ratings = !p.ratings ? `<div class="ratings"><h3>Valoración <small>Sin valoraciones todavía</small></h3></div>` : (() => {
+  if (TPL[p.tpl].ratings && p.ratings) { // sin valoraciones todavía: no se muestra el bloque
+    ratings = (() => {
       const avg = (p.ratings.reduce((a, b) => a + b, 0) / p.ratings.length).toFixed(1).replace('.', ',');
       return `<div class="ratings"><h3>Valoración ${avg} <small>${p.nRatings} ${p.nRatings === 1 ? 'valoración' : 'valoraciones'}</small></h3>
       ${TPL[p.tpl].ratings.map((c, i) => `<div class="rating"><span>${c}</span><div class="bar"><i style="width:${p.ratings[i] / 5 * 100}%"></i></div><b>${p.ratings[i].toFixed(1).replace('.', ',')}</b></div>`).join('')}</div>`;
     })();
   }
   const note = p.tpl === 'servicio'
-    ? `<div class="note">${ICON.shield}<span>Servicio sin reseñas: solo se muestra el precio.${p.sensitive ? ' Las aportaciones en esta categoría son anónimas.' : ''}</span></div>` : '';
+    ? `<div class="note">${ICON.shield}<span>En servicios locales mostramos solo precios, sin reseñas.${p.sensitive ? ' Las aportaciones en esta categoría son anónimas.' : ''}</span></div>` : '';
   const alert = S.alerts.includes(p.id);
   const sh = $('#placeSheet');
-  sh.innerHTML = `<div class="grab"></div>
-    <div class="sheet-head"><div class="spot-head">${placeIconHTML(p)}<div><div class="cat">${TPL[p.tpl].label} · ${p.cat}</div><h2>${p.name}</h2>
+  // Cabecera → fila "Ir" (visible sin desplazar) → descripción, ofertas y precios
+  sh.innerHTML = `
+    <div class="sheet-head"><div class="spot-head">${placeIconHTML(p)}<div><div class="cat">${p.cat}</div><h2>${p.name}</h2>
     <div class="meta">${dist}${p.addr ? ` · ${p.addr}` : ''}</div></div></div>
     <div class="head-btns">${favBtnHTML(d)}<button class="close" data-act="close" aria-label="Cerrar">${ICON.x}</button></div></div>
     ${planNextHTML(d)}
+    ${modePickHTML(d)}
     ${p.about ? `<p class="about">${p.about}</p>` : ''}
     ${offersHTML(p, mine)}
     ${price}${priced(p) ? srcHTML(p) + freshHTML(p) : ''}${mine ? '' : reportLinkHTML(p)}
-    <button class="alert-row" data-act="alert">${ICON.bell}<span>${priced(p) ? 'Avísame si cambia el precio' : 'Avísame cuando tenga precio'}<small>${priced(p) ? 'Te avisamos cuando los clientes reporten un precio distinto' : 'Te avisamos cuando el negocio o un cliente lo aporte'}</small></span><i class="switch" role="switch" aria-checked="${alert}"></i></button>
+    <button class="alert-row" data-act="alert" role="switch" aria-checked="${alert}">${ICON.bell}<span>${priced(p) ? 'Avísame si cambia el precio' : 'Avísame cuando tenga precio'}<small>${priced(p) ? 'Te avisamos cuando los clientes paguen un precio distinto' : 'Te avisamos cuando el negocio o un cliente lo aporte'}</small></span><i class="switch" aria-hidden="true" aria-checked="${alert}"></i></button>
     ${ratings}${note}
-    ${modePickHTML(d)}
     ${planBtnHTML(d)}
     ${owner}`;
+  sheetA11y(sh);
 }
 // Minutos estimados: con la ruta real si ya está calculada; si no, aproximación por distancia
 function etaMin(d, m) {
@@ -853,7 +1064,7 @@ async function startNav() {
   $('#placeSheet').hidden = true; $('#app').classList.remove('place-open');
   $$('.pin').forEach(el => el.classList.remove('selected'));
   $('#mapUI').hidden = true; $('#navUI').hidden = false;
-  $('#navSimulate').hidden = false; $('#navSimulate').disabled = true; $('#navFinish').hidden = true;
+  $('#navSimulate').hidden = false; $('#navSimulate').disabled = true; $('#navFinish').hidden = true; $('#navExit').hidden = false;
   $('#app').classList.add('navigating');
   if (nav.id) pinOf(nav.id)?.classList.add('dest');
   applyMarkerVisibility();
@@ -862,6 +1073,7 @@ async function startNav() {
   $('#navTo').textContent = `${planNavText(d)}Hacia ${d.name}`;
   updatePlanChip();
   updateMe();
+  if (focusLost()) $('#navExit').focus({ preventScroll: true }); // la ficha se ha ocultado: el foco pasa a la navegación
 
   const r = await getRoute(USER_POS, d.pos, mode);
   if (S.navigating !== nav) return; // se canceló mientras se calculaba
@@ -873,15 +1085,32 @@ async function startNav() {
   $('#navEta').textContent = `${Math.max(1, Math.round(r.duration / 60))} min ${mode === 'coche' ? 'en coche' : 'a pie'} · ${fmtDist(r.total)}`;
   $('#navSimulate').disabled = false;
   if (!r.real) toast('Sin conexión con el servidor de rutas: ruta aproximada');
-  map?.easeTo({ center: USER_POS, zoom: 17, pitch: 62, bearing: nav.heading, duration: 900 });
+  map?.easeTo({ center: USER_POS, zoom: 17, pitch: 62, bearing: nav.heading, duration: motionMs(900) });
 }
 function updateNavBanner(nav, dist) {
   const s = nav.route.steps.find(x => x.at > dist + 2 && x.type !== 'depart');
   if (s) setNavBanner(fmtDist(Math.max(0, s.at - dist)), stepText(s), stepIcon(s));
 }
+// Indicaciones por voz: se lee cada instrucción NUEVA (no a cada fotograma) y la llegada.
+// Elección de diseño: "Sonidos de la app" desactivado (o la burbuja del altavoz) silencia TODA la app,
+// también la voz; "Indicaciones por voz" solo controla la voz.
+function speak(text) {
+  if (!('speechSynthesis' in window) || !S.settings.voice || !S.settings.sound) return;
+  try {
+    speechSynthesis.cancel(); // una indicación nueva sustituye a la anterior
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'es-ES';
+    speechSynthesis.speak(u);
+  } catch { /* sin síntesis de voz */ }
+}
+function stopSpeech() { if ('speechSynthesis' in window) try { speechSynthesis.cancel(); } catch { /* nada */ } }
 function setNavBanner(dist, instr, icon) {
   $('#navDist').textContent = dist;
   $('#navInstr').textContent = instr;
+  // Al llegar, simulateArrival pinta ('Has llegado', nombre del destino); el resto son pasos de la ruta
+  const nav = S.navigating, said = dist === 'Has llegado' ? `Has llegado a ${instr}` : instr;
+  if (nav && instr === 'Calculando la ruta') nav.lastSaid = null;
+  else if (nav && nav.lastSaid !== said) { nav.lastSaid = said; speak(said); }
   const show = { navIconTurn: icon === 'left' || icon === 'right', navIconStraight: icon === 'straight', navIconRound: icon === 'round', navIconArrive: icon === 'arrive' };
   for (const [id, on] of Object.entries(show)) $(`#${id}`).style.display = on ? '' : 'none';
   $('#navIconTurn').style.transform = icon === 'left' ? 'scaleX(-1)' : '';
@@ -890,6 +1119,7 @@ function stopNav() {
   if (!S.navigating) return;
   const was = S.navigating;
   clearTimeout(S.navigating.endT);
+  stopSpeech();
   if (S.navigating.id) pinOf(S.navigating.id)?.classList.remove('dest');
   S.navigating = null;
   S.dest = null; hideDestMarker();
@@ -899,7 +1129,8 @@ function stopNav() {
   userMarker.setLngLat(USER_POS);
   $('#navUI').hidden = true; $('#mapUI').hidden = false;
   $('#app').classList.remove('navigating');
-  map?.easeTo({ ...HOME, duration: 900 });
+  if (focusLost()) focusBack($('#searchInput'), '#mapTitle'); // al salir de la ruta el foco no se queda en un botón oculto
+  map?.easeTo({ ...HOME, duration: motionMs(900) });
   updatePlanChip();
   planAfterNav(was); // plan de tarde: abre la siguiente parada
 }
@@ -927,14 +1158,20 @@ function simulateArrival(fast) {
       sfx('arrive');
       // Solo se pregunta el precio en establecimientos con precios. Las direcciones (casa de un amigo,
       // ubicaciones compartidas…) no se guardan en el historial ni generan preguntas.
+      // ¿Se va a programar la pregunta del precio? (mismas condiciones que scheduleAsk)
+      const willAsk = !!nav.id && !isBizAccount() && !askScheduled.has(nav.id) && !S.pending.some(x => x.id === nav.id);
       if (nav.id) { addVisit(nav.id); scheduleAsk(nav.id); }
       else toast(`Has llegado a ${nav.dest.name}`);
-      // La ruta sigue en pantalla hasta pulsar "He finalizado" o hasta que pase ARRIVE_END_MS
+      // La ruta sigue en pantalla hasta pulsar "Terminar ruta" o hasta que pase ARRIVE_END_MS.
+      // Una sola acción de cierre: "Salir" se oculta al llegar.
       nav.arrived = true;
-      $('#navSimulate').hidden = true; $('#navFinish').hidden = false;
+      $('#navSimulate').hidden = true; $('#navFinish').hidden = false; $('#navExit').hidden = true;
       const endMs = window.__arriveEndMs ?? ARRIVE_END_MS;
       $('#navEta').textContent = 'Has llegado';
-      $('#navTo').textContent = `La ruta se cierra sola en ${fmtDelay(endMs)}`;
+      $('#navTo').textContent = willAsk ? `Te preguntaremos el precio dentro de ${fmtDelay(askDelay())}`
+        : nav.id && !isBizAccount() ? 'Ya tienes pendiente el precio de este sitio'
+        : `Ruta terminada · se cierra sola en ${fmtDelay(endMs)}`;
+      $('#navFinish').focus();
       nav.endT = setTimeout(() => { if (S.navigating === nav) stopNav(); }, endMs);
     }
   };
@@ -943,13 +1180,24 @@ function simulateArrival(fast) {
 
 // La pregunta "¿has ido?" no sale al llegar: se lanza pasado ASK_DELAY_MS (1 min por ahora),
 // para dar tiempo a entrar en el sitio. Si en ese momento ya hay otra pregunta abierta, queda pendiente.
+const askScheduled = new Set(); // sitios con una pregunta ya programada (no se duplica)
+const ARRIVAL_STEPS = ['visited', 'choose', 'other', 'confirm', 'input', 'range', 'rate'];
+const isBizAccount = () => S.account?.type === 'negocio';
 function scheduleAsk(id) {
   // Las cuentas de negocio no aportan precios como clientes (evita que un negocio puntúe a la competencia)
-  if (S.account?.type === 'negocio') return toast('Has llegado');
-  const ms = askDelay();
+  if (isBizAccount()) return toast('Has llegado');
+  // Una sola pregunta por sitio: si ya hay una programada, abierta o pendiente, no se programa otra
+  if (askScheduled.has(id) || S.pending.some(x => x.id === id) || (S.flow?.id === id && ARRIVAL_STEPS.includes(S.flow.step)))
+    return toast('Has llegado · ya tienes pendiente el precio de este sitio');
+  const ms = askDelay(), who = S.account?.email ?? null;
+  askScheduled.add(id);
   toast(`Has llegado · te preguntaremos por el precio en ${fmtDelay(ms)}`);
   setTimeout(() => {
-    if (S.flow || S.navigating) { // nunca interrumpir otra pregunta ni una ruta en curso (seguridad al conducir)
+    askScheduled.delete(id);
+    if (isBizAccount()) return; // la sesión pudo cambiar a una cuenta de negocio mientras tanto
+    if (who && S.account?.email !== who) return; // la visita era de una sesión que ya se cerró
+    // nunca interrumpir otra pregunta, una ruta en curso (seguridad al conducir) ni la pantalla de cuenta
+    if (S.flow || S.navigating || !$('#screen-cuenta').hidden) {
       if (!S.pending.some(x => x.id === id)) S.pending.unshift({ id, when: 'hoy' });
       return updatePriceFab();
     }
@@ -971,7 +1219,8 @@ function updatePriceFab() {
   $('#priceDot').hidden = n === 0 || !S.settings.notifPending;
 }
 function openPending() {
-  if (!S.pending.length) return toast('No tienes visitas pendientes de responder');
+  if (isBizAccount()) return toast('Las cuentas de negocio no aportan precios de clientes');
+  if (!S.pending.length) return toast('Aquí guardaremos los precios que dejes para «Más tarde»');
   if (S.pending.length === 1) return startFlow(S.pending[0].id, true);
   S.flow = { step: 'pick' }; renderFlow();
 }
@@ -979,15 +1228,42 @@ function removePending(id) { S.pending = S.pending.filter(x => x.id !== id); upd
 
 // ---------- Preguntas al llegar ----------
 function startFlow(id, fromPending = false) {
-  S.flow = { id, fromPending, step: 'visited', item: null, value: null, rating: [0, 0, 0], earned: { c: 0, xp: 0 }, changed: false };
+  if (isBizAccount()) return toast('Las cuentas de negocio no aportan precios de clientes');
+  // hist: pasos anteriores (para "‹ Atrás"); commit: aporte preparado que solo se registra al terminar
+  S.flow = { id, fromPending, step: 'visited', item: null, value: null, rating: [0, 0, 0], earned: { c: 0, xp: 0 }, changed: false, hist: [], commit: null };
   renderFlow();
 }
-function endFlow() { S.flow = null; $('#flowOverlay').hidden = true; updateHUD(); }
+// "Más tarde": la visita queda en pendientes y no se registra nada
+function flowLater() {
+  const id = S.flow.id;
+  if (!S.pending.some(x => x.id === id)) S.pending.unshift({ id, when: 'hoy' });
+  updatePriceFab(); toast('Guardado en pendientes: lo tienes en el botón €');
+  endFlow();
+}
+// Escape: en las preguntas al llegar equivale a "Más tarde"; en el resto de ventanas, cerrar
+function flowEscape() {
+  if (!S.flow) return;
+  if (ARRIVAL_STEPS.includes(S.flow.step) && S.flow.id && !EXTRA_STEPS[S.flow.step]) flowLater(); else endFlow();
+}
+function endFlow() {
+  S.flow = null; $('#flowOverlay').hidden = true; syncModal(); updateHUD();
+  // El foco vuelve al control que abrió la ventana. Se espera a que termine lo que venga detrás
+  // (p. ej. volver a pintar la ficha o abrir el perfil): solo se mueve si el foco se ha quedado perdido.
+  const op = flowOpener; flowOpener = null;
+  setTimeout(() => {
+    if (S.flow || !focusLost()) return;
+    const sh = $('#placeSheet');
+    focusBack(op?.el, op?.sig && op.inSheet && findCtl(sh, [op.sig]), op?.inSheet && '#sheetTitle', '#priceFab', '#searchInput', '#navExit', '#mapTitle');
+  }, 0);
+}
 
+const MAX_TYPED = 9999; // lo escrito a mano manda sobre el máximo de la regla
+const fmtNum = v => String(v).replace('.', ',');
+const roundHalf = v => Math.round(v * 2) / 2; // precios en pasos de 0,5 €
 function rulerHTML(value, max) {
   const STEP = 12, nums = [];
   for (let v = 0; v <= max; v += 5) nums.push(`<span class="ruler-num" style="left:${v * STEP}px">${v}</span>`);
-  return `<div class="pv"><input id="priceInput" type="number" inputmode="numeric" min="0" max="${max}" value="${value}" aria-label="Precio en euros"><span>€</span></div>
+  return `<div class="pv"><input id="priceInput" type="text" inputmode="decimal" autocomplete="off" value="${fmtNum(value)}" aria-label="Precio en euros"><span>€</span></div>
     <div class="pv-hint">Toca el número para escribirlo o desliza la regla</div>
     <div class="ruler-wrap"><div class="ruler" id="ruler" aria-hidden="true"><div class="ruler-track" id="rulerTrack">
       <div class="ruler-inner" style="position:absolute;top:0;bottom:0;width:${max * STEP + 2}px">${nums.join('')}<div class="ruler-ticks" style="left:0;width:${max * STEP + 2}px"></div></div>
@@ -997,31 +1273,69 @@ function setupRuler(max) {
   const STEP = 12, f = S.flow, r = $('#ruler'), track = $('#rulerTrack'), inner = track.firstElementChild, input = $('#priceInput');
   const pad = r.clientWidth / 2;
   track.style.width = `${max * STEP + pad * 2}px`; inner.style.left = `${pad}px`;
-  const setVal = (v, moveRuler) => {
-    f.value = Math.max(0, Math.min(max, Math.round(v)));
-    if (document.activeElement !== input) input.value = f.value;
-    $$('.sugs button').forEach(b => b.classList.toggle('on', +b.dataset.sug === f.value));
-    if (moveRuler) r.scrollLeft = f.value * STEP;
+  // expect: posición que ha puesto la app (no el usuario); su evento scroll no debe recortar lo escrito
+  let expect = null;
+  const fit = () => { input.style.width = `${Math.max(2, input.value.length) + 0.4}ch`; };
+  const show = () => { input.value = fmtNum(f.value); fit(); };
+  const moveTo = v => { r.scrollLeft = Math.min(v, max) * STEP; expect = r.scrollLeft; };
+  const setVal = (v, moveRuler, typed = false) => {
+    f.value = Math.max(0, Math.min(typed ? MAX_TYPED : max, roundHalf(v)));
+    if (document.activeElement !== input) show();
+    $$('.sugs button').forEach(b => { b.classList.toggle('on', +b.dataset.sug === f.value); b.setAttribute('aria-pressed', +b.dataset.sug === f.value); });
+    if (moveRuler) moveTo(f.value);
   };
-  r.scrollLeft = f.value * STEP;
-  r.addEventListener('scroll', () => setVal(r.scrollLeft / STEP, false));
-  input.addEventListener('input', () => { if (input.value !== '') setVal(+input.value, true); });
-  input.addEventListener('blur', () => { input.value = f.value; });
+  moveTo(f.value);
+  r.addEventListener('scroll', () => {
+    if (expect != null && Math.abs(r.scrollLeft - expect) < 1) return;
+    expect = null; setVal(r.scrollLeft / STEP, false);
+  });
+  input.addEventListener('input', () => {
+    fit(); const v = parseFloat(input.value.replace(',', '.'));
+    if (isFinite(v)) setVal(v, true, true);
+  });
+  input.addEventListener('blur', show);
   r.addEventListener('wheel', e => { e.preventDefault(); r.scrollLeft += (e.deltaY || e.deltaX); }, { passive: false });
   // Arrastre con ratón (en el móvil el dedo desplaza la regla de forma nativa)
   let drag = null;
   r.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; drag = { x: e.clientX, s: r.scrollLeft }; r.classList.add('drag'); r.setPointerCapture(e.pointerId); });
   r.addEventListener('pointermove', e => { if (drag) r.scrollLeft = drag.s - (e.clientX - drag.x); });
-  const end = () => { if (!drag) return; drag = null; r.classList.remove('drag'); r.scrollTo({ left: f.value * STEP, behavior: 'smooth' }); };
+  const end = () => { if (!drag) return; drag = null; r.classList.remove('drag'); r.scrollTo({ left: f.value * STEP, behavior: reducedMotion() ? 'auto' : 'smooth' }); };
   r.addEventListener('pointerup', end); r.addEventListener('pointercancel', end);
-  $$('.sugs button').forEach(b => b.addEventListener('click', () => setVal(+b.dataset.sug, true)));
-  setVal(f.value, false);
+  $$('.sugs button').forEach(b => b.addEventListener('click', () => setVal(+b.dataset.sug, true, true)));
+  setVal(f.value, false, true);
 }
 
-// Tramos de gasto en hostelería: [etiqueta, desde, hasta]
-const BUCKETS = [['Menos de 10 €', 0, 10], ['10–20 €', 10, 20], ['20–30 €', 20, 30], ['30–50 €', 30, 50], ['Más de 50 €', 50, 80]];
+// Tramos de gasto en hostelería: [etiqueta, desde, hasta]; el último no tiene tope (hasta = null)
+const BUCKETS = [['Menos de 10 €', 0, 10], ['10–20 €', 10, 20], ['20–30 €', 20, 30], ['30–50 €', 30, 50], ['Más de 50 €', 50, null]];
+// Concepto en curso del flujo: uno de la lista o el nuevo de "Otra cosa" (aún no añadido a p.items)
+const flowItem = (p, f) => f.item === 'new' ? f.newItem : p.items[f.item];
 
+// Tarjeta de flujo (ventana modal). Tras pintar cada paso:
+//  - el h2 del paso da nombre al diálogo (aria-labelledby="flowTitle");
+//  - al abrir o al cambiar de paso, el foco va a ese h2 ("Otra cosa": al campo de texto);
+//  - si se vuelve a pintar el mismo paso (estrellas, personas del plan…), el foco sigue en el mismo control.
+let flowOpener = null, flowKey = '', flowFocusNext = null;
+const focusFlowNext = (...sels) => { flowFocusNext = sels; }; // control preferido tras el próximo repintado
 function renderFlow() {
+  const ov = $('#flowOverlay'), card = $('#flowCard'), opening = ov.hidden, a = document.activeElement;
+  if (opening) {
+    const inSheet = $('#placeSheet').contains(a);
+    flowOpener = a && a !== document.body && !ov.contains(a) ? { el: a, sig: ctlSig(a), inSheet } : null;
+  }
+  const sig = !opening && card.contains(a) ? ctlSig(a) : null, want = flowFocusNext; flowFocusNext = null;
+  drawFlow();
+  if (!S.flow) return;
+  const h = card.querySelector('h2');
+  if (h) { h.id = 'flowTitle'; h.tabIndex = -1; }
+  card.querySelectorAll('svg').forEach(x => x.setAttribute('aria-hidden', 'true'));
+  syncModal();
+  const key = `${S.flow.step}|${h?.textContent || ''}`, same = !opening && key === flowKey;
+  flowKey = key;
+  let t = same ? findCtl(card, [...(want || []), sig]) : null;
+  if (!t && !same && S.flow.step === 'other') t = $('#otherName');
+  (t || h || card).focus({ preventScroll: !t });
+}
+function drawFlow() {
   const f = S.flow, card = $('#flowCard');
   $('#flowOverlay').hidden = false;
   if (f.step === 'pick') {
@@ -1037,59 +1351,64 @@ function renderFlow() {
   const steps = p.tpl === 'hosteleria' ? ['visited', 'range', 'rate', 'reward']
     : ['visited', 'choose', 'confirm', ...(hasRating ? ['rate'] : []), 'reward'];
   const n = steps.indexOf(f.step === 'input' || f.step === 'other' ? 'confirm' : f.step) + 1;
-  const stepTag = f.step === 'reward' ? '' : `<div class="flow-step">Paso ${n} de ${steps.length - 1}</div>`;
+  // Salida en cada paso: "‹ Atrás" (paso anterior) y "Más tarde" (queda en pendientes, no se registra nada)
+  const nav = f.step === 'visited' ? '' : `<div class="flow-nav"><button type="button" data-flow="back">‹ Atrás</button><button type="button" data-flow="later">Más tarde</button></div>`;
+  const stepTag = f.step === 'reward' ? '' : `${nav}<div class="flow-step">Paso ${n} de ${steps.length - 1}</div>`;
   const privacy = p.sensitive ? `<div class="privacy-pill">${ICON.shield} Aportación anónima</div>` : '';
   let html = '';
 
   if (f.step === 'visited') {
     const pend = S.pending.find(x => x.id === p.id);
     html = f.fromPending
-      ? `${stepTag}<h2>¿Fuiste a ${p.name}?</h2><p>Lo dejaste pendiente ${pend ? pend.when : ''}. Cuéntanos el precio y gana monedas.</p>`
+      ? `${stepTag}<h2>¿Has ido a ${p.name}?</h2><p>Lo dejaste pendiente ${pend ? pend.when : ''}. Cuéntanos el precio y gana monedas.</p>`
       : `${stepTag}<h2>¿Has ido a ${p.name}?</h2><p>${priced(p) ? 'Tu respuesta ayuda a mantener los precios al día.' : 'Aún nadie ha aportado su precio: puedes ser el primero (+' + REWARD.first.c + ' monedas).'}</p>`;
     html += `<div class="flow-actions"><button class="btn primary" data-flow="yes">Sí, he ido</button>
       <button class="btn secondary" data-flow="later">Más tarde</button><button class="btn ghost" data-flow="no">No he ido</button></div>`;
   } else if (f.step === 'choose') {
     // Conceptos con precio (para confirmarlo) y conceptos aún sin precio (para aportarlo el primero)
-    html = `${stepTag}<h2>¿Qué usaste?</h2><p>Elige el servicio o la actividad.</p>
-      <div class="options">${p.items.map((it, i) => `<button class="option" data-item="${i}"><span>${it.n}</span><small>${it.p != null ? fmtEur(it.p) + UNIT[it.u] : 'sin precio aún'}</small></button>`).join('')}
+    const priceTxt = it => it.p != null ? `${it.desde && it.p === it.declared ? 'desde ' : ''}${fmtEur(it.p)}${UNIT[it.u]}` : it.ask ? 'A consultar' : 'sin precio aún';
+    html = `${stepTag}<h2>¿Qué servicio pagaste en ${p.name}?</h2><p>Elige el servicio o la actividad.</p>
+      <div class="options">${p.items.map((it, i) => `<button class="option" data-item="${i}"><span>${it.n}</span><small>${priceTxt(it)}</small></button>`).join('')}
       <button class="option" data-flow="other"><span>Otra cosa</span><small>escríbela</small></button></div>`;
   } else if (f.step === 'other') {
-    html = `${stepTag}<h2>¿Qué fue?</h2><p>Escribe el servicio o la actividad que pagaste.</p>
-      <input class="text-in" id="otherName" maxlength="40" placeholder="Por ejemplo: alisado, clase de surf…" autocomplete="off">
-      <div class="unit-pick">${['servicio', 'persona', 'h', 'sesión'].map(u => `<button data-unit="${u}" class="${f.unit === u ? 'on' : ''}">${{ servicio: 'Precio único', persona: 'Por persona', h: 'Por hora', 'sesión': 'Por sesión' }[u]}</button>`).join('')}</div>
+    html = `${stepTag}<h2>¿Qué pagaste en ${p.name}?</h2><p>Escribe el servicio o la actividad que pagaste.</p>
+      <input class="text-in" id="otherName" maxlength="40" placeholder="Por ejemplo: alisado, clase de surf…" autocomplete="off" aria-label="Qué pagaste (servicio o actividad)" value="${(f.otherName || '').replace(/"/g, '&quot;')}">
+      <div class="unit-pick" role="group" aria-label="Cómo se cobra">${['servicio', 'persona', 'h', 'sesión'].map(u => `<button data-unit="${u}" class="${f.unit === u ? 'on' : ''}" aria-pressed="${f.unit === u}">${{ servicio: 'Precio único', persona: 'Por persona', h: 'Por hora', 'sesión': 'Por sesión' }[u]}</button>`).join('')}</div>
       <div class="flow-actions"><button class="btn primary" data-flow="otherOk">Continuar</button></div>`;
   } else if (f.step === 'confirm') {
-    const it = p.items[f.item];
-    html = `${stepTag}${privacy}<h2>¿Te costó esto?</h2><p>${it.n}${it.u === 'h' && p.tpl === 'ocio' ? ' (precio total del espacio)' : ''}</p>
+    const it = flowItem(p, f);
+    html = `${stepTag}${privacy}<h2>¿Te costó esto en ${p.name}?</h2><p>${it.n}${it.u === 'h' && p.tpl === 'ocio' ? ' (precio total del espacio)' : ''}</p>
       <div class="big-price">${fmtEur(it.p)} <span>${unitText[it.u]}</span></div>
       ${it.review ? `<div class="note">${ICON.pending}<span>Varios usuarios avisan de que este precio podría haber cambiado: tu respuesta lo aclara.</span></div>` : REWARD_STALE[freshState(p, it.at)] ? `<div class="note">${ICON.clock}<span>Precio confirmado ${ageText(it.at)}: +${REWARD_STALE[freshState(p, it.at)].c} monedas extra por confirmarlo.</span></div>` : ''}
-      <div class="flow-actions two"><button class="btn secondary" data-flow="diff">No, fue otro</button><button class="btn primary" data-flow="same">${ICON.check} Sí</button></div>`;
+      <div class="flow-actions two"><button class="btn secondary" data-flow="diff">No, pagué otro precio</button><button class="btn primary" data-flow="same">${ICON.check} Sí, pagué eso</button></div>`;
   } else if (f.step === 'input') {
-    const it = p.items[f.item];
+    const it = flowItem(p, f);
     const base = it.p ?? GUESS[it.u] ?? 15;
     const max = Math.max(100, Math.ceil(base * 3 / 10) * 10);
     const others = [...new Set(it.reports.concat(it.declared != null ? [it.declared] : []))].sort((a, b) => a - b).slice(0, 4);
-    html = `${stepTag}${privacy}<h2>${it.p == null ? '¿Cuánto pagaste? Serás el primero' : '¿Cuánto te costó?'}</h2><p>${it.n} · ${unitText[it.u] || 'precio'}</p>
+    html = `${stepTag}${privacy}<h2>${it.p == null ? `¿Cuánto pagaste en ${p.name}? Serás el primero` : `¿Cuánto te costó en ${p.name}?`}</h2><p>${it.n} · ${unitText[it.u] || 'precio del servicio'}</p>
       ${rulerHTML(f.value, max)}
-      ${others.length ? `<div class="sugs-label">Precios aportados hasta ahora</div><div class="sugs">${others.map(v => `<button data-sug="${v}">${fmtEur(v)}</button>`).join('')}</div>` : ''}
+      ${others.length ? `<div class="sugs-label">Precios aportados hasta ahora</div><div class="sugs" role="group" aria-label="Precios aportados hasta ahora">${others.map(v => `<button data-sug="${v}" aria-pressed="false">${fmtEur(v)}</button>`).join('')}</div>` : ''}
       <div class="flow-actions"><button class="btn primary" data-flow="sendPrice">Enviar precio</button></div>`;
     card.innerHTML = html;
     return setupRuler(max);
   } else if (f.step === 'range') {
-    html = `${stepTag}<h2>¿Cuánto gastaste por persona?</h2><p>Aproximado, con bebida incluida.${p.range ? '' : ' Aún nadie lo ha aportado: serás el primero.'}</p>
+    html = `${stepTag}<h2>¿Cuánto gastaste por persona en ${p.name}?</h2><p>Aproximado, con bebida incluida.${p.range ? '' : ' Aún nadie lo ha aportado: serás el primero.'}</p>
       ${p.rangeReview ? `<div class="note">${ICON.pending}<span>Varios usuarios avisan de que este rango podría haber cambiado: tu respuesta lo aclara.</span></div>` : ''}
       <div class="options">${BUCKETS.map(([l], i) => `<button class="option" data-bucket="${i}"><span>${l}</span></button>`).join('')}</div>`;
   } else if (f.step === 'rate') {
     const crit = TPL[p.tpl].ratings;
-    html = `${stepTag}<h2>¿Qué tal fue?</h2><p>Opcional · +${REWARD.rating.c} monedas</p>
-      ${crit.map((c, ci) => `<div class="stars-row"><span>${c}</span><div class="stars">${[1, 2, 3, 4, 5].map(s =>
-        `<button class="star ${f.rating[ci] >= s ? 'on' : ''}" data-crit="${ci}" data-star="${s}" aria-label="${c}: ${s} de 5">${ICON.star}</button>`).join('')}</div></div>`).join('')}
+    html = `${stepTag}<h2>¿Qué tal fue en ${p.name}?</h2><p>Opcional · +${REWARD.rating.c} monedas</p>
+      ${crit.map((c, ci) => `<div class="stars-row"><span id="crit${ci}">${c}</span><div class="stars" role="radiogroup" aria-labelledby="crit${ci}">${[1, 2, 3, 4, 5].map(s =>
+        // Grupo de opciones por criterio: una sola estrella tabulable (la elegida o la primera); flechas para cambiar
+        `<button class="star ${f.rating[ci] >= s ? 'on' : ''}" role="radio" aria-checked="${f.rating[ci] === s}" tabindex="${(f.rating[ci] || 1) === s ? 0 : -1}" data-crit="${ci}" data-star="${s}" aria-label="${s} de 5">${ICON.star}</button>`).join('')}</div></div>`).join('')}
       <div class="flow-actions two"><button class="btn ghost" data-flow="skip">Saltar</button><button class="btn primary" data-flow="sendRate" ${f.rating.some(r => r === 0) ? 'disabled' : ''}>Enviar</button></div>`;
   } else if (f.step === 'reward') {
     const before = S.xp - f.earned.xp, lvBefore = level(before), lv = level(S.xp);
     const pctXp = (S.xp % XP_PER_LEVEL) / XP_PER_LEVEL * 100;
-    const msg = f.first ? '¡Eres el primero en aportar este precio! Ya aparece en el mapa; se irá ajustando con lo que paguen otros clientes.'
-      : f.changed ? `Hemos registrado tu precio. El precio mostrado cambia cuando ${MIN_REPORTS} o más clientes lo aportan.`
+    const msg = f.first ? '¡Eres el primero en aportar este precio! Ya aparece en su ficha y en el mapa (actívalo en «Ver precios»); se irá ajustando con lo que paguen otros clientes.'
+      : f.changed && f.declaredStays ? `Hemos registrado tu precio. Por ahora se muestra el que declaró el negocio; cambiará cuando ${MIN_REPORTS} clientes aporten lo que pagaron.`
+      : f.changed ? 'Hemos registrado tu precio. El precio mostrado se calcula con lo que pagan los clientes y se ajusta con cada aporte.'
       : 'Has confirmado el precio. ¡Gracias por mantenerlo al día!';
     html = `<div class="reward-burst"><div class="reward-coin">+${f.earned.c}</div><h2>${f.first ? '¡Pionero!' : '¡Gracias!'}</h2></div>
       <p style="text-align:center">${msg}</p>
@@ -1100,7 +1419,6 @@ function renderFlow() {
       <div class="flow-actions"><button class="btn primary" data-flow="done">Volver al mapa</button><button class="btn secondary" data-flow="shop">Ir a la tienda</button></div>`;
   }
   card.innerHTML = html;
-  if (f.step === 'other') setTimeout(() => $('#otherName')?.focus(), 50);
   if (f.step === 'reward') sfx('coin');
 }
 
@@ -1109,33 +1427,52 @@ function renderFlow() {
 // a partir de ahí manda lo que pagan los clientes (mediana / rango central).
 function openOwner(id) { S.flow = { id, step: 'owner' }; renderFlow(); }
 function renderOwner(p, card) {
-  const field = (name, val, ph = '€') => `<input class="num-in" type="number" inputmode="decimal" min="0" step="0.5" name="${name}" value="${val ?? ''}" placeholder="${ph}">`;
+  // Cada campo lleva nombre accesible: el del servicio (aria-labelledby) o una etiqueta propia (aria-label)
+  const field = (name, val, ph = '€', lab = '') => `<input class="num-in" type="number" inputmode="decimal" min="0" step="0.5" name="${name}" id="own-${name}" value="${val ?? ''}" placeholder="${ph}" ${lab}>`;
   const body = p.tpl === 'hosteleria'
-    ? `<div class="owner-field"><span>Gasto medio por persona</span><div class="range-in">${field('lo', p.declaredRange?.[0], 'desde')}<b>–</b>${field('hi', p.declaredRange?.[1], 'hasta')}<b>€</b></div></div>`
-    : p.items.map((it, i) => `<div class="owner-field"><span>${it.n}<small>${unitText[it.u] || 'precio único'}${it.review ? ' · <b class="rev-t">en revisión</b>' : ''}</small></span>${field('i' + i, it.declared)}</div>`).join('')
-      + `<div class="owner-field"><input class="text-in" name="newName" placeholder="Añadir otro servicio…" maxlength="40">${field('newPrice', '')}</div>`;
+    ? `<div class="owner-field"><span id="own-range-l">Gasto medio por persona</span><div class="range-in">${field('lo', p.declaredRange?.[0], 'desde', 'aria-label="Gasto medio por persona: desde (€)"')}<b aria-hidden="true">–</b>${field('hi', p.declaredRange?.[1], 'hasta', 'aria-label="Gasto medio por persona: hasta (€)"')}<b aria-hidden="true">€</b></div></div>`
+    : p.items.map((it, i) => `<div class="owner-field"><span id="own-l${i}">${it.n}<small>${unitText[it.u] || 'precio único'}${it.desde ? ' · se muestra «desde»' : ''}${it.nota ? ` · ${it.nota}` : ''}${it.review ? ' · <b class="rev-t">en revisión</b>' : ''}</small></span>${field('i' + i, it.declared, it.ask ? 'A consultar' : '€', `aria-labelledby="own-l${i}"`)}</div>`).join('')
+      + (p.items.some(it => it.ask) ? `<p class="hint">Si lo dejas vacío, se mostrará «A consultar».</p>` : '')
+      + `<div class="owner-field"><input class="text-in" name="newName" id="own-newName" placeholder="Añadir otro servicio…" maxlength="40" aria-label="Añadir otro servicio: nombre">${field('newPrice', '', '€', 'aria-label="Añadir otro servicio: precio (€)"')}</div>`;
   card.innerHTML = `<div class="flow-step">Modo negocio</div><h2>Precios de ${p.name}</h2>
-    <p>Declara tu precio inicial. Se mostrará como <b>declarado por el negocio</b>; cuando ${MIN_REPORTS} clientes aporten lo que pagaron, mandará su precio real.</p>
+    <p>Declara tus precios. Se mostrarán como «declarados por el negocio»; cuando ${MIN_REPORTS} clientes aporten lo que pagaron, se mostrará lo que pagan ellos.</p>
     <form id="ownerForm">${body}</form>
     ${p.web ? `<div class="note">${ICON.info}<span>Hemos rellenado los precios publicados en tu web (${p.web.fecha}). Revísalos: al publicar, pasarán a mostrarse como declarados por el negocio.</span></div>` : ''}
     <div class="flow-actions two"><button class="btn ghost" data-flow="close">Cancelar</button><button class="btn primary" data-flow="ownerSave">Publicar precios</button></div>`;
 }
 function saveOwner(p) {
-  const fd = new FormData($('#ownerForm')), num = k => { const v = parseFloat(String(fd.get(k) ?? '').replace(',', '.')); return isFinite(v) && v >= 0 ? v : null; };
+  // Primero se valida todo; solo si no hay errores se modifica el lugar (si no, queda intacto)
+  const fd = new FormData($('#ownerForm')), form = $('#ownerForm');
+  const raw = k => String(fd.get(k) ?? '').trim().replace(',', '.');
+  // Campo vacío → null; número inválido o negativo → NaN (error)
+  const num = k => { const s = raw(k); if (s === '' && !form.elements[k]?.validity?.badInput) return null; const v = Number(s); return s !== '' && isFinite(v) && v >= 0 ? v : NaN; };
+  // El error se muestra bajo el campo (con aria-invalid y aria-describedby) y el foco va a ese campo
+  const fail = (k, msg) => (fieldErrors($('#flowCard'), [[form.elements[k], msg]]), false);
+  const badMsg = label => `${label}: escribe un precio válido (0 € o más)`;
   if (p.tpl === 'hosteleria') {
     const lo = num('lo'), hi = num('hi');
-    if (lo == null || hi == null || hi < lo) return toast('Indica el gasto mínimo y máximo por persona'), false;
+    if (Number.isNaN(lo)) return fail('lo', badMsg('Gasto mínimo'));
+    if (Number.isNaN(hi)) return fail('hi', badMsg('Gasto máximo'));
+    if (lo == null || hi == null) return fail(lo == null ? 'lo' : 'hi', 'Indica el gasto mínimo y máximo por persona');
+    if (hi < lo) return fail('hi', 'El gasto máximo debe ser igual o mayor que el mínimo');
     p.declaredRange = [lo, hi]; p.rangeAt = Date.now();
   } else {
+    const vals = p.items.map((_, i) => num('i' + i));
+    const badAt = vals.findIndex(v => Number.isNaN(v));
+    if (badAt >= 0) return fail('i' + badAt, badMsg(`«${p.items[badAt].n}»`));
+    const nn = String(fd.get('newName') || '').trim(), np = num('newPrice');
+    if (Number.isNaN(np)) return fail('newPrice', badMsg(nn ? `«${nn}»` : 'Nuevo servicio'));
+    if (nn && np == null) return fail('newPrice', `Pon el precio de «${nn}» o borra su nombre`);
+    if (!nn && np != null) return fail('newName', 'Escribe el nombre del nuevo servicio o borra su precio');
+    if (nn && p.items.some(it => normTxt(it.n) === normTxt(nn))) return fail('newName', `«${nn}» ya está en la lista: pon su precio arriba`);
+    if (!vals.some(v => v != null) && np == null) return fail(p.items.length ? 'i0' : 'newPrice', 'Pon al menos un precio');
     p.items.forEach((it, i) => {
-      const v = num('i' + i);
+      const v = vals[i];
       if (v !== it.declared) { it.desde = false; it.nota = ''; } // el negocio fija un precio concreto
-      it.declared = v; it.ask = false;
+      it.declared = v; it.ask = v == null && it.ask; // vacío en un servicio "a consultar": sigue "A consultar"
       if (v != null) it.at = Date.now();
     });
-    const nn = String(fd.get('newName') || '').trim(), np = num('newPrice');
-    if (nn && np != null) { const it = mkItem(nn, 'servicio', { g: p.items.some(i => i.g) ? 'Otros' : null }); it.declared = np; it.at = Date.now(); p.items.push(it); }
-    if (!p.items.some(it => it.declared != null)) return toast('Pon al menos un precio'), false;
+    if (nn) { const it = mkItem(nn, 'servicio', { g: p.items.some(i => i.g) ? 'Otros' : null }); it.declared = np; it.at = Date.now(); p.items.push(it); }
   }
   p.owner = true;
   p.web = null; // a partir de ahora es el negocio quien declara el precio desde su cuenta
@@ -1145,7 +1482,17 @@ function saveOwner(p) {
 
 function grant(r) { S.coins += r.c; S.xp += r.xp; S.flow.earned.c += r.c; S.flow.earned.xp += r.xp; }
 
+// Doble clic/toque: durante ~350 ms tras cambiar de paso se ignoran los clics repetidos en el mismo sitio
+// (p. ej. un doble clic en "Sí" no se salta la pantalla de recompensa)
+let flowLock = { until: 0, x: 0, y: 0 };
 function onFlowClick(e) {
+  if (!S.flow || !e.target.closest('button')) return;
+  if (Date.now() < flowLock.until && (e.detail > 1 || Math.hypot(e.clientX - flowLock.x, e.clientY - flowLock.y) < 40)) return;
+  const before = S.flow, step = before.step;
+  handleFlowClick(e);
+  if (S.flow && (S.flow !== before || S.flow.step !== step)) flowLock = { until: Date.now() + 350, x: e.clientX, y: e.clientY };
+}
+function handleFlowClick(e) {
   const f = S.flow; if (!f) return;
   const b = e.target.closest('button'); if (!b) return;
   if (f.step === 'pick') {
@@ -1166,87 +1513,129 @@ function onFlowClick(e) {
     return;
   }
   const hasRating = !!TPL[p.tpl].ratings;
-  const afterPrice = what => {
-    S.contributions++; removePending(p.id);
-    S.history.unshift({ id: p.id, what, when: 'hoy' });
-    f.step = hasRating ? 'rate' : 'reward';
-    refreshPlace(p);
+  // El aporte se prepara al enviar el precio y se registra al salir de la valoración (o directamente si no hay
+  // valoración): así "‹ Atrás" y "Más tarde" en la valoración no dejan nada registrado.
+  const runCommit = () => { const c = f.commit; f.commit = null; if (c) c(); };
+  const afterPrice = (what, apply) => {
+    f.commit = () => {
+      apply(); S.contributions++; removePending(p.id);
+      S.history.unshift({ id: p.id, what, when: 'hoy' });
+      refreshPlace(p);
+    };
+    if (hasRating) f.step = 'rate'; else { runCommit(); f.step = 'reward'; }
   };
+  const stale = at => { const st = freshState(p, at); if (REWARD_STALE[st]) { grant(REWARD_STALE[st]); f.bonus = REWARD_STALE[st].c; } };
+  const prev = f.step;
 
+  f.hist ||= [];
+  if (act === 'back') { f.step = f.hist.pop() || 'visited'; f.commit = null; f.bonus = 0; return renderFlow(); }
   if (act === 'yes') f.step = p.tpl === 'hosteleria' ? 'range' : 'choose';
-  else if (act === 'later') {
-    if (!S.pending.some(x => x.id === p.id)) S.pending.unshift({ id: p.id, when: 'hoy' });
-    updatePriceFab(); toast('Guardado en pendientes: lo tienes en el botón €');
-    return endFlow();
-  } else if (act === 'no') { removePending(p.id); toast('Entendido'); return endFlow(); }
+  else if (act === 'later') return flowLater();
+  else if (act === 'no') { removePending(p.id); toast('Vale, no te preguntaremos por esta visita'); return endFlow(); }
   else if (b.dataset.item) {
     f.item = +b.dataset.item; const it = p.items[f.item];
-    if (it.p != null) f.step = 'confirm';
-    else { f.value = GUESS[it.u] ?? 15; f.step = 'input'; }
+    // Precio "desde" (web del negocio): no se confirma tal cual, se pregunta cuánto costó
+    if (it.p != null && !(it.desde && it.p === it.declared)) f.step = 'confirm';
+    else { f.value = it.p != null ? roundHalf(it.p) : GUESS[it.u] ?? 15; f.step = 'input'; }
   }
-  else if (act === 'other') { f.unit = 'servicio'; f.step = 'other'; }
-  else if (b.dataset.unit) { f.unit = b.dataset.unit; $$('.unit-pick button').forEach(x => x.classList.toggle('on', x === b)); return; }
+  else if (act === 'other') { f.unit = f.unit || 'servicio'; f.step = 'other'; }
+  else if (b.dataset.unit) { f.unit = b.dataset.unit; $$('.unit-pick button').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); }); return; }
   else if (act === 'otherOk') {
-    const name = $('#otherName').value.trim(); if (!name) return toast('Escribe qué pagaste');
-    p.items.push(mkItem(name, f.unit)); f.item = p.items.length - 1; f.value = GUESS[f.unit] ?? 15; f.step = 'input';
+    const name = $('#otherName').value.trim(); if (fieldErrors($('#flowCard'), name ? [] : [[$('#otherName'), 'Escribe qué pagaste']])) return;
+    f.otherName = name;
+    const i = p.items.findIndex(it => normTxt(it.n) === normTxt(name)); // ya existe: se usa ese concepto
+    if (i >= 0) {
+      f.item = i; const it = p.items[i];
+      if (it.p != null && !(it.desde && it.p === it.declared)) f.step = 'confirm';
+      else { f.value = it.p != null ? roundHalf(it.p) : GUESS[it.u] ?? 15; f.step = 'input'; }
+    } else { // concepto nuevo: solo se añade a la lista al registrar el precio
+      f.item = 'new'; f.newItem = mkItem(name, f.unit); f.value = GUESS[f.unit] ?? 15; f.step = 'input';
+    }
   }
   else if (act === 'same') {
-    const it = p.items[f.item], st = freshState(p, it.at); it.reports.push(it.p); clearFlags(p, it);
-    grant(REWARD.confirm); if (REWARD_STALE[st]) { grant(REWARD_STALE[st]); f.bonus = REWARD_STALE[st].c; } S.confirmed++; afterPrice(`Confirmó ${fmtEur(it.p)}`);
+    const it = flowItem(p, f);
+    f.first = false; f.changed = false;
+    afterPrice(`Confirmó ${fmtEur(it.p)}`, () => {
+      const at = it.at; it.reports.push(it.p); clearFlags(p, it);
+      grant(REWARD.confirm); stale(at); S.confirmed++;
+    });
   }
-  else if (act === 'diff') { f.value = Math.round(p.items[f.item].p); f.step = 'input'; }
+  else if (act === 'diff') { f.value = roundHalf(flowItem(p, f).p); f.step = 'input'; }
   else if (b.dataset.sug) return; // lo gestiona la regla
   else if (act === 'sendPrice') {
-    const it = p.items[f.item], before = it.p;
-    f.first = before == null; f.changed = !f.first && f.value !== before;
-    const st = freshState(p, it.at);
-    it.reports.push(f.value); clearFlags(p, it);
-    if (!f.first && REWARD_STALE[st]) { grant(REWARD_STALE[st]); f.bonus = REWARD_STALE[st].c; }
-    grant(f.first ? REWARD.first : f.changed ? REWARD.newPrice : REWARD.confirm);
-    afterPrice(`${it.n} · ${fmtEur(f.value)}`);
+    const it = flowItem(p, f), before = it.p, value = f.value, isNew = f.item === 'new';
+    if (!(value > 0)) return toast('El precio debe ser mayor que 0 €');
+    f.first = before == null; f.changed = !f.first && Math.abs(value - before) >= 0.25; // la regla va de 0,5 en 0,5 €
+    f.declaredStays = it.declared != null && it.reports.length + 1 < MIN_REPORTS;
+    afterPrice(`${it.n} · ${fmtEur(value)}`, () => {
+      if (isNew) { p.items.push(it); f.item = p.items.length - 1; }
+      const at = it.at; it.reports.push(value); clearFlags(p, it);
+      if (!f.first) stale(at);
+      grant(f.first ? REWARD.first : f.changed ? REWARD.newPrice : REWARD.confirm);
+    });
   }
   else if (b.dataset.bucket) {
-    const [label, lo, hi] = BUCKETS[+b.dataset.bucket], before = p.range;
-    f.first = !before; f.changed = !!before && (hi <= before[0] || lo >= before[1]);
-    const st = freshState(p, p.rangeAt);
-    p.rangeReports.push([lo, hi]); clearFlags(p);
-    if (!f.first && REWARD_STALE[st]) { grant(REWARD_STALE[st]); f.bonus = REWARD_STALE[st].c; }
-    grant(f.first ? REWARD.first : REWARD.confirm); afterPrice(`Gasto ${label}`);
+    const [label, lo, hi] = BUCKETS[+b.dataset.bucket], before = p.range, open = p.rangeOpen;
+    f.first = !before;
+    f.changed = !!before && ((hi ?? Infinity) <= before[0] || (lo >= before[1] && !open));
+    f.declaredStays = !!p.declaredRange && p.rangeReports.length + 1 < MIN_REPORTS;
+    afterPrice(`Gasto ${label}`, () => {
+      const at = p.rangeAt; p.rangeReports.push([lo, hi]); clearFlags(p);
+      if (!f.first) stale(at);
+      grant(f.first ? REWARD.first : REWARD.confirm);
+    });
   }
   else if (b.dataset.star) { f.rating[+b.dataset.crit] = +b.dataset.star; }
   else if (act === 'sendRate') {
+    runCommit();
     // media acumulada de cada criterio
     p.ratings = p.ratings ? p.ratings.map((r, i) => (r * p.nRatings + f.rating[i]) / (p.nRatings + 1)) : [...f.rating];
     p.nRatings++;
     grant(REWARD.rating); f.step = 'reward';
   }
-  else if (act === 'skip') f.step = 'reward';
+  else if (act === 'skip') { runCommit(); f.step = 'reward'; }
   else if (act === 'done') return endFlow();
   else if (act === 'shop') { endFlow(); return openProfile('tienda'); }
+  if (f.step !== prev && f.step !== 'reward') f.hist.push(prev);
   renderFlow();
 }
 // Tras un cambio de precio: actualizar la etiqueta accesible del marcador y la ficha si está abierta
 function refreshPlace(p) {
-  updateOfferTag(p);
   pinOf(p.id)?.setAttribute('aria-label', `${p.name} (${p.cat}): ${pinLabel(p)}`);
   pinOf(p.id)?.classList.toggle('empty', !priced(p));
+  updateOfferTag(p); // después de fijar la etiqueta: añade " · oferta activa" si hace falta
   if (S.place === p.id && !$('#placeSheet').hidden) renderPlace();
 }
 
 // ---------- Perfil (tienda y ajustes dentro, agrupados como en Discord) ----------
 const PAGES = {
   main: 'Perfil', tienda: 'Tienda', pendientes: 'Precios pendientes', aportaciones: 'Mis aportaciones', insignias: 'Insignias',
-  avisos: 'Avisos de precio', favoritos: 'Favoritos', apariencia: 'Apariencia', navegacion: 'Navegación y voz', notificaciones: 'Notificaciones',
+  avisos: 'Sitios vigilados', reputacion: 'Reputación', bizAvisos: 'Avisos de clientes', favoritos: 'Favoritos', apariencia: 'Apariencia', navegacion: 'Navegación y voz', notificaciones: 'Notificaciones',
   privacidad: 'Privacidad y ubicación', accesibilidad: 'Accesibilidad', idioma: 'Idioma y región', ayuda: 'Cómo funcionan los precios', acerca: 'Acerca de',
 };
-function openProfile(page = 'main') { closePlace(); closeCatMenu(); S.page = page; $('#screen-perfil').hidden = false; renderProfile(); $('#screen-perfil').scrollTop = 0; }
-function closeProfile() { S.page = null; $('#screen-perfil').hidden = true; }
+// Al abrir el perfil o cambiar de página, el foco va al título (h1 con tabindex="-1")
+function openProfile(page = 'main') {
+  closePlace(); closeCatMenu(); S.page = page; $('#screen-perfil').hidden = false; syncModal(); renderProfile(); $('#screen-perfil').scrollTop = 0;
+  $('#screen-perfil h1')?.focus({ preventScroll: true });
+}
+// Al cerrar el perfil el foco vuelve al avatar (si después se abre otra cosa, esa cosa se queda con el foco)
+function closeProfile() {
+  S.page = null; $('#screen-perfil').hidden = true; syncModal();
+  if (focusLost()) focusBack($('#avatarBtn'), '#searchInput', '#mapTitle');
+}
 
-const it = (icon, label, { go, val, count, sub, cls = '', attr = '' } = {}) =>
-  `<button class="it ${cls}" ${go ? `data-page="${go}"` : ''} ${attr}>${icon}<span class="lbl">${label}${sub ? `<small>${sub}</small>` : ''}</span>${count ? `<span class="count">${count}</span>` : ''}${val ? `<span class="val">${val}</span>` : ''}${go ? ICON.chev : ''}</button>`;
-const sw = (key, label, sub) => `<button class="it" data-set="${key}"><span class="lbl">${label}${sub ? `<small>${sub}</small>` : ''}</span><i class="switch" role="switch" aria-checked="${!!S.settings[key]}"></i></button>`;
+// Fila del perfil. Sin go/attr (no hace nada) se pinta como <div> no interactivo con el mismo aspecto.
+const it = (icon, label, { go, val, count, sub, cls = '', attr = '' } = {}) => {
+  const tag = go || attr ? 'button' : 'div';
+  return `<${tag} class="it ${cls}" ${go ? `data-page="${go}"` : ''} ${attr}>${icon}<span class="lbl">${label}${sub ? `<small>${sub}</small>` : ''}</span>${count ? `<span class="count">${count}</span>` : ''}${val ? `<span class="val">${val}</span>` : ''}${go ? ICON.chev : ''}</${tag}>`;
+};
+// Interruptor: el propio botón es el switch (el dibujo interior es decorativo)
+const sw = (key, label, sub) => `<button class="it" role="switch" aria-checked="${!!S.settings[key]}" data-set="${key}"><span class="lbl">${label}${sub ? `<small>${sub}</small>` : ''}</span><i class="switch" aria-hidden="true" aria-checked="${!!S.settings[key]}"></i></button>`;
 const grp = (title, body) => `<div class="grp">${title ? `<h3>${title}</h3>` : ''}<div class="grp-box">${body}</div></div>`;
-const seg = (key, opts) => `<div class="segmented">${opts.map(([v, l]) => `<button class="${(key === 'theme' ? S.themePref : S.settings[key]) === v ? 'on' : ''}" data-seg="${key}" data-v="${v}">${l}</button>`).join('')}</div>`;
+const seg = (key, opts) => `<div class="segmented">${opts.map(([v, l]) => { const on = (key === 'theme' ? S.themePref : S.settings[key]) === v; return `<button class="${on ? 'on' : ''}" aria-pressed="${on}" data-seg="${key}" data-v="${v}">${l}</button>`; }).join('')}</div>`;
+// Hace cuánto (avisos de clientes)
+const agoTxt = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'hace un momento' : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : ageText(t); };
+const REASON_TXT = { changed: 'Ahora cuesta otra cantidad', gone: 'Ya no ofrecen este servicio', closed: 'El negocio ha cerrado' };
 
 function ringSVG(size, r, sw) {
   const c = 2 * Math.PI * r, pct = (S.xp % XP_PER_LEVEL) / XP_PER_LEVEL;
@@ -1263,17 +1652,17 @@ function renderProfile() {
     const p = placeById(acc.business);
     const st = !p ? 'Aún no has vinculado tu negocio'
       : !priced(p) ? 'Sin precios publicados'
-      : nReports(p) >= MIN_REPORTS ? `Manda lo que pagan los clientes (${nReports(p)} aportes)`
-      : `Precios declarados · ${nReports(p)} de ${MIN_REPORTS} aportes de clientes para confirmarlos`;
+      : nReports(p) >= MIN_REPORTS ? `Manda lo que pagan los clientes (${nReports(p)} aportaciones)`
+      : `Precios declarados · ${nReports(p)} de ${MIN_REPORTS} aportaciones de clientes para confirmarlos`;
     body = `<div class="phead"><div class="biz-face">${p ? tplIcon(p) : ICON.building}</div>
         <div style="flex:1;min-width:0"><h2>${p ? p.name : acc.name}</h2><p>Cuenta de negocio · ${acc.name} (${via})</p>
         ${p ? `<div class="biz-state">${st}</div>` : ''}</div></div>`
       + grp('Tu negocio', p
         ? it(ICON.list, 'Editar precios', { sub: p.tpl === 'hosteleria' ? 'Gasto medio por persona' : `${p.items.length} servicios`, attr: 'data-act="ownerEdit"' })
           + it(ICON.store, 'Ofertas', { sub: activeOffers(p).length ? `${activeOffers(p).length} activa${activeOffers(p).length > 1 ? 's' : ''}` : 'Publica una oferta con fecha de fin', attr: 'data-act="offersEdit"' })
-          + it(ICON.pending, 'Avisos de clientes', { sub: inReview(p) ? 'Hay precios en revisión: actualízalos o espera a que los clientes los confirmen' : 'Ningún precio en revisión', count: p.flagLog.length || '', attr: 'data-act="ownerEdit"' })
+          + it(ICON.pending, 'Avisos de clientes', { sub: inReview(p) ? 'Hay precios en revisión: actualízalos o espera a que los clientes los confirmen' : 'Ningún precio en revisión', count: p.flagLog.length || '', go: 'bizAvisos' })
           + it(ICON.pin, 'Ver la ficha en el mapa', { attr: `data-place="${p.id}"` })
-          + it(ICON.users, 'Cómo lo ven los clientes', { go: 'ayuda', sub: 'Tu precio se confirma o se corrige con lo que pagan' })
+          + it(ICON.users, 'Cómo lo ven los clientes', { attr: `data-place="${p.id}"`, sub: 'Abre tu ficha tal como la ven ellos' })
         : it(ICON.building, 'Vincular o dar de alta mi negocio', { attr: 'data-act="linkBiz"' }))
       + grp('Ajustes de la app',
         it(ICON.palette, 'Apariencia', { go: 'apariencia' })
@@ -1286,15 +1675,15 @@ function renderProfile() {
     body = `<div class="phead"><div class="big-ring">${ringSVG(84, 39, 6)}<span class="face">${lv}</span></div>
         <div style="flex:1;min-width:0"><h2>${acc ? acc.name : `Nivel ${lv}`}</h2><p>${acc ? `Nivel ${lv} · ` : 'Colaborador local · '}${xpIn}/${XP_PER_LEVEL} XP</p>
         <div class="xp-bar"><i style="width:${xpIn / XP_PER_LEVEL * 100}%"></i></div>
-        <div class="coins"><i class="coin"></i>${S.coins}<span>· ${S.contributions} aportes</span></div></div></div>`
+        <div class="coins"><i class="coin"></i>${S.coins}<span>· ${S.contributions} aportaciones</span></div></div></div>`
       + (acc ? '' : grp('Cuenta', it(ICON.users, 'Crear cuenta o iniciar sesión', { sub: 'Guarda tus monedas y aportaciones · también para negocios', attr: 'data-act="login"' })))
       + grp('Tienda', it(ICON.store, 'Tienda de cosméticos', { go: 'tienda', sub: 'Marcador de posición y estilo de la ruta' }))
       + grp('Tu actividad',
         it(ICON.pending, 'Precios pendientes', { go: 'pendientes', count: S.pending.length || '' })
         + it(ICON.list, 'Mis aportaciones', { go: 'aportaciones', val: S.contributions })
         + it(ICON.heart, 'Favoritos', { go: 'favoritos', val: S.favs.length + S.spots.length })
-        + it(ICON.bell, 'Avisos de precio', { go: 'avisos', val: S.alerts.length })
-        + it(ICON.users, 'Reputación', { val: reputation().name, sub: `Tus avisos de precio cuentan ×${fmtW(reputation().w)}${reputation().next ? ` · ${reputation().next} aportes más para subir` : ''}` })
+        + it(ICON.bell, 'Sitios vigilados', { go: 'avisos', val: S.alerts.length, sub: 'Te avisamos si cambia su precio' })
+        + it(ICON.users, 'Reputación', { go: 'reputacion', val: reputation().name, sub: `Tus avisos de error cuentan ×${fmtW(reputation().w)}` })
         + it(ICON.award, 'Insignias', { go: 'insignias' }))
       + grp('Ajustes de la app',
         it(ICON.palette, 'Apariencia', { go: 'apariencia' })
@@ -1320,7 +1709,7 @@ function renderProfile() {
       <h2 class="section-title">Marcador de posición</h2><div class="shop-grid">${sec('flecha')}</div>
       <h2 class="section-title">Estilo de la ruta</h2><div class="shop-grid">${sec('ruta')}</div>`;
   } else if (pg === 'pendientes') {
-    body = `<p class="lead">Visitas en las que pulsaste "Más tarde". También las tienes en el botón amarillo € del mapa.</p>`
+    body = `<p class="lead">Precios que dejaste para «Más tarde». También los tienes en el botón amarillo € del mapa.</p>`
       + (S.pending.length ? grp('', S.pending.map(x => { const p = placeById(x.id); return it(tplIcon(p), p.name, { sub: `Visitado ${x.when}`, val: 'Responder', attr: `data-pend="${p.id}"` }); }).join(''))
         : `<div class="text-card">No tienes nada pendiente. ¡Todo al día!</div>`);
   } else if (pg === 'aportaciones') {
@@ -1331,12 +1720,34 @@ function renderProfile() {
       || `<div class="text-card">Marca sitios con el corazón de su ficha. También puedes guardar direcciones, como la casa de un amigo.</div>`;
   } else if (pg === 'avisos') {
     body = `<p class="lead">Te avisamos cuando los clientes confirmen un precio distinto en estos sitios. Se activan desde la ficha con "Avísame si cambia".</p>`
-      + (S.alerts.length ? grp('Sitios vigilados', S.alerts.map(id => { const p = placeById(id); return `<button class="it" data-unalert="${p.id}">${tplIcon(p)}<span class="lbl">${p.name}<small>Ahora: ${pinLabel(p)}</small></span><i class="switch" role="switch" aria-checked="true"></i></button>`; }).join(''))
+      + (S.alerts.length ? grp('Sitios vigilados', S.alerts.map(id => { const p = placeById(id); return `<button class="it" role="switch" aria-checked="true" data-unalert="${p.id}">${tplIcon(p)}<span class="lbl">${p.name}<small>Ahora: ${pinLabel(p)}</small></span><i class="switch" aria-hidden="true" aria-checked="true"></i></button>`; }).join(''))
         : `<div class="text-card">No vigilas ningún sitio todavía.</div>`)
       + (S.alerts.length ? `<div class="grp"><button class="btn secondary" data-act="demoAlert">Ver un ejemplo de aviso</button></div>` : '');
   } else if (pg === 'insignias') {
-    const badges = [['Primer precio', true], ['Explorador', true], ['10 aportes', true], ['Racha 7 días', false], ['Crítico', false], ['50 aportes', false]];
-    body = `<div class="badges">${badges.map(([n, ok]) => `<div class="badge ${ok ? '' : 'locked'}"><i>${ok ? ICON.award : ICON.lock}</i>${n}</div>`).join('')}</div>`;
+    const badges = [['Primer precio', true], ['Explorador', true], ['10 aportaciones', true], ['Racha 7 días', false], ['Crítico', false], ['50 aportaciones', false]];
+    body = `<ul class="badges" role="list">${badges.map(([n, ok]) => `<li class="badge ${ok ? '' : 'locked'}"><i aria-hidden="true">${ok ? ICON.award : ICON.lock}</i>${n}${ok ? '' : '<span class="sr-only"> (bloqueada)</span>'}</li>`).join('')}</ul>`;
+  } else if (pg === 'reputacion') {
+    const rep = reputation();
+    body = `<p class="lead">Tu reputación decide cuánto pesan tus avisos de error en un precio.</p>`
+      + grp('', it(ICON.users, `Tu nivel: ${rep.name}`, { sub: `Tus avisos de error cuentan ×${fmtW(rep.w)}${rep.next ? ` · te faltan ${rep.next} aportaciones para subir` : ''}` })
+        + it(ICON.award, 'Nueva', { val: '×1', sub: 'Al empezar' })
+        + it(ICON.award, 'Fiable', { val: '×1,5', sub: 'Desde 5 aportaciones' })
+        + it(ICON.award, 'Experta', { val: '×2', sub: 'Desde 20 aportaciones' }))
+      + `<div class="text-card">Cuando los avisos de un precio suman ${REVIEW_AT} puntos, queda <b>En revisión</b> y pedimos a los siguientes clientes que lo confirmen.</div>`
+      + grp('', it(ICON.help, 'Cómo funcionan los precios', { go: 'ayuda' }));
+  } else if (pg === 'bizAvisos') {
+    const p = placeById(S.account?.business);
+    if (!p) body = `<div class="text-card">Aún no has vinculado tu negocio.</div>`;
+    else {
+      const hos = p.tpl === 'hosteleria', what = i => (hos ? 'Gasto por persona' : p.items[i]?.n || 'Precio');
+      const rev = hos ? (p.rangeReview ? ['Gasto por persona'] : []) : p.items.filter(x => x.review).map(x => x.n);
+      body = `<p class="lead">Avisos de error que han enviado tus clientes. Cuando suman ${REVIEW_AT} puntos, el precio queda en revisión hasta que lo actualices o lo confirmen otros clientes.</p>`
+        + grp('En revisión', rev.length ? rev.map(n => it(ICON.pending, n, { sub: 'Pendiente de actualizar o confirmar' })).join('') : it(ICON.check, 'Ningún precio en revisión'))
+        + grp('Avisos recibidos', p.flagLog.length
+          ? p.flagLog.map(f => it(ICON.pending, what(f.item), { sub: `${REASON_TXT[f.reason] || f.reason} · ${agoTxt(f.when)}` })).join('')
+          : it(ICON.check, 'Aún no has recibido avisos'))
+        + `<div class="grp"><button class="btn primary" data-act="ownerEdit">Actualizar precios</button></div>`;
+    }
   } else if (pg === 'apariencia') {
     body = grp('', `<div class="seg-label">Modo</div>${seg('theme', [['auto', 'Automático'], ['light', 'Claro'], ['dark', 'Oscuro']])}`
       + sw('buildings', 'Edificios en 3D', 'Muestra el mapa en 2.5D con edificios extruidos'));
@@ -1349,7 +1760,7 @@ function renderProfile() {
       + sw('notifAlerts', 'Cambios de precio', 'Avisos de los sitios que vigilas'));
   } else if (pg === 'privacidad') {
     body = `<div class="text-card"><b>Ubicación:</b> solo se usa mientras navegas con la app. Nunca en segundo plano.</div>
-      <div class="text-card"><b>Categorías sensibles</b> (p. ej. psicología): tus aportaciones son siempre anónimas.</div>`
+      <div class="text-card"><b>Clínicas, fisioterapia y dentistas:</b> tus aportaciones son siempre anónimas.</div>`
       + grp('', sw('anonAll', 'Aportar siempre de forma anónima', 'En todas las categorías, no solo en las sensibles')
         + it(ICON.trash, 'Borrar historial de visitas', { cls: 'danger', attr: 'data-act="clearVisits"' }));
   } else if (pg === 'accesibilidad') {
@@ -1357,16 +1768,24 @@ function renderProfile() {
   } else if (pg === 'idioma') {
     body = grp('', it(ICON.globe, 'Idioma', { val: 'Español' }) + it(ICON.route, 'Unidades', { val: 'km · €' }));
   } else if (pg === 'ayuda') {
-    body = `<div class="text-card"><b>¿De dónde salen los precios?</b> Los negocios empiezan sin precio, salvo los que publican sus tarifas en su web oficial (se indica la página y la fecha). El dueño puede declarar el suyo desde su cuenta de negocio, y los clientes aportan lo que pagaron al llegar con el GPS. Cuando ${MIN_REPORTS} o más clientes han aportado precio, se muestra lo que pagan ellos.</div>
-      <div class="text-card"><b>Servicios locales</b> (peluquería, dentista, taller…): un precio por servicio, la mediana de lo que pagan los clientes.</div>
-      <div class="text-card"><b>Hostelería:</b> siempre un rango por persona, con el 50 % central de lo que gasta la gente.</div>
+    const [hg, hs] = FRESH.hosteleria, [sg, ss] = FRESH.servicio;
+    body = `<div class="text-card"><b>¿De dónde salen los precios?</b> Los negocios empiezan sin precio, salvo los que publican sus tarifas en su web oficial (se indica la página y la fecha). El dueño puede declarar el suyo desde su cuenta de negocio, y los clientes aportan lo que pagaron al llegar con el GPS.</div>
+      <div class="text-card"><b>¿Qué precio se muestra?</b> Si el negocio declaró su precio, se muestra el suyo hasta que ${MIN_REPORTS} o más clientes aportan lo que pagaron; desde entonces manda el precio típico que pagan los clientes. Si el negocio no declaró nada, se muestra lo que pagan los clientes desde la primera aportación.</div>
+      <div class="text-card"><b>Servicios locales</b> (peluquería, dentista, taller…): un precio por servicio, el precio típico que pagan los clientes.</div>
+      <div class="text-card"><b>Hostelería:</b> siempre un rango por persona, con lo que gasta la mayoría de la gente.</div>
       <div class="text-card"><b>Ocio:</b> un precio por instalación o actividad. Alquiler de pistas, precio total; actividades como escape room, por persona.</div>
-      <div class="text-card"><b>Origen del dato:</b> cada precio indica si lo declaró el negocio o cuántos usuarios lo han confirmado. El precio solo cambia cuando varios clientes coinciden.</div>`;
+      <div class="text-card"><b>¿Está al día?</b> Cada precio lleva un punto: al día, podría haber cambiado o antiguo. En hostelería pasa a "podría haber cambiado" a los ${hg} días y a antiguo a los ${hs}; en servicios y ocio, a los ${sg / 30} y ${ss / 30} meses. Si confirmas un precio viejo ganas monedas extra.</div>
+      <div class="text-card"><b>Avisos de error y "En revisión":</b> si un precio está mal, avísalo desde la ficha. Cada aviso suma según tu reputación: Nueva ×1, Fiable ×1,5 (desde 5 aportaciones) y Experta ×2 (desde 20). Con ${REVIEW_AT} puntos el precio queda "En revisión" y pedimos a los siguientes clientes que lo confirmen.</div>
+      <div class="text-card"><b>Ofertas:</b> las publica el propio negocio con una fecha de fin. Si ${OFFER_GONE} clientes avisan de que ya no está, se retira.</div>
+      <div class="text-card"><b>Anonimato:</b> en clínicas, fisioterapia y dentistas tus aportaciones son siempre anónimas. En el resto puedes elegirlo en Privacidad.</div>
+      <div class="text-card"><b>Origen del dato:</b> cada precio indica si lo declaró el negocio, si sale de su web o cuántos clientes lo han aportado.</div>`;
   } else if (pg === 'acerca') {
     body = `<div class="text-card"><b>PrecioLocal</b> (nombre provisional) · prototipo del Trabajo de Fin de Grado.<br>Mapa: © OpenStreetMap, OpenFreeMap, MapLibre. Los lugares son reales (OpenStreetMap, licencia ODbL); ningún precio es inventado: empiezan vacíos o con las tarifas que el propio negocio publica en su web.</div>`;
   }
   const back = pg === 'main' ? 'close' : 'main';
-  el.innerHTML = `<div class="topnav"><button class="back" data-back="${back}" aria-label="${pg === 'main' ? 'Volver al mapa' : 'Volver al perfil'}">${ICON.back}</button><h1>${PAGES[pg]}</h1></div>${body}`;
+  // Iconos SVG del perfil: decorativos (el texto de cada fila ya da el nombre)
+  body = body.replace(/<svg(?![^>]*aria-hidden)/g, '<svg aria-hidden="true"');
+  el.innerHTML = `<div class="topnav"><button class="back" data-back="${back}" aria-label="${pg === 'main' ? 'Volver al mapa' : 'Volver al perfil'}">${ICON.back}</button><h1 tabindex="-1">${PAGES[pg]}</h1></div>${body}`;
 }
 function previewOf(item) {
   if (item.kind === 'flecha') {
@@ -1376,6 +1795,19 @@ function previewOf(item) {
   return `<span class="route-prev ${item.id === 'ruta-discont' ? 'dashed' : ''} ${item.id === 'ruta-dorada' ? 'gold' : ''}"></span>`;
 }
 
+// Selector del control equivalente tras volver a pintar el perfil (para no dejar el foco en el body)
+function profileCtlSel(d) {
+  if (d.set) return `[data-set="${d.set}"]`;
+  if (d.seg) return `[data-seg="${d.seg}"][data-v="${d.v}"]`;
+  if (d.page) return `[data-page="${d.page}"]`;
+  if (d.equip || d.buy) return `[data-equip="${d.equip || d.buy}"], [data-buy="${d.buy || d.equip}"]`;
+  return null;
+}
+function rerenderProfile(d) {
+  renderProfile();
+  const el = $('#screen-perfil'), sel = profileCtlSel(d), t = sel && el.querySelector(sel);
+  (t && !t.disabled ? t : el.querySelector('h1'))?.focus({ preventScroll: true });
+}
 function onProfileClick(e) {
   const b = e.target.closest('button'); if (!b) return;
   const d = b.dataset;
@@ -1384,29 +1816,30 @@ function onProfileClick(e) {
   if (d.place) { closeProfile(); return openPlace(d.place); }
   if (d.key) { const s = S.spots.find(x => x.key === d.key); closeProfile(); return s && openDest(s); }
   if (d.pend) { closeProfile(); return startFlow(d.pend, true); }
-  if (d.unalert) { toggleList(S.alerts, d.unalert); toast('Aviso desactivado'); return renderProfile(); }
+  if (d.unalert) { toggleList(S.alerts, d.unalert); toast('Aviso desactivado'); return rerenderProfile(d); }
   if (d.set) {
     S.settings[d.set] = !S.settings[d.set];
     if (d.set === 'buildings' && map?.getLayer('edificios-3d')) map.setLayoutProperty('edificios-3d', 'visibility', S.settings.buildings ? 'visible' : 'none');
     if (d.set === 'reduceMotion') document.documentElement.classList.toggle('reduce-motion', S.settings.reduceMotion);
     if (d.set === 'notifPending') updatePriceFab();
     if (d.set === 'sound') updateSound();
-    return renderProfile();
+    if ((d.set === 'voice' || d.set === 'sound') && !(S.settings.voice && S.settings.sound)) stopSpeech();
+    return rerenderProfile(d);
   }
   if (d.seg) {
     if (d.seg === 'theme') { S.themePref = d.v; store.set('pl-theme', d.v); applyTheme(); }
     else S.settings[d.seg] = d.v;
-    return renderProfile();
+    return rerenderProfile(d);
   }
   if (d.buy) {
     const item = SHOP.find(i => i.id === d.buy);
     if (S.coins < item.cost) return;
     S.coins -= item.cost; S.owned.push(item.id); S.equipped[item.kind] = item.id; toast(`Comprado y equipado: ${item.name}`);
-    applyCosmetics(); updateHUD(); return renderProfile();
+    applyCosmetics(); updateHUD(); return rerenderProfile(d);
   }
   if (d.equip) {
     const item = SHOP.find(i => i.id === d.equip); S.equipped[item.kind] = item.id; toast(`Equipado: ${item.name}`);
-    applyCosmetics(); return renderProfile();
+    applyCosmetics(); return rerenderProfile(d);
   }
   if (d.act === 'logout') { closeProfile(); return logout(); }
   if (d.act === 'login') { closeProfile(); return openAccount(); }
@@ -1419,7 +1852,8 @@ function onProfileClick(e) {
     const p = S.alerts.map(placeById).find(x => x && priced(x));
     if (!p) return toast('Aún no hay precios en los sitios que vigilas: el aviso llegará cuando alguien los aporte');
     closeProfile();
-    return notify(`Ya hay precio en ${p.name}`, `${pinLabel(p)} · ${isDeclared(p) && nReports(p) < MIN_REPORTS ? 'declarado por el negocio' : 'aportado por clientes'}`, p.id);
+    const precio = p.tpl === 'hosteleria' ? `${fmtRange(p)} por persona` : pinLabel(p);
+    return notify(`Ya hay precio en ${p.name}`, `${precio} · ${isDeclared(p) && nReports(p) < MIN_REPORTS ? 'declarado por el negocio' : 'aportado por clientes'}`, p.id);
   }
 }
 
@@ -1437,17 +1871,25 @@ function updateHUD() {
 
 // ---------- Eventos ----------
 function bind() {
-  $('#onbStart').addEventListener('click', () => { $('#screen-onboarding').hidden = true; store.set('pl-onb', '1'); startCompass(); askAccountIfNeeded(); });
+  $('#onbStart').addEventListener('click', () => {
+    $('#screen-onboarding').hidden = true; syncModal(); store.set('pl-onb', '1'); startCompass(); askAccountIfNeeded();
+    if (!topModal()) $('#mapTitle').focus({ preventScroll: true }); // sin cuenta que pedir: al mapa (el siguiente Tab va a "Ver precios")
+  });
   $('#locateFab').addEventListener('click', startCompass); // también al centrar en tu posición (toque del usuario)
-  $('#catBtn').addEventListener('click', e => { e.stopPropagation(); $('#catMenu').hidden ? openCatMenu() : closeCatMenu(); });
+  // e.detail === 0: pulsado con teclado (Intro/Espacio) → el foco entra en la lista
+  $('#catBtn').addEventListener('click', e => { e.stopPropagation(); $('#catMenu').hidden ? openCatMenu(e.detail === 0) : closeCatMenu(); });
+  $('#catBtn').addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openCatMenu(true); if (e.key === 'ArrowUp') $$('#catMenu [role="option"]').at(-1).focus(); }
+  });
+  $('#catMenu').addEventListener('keydown', onCatMenuKey);
   $('#catMenu').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (b) setFilter(b.dataset.cat); });
   $('#themeFab').addEventListener('click', () => { S.themePref = currentTheme() === 'dark' ? 'light' : 'dark'; store.set('pl-theme', S.themePref); applyTheme(); });
-  $('#locateFab').addEventListener('click', () => map?.easeTo({ center: USER_POS, zoom: 16.5, duration: 600 }));
+  $('#locateFab').addEventListener('click', () => map?.easeTo({ center: USER_POS, zoom: 16.5, duration: motionMs(600) }));
   $('#priceFab').addEventListener('click', openPending);
   $('#avatarBtn').addEventListener('click', () => openProfile('main'));
   $('#placeSheet').addEventListener('click', e => {
     const a = e.target.closest('[data-act]')?.dataset.act;
-    if (a === 'close') closePlace();
+    if (a === 'close') closePlaceKb();
     else if (a === 'go') startNav();
     else if (a === 'fav') {
       const d = S.dest; let added;
@@ -1464,6 +1906,7 @@ function bind() {
   });
   $$('.sound-btn').forEach(b => b.addEventListener('click', () => {
     S.settings.sound = !S.settings.sound; updateSound();
+    if (!S.settings.sound) stopSpeech(); // silenciar la app también calla la voz
     toast(S.settings.sound ? 'Sonido activado' : 'App silenciada');
     if (S.page) renderProfile();
   }));
@@ -1471,26 +1914,52 @@ function bind() {
   $('#navFinish').addEventListener('click', stopNav);
   $('#navSimulate').addEventListener('click', () => simulateArrival(false));
   $('#flowCard').addEventListener('click', onFlowClick);
+  // Estrellas (grupo de opciones): flechas izquierda/derecha (y arriba/abajo), Inicio y Fin cambian la nota
+  $('#flowCard').addEventListener('keydown', e => {
+    const b = e.target.closest('.star'); if (!b || !S.flow || S.flow.step !== 'rate') return;
+    const ci = +b.dataset.crit, cur = S.flow.rating[ci] || +b.dataset.star;
+    const to = { ArrowRight: cur + 1, ArrowUp: cur + 1, ArrowLeft: cur - 1, ArrowDown: cur - 1, Home: 1, End: 5 }[e.key];
+    if (to == null) return;
+    e.preventDefault();
+    S.flow.rating[ci] = (to + 4) % 5 + 1; // da la vuelta: 5 → 1 y 1 → 5
+    focusFlowNext(`[data-crit="${ci}"][data-star="${S.flow.rating[ci]}"]`); renderFlow();
+  });
   $('#screen-perfil').addEventListener('click', onProfileClick);
   $('#notif').addEventListener('click', () => { $('#notif').hidden = true; const id = $('#notif').dataset.place; if (id) openPlace(id); });
 
   const si = $('#searchInput');
-  si.addEventListener('focus', () => { if (!$('#dock').classList.contains('open')) openSearch(); });
-  si.addEventListener('input', renderSearch);
-  si.addEventListener('keydown', e => { if (e.key === 'Escape') closeSearch(); });
-  $('#searchCancel').addEventListener('click', closeSearch);
+  // El buscador NO se abre solo con recibir el foco (tabular por él no cambia la vista): se abre al tocarlo,
+  // al escribir o con Intro / flecha abajo
+  const isOpen = () => $('#dock').classList.contains('open');
+  $('#dock .search').addEventListener('click', () => { if (!isOpen()) { openSearch(); si.focus(); } });
+  si.addEventListener('input', () => (isOpen() ? renderSearch() : openSearch()));
+  si.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && isOpen()) { e.stopPropagation(); closeSearch(); si.focus({ preventScroll: true }); }
+    else if ((e.key === 'Enter' || e.key === 'ArrowDown') && !isOpen()) { e.preventDefault(); openSearch(); }
+  });
+  // Cancelar con teclado: el foco vuelve al campo (con el dedo no, para que no salga el teclado)
+  $('#searchCancel').addEventListener('click', e => { closeSearch(); if (e.detail === 0) si.focus({ preventScroll: true }); });
   setupDockDrag();
   $('#searchPanel').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
     const ds = b.dataset;
     if (ds.place) { closeSearch(); openPlace(ds.place); }
     else if (ds.key) { const s = RESULTS.get(ds.key); closeSearch(); if (s) { openDest(s); if (s.kind === 'shared') fillAddress(s); } }
-    else if (ds.near) setPoiCat(ds.near);
-    else if ('clearCat' in ds) { setPoiCat(null); renderSearch(); }
+    else if (ds.near) { setPoiCat(ds.near); if (focusLost()) $('#searchPanel .near-head h2')?.focus({ preventScroll: true }); }
+    else if ('clearCat' in ds) { const k = S.poiCat; setPoiCat(null); renderSearch(); if (focusLost()) focusBack(findCtl($('#searchPanel'), [`[data-near="${k}"]`]), '#searchInput'); }
     else if (ds.act === 'paste') pasteLocation();
   });
   document.addEventListener('click', e => { if (!e.target.closest('.cat-dd')) closeCatMenu(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCatMenu(); if (S.page) closeProfile(); } });
+  document.addEventListener('keydown', trapTab);
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    closeCatMenu();
+    if (S.page && topModal() === $('#screen-perfil')) return closeProfile();
+    // Ficha abierta y ninguna ventana encima: Escape la cierra y el foco vuelve a donde estaba
+    if (!topModal() && !$('#placeSheet').hidden && !S.navigating) { e.preventDefault(); closePlaceKb(); }
+  });
+  // Escape con una pregunta abierta: "Más tarde" en las preguntas al llegar; cerrar en el resto
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.flow && !$('#flowOverlay').hidden) { e.preventDefault(); flowEscape(); } });
   $('#flowCard').addEventListener('submit', e => e.preventDefault()); // Intro en el formulario del negocio no recarga la página
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 }
@@ -1500,6 +1969,8 @@ S.themePref = store.get('pl-theme') || 'auto';
 if (store.get('pl-onb')) $('#screen-onboarding').hidden = true;
 applyTheme();
 bind();
+syncModal();
+if (!$('#screen-onboarding').hidden) $('#onbTitle').focus({ preventScroll: true }); // bienvenida: el siguiente Tab cae en "Empezar"
 initMap();
 setFilter('ninguno'); // pantalla limpia: los precios se muestran solo si se eligen en el desplegable
 updateSound();

@@ -13,6 +13,7 @@ Shader "PrecioLocal/CesiumEdificiosPaleta"
         Pass
         {
             Tags { "LightMode" = "ForwardBase" }
+            Cull Off   // la normal se orienta sola hacia la cámara; así da igual el sentido de las caras
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag

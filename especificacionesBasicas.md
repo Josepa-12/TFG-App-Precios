@@ -92,6 +92,20 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
 - Los servicios locales no llevan reseñas, solo coste.
 - Idea de avisos tipo Waze (controles, radares, accidentes) con aviso de uso por copiloto. Fuera del alcance del prototipo.
 
+- Revisión del 16/11/2026 (rama `revision`, ver docs/memoria-tfg.md 4.11e):
+  - **Auditoría multiagente:** 79 hallazgos agrupados en 44 tareas, corregidas en 4 oleadas de agentes.
+  - **Decisiones:**
+    - el progreso del cliente se guarda en el navegador;
+    - "Ir" bajo la cabecera de la ficha, que pierde el asa;
+    - plan de tarde con 1 persona por defecto;
+    - la píldora dice "Ver precios";
+    - color de cada sitio según su plantilla;
+    - "Más de 50 €" queda como tramo abierto;
+    - anonimato en clínicas, fisioterapia y dentistas;
+    - las cuentas de negocio no aportan como cliente;
+    - indicaciones por voz.
+  - **No se hace commit hasta que el autor lo revise.**
+
 ## Propuestas de Claude (NO confirmadas — tratar como sugerencias)
 - Pregunta de investigación: ¿puede la gamificación integrada en la navegación conseguir que los usuarios mantengan actualizados los precios de servicios locales?
 - Plantillas por categoría: tipo de precio, criterios de valoración y módulos activos (precio, valoración, comentario).
@@ -114,7 +128,10 @@ App móvil de mapa/GPS colaborativo cuya idea principal es el **COSTE** de estab
 - Prueba técnica recomendada (2-3 días): mapa con estilo propio, posición GPS y marcador en un establecimiento de prueba, en un móvil real.
 
 ## Equipo del estudiante
-- PC con Windows. Unity Hub 3.22.6 instalado (11/11/2026); el editor aún no está instalado.
+- PC con Windows. Unity Hub 4.0 y editor **Unity 6.3 LTS (6000.3.28f1)** con módulos Android y Windows.
+- Proyecto de Unity creado el 16/11/2026 en `unity/PrecioLocal`:
+  - escena "Mapa" con teselas reales de OpenStreetMap, cámara 2.5D y marcadores por latitud y longitud;
+  - menú **PrecioLocal ▸ Preparar escena del mapa** para regenerarla.
 - Móvil: **iPhone**. Desde Windows no se pueden compilar apps iOS (hace falta un Mac con Xcode). Opciones pendientes de decidir: Mac prestado o de la universidad, Android prestado para las pruebas, o desarrollar con GPS simulado en el editor.
 
 ## Estado

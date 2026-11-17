@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<!--
+  UX Design Validation Report — skeleton template.
+
+  This file is a starter the synthesis pass fills in directly. There is no
+  substitution engine. The LLM:
+    1. Reads {doc_workspace}/review-rubric.md and every review-{slug}.md from
+       additional reviewers.
+    2. Copies this skeleton.
+    3. Replaces the placeholder content (everything between TEMPLATE markers)
+       with the consolidated review, preserving the structure and CSS.
+    4. Writes the result to {doc_workspace}/validation-report.html.
+    5. Writes a markdown twin to {doc_workspace}/validation-report.md.
+
+  Visual rules the LLM must preserve:
+    - The container width, the color tokens, the typography.
+    - One dimension = one collapsible <section class="dimension">.
+    - Verdict pill uses the verdict-* class matching its judgment.
+    - Severity badge uses the badge-sev-* class matching its level.
+    - Each extra reviewer (accessibility, adversarial, etc.) gets its own
+      collapsible section below the rubric dimensions.
+    - The footer always shows the artifact paths and timestamp.
+-->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>UX Design Validation: PrecioLocal</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body><div class="container"><header class="report-header"><div class="title"><h1>PrecioLocal — Informe de validación de UX</h1><div class="subtitle">_bmad-output/planning-artifacts/ux-designs/ux-TFG-App-Precios-2026-11-16/</div></div></header><div class="synthesis"><p>Los dos documentos sirven ya de contrato: los colores salen exactos del prototipo, cada recorrido tiene clímax y caso de fallo, y los estados cubren lo esencial. Faltan la sección de inspiración y antipatrones, los títulos literales de los recorridos y el estado de GPS sin señal.</p><p>La revisión de accesibilidad cambia el panorama: casi todo se basa en gestos (mapa, hoja, regla, plan). Sin alternativas, un usuario de TalkBack o con poca movilidad no completa los recorridos principales. Es lo más importante que corregir.</p></div><div class="dimension-summary"><div class="dim-card"><div class="dim-name">1. Cobertura de recorridos</div><div class="dim-verdict" style="color: var(--verdict-strong)">fuerte</div></div><div class="dim-card"><div class="dim-name">2. Completitud de tokens</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adecuada</div></div><div class="dim-card"><div class="dim-name">3. Cobertura de componentes</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adecuada</div></div><div class="dim-card"><div class="dim-name">4. Cobertura de estados</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adecuada</div></div><div class="dim-card"><div class="dim-name">5. Referencias visuales</div><div class="dim-verdict" style="color: var(--verdict-thin)">escasa</div></div><div class="dim-card"><div class="dim-name">6. Exceso y sobreespecificación</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adecuada</div></div><div class="dim-card"><div class="dim-name">7. Disciplina de herencia</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adecuada</div></div><div class="dim-card"><div class="dim-name">8. Encaje de forma</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adecuada</div></div></div><section class="dimension"><details><summary><h2>1. Cobertura de recorridos</h2><span class="verdict-pill verdict-strong">fuerte</span></summary><div class="dim-body"><div class="dim-judgment"><p>Los cinco UJ del PRD tienen protagonista, pasos, clímax y caso de fallo.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Títulos de los recorridos no literales del PRD</h3><span class="finding-location">EXPERIENCE.md § Key Flows</span></header><div class="finding-note">Ej.: «Andrés confirma lo que pagó en la barbería» frente a «Andrés confirma el precio una hora después de cortarse el pelo».</div><div class="finding-fix"><strong>Fix:</strong> Usar los títulos exactos del PRD.</div></article></div></details></section><section class="dimension"><details><summary><h2>2. Completitud de tokens</h2><span class="verdict-pill verdict-adequate">adecuada</span></summary><div class="dim-body"><div class="dim-judgment"><p>Todos los colores con hexadecimal y par oscuro; contraste declarado.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Tipografía en px en lugar de sp</h3><span class="finding-location">DESIGN.md § typography</span></header><div class="finding-note">En Android el texto debe escalar con la fuente del sistema.</div><div class="finding-fix"><strong>Fix:</strong> Indicar que los tamaños se leen como sp.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Token «pin» frente a «Marcador de lugar»</h3><span class="finding-location">DESIGN.md § Components</span></header><div class="finding-note">Dos nombres para el mismo componente.</div><div class="finding-fix"><strong>Fix:</strong> Renombrar el token a «marcador».</div></article></div></details></section><section class="dimension"><details><summary><h2>3. Cobertura de componentes</h2><span class="verdict-pill verdict-adequate">adecuada</span></summary><div class="dim-body"><div class="dim-judgment"><p>Casi todos los componentes tienen aspecto y comportamiento.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">«Regla deslizable de precio» y «Regla de precio»</h3><span class="finding-location">DESIGN.md / EXPERIENCE.md</span></header><div class="finding-note">Mismo componente, dos nombres.</div><div class="finding-fix"><strong>Fix:</strong> Unificar como «Regla de precio».</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Botón secundario sin comportamiento</h3><span class="finding-location">EXPERIENCE.md § Component Patterns</span></header><div class="finding-note">Solo está su aspecto.</div><div class="finding-fix"><strong>Fix:</strong> Añadirlo junto al primario.</div></article></div></details></section><section class="dimension"><details><summary><h2>4. Cobertura de estados</h2><span class="verdict-pill verdict-adequate">adecuada</span></summary><div class="dim-body"><div class="dim-judgment"><p>Cubre arranque, permisos, sin conexión, errores de cuenta y de código.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Falta «GPS sin señal» en navegación</h3><span class="finding-location">EXPERIENCE.md § State Patterns</span></header><div class="finding-note">Es el fallo más habitual de un GPS.</div><div class="finding-fix"><strong>Fix:</strong> Mantener la última posición, aviso «Buscando señal GPS» y no crear ni descartar la visita mientras tanto.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Faltan «ficha cargando» y «perfil vacío»</h3><span class="finding-location">EXPERIENCE.md § State Patterns</span></header><div class="finding-note">Sin tratamiento definido.</div><div class="finding-fix"><strong>Fix:</strong> Añadir ambos estados.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Buscador sin favoritos ni frecuentes</h3><span class="finding-location">EXPERIENCE.md § State Patterns</span></header><div class="finding-note">Primer uso.</div><div class="finding-fix"><strong>Fix:</strong> Mostrar solo categorías y «Encuentra cerca».</div></article></div></details></section><section class="dimension"><details open><summary><h2>5. Referencias visuales</h2><span class="verdict-pill verdict-thin">escasa</span></summary><div class="dim-body"><div class="dim-judgment"><p>No hay maquetas ni importaciones; las capturas se citan como carpeta.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Referencia poco específica a las capturas</h3><span class="finding-location">EXPERIENCE.md § Information Architecture</span></header><div class="finding-note">No dice qué captura ilustra qué pantalla.</div><div class="finding-fix"><strong>Fix:</strong> Citar capturas por pantalla o generar maquetas de pantallas clave en el cierre.</div></article></div></details></section><section class="dimension"><details><summary><h2>6. Exceso y sobreespecificación</h2><span class="verdict-pill verdict-adequate">adecuada</span></summary><div class="dim-body"><div class="dim-judgment"><p>Sin relleno relevante.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Tamaños repetidos en frontmatter y prosa</h3><span class="finding-location">DESIGN.md § Components</span></header><div class="finding-note">Duplicación menor.</div><div class="finding-fix"><strong>Fix:</strong> En la prosa, remitir al token.</div></article></div></details></section><section class="dimension"><details><summary><h2>7. Disciplina de herencia</h2><span class="verdict-pill verdict-adequate">adecuada</span></summary><div class="dim-body"><div class="dim-judgment"><p>Las rutas de sources resuelven y los tokens citados existen.</p></div></div><div class="findings-list"></div></details></section><section class="dimension"><details><summary><h2>8. Encaje de forma</h2><span class="verdict-pill verdict-adequate">adecuada</span></summary><div class="dim-body"><div class="dim-judgment"><p>Orden canónico en DESIGN.md; secciones obligatorias presentes en EXPERIENCE.md.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Falta «Inspiration &amp; Anti-patterns»</h3><span class="finding-location">EXPERIENCE.md</span></header><div class="finding-note">Obligatoria con productos de referencia: Mapas de Apple, Waze, Discord, y descartes (bocetos B y C, paleta A, pestañas).</div><div class="finding-fix"><strong>Fix:</strong> Añadir la sección con qué se toma y qué se rechaza.</div></article></div></details></section><section class="reviewer-section"><details><summary><h2>Revisión de accesibilidad</h2><span class="reviewer-source">review-accesibilidad.md</span></summary><div class="dim-body"><div class="dim-judgment"><p>Base buena (contraste, 48 dp, reducir animaciones, nada solo por color), pero casi todo depende de gestos sin alternativa accesible.</p></div></div><div class="findings-list"><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">El mapa solo se maneja con gestos</h3><span class="finding-location">EXPERIENCE.md § Interaction Primitives</span></header><div class="finding-note">Con TalkBack, mover y ampliar el mapa a ciegas no sirve.</div><div class="finding-fix"><strong>Fix:</strong> Botones de zoom con TalkBack activo y lista accesible («Encuentra cerca») como alternativa al mapa.</div></article><article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">La hoja del buscador depende del arrastre</h3><span class="finding-location">Component Patterns · Hoja del buscador</span></header><div class="finding-note">Sin alternativa para TalkBack o poca movilidad.</div><div class="finding-fix"><strong>Fix:</strong> Acciones de accesibilidad «Expandir» y «Contraer»; tocar la cápsula la abre del todo.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">La regla de precio es un deslizador</h3><span class="finding-location">Component Patterns · Regla de precio</span></header><div class="finding-note">Difícil con TalkBack.</div><div class="finding-fix"><strong>Fix:</strong> Control ajustable de 1 € en 1 € y entrada por teclado numérico.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Ordenar el plan solo arrastrando</h3><span class="finding-location">Component Patterns · Tarjeta del plan</span></header><div class="finding-note">Sin alternativa.</div><div class="finding-fix"><strong>Fix:</strong> Acciones «Subir» y «Bajar».</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">El cristal no garantiza el contraste</h3><span class="finding-location">DESIGN.md § Elevation &amp; Depth</span></header><div class="finding-note">El fondo cambia con el mapa.</div><div class="finding-fix"><strong>Fix:</strong> Opacidad mínima para 4,5:1 y fondo opaco con «reducir transparencias» o alto contraste.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Alturas fijas con fuente al 200 %</h3><span class="finding-location">DESIGN.md § Components</span></header><div class="finding-note">La cápsula y las píldoras pueden cortar texto.</div><div class="finding-fix"><strong>Fix:</strong> Alturas mínimas, no fijas.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Toasts de 3 s</h3><span class="finding-location">Component Patterns · Toast</span></header><div class="finding-note">Información que desaparece.</div><div class="finding-fix"><strong>Fix:</strong> Región en vivo para TalkBack y nada imprescindible solo en un toast.</div></article><article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Amarillo como texto en tema claro</h3><span class="finding-location">DESIGN.md § Colors</span></header><div class="finding-note">Contraste ~1,6:1.</div><div class="finding-fix"><strong>Fix:</strong> Amarillo solo como fondo con reward-ink encima.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Sonidos como única señal</h3><span class="finding-location">EXPERIENCE.md § Interaction Primitives</span></header><div class="finding-note">Usuarios sordos o con el móvil en silencio.</div><div class="finding-fix"><strong>Fix:</strong> Cada sonido con cambio visible y anuncio.</div></article><article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Cierre automático de la ruta al minuto</h3><span class="finding-location">Component Patterns · Navegación</span></header><div class="finding-note">Límite de tiempo.</div><div class="finding-fix"><strong>Fix:</strong> Anunciarlo con TalkBack.</div></article></div></details></section><div class="mechanical"><h3>Notas mecánicas</h3><ul><li>Frontmatter completo en ambos documentos.</li><li>Sin diagramas Mermaid.</li></ul></div><footer class="report-footer"><div class="meta"><span>Revisiones: review-rubric.md · review-accesibilidad.md</span><span>Generado: 2026-11-16</span></div></footer></div></body></html>

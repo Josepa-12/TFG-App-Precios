@@ -145,7 +145,7 @@ const PLACE_CONCEPTS = {
   Aparcamiento: [['Primera hora', 'h'], ['Día completo', 'día']],
 };
 
-const glyphSVG = (name, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24">${GLYPH[name] || GLYPH.pin}</svg>`;
+const glyphSVG = (name, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${GLYPH[name] || GLYPH.pin}</svg>`;
 const poiIconHTML = cat => {
   const c = POI_CATS[cat];
   return c ? `<i class="poi-ic" style="background:${c.color}">${glyphSVG(c.glyph)}</i>` : `<i class="poi-ic addr">${glyphSVG('pin')}</i>`;
@@ -184,7 +184,7 @@ function addPoiLayer(map, src, theme) {
       'icon-image': ['concat', 'poi-', CAT_EXPR], 'icon-size': 1, 'icon-padding': 2,
       'text-field': ['coalesce', ['get', 'name:es'], ['get', 'name']], 'text-font': font, 'text-size': 12,
       'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [1.15, 0], 'text-max-width': 8,
-      'text-optional': true, 'symbol-sort-key': ['get', 'rank'],
+      'text-optional': true, 'symbol-sort-key': ['coalesce', ['get', 'rank'], 99], // algunos POI no traen rank
     },
     paint: { 'text-color': poiTextColor(theme), 'text-halo-color': theme === 'dark' ? '#0F1424' : '#FFFFFF', 'text-halo-width': 1.5 },
   });
@@ -368,7 +368,7 @@ function stepText(s) {
   if (m === 'straight') return `Sigue recto${on}`;
   if (m === 'uturn') return `Cambia de sentido${on}`;
   if (m.startsWith('slight')) return `Gira ligeramente a la ${side(m)}${on}`;
-  if (m.startsWith('sharp')) return `Gira bruscamente a la ${side(m)}${on}`;
+  if (m.startsWith('sharp')) return `Gira cerrado a la ${side(m)}${on}`;
   return `Gira a la ${side(m)}${on}`;
 }
 function stepIcon(s) {

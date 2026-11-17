@@ -1,0 +1,69 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Perfil y tienda</title><style>
+/* Maqueta estática de PrecioLocal (Android). Tokens: DESIGN.md (colors, typography, rounded, components).
+   Gobiernan esta pantalla: DESIGN.md Components (avatar, tarjeta de cosmético, insignia); EXPERIENCE.md Component Patterns (tarjeta de cosmético, avatar), State Patterns (monedas insuficientes). El documento manda sobre la maqueta. Fuentes del sistema (sin red):
+   en la app, títulos en Varela Round y texto en Nunito Sans. */
+:root{--bg:#F3F5FB;--surface:#FFFFFF;--surface2:#EEF2FC;--border:#D3DCF2;--text:#13235B;--muted:#4B5878;--accent:#2F5BEA;--accent-ink:#FFFFFF;
+--reward:#FFC93C;--reward-ink:#13235B;--success:#0E7A4F;--danger:#D6334A;--ctl:#6E7A99;--glass:rgba(255,255,255,.74);
+--servicio:#2F5BEA;--hosteleria:#E07B12;--ocio:#1F9D6B;--podria:#A87A00;
+--mfondo:#E9EDF7;--magua:#BFD0F4;--mverde:#DCE6EE;--mcalle:#FFFFFF;--mborde:#C9D4EE;--medif:#D3DCF2;--mfach:#97A6D0;--metq:#4B5878}
+.dark{--bg:#0F1424;--surface:#1A2238;--surface2:#232D49;--border:#2A3A63;--text:#E6ECFA;--muted:#9AA6C4;--accent:#4C7DFF;--accent-ink:#0B1020;
+--reward:#FFD166;--reward-ink:#1A1300;--success:#4ADE9B;--danger:#FF6B81;--ctl:#7F8BAA;--glass:rgba(26,34,56,.74);--servicio:#4C7DFF;--hosteleria:#F59A3C;--ocio:#3DD69B;
+--mfondo:#141B30;--magua:#0A0F1F;--mverde:#18213A;--mcalle:#2A3554;--mborde:#0F1424;--medif:#2A3A63;--mfach:#1A2442;--metq:#9AA6C4}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,'Segoe UI',Roboto,sans-serif;background:#DDE3F0;color:#13235B;padding:24px;display:flex;flex-direction:column;align-items:center;gap:12px}
+h1.page{font-size:18px} p.page{font-size:13px;color:#4B5878;max-width:900px;text-align:center}
+.row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+.col{display:flex;flex-direction:column;align-items:center;gap:8px} .cap{font-size:12px;color:#4B5878;font-weight:600}
+.phone{width:360px;height:740px;border-radius:36px;border:10px solid #111;position:relative;overflow:hidden;background:var(--bg);color:var(--text);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.status{position:absolute;top:0;left:0;right:0;height:28px;display:flex;justify-content:space-between;padding:6px 18px;font-size:12px;font-weight:700;z-index:9;color:var(--text)}
+.map{position:absolute;inset:0;background:var(--mfondo);overflow:hidden}
+.blk{position:absolute;background:var(--medif);border-radius:3px;box-shadow:3px 4px 0 var(--mfach)}
+.st{position:absolute;background:var(--mcalle);box-shadow:0 0 0 2px var(--mborde)}
+.water{position:absolute;background:var(--magua)} .park{position:absolute;background:var(--mverde);border-radius:8px}
+.lbl{position:absolute;font-size:10px;color:var(--metq);font-weight:600;white-space:nowrap}
+.glass{background:var(--glass);backdrop-filter:blur(10px);box-shadow:0 4px 16px rgba(19,35,91,.16)}
+.pill{position:absolute;top:40px;left:16px;min-height:48px;padding:0 16px;border-radius:999px;display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px}
+.rbtn{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;position:relative}
+.rstack{position:absolute;right:16px;top:40px;display:flex;flex-direction:column;gap:10px}
+.lstack{position:absolute;left:16px;bottom:96px;display:flex;flex-direction:column;gap:10px}
+.euro{background:var(--reward);color:var(--reward-ink)} .dot{position:absolute;top:6px;right:6px;width:10px;height:10px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)}
+.capsule{position:absolute;left:12px;right:12px;bottom:20px;min-height:56px;border-radius:999px;display:flex;align-items:center;gap:10px;padding:0 8px 0 18px}
+.capsule .q{flex:1;color:var(--muted);font-size:15px}
+.avatar{width:40px;height:40px;border-radius:50%;background:conic-gradient(var(--accent) 0 62%,var(--border) 62% 100%);display:flex;align-items:center;justify-content:center}
+.avatar i{width:32px;height:32px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:800;font-size:13px}
+.me{position:absolute;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 6px rgba(47,91,234,.18)}
+.pin{position:absolute;width:42px;height:42px;border-radius:14px;border:2.5px solid #fff;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;box-shadow:0 4px 12px rgba(19,35,91,.25)}
+.pin .b{position:absolute;top:-7px;right:-7px;width:18px;height:18px;border-radius:50%;background:var(--reward);color:var(--reward-ink);font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:24px 24px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.18);padding:12px 18px 22px}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--border);margin:0 auto 10px}
+h2{font-size:20px;font-weight:600} .meta{font-size:13px;color:var(--muted);font-weight:600}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+.actions{display:flex;gap:8px;margin:12px 0}
+.seg{flex:1;min-height:48px;border-radius:14px;border:1.5px solid var(--ctl);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.seg.on{border-color:var(--accent);background:var(--surface2);color:var(--accent)}
+.btn{min-height:52px;border-radius:14px;font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;padding:0 18px}
+.primary{background:var(--accent);color:var(--accent-ink)} .secondary{border:1.5px solid var(--ctl);color:var(--text)}
+.concept{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 0;border-top:1px solid var(--border)}
+.price{font-size:22px;font-weight:800;color:var(--accent);text-align:right}
+.fresh{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.variant{font-size:13px;margin-top:4px;color:var(--muted)} .variant b{color:var(--text)}
+.now{background:var(--surface2);border-radius:8px;padding:2px 6px;color:var(--accent);font-weight:800}
+.review{display:inline-block;background:#FDEBEE;color:#B0263B;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800}
+.dark .review{background:#3A1820;color:#FF8FA0}
+.q-title{font-size:22px;font-weight:600;text-align:center;margin:8px 0 4px}
+.ruler{position:relative;height:70px;margin:18px 0;border-radius:14px;background:var(--surface2);overflow:hidden}
+.ticks{position:absolute;inset:0;background:repeating-linear-gradient(90deg,var(--ctl) 0 2px,transparent 2px 24px);opacity:.5;top:30px}
+.needle{position:absolute;left:50%;top:6px;bottom:6px;width:3px;background:var(--accent);border-radius:2px}
+.big{font-size:44px;font-weight:800;text-align:center;color:var(--accent)} .big small{font-size:14px;color:var(--muted);display:block;font-weight:600}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0}
+.chip{min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--ctl);display:flex;align-items:center;font-weight:700;font-size:14px}
+.coin{width:110px;height:110px;border-radius:50%;background:var(--reward);color:var(--reward-ink);display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:900;margin:30px auto 10px;box-shadow:0 0 0 10px rgba(255,201,60,.25)}
+.xpbar{height:10px;border-radius:5px;background:var(--border);overflow:hidden;margin:6px 0 4px} .xpbar i{display:block;height:100%;width:62%;background:var(--accent)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.card{border:1.5px solid var(--border);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.thumb{height:56px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center}
+.coinchip{display:inline-flex;align-items:center;gap:4px;background:var(--reward);color:var(--reward-ink);border-radius:999px;padding:2px 10px;font-weight:800;font-size:13px}
+.small-btn{min-height:40px;border-radius:12px;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.toast{position:absolute;top:100px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);border-radius:12px;padding:10px 16px;font-size:14px;font-weight:700;white-space:nowrap}
+</style></head><body><h1 class="page">Perfil y tienda</h1><p class="page">Perfil del cliente con nivel, reputación y monedas; tienda de cosméticos con estados equipado, comprar y equipar; resumen de actividad.</p><div class="row"><div class="col"><div class="cap">Tema claro</div><div class="phone"><div class="status"><span>18:05</span><span>4G ▮▮▮</span></div><div style="padding:40px 18px"><div style="display:flex;gap:12px;align-items:center"><div class="avatar" style="width:56px;height:56px"><i style="width:46px;height:46px;font-size:17px">4</i></div><div style="flex:1"><h2>Andrés</h2><div class="meta">Nivel 4 · Fiable · 93/150 XP</div><div class="xpbar"><i></i></div></div><span class="coinchip">● 240</span></div><h2 style="font-size:17px;margin-top:18px">Tienda</h2><div class="meta">Marcador de posición</div><div class="grid"><div class="card"><div class="thumb"><span class="me" style="position:static"></span></div><b style="font-size:14px">Posición clásica</b><div class="small-btn secondary">Equipado</div></div><div class="card"><div class="thumb"><span class="me" style="position:static;background:#E3B23C"></span></div><b style="font-size:14px">Posición dorada</b><span class="coinchip">● 150</span><div class="small-btn primary">Comprar</div></div><div class="card"><div class="thumb"><span class="me" style="position:static;background:#22D3EE;box-shadow:0 0 12px #22D3EE"></span></div><b style="font-size:14px">Posición neón</b><span class="coinchip">● 200</span><div class="small-btn primary">Comprar</div></div><div class="card"><div class="thumb" style="font-size:12px;color:var(--muted)">- - - - -</div><b style="font-size:14px">Ruta discontinua</b><span class="coinchip">● 100</span><div class="small-btn secondary">Equipar</div></div></div><h2 style="font-size:17px;margin-top:16px">Tu actividad</h2><div class="concept"><span>Precios pendientes</span><b>2</b></div><div class="concept"><span>Mis aportaciones</span><b>12</b></div><div class="concept"><span>Insignias</span><b>3 de 6</b></div></div></div></div><div class="col"><div class="cap">Tema oscuro</div><div class="phone dark"><div class="status"><span>18:05</span><span>4G ▮▮▮</span></div><div style="padding:40px 18px"><div style="display:flex;gap:12px;align-items:center"><div class="avatar" style="width:56px;height:56px"><i style="width:46px;height:46px;font-size:17px">4</i></div><div style="flex:1"><h2>Andrés</h2><div class="meta">Nivel 4 · Fiable · 93/150 XP</div><div class="xpbar"><i></i></div></div><span class="coinchip">● 240</span></div><h2 style="font-size:17px;margin-top:18px">Tienda</h2><div class="meta">Marcador de posición</div><div class="grid"><div class="card"><div class="thumb"><span class="me" style="position:static"></span></div><b style="font-size:14px">Posición clásica</b><div class="small-btn secondary">Equipado</div></div><div class="card"><div class="thumb"><span class="me" style="position:static;background:#E3B23C"></span></div><b style="font-size:14px">Posición dorada</b><span class="coinchip">● 150</span><div class="small-btn primary">Comprar</div></div><div class="card"><div class="thumb"><span class="me" style="position:static;background:#22D3EE;box-shadow:0 0 12px #22D3EE"></span></div><b style="font-size:14px">Posición neón</b><span class="coinchip">● 200</span><div class="small-btn primary">Comprar</div></div><div class="card"><div class="thumb" style="font-size:12px;color:var(--muted)">- - - - -</div><b style="font-size:14px">Ruta discontinua</b><span class="coinchip">● 100</span><div class="small-btn secondary">Equipar</div></div></div><h2 style="font-size:17px;margin-top:16px">Tu actividad</h2><div class="concept"><span>Precios pendientes</span><b>2</b></div><div class="concept"><span>Mis aportaciones</span><b>12</b></div><div class="concept"><span>Insignias</span><b>3 de 6</b></div></div></div></div></div></body></html>

@@ -22,7 +22,7 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
    - arriba a la izquierda, el desplegable **"Precios"**: por defecto *Ninguno*, para que la pantalla quede limpia. Puedes mostrar todos, servicios locales, hostelería u ocio;
    - arriba a la derecha, los controles de tema y de ubicación.
 4. **Botón amarillo €** (pequeño y circular):
-   - solo funciona si tienes visitas pendientes, es decir, si respondiste "Más tarde";
+   - solo funciona si tienes precios pendientes, es decir, si respondiste "Más tarde";
    - un punto rojo indica que hay alguna pendiente;
    - al pulsarlo se retoman las preguntas.
 5. **Buscador que se despliega hacia arriba:**
@@ -41,14 +41,14 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
    - o abre `index.html?ll=36.7795,-6.3540&name=Casa%20de%20mam%C3%A1`.
 
    Las rutas siguen las calles reales y son **las más cortas respetando el sentido de las calles**: en coche nunca van en contra dirección. Se calculan con Valhalla (servidor público de FOSSGIS, opción `shortest`); si no responde, se usa OSRM, quedándose con la más corta de sus alternativas. Sin conexión, la ruta es aproximada. El código de lugares, direcciones y rutas está en `lugares.js`.
-8. **Fichas** de cada plantilla, con favorito (♥), "Avísame si cambia / cuando tenga precio" y **"¿Es tu negocio? Crea tu cuenta de negocio"**. Los servicios pueden ir agrupados por área, con "desde X €" y "Consultar". La ficha indica el origen del precio: web del negocio, declarado por el negocio o aportado por clientes. Con 3 aportes de clientes, manda lo que pagan ellos:
+8. **Fichas** de cada plantilla, con favorito (♥), "Avísame si cambia / cuando tenga precio" y **"¿Es tu negocio? Crea tu cuenta de negocio"**. Los servicios pueden ir agrupados por área, con "desde X €" y "A consultar". Arriba de la ficha, bajo el nombre, están coche / a pie y el botón **Ir**, visibles sin desplazar. La ficha indica el origen del precio: web del negocio, declarado por el negocio o aportado por clientes. Con 3 aportes de clientes, manda lo que pagan ellos:
    - servicio local: precio fijo y sin reseñas (psicología es anónima);
    - hostelería: rango por persona y 3 criterios de valoración;
    - ocio: varios precios y 3 criterios de valoración.
 9. **Navegación con GPS simulado:**
    - en la ficha eliges **en coche** (por defecto) o **a pie**, y luego pulsas "Simular llegada";
    - durante la ruta, **en coche** ves una flecha de rumbo y **a pie** un círculo con un cono que sigue la brújula del móvil (necesita HTTPS en el móvil; en el ordenador, el cono sigue la ruta);
-   - al llegar, la ruta sigue hasta pulsar **"He finalizado"** o se cierra sola en 1 minuto (`ARRIVE_END_MS`);
+   - al llegar, la ruta sigue hasta pulsar **"Terminar ruta"** o se cierra sola en 1 minuto (`ARRIVE_END_MS`); con "Indicaciones por voz" activado, los giros se leen en voz alta;
    - la pregunta "¿has ido?" **sale 1 hora después de llegar** (`ASK_DELAY_MS` en `app.js`; solo con la página abierta);
    - la **burbuja del altavoz**, encima de la del €, silencia o activa los sonidos.
 10. **Preguntas al llegar:**
@@ -72,12 +72,27 @@ Abre `index.html` con doble clic en el navegador. Hace falta conexión a interne
 12. **Frescura, ofertas, plan de tarde y avisos** (`extras.js`):
    - **Frescura:** cada precio lleva un punto verde, amarillo o gris según cuándo se confirmó. Los umbrales dependen del tipo de negocio. Confirmar precios viejos da monedas extra.
    - **Ofertas:** la cuenta de negocio las publica con fecha de fin. Se ven en la ficha y con una etiqueta "%" mínima en el marcador.
-   - **Plan de tarde:** "Añadir al plan" en la ficha. El botón "Plan" de arriba a la izquierda abre las paradas, el número de personas, el gasto estimado y "Empezar ruta" (parada a parada).
+   - **Plan de tarde:** "Añadir al plan" en la ficha. El botón "Plan" de arriba a la izquierda abre las paradas, el número de personas (1 por defecto), el gasto estimado (indica las paradas sin precio y los precios "desde") y "Empezar ruta" (parada a parada).
    - **"¿Algún precio está mal?":** avisos con peso según tu reputación. Con 3 puntos, el precio queda "en revisión".
+
+13. **Cuentas y guardado:** el progreso del cliente (monedas, aportaciones, favoritos, plan y ajustes) se guarda en el navegador, por cuenta. Los precios aportados se comparten entre cuentas en ese navegador. Cada cuenta de negocio recuerda su negocio.
+14. **Accesibilidad:**
+   - Teclado:
+     - las ventanas reciben el foco, lo mantienen dentro y se cierran con Escape;
+     - el menú "Precios" y las estrellas se manejan con flechas.
+   - Lector de pantalla:
+     - los interruptores se anuncian como tales y los errores salen junto a su campo;
+     - los avisos se anuncian.
+   - Visual:
+     - contraste suficiente en claro y oscuro;
+     - "Reducir animaciones" también afecta al mapa.
+
+## Revisión del 16/11/2026
+Se hizo una auditoría con cuatro agentes (funcionalidad, UI/UX, accesibilidad y claridad) y se corrigieron unas 40 tareas en la rama `revision`. El detalle y las decisiones tomadas están en `docs/memoria-tfg.md` (apartado 4.11e).
 
 ## Capturas automáticas (Playwright)
 ```
 npm install playwright@1.56.1
 node herramientas/capturas.js "<ruta>/prototipo/index.html" "<ruta>/docs/diseno/capturas"
 ```
-Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 63 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.
+Usa Microsoft Edge (`channel: 'msedge'`). El script recorre todo el flujo y guarda 69 capturas. Acorta la espera de la pregunta de llegada con `window.__askDelayMs`.

@@ -11,48 +11,37 @@
 </head>
 <body>
 <div class="device">
-  <div class="app" id="app">
+  <main class="app" id="app">
 
-    <!-- Mapa -->
-    <div id="map" aria-label="Mapa de Sanlúcar de Barrameda"></div>
-    <div class="map-error" id="mapError" hidden>No se pudo cargar el mapa. Comprueba la conexión a internet.</div>
+    <h1 class="sr-only" id="mapTitle" tabindex="-1">PrecioLocal · mapa</h1>
 
     <!-- Interfaz sobre el mapa (estilo Mapas de Apple) -->
     <div class="map-ui" id="mapUI">
       <div class="cat-dd">
         <button class="pill glass" id="catBtn" aria-haspopup="listbox" aria-expanded="false">
           <span class="dot-cat" id="catDot"></span><span id="catLabel">Todos</span>
-          <svg class="ic sm chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+          <svg aria-hidden="true" class="ic sm chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
         </button>
-        <div class="cat-menu" id="catMenu" role="listbox" aria-label="Filtrar por tipo" hidden></div>
+        <div class="cat-menu" id="catMenu" role="listbox" aria-label="Mostrar precios en el mapa" hidden></div>
       </div>
       <!-- Plan de tarde (aparece cuando hay paradas) -->
       <button class="pill glass plan-chip" id="planChip" hidden></button>
 
       <div class="ctrl-stack glass">
         <button id="themeFab" aria-label="Cambiar modo claro u oscuro">
-          <svg class="ic ic-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
-          <svg class="ic ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg aria-hidden="true" class="ic ic-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+          <svg aria-hidden="true" class="ic ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
         </button>
         <button id="locateFab" aria-label="Centrar en mi posición">
-          <svg class="ic" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          <svg aria-hidden="true" class="ic" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
         </button>
       </div>
 
-      <div class="fab-col">
-        <!-- Sonido de la app: burbuja encima de la de precios -->
-        <button class="bubble sound-btn" id="soundFab" aria-pressed="true" aria-label="Silenciar la app"></button>
-        <!-- Botón de precios pendientes: solo funciona si hay visitas sin responder -->
-        <button class="price-fab" id="priceFab" aria-label="Precios pendientes">
-          <span>€</span><i class="red-dot" id="priceDot" hidden></i>
-        </button>
-      </div>
-
-      <div class="dock glass" id="dock">
+      <div class="dock glass" id="dock" role="search" aria-label="Buscador">
         <div class="grab-zone" aria-hidden="true"><div class="grab"></div></div>
         <div class="dock-line">
           <label class="search" for="searchInput">
-            <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <svg aria-hidden="true" class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input id="searchInput" type="search" placeholder="Buscar servicio o lugar" autocomplete="off" aria-label="Buscar un servicio o lugar">
           </label>
           <button class="cancel" id="searchCancel" hidden>Cancelar</button>
@@ -63,19 +52,34 @@
         </div>
         <div class="search-panel" id="searchPanel" hidden></div>
       </div>
+
+      <!-- Burbujas (después del buscador en el DOM: el buscador se alcanza antes con el tabulador) -->
+      <div class="fab-col">
+        <!-- Sonido de la app: burbuja encima de la de precios -->
+        <button class="bubble sound-btn" id="soundFab" aria-pressed="true" aria-label="Silenciar la app"></button>
+        <!-- Botón de precios pendientes: solo funciona si hay visitas sin responder -->
+        <button class="price-fab" id="priceFab" aria-label="Precios pendientes">
+          <span aria-hidden="true">€</span><i class="red-dot" id="priceDot" hidden></i>
+        </button>
+      </div>
     </div>
 
+    <!-- Mapa (después de los controles en el DOM: se tabulan antes que el lienzo y los marcadores;
+         la UI va por encima con z-index, así que el aspecto no cambia) -->
+    <div id="map" aria-label="Mapa de Sanlúcar de Barrameda"></div>
+    <div class="map-error" id="mapError" hidden>No se pudo cargar el mapa. Comprueba la conexión a internet.</div>
+
     <!-- Ficha del establecimiento -->
-    <div class="sheet" id="placeSheet" hidden role="dialog" aria-modal="false"></div>
+    <div class="sheet" id="placeSheet" hidden role="dialog" aria-modal="false" aria-labelledby="sheetTitle"></div>
 
     <!-- Navegación -->
     <div class="nav-ui" id="navUI" hidden>
       <div class="nav-banner">
-        <svg class="ic big" id="navIconTurn" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
-        <svg class="ic big" id="navIconStraight" viewBox="0 0 24 24" style="display:none"><path d="M12 21V3M5 10l7-7 7 7"/></svg>
-        <svg class="ic big" id="navIconRound" viewBox="0 0 24 24" style="display:none"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>
-        <svg class="ic big" id="navIconArrive" viewBox="0 0 24 24" style="display:none"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg>
-        <div><div class="nav-dist" id="navDist">300 m</div><div class="nav-instr" id="navInstr">Gira a la derecha</div></div>
+        <svg aria-hidden="true" class="ic big" id="navIconTurn" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
+        <svg aria-hidden="true" class="ic big" id="navIconStraight" viewBox="0 0 24 24" style="display:none"><path d="M12 21V3M5 10l7-7 7 7"/></svg>
+        <svg aria-hidden="true" class="ic big" id="navIconRound" viewBox="0 0 24 24" style="display:none"><path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/></svg>
+        <svg aria-hidden="true" class="ic big" id="navIconArrive" viewBox="0 0 24 24" style="display:none"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/></svg>
+        <div><div class="nav-dist" id="navDist">300 m</div><div class="nav-instr" id="navInstr" aria-live="polite" aria-atomic="true">Gira a la derecha</div></div>
       </div>
       <button class="bubble sound-btn nav-sound" aria-pressed="true" aria-label="Silenciar la app"></button>
       <div class="nav-card">
@@ -84,51 +88,51 @@
           <button class="btn ghost small" id="navExit">Salir</button>
         </div>
         <button class="btn primary" id="navSimulate">
-          <svg class="ic" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-          Simular llegada (GPS simulado)
+          <svg aria-hidden="true" class="ic" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          Simular llegada
         </button>
         <button class="btn primary" id="navFinish" hidden>
-          <svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
-          He finalizado
+          <svg aria-hidden="true" class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+          Terminar ruta
         </button>
       </div>
     </div>
 
     <!-- Perfil (incluye tienda y ajustes) -->
-    <section class="screen" id="screen-perfil" hidden></section>
+    <section class="screen" id="screen-perfil" hidden role="dialog" aria-modal="true" aria-label="Perfil"></section>
 
     <!-- Preguntas al llegar -->
     <div class="overlay" id="flowOverlay" hidden>
-      <div class="flow-card" id="flowCard" role="dialog" aria-modal="true"></div>
+      <div class="flow-card" id="flowCard" role="dialog" aria-modal="true" aria-labelledby="flowTitle"></div>
     </div>
 
     <!-- Bienvenida -->
-    <section class="screen onboarding" id="screen-onboarding">
+    <section class="screen onboarding" id="screen-onboarding" aria-labelledby="onbTitle">
       <div class="onb-art">
         <div class="logo">
           <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4C20 4 11 13 11 25c0 15 21 35 21 35s21-20 21-35C53 13 44 4 32 4Z" fill="var(--accent)"/><circle cx="32" cy="25" r="12" fill="var(--reward)"/><text x="32" y="31" text-anchor="middle" font-size="16" font-weight="800" fill="var(--reward-ink)" font-family="Nunito Sans">€</text></svg>
         </div>
       </div>
-      <h1>Descubre cuánto cuesta<br>antes de ir</h1>
+      <h1 id="onbTitle" tabindex="-1">Descubre cuánto cuesta antes de ir</h1>
       <ul class="onb-list">
-        <li><span class="onb-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/></svg></span>Precios de fisios, restaurantes, pistas… en el mapa.</li>
-        <li><span class="onb-ic"><svg class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Los negocios declaran su precio y los clientes lo confirman con lo que pagan.</li>
+        <li><span class="onb-ic"><svg aria-hidden="true" class="ic" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/></svg></span>Precios de fisios, restaurantes, pistas… en el mapa.</li>
+        <li><span class="onb-ic"><svg aria-hidden="true" class="ic" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>Los negocios declaran su precio y los clientes lo confirman con lo que pagan.</li>
         <li><span class="onb-ic reward"><span class="coin"></span></span>Gana monedas por cada precio y personaliza tu GPS.</li>
       </ul>
       <p class="onb-privacy">
-        <svg class="ic" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+        <svg aria-hidden="true" class="ic" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
         Solo usamos tu ubicación mientras navegas con la app. Nunca en segundo plano.
       </p>
-      <button class="btn primary" id="onbStart">Aceptar y empezar</button>
+      <button class="btn primary" id="onbStart">Empezar</button>
     </section>
 
     <!-- Crear cuenta / iniciar sesión: cliente o negocio (Google simulado) -->
-    <section class="screen account" id="screen-cuenta" hidden></section>
+    <section class="screen account" id="screen-cuenta" hidden aria-label="Cuenta"></section>
 
     <!-- Notificación dentro de la app (ejemplo de "Avísame si cambia") -->
-    <button class="notif" id="notif" hidden></button>
-    <div class="toast" id="toast" role="status" hidden></div>
-  </div>
+    <div class="notif-live" role="status" aria-live="polite"><button class="notif" id="notif" hidden></button></div>
+    <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  </main>
 </div>
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>

@@ -423,6 +423,63 @@ Cuando el negocio revisa y publica sus precios desde su cuenta, dejan de mostrar
   - El negocio ve en su perfil los avisos recibidos y qué precios están en revisión.
 - Para las capturas se simula el paso del tiempo (`proto.ageDays`) y los avisos de otros usuarios (`proto.simReports`). No se inventa ningún precio.
 
+### 4.11e Revisión del prototipo: auditoría multiagente y correcciones (16/11/2026) **[Redactado]**
+**Método.** Antes de seguir añadiendo funciones se auditó el prototipo con cuatro agentes especializados, que trabajaron en paralelo y probaron el comportamiento real con Playwright, no solo leyendo el código:
+- **Funcionalidad:** flujos completos, validaciones, persistencia y casos límite. 20 hallazgos.
+- **UI/UX:** jerarquía, consistencia y tamaños de pantalla, incluidos portátiles. 18 hallazgos.
+- **Accesibilidad**, con WCAG 2.2 como referencia: teclado, lector de pantalla, contraste y objetivos táctiles. 16 hallazgos.
+- **Claridad y contenido:** textos, terminología y acciones ambiguas. 25 hallazgos.
+
+Un agente coordinador unificó los 79 hallazgos en 44 tareas sin duplicados, priorizadas de P0 a P3 y con dependencias. La implementación también se repartió entre agentes, en oleadas, para que nunca hubiera dos editando la misma zona de código:
+1. **Oleada 1:** flujo de llegada, cuentas y guardado, plan y avisos, y estilos.
+2. **Oleada 2:** ficha, mapa y buscador; perfil, ayuda y textos.
+3. **Oleada 3:** foco, teclado y semántica.
+4. **Oleada 4:** validación y capturas.
+
+Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión del autor.
+
+**Problemas más importantes detectados y corregidos:**
+- **Sin salida:**
+  - a partir del paso 2 del flujo de llegada no había ni "Atrás" ni "Más tarde";
+  - en "¿Es tu negocio?" con sesión de cliente no había forma de volver.
+- **Integridad del dato:**
+  - la regla recortaba a 100 € lo que se escribía, aceptaba 0 € y redondeaba los céntimos (22,50 € contaba como precio distinto);
+  - un error de validación en el modo negocio borraba los precios;
+  - el tramo "Más de 50 €" inventaba un tope de 80 €.
+- **Promesa incumplida:** la app decía "tus monedas y aportaciones quedan guardadas" y no se guardaba nada. Ahora el progreso se guarda por cuenta en el navegador.
+- **Interfaz:**
+  - los avisos emergentes tapaban y bloqueaban el botón "Ir";
+  - el marco del móvil se cortaba en portátiles de 1366×768 (lo que vería el tribunal);
+  - en fichas largas "Ir" quedaba 900 px más abajo. Ahora va en una fila bajo la cabecera, como en Mapas de Apple.
+- **Accesibilidad (P0):**
+  - los diálogos no recibían el foco, no lo retenían y no se cerraban con Escape;
+  - además había problemas de contraste en modo oscuro, estados de los controles que el lector de pantalla no anunciaba y campos sin etiqueta.
+- **Claridad:**
+  - "avisos de precio" significaba dos cosas: vigilar un sitio y denunciar un error;
+  - la ayuda decía algo falso sobre cómo cambia el precio;
+  - el total del plan de tarde parecía completo aunque faltaran precios.
+
+**Decisiones tomadas en la revisión:**
+
+| Tema | Decisión |
+|---|---|
+| Guardado | El progreso del cliente se guarda en el navegador |
+| Botón "Ir" | Fila de acciones bajo la cabecera de la ficha |
+| Asa de la ficha | Se elimina, porque no se podía arrastrar |
+| Marcadores | Siguen mostrando el logo del tipo de negocio; los que no tienen precio se ven más discretos |
+| Plan de tarde | Empieza con 1 persona |
+| Alta de negocio | Usa la ubicación actual |
+| Filtro de precios | Con "Ninguno", la píldora dice "Ver precios" |
+| Color de cada sitio | El mismo que su marcador (por plantilla) en todas las pantallas |
+| Tramo de hostelería | "Más de 50 €" queda abierto |
+| Aportaciones anónimas | Clínicas, fisioterapia y dentistas |
+| Cuentas de negocio | No aportan precios como cliente |
+| Indicaciones por voz | Se implementan con la síntesis de voz del navegador |
+
+**Validación.** Se repitieron las pruebas de los cuatro auditores y el recorrido completo de capturas en 360×740, 390×844, 1366×768 y 844×390, en claro y oscuro. El resultado se detalla en el capítulo 6.
+
+**Valor para el TFG:** la auditoría documenta la calidad del prototipo antes de las pruebas con usuarios (SUS) y sirve como evidencia del proceso iterativo de diseño.
+
 **Rutas y marcadores (16/11/2026).**
 - **Ruta más corta y sin ir en contra dirección.** OSRM calcula la ruta más rápida y su servidor público no permite pedir la más corta. Por eso las rutas se piden primero a **Valhalla** (servidor público de FOSSGIS) con la opción `shortest`, que minimiza la distancia y respeta los sentidos de circulación de OpenStreetMap. A pie se puede ir por cualquier acera. Si Valhalla no responde, se usa OSRM y se elige la más corta de sus alternativas.
 - La ruta empieza y acaba en el punto de la calle más cercano. Antes se unía con líneas rectas a la posición exacta del usuario y del destino, y esos tramos cruzaban manzanas.
@@ -450,6 +507,82 @@ Cuando el negocio revisa y publica sus precios desde su cuenta, dejan de mostrar
 ## 5. Desarrollo **[Pendiente]**
 
 - **5.1 Elección de tecnología y prueba técnica del mapa:** opciones valoradas (Unity + Mapbox SDK frente a una app fuera de Unity con Mapbox GL o MapLibre), criterios y resultado. *Primer dato:* el prototipo web (4.11) demuestra que con MapLibre + OpenFreeMap se consigue un mapa real en 2.5D, con estilo propio, sin cuenta y sin coste.
+  - *Segundo dato (16/11/2026):* se crea el proyecto de Unity `unity/PrecioLocal` (Unity 6.3 LTS, render integrado) con una escena "Mapa" generada por código:
+    - teselas reales de OpenStreetMap a escala 1 unidad = 1 m, proyección Web Mercator (`Geo.cs`), con caché en disco y atribución;
+    - cámara 2.5D con ratón, teclado y táctil;
+    - marcadores colocados por latitud y longitud (tu posición y 4 sitios reales).
+
+    No se ha usado el Mapbox SDK, sin desarrollo activo y con cuenta obligatoria: se carga el mapa directamente.
+
+    *Resultado (16/11/2026):* al pulsar Play el mapa real de Sanlúcar se descarga y se muestra correctamente en el editor, con los marcadores en su sitio. Queda demostrado que Unity puede mostrar un mapa real sin SDK de terceros.
+
+    *Estilo propio, opción A (16/11/2026):* para el estilo se valoraron cuatro caminos:
+    - **A.** Teselas de imagen recoloreadas.
+    - **B.** Cesium for Unity con edificios de OSM.
+    - **C.** Teselas vectoriales con código propio.
+    - **D.** Versión web.
+
+    Se empieza por la A. Primero se probaron los mapas base de CARTO, de estilo claro, pero ahora exigen clave de API. Por eso se mantienen las teselas de OpenStreetMap y se recolorean con un shader propio (`TeselaPaleta.shader`). Ese shader traduce cada color del estilo OSM al color equivalente de la paleta del prototipo web, por luminosidad y por tono: suelo, edificios, agua, zonas verdes, calles y texto. Admite tema claro, oscuro y original.
+
+    Ventajas: sin proveedor nuevo, sin clave y sin coste. Límites:
+    - el mapa sigue plano;
+    - no se puede cambiar el grosor de las calles ni qué etiquetas aparecen;
+    - las etiquetas siguen siendo las de OSM.
+
+    *Opción B, Cesium for Unity (16/11/2026):* se elige la B para tener la ciudad en 3D.
+    - Se instala Cesium for Unity 1.26.1. Es gratuito y de código abierto, compatible con Unity 6, con el render integrado y con Android e iOS.
+    - Necesita una cuenta gratuita de Cesium ion.
+    - Se genera una segunda escena, `MapaCesium`, con:
+      - el origen geográfico en la Plaza del Cabildo;
+      - el relieve de Cesium World Terrain con las teselas de OpenStreetMap encima;
+      - los edificios en 3D de Cesium OSM Buildings;
+      - los mismos marcadores, colocados con `CesiumGlobeAnchor`.
+    - Se mantiene la cámara 2.5D propia y la escena anterior, para comparar.
+    - Cesium añade el paquete Input System. Por eso el proyecto pasa a usar los dos sistemas de entrada ("Both") y la cámara sigue funcionando.
+    - El token de Cesium ion queda fuera del repositorio (`.gitignore`).
+    - **Paleta en 3D.** Con los materiales por defecto de Cesium, los edificios blancos sobre el mapa de OSM no se distinguían. Se crean dos materiales propios:
+      - **Terreno:** recolorea con la paleta las teselas OSM que Cesium coloca encima, usando la misma función que la opción A, ahora compartida en `PaletaOSM.cginc`.
+      - **Edificios:** tejado con el color de edificio de la paleta y fachadas más oscuras según la luz.
+      - Los colores son globales y los aplica `TemaCesium.cs`, que permite cambiar entre tema claro, oscuro y original con la tecla T.
+    - **Problema encontrado (5.8):** el suelo salía entero del color del agua.
+      - *Diagnóstico:* se guardó la imagen que Cesium aplicaba al terreno y era mar liso.
+      - *Causa:* en las plantillas de URL de Cesium, `{y}` cuenta las filas desde el sur, mientras que el esquema XYZ de OpenStreetMap las cuenta desde el norte. Se pedían las teselas de la latitud opuesta, en el Atlántico Sur.
+      - *Solución:* usar `{reverseY}`.
+    - *Resultado:* Sanlúcar en 3D con la paleta del proyecto, con calles y sus nombres, edificios con volumen y marcadores en su sitio.
+    - **Mapa más limpio y sombras (16/11/2026):**
+      - *Iconos:* el shader del terreno quita los iconos de puntos de interés de OSM y sus nombres. En el estilo OSM son de colores vivos y oscuros, así que se detectan por saturación y luminosidad y se rellenan con la media de los píxeles de alrededor. Se pueden mostrar u ocultar con la tecla I.
+        - *Límite:* los iconos negros, como iglesias y mezquitas, no se pueden separar del texto de las calles por color y se mantienen.
+      - *Sombras:*
+        - Los edificios proyectan sombra sobre el suelo, con un tono azulado de la paleta y un sol de tarde desde el suroeste.
+        - La distancia de sombra sigue al zoom de la cámara: la del proyecto, 70 m, no cubría la vista del mapa, que se mira desde unos 900 m.
+        - Los edificios no reciben sombras. A esa distancia la precisión no da y aparecían rayas por "acné de sombra".
+
+    *Opción C, teselas vectoriales de OpenFreeMap en Unity (16/11/2026):* se prueba a dibujar el mapa en Unity con los mismos datos que el prototipo web.
+    - **Datos:** teselas vectoriales de OpenFreeMap, formato Mapbox Vector Tile y esquema OpenMapTiles, a zoom 14 (unos 2 km por tesela).
+    - **Código propio, sin librerías externas:**
+      - lector del formato, que es protobuf (`LectorMVT.cs`);
+      - triangulador por recorte de orejas con soporte de patios interiores (`Triangulador.cs`);
+      - constructor del mapa (`MapaVectorial.cs`).
+    - **Qué se dibuja:**
+      - calles como cintas con borde, con anchura según el tipo de vía;
+      - agua y zonas verdes;
+      - edificios extruidos con su altura (`render_height`) y con sombra;
+      - nombres de calle tumbados sobre el tramo recto más largo, a 7 m de alto. Se probó a darles tamaño constante en pantalla, levantarlos hacia la cámara y añadirles negrita con halo, pero se descartó y se volvió a esta versión.
+    - **Paleta:** las capas usan los colores exactos de la paleta, sin recolorear imágenes, y no aparece ningún icono que no se quiera.
+    - **Ventajas frente a Cesium:**
+      - sin cuenta, sin clave y sin logo obligatorio: basta la atribución en texto;
+      - mismos datos que el prototipo web;
+      - caché en disco para usarlo sin conexión;
+      - cada tesela se construye en milisegundos.
+    - **Límites de esta prueba:**
+      - el suelo es plano, sin relieve;
+      - no hay más detalle que el del zoom 14;
+      - los nombres siguen un solo tramo recto y no la curva de la calle.
+
+    Pendiente para completar la comparación:
+    - estilo propio, que en Unity exige teselas vectoriales;
+    - edificios extruidos;
+    - GPS real en el móvil.
 - **5.2 Arquitectura:** estructura del proyecto y módulos.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
@@ -460,10 +593,29 @@ Cuando el negocio revisa y publica sus precios desde su cuenta, dejan de mostrar
 
 ---
 
-## 6. Pruebas y validación **[Pendiente]**
+## 6. Pruebas y validación **[Parcial]**
+
+### 6.0 Validación técnica tras la auditoría (16/11/2026)
+Antes de las pruebas con usuarios, un agente de validación repitió las pruebas automatizadas de los cuatro auditores (funcionalidad, UI/UX, accesibilidad y claridad) y las de cada oleada de corrección. También regeneró y revisó una a una las 69 capturas del recorrido completo, en 360×740, 390×844, 1366×768 y 844×390, en claro y oscuro.
+
+**Resultado.**
+- **Hallazgos resueltos:** todos salvo uno parcial. Algunos botones (más y menos del número de personas, botones de la tienda) cumplen el mínimo de 24 px de WCAG 2.2 AA, pero no llegan a los 44 px recomendados.
+- **Contraste:** 0 incumplimientos en 17 pantallas, en claro y oscuro.
+- **Teclado y lector de pantalla:** 0 fallos en las pruebas de foco y teclado.
+- **Consola:** sin errores en todo el recorrido.
+
+**Regresiones encontradas y corregidas durante la validación (9):**
+- La pregunta de llegada podía abrirse sobre la pantalla de cuenta tras cerrar sesión.
+- Se publicaban ofertas con precio negativo.
+- Había un contraste insuficiente en modo oscuro.
+- Había detalles de maquetación.
+
+**Pendiente:** en horizontal (844×390), el aviso emergente tapa unos segundos el título de la tarjeta de pregunta.
+
+### Pruebas con usuarios (pendiente)
 
 Plan previsto:
-- **Participantes:** entre 5 y 20 usuarios. Idealmente, un grupo usa la app con gamificación y otro sin ella.
+- **Participantes:** entre 5 y 20 usuarios. Todos usan la app con gamificación: es, junto a los precios, la novedad de la app, así que no se hace un grupo sin ella (decidido 16/11/2026). Su efecto se mide con la tasa de aporte, el uso de la tienda y un cuestionario final sobre si las recompensas animaron a responder.
 - **Instrumento:** cuestionario SUS (System Usability Scale; Brooke, 1996).
 - **Datos que se recogen:** puntuación SUS, número de aportaciones y observaciones.
 
@@ -544,6 +696,21 @@ Ideas de trabajo futuro ya identificadas:
 | 16/11/2026 | Ofertas del negocio con fecha de fin, en la ficha y con una etiqueta muy pequeña en una esquina del marcador; se retiran con 3 avisos de "ya no está" | Dar valor a la cuenta de negocio sin recargar el mapa |
 | 16/11/2026 | Plan de tarde desde la ficha: paradas, personas, gasto estimado y ruta parada a parada | Usar los precios para planificar, no solo para consultar |
 | 16/11/2026 | Avisos de precio incorrecto con peso según la reputación; con 3 puntos el precio queda "en revisión" y se pide confirmarlo | Filtrar datos falsos o desfasados sin ocultar información |
+| 16/11/2026 | Auditoría con cuatro agentes (funcionalidad, UI/UX, accesibilidad y claridad) y corrección de las 44 tareas resultantes en la rama `revision`, sin commits hasta la revisión del autor | Asegurar la calidad del prototipo antes de las pruebas con usuarios y documentar el proceso |
+| 16/11/2026 | Decisiones de la revisión (ver 4.11e): progreso guardado en el navegador, "Ir" bajo la cabecera, sin asa, plan con 1 persona, "Ver precios", color por plantilla, "Más de 50 €" abierto, anonimato también en dentistas, cuentas de negocio sin aportar como cliente, voz implementada | Resolver las decisiones abiertas de la auditoría con la opción recomendada |
 | 16/11/2026 | Se añade ChemaBarber (tipo nuevo "Barbería"), sin precio porque no lo publica | Ubicación facilitada por el autor; mismo criterio de no inventar precios |
 | 16/11/2026 | Al abrir un sitio, la cámara lo centra en la parte del mapa que no tapa la ficha (desplazamiento en píxeles) | Con el mapa inclinado, el desplazamiento fijo en grados dejaba el marcador debajo de la ficha |
 | 16/11/2026 | Corregido: los marcadores de precio salían desplazados y se movían con la cámara | El CSS del marcador (`position: relative`, transición y escala de `transform`) pisaba la posición que calcula MapLibre; ahora el marcador va dentro de un contenedor que solo mueve MapLibre |
+| 16/11/2026 | PRD de la app final con BMAD (`_bmad-output/planning-artifacts/prds/`): Android con Unity, mapa vectorial de OpenFreeMap (opción C), 60 requisitos funcionales y 8 no funcionales | Fijar qué debe hacer la app real antes de crear épicas e historias |
+| 16/11/2026 | El MVP incluye todas las funciones del prototipo, sin priorizar ni aplazar ninguna (incluida la voz) | El autor considera que hay tiempo suficiente con la ayuda de la IA |
+| 16/11/2026 | Visita verificada: ruta iniciada con la app en la que faltan 5 minutos o menos para llegar; la pregunta llega una hora después, aunque la app esté cerrada | Contar la visita aunque no se pulse "Terminar ruta" ni se llegue al punto exacto |
+| 16/11/2026 | Variantes del precio (horario, día, tipo de cliente) en la app final | Recoger la cuarta dimensión del estudio de tipos de negocio, que el prototipo no tenía |
+| 16/11/2026 | Diseño de UX de la app final con BMAD (`_bmad-output/planning-artifacts/ux-designs/`): DESIGN.md (colores, tipografía, componentes) y EXPERIENCE.md (pantallas, estados, accesibilidad, recorridos), con 4 maquetas de pantallas clave | Fijar cómo se ve y cómo funciona la app antes de la arquitectura y las historias |
+| 16/11/2026 | Accesibilidad sin gestos obligatorios: zoom con botones y lista "Encuentra cerca" con TalkBack, hoja con Expandir/Contraer, regla ajustable, plan con Subir/Bajar; zonas táctiles de 48 dp; solo vertical en la v1 | La revisión de accesibilidad vio que casi todo dependía de gestos |
+| 16/11/2026 | Arquitectura de la app final con BMAD (`_bmad-output/planning-artifacts/architecture/`): hexagonal ligero (núcleo de reglas en C# puro + adaptadores), 18 decisiones de arquitectura | Que las partes construidas por separado encajen y que las reglas del precio se puedan probar sin Unity |
+| 16/11/2026 | Firebase en plan gratuito (Spark), sin código en servidor: el precio lo calcula cada móvil a partir de los aportes; verificación del negocio por correo del local o aprobación manual; "Avísame si cambia" al abrir la app | Coste cero y sin tarjeta (NFR-7); el plan gratuito no permite funciones en servidor ni SMS |
+| 16/11/2026 | Aportes y avisos públicos sin ningún dato del autor; las reglas de Firestore exigen una visita verificada propia (una por lugar y día) | Anonimato total y control de trampas sin servidor |
+| 17/11/2026 | Épicas e historias con BMAD (`_bmad-output/planning-artifacts/epics.md`): 9 épicas y 53 historias con criterios Dado/Cuando/Entonces; orden 1 explorar → 2 llegar → 3 cuenta → 4 aportar → 5 tienda → 6 evaluación → 7 precios fiables → 8 negocio → 9 plan, revisado en una mesa redonda de agentes | Las épicas 1 a 6 son lo mínimo para las pruebas con usuarios; la frescura va en la épica 1 porque la ficha la necesita |
+| 17/11/2026 | GPS en segundo plano solo durante una ruta, con notificación fija de navegación (servicio en primer plano de Android); nunca sin ruta | Que la visita verificada se cree con el móvil en el bolsillo y la pantalla apagada, sin seguir al usuario fuera de la navegación |
+| 16/11/2026 | Lugares base empaquetados en la app; Firestore solo para lo que cambia; caché de Firestore para el uso sin conexión | Arranque rápido, uso sin conexión desde el primer día y menos cuota |
+| 16/11/2026 | Los recorridos de ejemplo no atribuyen precios inventados a negocios reales: en UJ-2, Andrés es el pionero que aporta el primer precio de ChemaBarber, que sigue en la app con su nombre | Mismo criterio que el prototipo: no inventar precios de negocios reales |
