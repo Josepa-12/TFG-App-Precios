@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
+using PriceMap.UI;
 using PriceMap.Vectorial;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -20,8 +21,9 @@ namespace PriceMap.Arranque
         ServicioTema tema;
         IPreferencias preferencias;
         MapaVectorial mapa;
+        PantallaMapa pantalla;
 
-        public static void SiSePide(GameObject anfitrion, ServicioTema tema, IPreferencias preferencias, MapaVectorial mapa)
+        public static void SiSePide(GameObject anfitrion, ServicioTema tema, IPreferencias preferencias, MapaVectorial mapa, PantallaMapa pantalla)
         {
 #if !(UNITY_STANDALONE || UNITY_EDITOR || DEVELOPMENT_BUILD)
             return; // nunca en la APK de verdad
@@ -34,6 +36,7 @@ namespace PriceMap.Arranque
             c.tema = tema;
             c.preferencias = preferencias;
             c.mapa = mapa;
+            c.pantalla = pantalla;
 #endif
         }
 
@@ -53,6 +56,8 @@ namespace PriceMap.Arranque
             else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             yield return new WaitForSeconds(1f); // CaptureScreenshot escribe el fichero al acabar el fotograma
 
+            yield return Marcadores();
+
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
             mapa.Centrar(new Coordenada(36.8279, -6.3528));
@@ -68,6 +73,43 @@ namespace PriceMap.Arranque
             Application.Quit();
         }
 
+        /// <summary>
+        /// Captura "marcadores" centrada en Clínica Areas y registra el mayor desvío entre la punta de cada
+        /// marcador visible (su worldBound tras la disposición) y la proyección de su coordenada.
+        /// </summary>
+        IEnumerator Marcadores()
+        {
+            var capa = pantalla != null ? pantalla.Capa : null;
+            if (capa == null) { Debug.LogError("PriceMap: no hay capa de marcadores que capturar."); yield break; }
+            MarcadorLugar areas = null;
+            foreach (var m in capa.Marcadores) if (m.Lugar.Id == "clinica-areas") areas = m;
+            if (areas == null) { Debug.LogError("PriceMap: falta el marcador de Clínica Areas."); yield break; }
+
+            mapa.Centrar(areas.Lugar.Posicion);
+            yield return new WaitForSeconds(3f);
+            // Al final del fotograma: la disposición ya está hecha y la cámara no se mueve hasta el siguiente Update
+            yield return new WaitForEndOfFrame();
+            float escala = pantalla.EscalaDp;
+            float mayor = 0f; int medidos = 0; string peor = "-";
+            foreach (var m in capa.Marcadores)
+            {
+                if (!m.Visible) continue;
+                var b = m.Punta.worldBound;
+                if (float.IsNaN(b.x) || escala <= 0f) continue;
+                var puntaPx = new Vector2(b.center.x, b.yMax) / escala;
+                var p = mapa.Proyectar(m.Lugar.Posicion);
+                float desvio = Vector2.Distance(puntaPx, new Vector2(p.X, p.Y));
+                medidos++;
+                if (desvio > mayor) { mayor = desvio; peor = m.Lugar.Id; }
+            }
+            Debug.Log($"PriceMap: marcadores visibles {medidos} de {capa.Marcadores.Count}; Clínica Areas con € = {areas.Insignia != null}; " +
+                      $"mayor desvío punta-proyección {mayor:F3} px ({peor})");
+            if (medidos == 0) Debug.LogError("PriceMap: ningún marcador visible en la captura de marcadores.");
+            else if (mayor >= 1f) Debug.LogError($"PriceMap: desvío de los marcadores {mayor:F3} px ≥ 1 px");
+            yield return Capturar("marcadores");
+            yield return new WaitForSeconds(1f);
+        }
+
         /// <summary>Escribe en el registro dónde está cada elemento de la interfaz, con su texto y su fuente.</summary>
         static void Diagnostico()
         {
@@ -78,6 +120,7 @@ namespace PriceMap.Arranque
                 Debug.Log($"PriceMap: panel {raiz.layout} pantalla {Screen.width}x{Screen.height} dpi {Screen.dpi}");
                 raiz.Query<UnityEngine.UIElements.VisualElement>().ForEach(e =>
                 {
+                    if (e.GetFirstAncestorOfType<MarcadorLugar>() != null) return; // 124 marcadores: solo su raíz
                     var t = e as UnityEngine.UIElements.TextElement;
                     Debug.Log($"PriceMap:   {e.name} [{string.Join(" ", e.GetClasses())}] {e.worldBound} display={e.resolvedStyle.display}" +
                               (t != null ? $" texto=\"{t.text}\" tamaño={t.resolvedStyle.fontSize} fuente={t.resolvedStyle.unityFont?.name ?? "-"} def={t.resolvedStyle.unityFontDefinition.fontAsset?.name ?? "-"} color={t.resolvedStyle.color}" : ""));

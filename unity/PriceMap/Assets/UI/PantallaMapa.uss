@@ -73,3 +73,99 @@
     white-space: normal;
     -unity-text-align: middle-right;
 }
+
+/* Marcadores de los lugares (prototipo: styles.css · .pin). Cada .marcador mide 0×0 y está justo en
+   la coordenada (CapaMarcadores lo mueve con translate): la punta acaba ahí y el resto cuelga hacia arriba.
+   Nada captura toques: el mapa se mueve igual al arrastrar sobre un marcador. */
+.capa-marcadores {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.marcador {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    color: var(--color-pin-borde);
+}
+
+/* Columna cuerpo + punta, centrada en X y apoyada en la coordenada */
+.marcador__pin {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    translate: -50% 0;
+    flex-direction: column;
+    align-items: center;
+}
+
+.marcador__cuerpo {
+    width: var(--marcador);
+    height: var(--marcador);
+    border-radius: var(--radio-md);
+    border-width: 2.5px;
+    border-color: var(--color-pin-borde);
+    background-color: var(--color-pin-servicio);
+    align-items: center;
+    justify-content: center;
+}
+
+.marcador--hosteleria .marcador__cuerpo {
+    background-color: var(--color-pin-hosteleria);
+}
+
+.marcador--ocio .marcador__cuerpo {
+    background-color: var(--color-pin-ocio);
+}
+
+.marcador__logo {
+    width: var(--marcador-logo);
+    height: var(--marcador-logo);
+}
+
+/* Punta blanca de 8 dp (triángulo dibujado con Painter2D en todo su rectángulo) */
+.marcador__punta {
+    width: 12px;
+    height: 8px;
+    color: var(--color-pin-borde);
+}
+
+.marcador__insignia {
+    position: absolute;
+    top: -7px;
+    right: -7px;
+    width: var(--marcador-insignia);
+    height: var(--marcador-insignia);
+    border-radius: var(--radio-pill);
+    border-width: 2px;
+    border-color: var(--color-pin-borde);
+    background-color: var(--color-reward);
+    color: var(--color-reward-ink);
+}
+
+/* Sin precio: secundario (más pequeño y atenuado, sin €) */
+.marcador--sin-precio {
+    opacity: 0.7;
+}
+
+.marcador--sin-precio .marcador__cuerpo {
+    width: var(--marcador-sin-precio);
+    height: var(--marcador-sin-precio);
+    border-radius: var(--radio-sm);
+    border-width: 2px;
+}
+
+.marcador--sin-precio .marcador__logo {
+    width: var(--marcador-logo-sin-precio);
+    height: var(--marcador-logo-sin-precio);
+}
+
+.marcador--sin-precio .marcador__punta {
+    width: 10px;
+    height: 6px;
+}

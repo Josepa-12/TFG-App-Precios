@@ -19,5 +19,11 @@ namespace PriceMap.Aplicacion
 
         /// <summary>Aleja la vista un paso.</summary>
         void Alejar();
+
+        /// <summary>
+        /// Dónde cae la coordenada en la pantalla con la cámara de este fotograma (px, origen arriba a
+        /// la izquierda). Sirve para colocar encima del mapa lo que dibuja la UI (marcadores).
+        /// </summary>
+        PuntoPantalla Proyectar(Coordenada punto);
     }
 }

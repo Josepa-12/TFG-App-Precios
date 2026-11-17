@@ -34,6 +34,8 @@ namespace PriceMap.EditorTools
             [ClavesTexto.MapaAcercar] = "Acercar",
             [ClavesTexto.MapaAlejar] = "Alejar",
             [ClavesTexto.MapaAtribucion] = "OpenFreeMap © OpenMapTiles · Datos © colaboradores de OpenStreetMap",
+            [ClavesTexto.MarcadorConPrecio] = "{0}, {1}, desde {2}",
+            [ClavesTexto.MarcadorSinPrecio] = "{0}, {1}, aún no tiene precio",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

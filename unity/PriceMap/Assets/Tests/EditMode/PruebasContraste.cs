@@ -26,7 +26,7 @@ namespace PriceMap.Tests.EditMode
             return r;
         }
 
-        static Color Leer(string v)
+        internal static Color Leer(string v)
         {
             if (v.StartsWith("#")) { ColorUtility.TryParseHtmlString(v, out var c); return c; }
             var p = v.Substring(5, v.Length - 6).Split(',');
@@ -43,7 +43,7 @@ namespace PriceMap.Tests.EditMode
             return 0.2126f * L(c.r) + 0.7152f * L(c.g) + 0.0722f * L(c.b);
         }
 
-        static float Contraste(Color a, Color b)
+        internal static float Contraste(Color a, Color b)
         {
             float la = Luminancia(a), lb = Luminancia(b);
             return (Mathf.Max(la, lb) + 0.05f) / (Mathf.Min(la, lb) + 0.05f);

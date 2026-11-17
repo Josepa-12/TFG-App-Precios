@@ -616,6 +616,13 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Resumen para el mapa:** el Dominio calcula al leer si un lugar tiene precio y cuál anuncia: el importe más bajo, con la forma "desde" (Clínica Areas: desde 20 €). Un centro público nunca tiene precio.
     - **Carga:** la app lee el JSON al arrancar. Si el fichero falta o está dañado, el mapa sale sin lugares y la app no se cae.
     - **Pruebas:** 113 pruebas EditMode. Comprueban el JSON real (124 lugares, cada importe igual al de la web) y los casos de fichero dañado.
+  - *Historia 1.4, parte 2 (17/11/2026): marcadores de los lugares en el mapa.*
+    - **Cómo se dibujan:** son una capa de la interfaz (UI Toolkit) encima del mapa 3D, no objetos 3D. Cada fotograma el mapa dice dónde cae en la pantalla cada coordenada (`IMapa.Proyectar`) y el marcador se mueve ahí. Así conserva su tamaño al hacer zoom, usa los estilos del proyecto y TalkBack puede leerlo.
+    - **Sin retraso:** la cámara se mueve en `Update`, antes que nada, y los marcadores se colocan en `LateUpdate`. En la build de PC la punta queda a 0,5 px de su coordenada (el límite es 1 px).
+    - **Aspecto, como el prototipo:** cuadrado redondeado con punta, cuya punta marca el sitio exacto. Lleva el color de su plantilla, el logo vectorial de su tipo de negocio (14 glifos del prototipo dibujados con un pequeño intérprete de trazos SVG) e insignia € si tiene precio. Sin precio, es más pequeño y translúcido.
+    - **Colores y contraste:** los colores del marcador no cambian con el tema, para que el logo blanco siempre contraste. El naranja de hostelería se oscureció a `#D6740F` porque el original daba 2,997:1, por debajo del 3:1 que piden los iconos.
+    - **TalkBack:** lee "Clínica Areas, clínica privada, desde 20 €" o "Bar Cachón, bar, aún no tiene precio". Primero recorre los botones y después los marcadores visibles, de arriba abajo. Los que quedan fuera de la pantalla no tienen nodo.
+    - **Pruebas:** 141 pruebas EditMode. Cubren colores, logos, insignia, ocultación fuera de vista, orden de pintado, formato de euros en castellano ("1234 €", "22,50 €"), textos de TalkBack, contraste y la proyección del mapa real.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -752,4 +759,5 @@ Ideas de trabajo futuro ya identificadas:
 | 17/11/2026 | Historia 1.4 dividida: primero los datos base de los lugares y su resumen de precio; después los marcadores con logo y TalkBack | Mismo motivo que la 1.2 |
 | 17/11/2026 | El marcador anuncia el precio más bajo del lugar ("desde"), sin contar precios con bono. Los conceptos que la web solo da con bono no se migran: si el negocio los quiere, los añade él | Un precio que solo vale para quien tiene bono no representa al lugar |
 | 17/11/2026 | Los centros sanitarios públicos nunca tienen precio (regla del Dominio) y se ven en el mapa como puntos de interés (historia 1.6) | No se paga en el momento; los datos del prototipo ya los excluían |
+| 17/11/2026 | Marcadores con punta, como en el prototipo, y con colores fijos en los dos temas (naranja de hostelería oscurecido a `#D6740F`) | Que se vea el punto exacto del lugar y que el logo blanco cumpla el contraste mínimo de 3:1 |
 | 16/11/2026 | Los recorridos de ejemplo no atribuyen precios inventados a negocios reales: en UJ-2, Andrés es el pionero que aporta el primer precio de ChemaBarber, que sigue en la app con su nombre | Mismo criterio que el prototipo: no inventar precios de negocios reales |

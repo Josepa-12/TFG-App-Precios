@@ -39,6 +39,14 @@ MonoBehaviour:
     m_Key: mapa.atribucion
     m_Metadata:
       m_Items: []
+  - m_Id: 92993179607040
+    m_Key: marcador.anuncio.conprecio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 92993208967168
+    m_Key: marcador.anuncio.sinprecio
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

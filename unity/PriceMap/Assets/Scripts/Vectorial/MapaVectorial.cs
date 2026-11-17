@@ -183,6 +183,22 @@ namespace PriceMap.Vectorial
 
         public void Acercar() { var c = Camara(); if (c != null) c.Acercar(); }
 
+        /// <summary>
+        /// Proyecta la coordenada (en el suelo) con la cámara del mapa tal como está ahora. La cámara se
+        /// mueve en Update (orden -100), así que en LateUpdate ya no cambia en este fotograma.
+        /// </summary>
+        public PuntoPantalla Proyectar(Coordenada punto)
+        {
+            var c = Camara();
+            if (c == null) return PuntoPantalla.Ninguno;
+            if (camaraUnity == null || camaraUnity.gameObject != c.gameObject) camaraUnity = c.GetComponent<Camera>();
+            if (camaraUnity == null) return PuntoPantalla.Ninguno;
+            var p = camaraUnity.WorldToScreenPoint(Geo.ALocal(punto.Latitud, punto.Longitud));
+            // Unity cuenta Y desde abajo; la UI, desde arriba (en píxeles de toda la pantalla)
+            return new PuntoPantalla(p.x, Screen.height - p.y, p.z);
+        }
+        Camera camaraUnity;
+
         /// <summary>Para no mover el mapa cuando el dedo empieza sobre un control de la interfaz.</summary>
         public System.Func<Vector2, bool> EntradaBloqueada
         {

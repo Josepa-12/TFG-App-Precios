@@ -22,6 +22,7 @@ namespace PriceMap.Tests.EditMode
             public void AplicarTema(Tema tema) { }
             public void Acercar() => acercar++;
             public void Alejar() => alejar++;
+            public PuntoPantalla Proyectar(Coordenada punto) => PuntoPantalla.Ninguno;
         }
 
         class PreferenciasFalsas : IPreferencias
@@ -46,7 +47,7 @@ namespace PriceMap.Tests.EditMode
             pantalla = objeto.AddComponent<PantallaMapa>();
             arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
             tema = new ServicioTema(new PreferenciasFalsas(), new SistemaClaro());
-            pantalla.Inicializar(new MapaFalso(), tema, arbol);
+            pantalla.Inicializar(new MapaFalso(), tema, null, System.DateTime.UtcNow, arbol);
             tema.Iniciar(); // como en el Arranque
         }
 

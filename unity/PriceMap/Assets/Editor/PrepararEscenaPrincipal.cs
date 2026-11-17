@@ -11,22 +11,14 @@ namespace PriceMap.EditorTools
     /// <summary>
     /// Crea la escena principal de la app: el mapa vectorial de Sanlúcar (OpenStreetMap vía OpenFreeMap),
     /// la cámara 2.5D, la interfaz (UIDocument con PantallaMapa) y el Arranque, que conecta las piezas (AD-2).
-    /// Incluye la posición simulada y 4 sitios de ejemplo hasta que la historia 1.4 traiga los lugares reales.
+    /// Incluye la posición simulada (hasta la historia 1.7). Los lugares no van en la escena: los dibuja la
+    /// interfaz encima del mapa (CapaMarcadores, historia 1.4).
     /// Menú: PriceMap ▸ Preparar escena principal. Es la única escena del build.
     /// </summary>
     public static class PrepararEscenaPrincipal
     {
         public const string RutaEscena = "Assets/Scenes/Principal.unity";
         const string CarpetaMateriales = "Assets/Materiales";
-
-        // Sitios reales del prototipo web (prototipo/datos-lugares.js y datos-precios-web.js)
-        static readonly (string nombre, TipoMarcador tipo, double lat, double lon)[] Sitios =
-        {
-            ("Clínica Areas", TipoMarcador.Servicio, 36.780143, -6.35088),
-            ("Casa Ballén", TipoMarcador.Hosteleria, 36.778127, -6.353815),
-            ("Padel La Jara", TipoMarcador.Ocio, 36.770616, -6.368991),
-            ("ChemaBarber", TipoMarcador.Servicio, 36.7601585, -6.3624415),
-        };
 
         [MenuItem("PriceMap/Preparar escena principal")]
         public static void Crear()
@@ -62,7 +54,6 @@ namespace PriceMap.EditorTools
 
             var raiz = new GameObject("Marcadores").transform;
             CrearPosicion(raiz);
-            foreach (var s in Sitios) CrearSitio(raiz, s.nombre, s.tipo, s.lat, s.lon);
 
             // Interfaz (UI Toolkit) sobre el mapa
             var pantalla = new GameObject("Pantalla del mapa").AddComponent<PantallaMapa>();
@@ -104,29 +95,6 @@ namespace PriceMap.EditorTools
             m.nombre = "Tu posición"; m.tipo = TipoMarcador.Posicion; m.latitud = 36.7779; m.longitud = -6.3528;
             Pieza(go.transform, PrimitiveType.Cylinder, new Vector3(0, 0.6f, 0), new Vector3(26, 0.6f, 26), Material("Blanco", Shader.Find("Standard"), Color.white)).name = "Borde";
             Pieza(go.transform, PrimitiveType.Cylinder, new Vector3(0, 1.2f, 0), new Vector3(18, 0.8f, 18), Opaco(TipoMarcador.Posicion)).name = "Punto";
-            m.Colocar();
-        }
-
-        static void CrearSitio(Transform raiz, string nombre, TipoMarcador tipo, double lat, double lon)
-        {
-            var go = new GameObject(nombre);
-            go.transform.SetParent(raiz);
-            var m = go.AddComponent<Marcador>();
-            m.nombre = nombre; m.tipo = tipo; m.latitud = lat; m.longitud = lon;
-            Pieza(go.transform, PrimitiveType.Cylinder, new Vector3(0, 15, 0), new Vector3(2.5f, 15, 2.5f), Material("Blanco", Shader.Find("Standard"), Color.white)).name = "Palo";
-            Pieza(go.transform, PrimitiveType.Cube, new Vector3(0, 38, 0), new Vector3(18, 18, 18), Opaco(tipo)).name = "Cabeza";
-
-            var texto = new GameObject("Etiqueta");
-            texto.transform.SetParent(go.transform, false);
-            texto.transform.localPosition = new Vector3(0, 58, 0);
-            var tm = texto.AddComponent<TextMesh>();
-            tm.text = nombre;
-            tm.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            tm.GetComponent<MeshRenderer>().sharedMaterial = tm.font.material;
-            tm.fontSize = 64; tm.characterSize = 1.6f;
-            tm.anchor = TextAnchor.LowerCenter; tm.alignment = TextAlignment.Center;
-            tm.color = new Color32(0x13, 0x23, 0x5B, 0xFF);
-            m.etiqueta = texto.transform;
             m.Colocar();
         }
 

@@ -46,6 +46,15 @@ namespace PriceMap.Tests.EditMode
                 "Sin PriceMap.tss la raíz del UIDocument mide 0 de alto y la interfaz no se ve.");
         }
 
+        /// <summary>Los lugares los dibuja la interfaz (historia 1.4): en la escena solo queda "Tu posición".</summary>
+        [Test]
+        public void ElUnicoMarcadorDeLaEscenaEsTuPosicion()
+        {
+            var marcadores = Buscar<Marcador>();
+            Assert.AreEqual(1, marcadores.Length, "Sobran marcadores fijos: " + string.Join(", ", marcadores.Select(m => m.nombre)));
+            Assert.AreEqual("Tu posición", marcadores[0].nombre);
+        }
+
         [Test]
         public void LaEscenaPrincipalEsLaUnicaDelBuild()
         {

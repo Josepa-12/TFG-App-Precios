@@ -2,17 +2,18 @@ using UnityEngine;
 
 namespace PriceMap.Vectorial
 {
-    public enum TipoMarcador { Posicion, Servicio, Hosteleria, Ocio }
+    /// <summary>Tipo de marcador 3D de la escena. Los lugares los dibuja la interfaz (CapaMarcadores); aquí solo queda "Tu posición".</summary>
+    public enum TipoMarcador { Posicion }
 
     /// <summary>
     /// Coloca el objeto en una latitud/longitud real y mantiene su etiqueta mirando a la cámara.
-    /// Los colores siguen el prototipo web: servicio local azul, hostelería naranja, ocio verde.
+    /// Solo lo usa "Tu posición" (azul del prototipo web) hasta la historia 1.7.
     /// </summary>
     [ExecuteAlways]
     public class Marcador : MonoBehaviour
     {
         public string nombre = "Sitio";
-        public TipoMarcador tipo = TipoMarcador.Servicio;
+        public TipoMarcador tipo = TipoMarcador.Posicion;
         public double latitud = 36.7779;
         public double longitud = -6.3528;
         public Transform etiqueta;            // texto que mira siempre a la cámara
@@ -20,13 +21,7 @@ namespace PriceMap.Vectorial
         public bool escalarConDistancia = true;
         public float escalaBase = 1f;
 
-        public static Color ColorDe(TipoMarcador t) => t switch
-        {
-            TipoMarcador.Posicion => new Color32(0x2F, 0x5B, 0xEA, 0xFF),
-            TipoMarcador.Servicio => new Color32(0x2F, 0x5B, 0xEA, 0xFF),
-            TipoMarcador.Hosteleria => new Color32(0xE0, 0x7B, 0x12, 0xFF),
-            _ => new Color32(0x1F, 0x9D, 0x6B, 0xFF),
-        };
+        public static Color ColorDe(TipoMarcador t) => new Color32(0x2F, 0x5B, 0xEA, 0xFF);
 
         void Start() => Colocar();
         void OnValidate() => Colocar();

@@ -43,6 +43,14 @@ MonoBehaviour:
       OpenStreetMap"
     m_Metadata:
       m_Items: []
+  - m_Id: 92993179607040
+    m_Localized: '{0}, {1}, desde {2}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 92993208967168
+    m_Localized: "{0}, {1}, a\xFAn no tiene precio"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

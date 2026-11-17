@@ -16,6 +16,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-lugares-reales-de-sanlucar-con-su-logo-en-el-mapa.md`
   summary: Pruebas automáticas del script `exportar-datos-unity.js` (tarifas de un lugar que no existe, ids repetidos, plantillas desconocidas).
   evidence: Revisión de la 1.4 (parte 1). No hay arnés de pruebas de Node y los casos de error solo se comprobaron a mano con una copia aislada. Conviene hacerlo cuando `WEB_PRICES` tenga más negocios.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-4b-marcadores-de-los-lugares-en-el-mapa.md`
+  summary: Probar con TalkBack en un Android real que los marcadores se anuncian y que sus nodos aparecen y desaparecen al mover el mapa. También comprobar a ojo, al arrastrar, que los marcadores no van un fotograma por detrás.
+  evidence: Revisión de la 1.4 (parte 2), Verification Gap. Con el lector apagado, `AnadirMarcas` y `ActualizarMarcadores` no se ejecutan. No hay pruebas PlayMode del orden Update/LateUpdate. La captura de PC solo mide con la cámara quieta (0,5 px).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-lugares-reales-de-sanlucar-con-su-logo-en-el-mapa.md`
   summary: Ignorar en git `unity/PriceMap/Assets/AddressableAssetsData/link.xml`, que cada build regenera.
   evidence: Se borró en `58e4bbb` y volvió a aparecer tras la build de PC de la verificación de la 1.4 (parte 1).

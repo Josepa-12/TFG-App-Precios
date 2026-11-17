@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
 using UnityEngine;
@@ -23,20 +25,23 @@ namespace PriceMap.UI
         BotonRedondo botonTema, botonAcercar, botonAlejar;
         Label atribucion;
         AccesibilidadPantalla accesibilidad;
+        CapaMarcadores capa;
         Rect zonaSeguraAplicada;
         float anchoAplicado;
         bool temaYaAnunciado; // el primer tema (al arrancar) no se anuncia: solo los cambios del usuario
 
-        public void Inicializar(IMapa mapa, ServicioTema tema)
+        /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
+        /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
+        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, raizDocumento);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
-        public void Inicializar(IMapa mapa, ServicioTema tema, VisualElement raizDocumento)
+        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento)
         {
             this.mapa = mapa;
             this.tema = tema;
@@ -62,6 +67,14 @@ namespace PriceMap.UI
             accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), () => this.mapa.Acercar(), visible: () => AccesibilidadPantalla.LectorActivo);
             accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), () => this.mapa.Alejar(), visible: () => AccesibilidadPantalla.LectorActivo);
 
+            // Marcadores de los lugares, debajo de los botones (primer hijo de la raíz)
+            capa = new CapaMarcadores(raiz.Q("capa-marcadores"), this.mapa, ConResumen(lugares, ahora));
+            foreach (var m in capa.Marcadores)
+            {
+                var marcador = m;
+                accesibilidad.Marcador(marcador.Cuerpo, () => marcador.Anuncio, () => marcador.Visible, () => marcador.Posicion);
+            }
+
             this.tema.Cambiado += AlCambiarTema;
             AssistiveSupport.screenReaderStatusChanged += AlCambiarLector;
             AccessibilitySettings.fontScaleChanged += AlCambiarEscalaFuente;
@@ -69,6 +82,12 @@ namespace PriceMap.UI
 
             AlCambiarLector(AccesibilidadPantalla.LectorActivo);
             // El tema inicial llega con ServicioTema.Iniciar (lo llama el Arranque justo después)
+        }
+
+        static IEnumerable<(Lugar, ResumenLugar)> ConResumen(ServicioLugares lugares, DateTime ahora)
+        {
+            if (lugares == null) yield break;
+            foreach (var l in lugares.Lugares) yield return (l, lugares.Resumen(l.Id, ahora).Valor);
         }
 
         void OnDestroy()
@@ -98,6 +117,19 @@ namespace PriceMap.UI
         /// <summary>Para las pruebas: tema que muestra la interfaz y botón de tema.</summary>
         public bool InterfazOscura => raiz != null && raiz.ClassListContains("tema-oscuro");
         public BotonRedondo BotonTema => botonTema;
+        /// <summary>Capa de marcadores; null sin interfaz.</summary>
+        public CapaMarcadores Capa => capa;
+        public AccesibilidadPantalla Accesibilidad => accesibilidad;
+
+        /// <summary>Píxeles de pantalla → dp del panel; 0 mientras no hay disposición.</summary>
+        public float EscalaDp
+        {
+            get
+            {
+                float ancho = raiz != null ? raiz.layout.width : float.NaN;
+                return Screen.width > 0 && !float.IsNaN(ancho) && ancho > 0f ? ancho / Screen.width : 0f;
+            }
+        }
 
         string ValorTema() => Textos.T(tema.Actual == Tema.Oscuro ? ClavesTexto.TemaOscuro : ClavesTexto.TemaClaro);
 
@@ -126,7 +158,7 @@ namespace PriceMap.UI
         void RepintarIconos()
         {
             // El color nuevo del tema se resuelve en el siguiente pase de estilos
-            raiz.schedule.Execute(() => { botonTema.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint(); });
+            raiz.schedule.Execute(() => { botonTema.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint(); capa?.Repintar(); });
         }
 
         /// <summary>Respeta las zonas seguras (barra de estado y de gestos) y aplica la escala de fuente.</summary>
@@ -147,9 +179,17 @@ namespace PriceMap.UI
             zonaSegura.style.bottom = segura.yMin * escala;
         }
 
-        void Update()
+        // La cámara se mueve en Update (CamaraMapa, orden -100): aquí ya está quieta en este fotograma
+        void LateUpdate()
         {
-            // Los botones pueden moverse (zona segura, escala de fuente): TalkBack necesita sus marcos al día
+            if (capa != null)
+            {
+                float escala = EscalaDp;
+                if (escala > 0f) capa.Actualizar(escala);
+                // Con TalkBack: rehace los nodos de los marcadores si cambian los visibles o su orden
+                accesibilidad.ActualizarMarcadores();
+            }
+            // Botones y marcadores se mueven (zona segura, escala de fuente, mapa): TalkBack necesita sus marcos al día
             if (accesibilidad != null && AccesibilidadPantalla.LectorActivo) AssistiveSupport.activeHierarchy?.RefreshNodeFrames();
         }
     }

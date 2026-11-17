@@ -97,6 +97,31 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(9 + 25, mapa.TeselasPendientes);
         }
 
+        [Test]
+        public void ProyectarDaPixelesDesdeArribaYLaProfundidad()
+        {
+            IMapa mapa = objMapa.AddComponent<MapaVectorial>();
+            var cam = objCamara.GetComponent<Camera>();
+            var c = new Coordenada(36.78, -6.35);
+            mapa.Centrar(c);
+
+            // El pivote está en el centro de la vista; Y se cuenta desde arriba de la pantalla
+            var centro = mapa.Proyectar(c);
+            Assert.IsTrue(centro.Delante);
+            Assert.AreEqual(cam.pixelWidth / 2f, centro.X, 1f);
+            Assert.AreEqual(Screen.height - cam.pixelHeight / 2f, centro.Y, 1f);
+
+            // Unos 220 m al norte: la cámara mira hacia el norte, así que queda más arriba (Y menor)
+            var norte = mapa.Proyectar(new Coordenada(c.Latitud + 0.002, c.Longitud));
+            Assert.IsTrue(norte.Delante);
+            Assert.Less(norte.Y, centro.Y);
+
+            // Unos 3 km al sur: detrás de la cámara
+            var detras = mapa.Proyectar(new Coordenada(c.Latitud - 0.03, c.Longitud));
+            Assert.LessOrEqual(detras.Profundidad, 0f);
+            Assert.IsFalse(detras.Delante);
+        }
+
         [TestCase("PriceMap/PlanoPaleta")]
         [TestCase("PriceMap/EdificiosPaleta")]
         public void ElShaderDelMapaExisteConSuNombre(string nombre)

@@ -29,6 +29,12 @@
     --color-fresh-podria: #A87A00;
     --color-fresh-antiguo: #6E7A99;
     --color-map-fondo: #E9EDF7;
+    /* Marcadores de los lugares: iguales en los dos temas (decisión del 17/11/2026), por eso no se
+       redefinen en .tema-oscuro; el logo y el borde blancos van encima */
+    --color-pin-servicio: #2F5BEA;
+    --color-pin-hosteleria: #D6740F; /* más oscuro que --color-tpl-hosteleria: logo blanco ≥ 3:1 */
+    --color-pin-ocio: #1F9D6B;
+    --color-pin-borde: #FFFFFF;
 
     /* Espaciado (4 / 8 / 12 / 16 / 24 / 32) */
     --espacio-1: 4px;
@@ -49,6 +55,11 @@
     /* Tamaños de componentes (mínimos) */
     --boton-redondo: 48px;
     --zona-tactil-min: 48px;
+    --marcador: 42px;
+    --marcador-sin-precio: 32px;
+    --marcador-logo: 22px;
+    --marcador-logo-sin-precio: 17px;
+    --marcador-insignia: 18px;
 
     -unity-font: url("../Fuentes/NunitoSans-Regular.ttf");
     color: var(--color-text);

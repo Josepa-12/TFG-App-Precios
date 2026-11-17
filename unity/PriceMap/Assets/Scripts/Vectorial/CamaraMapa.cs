@@ -8,8 +8,11 @@ namespace PriceMap.Vectorial
     ///  - Ratón: arrastrar con el botón izquierdo = mover; rueda = zoom; botón derecho = girar e inclinar.
     ///  - Teclado: WASD / flechas = mover; Q/E = girar; R/F = inclinar.
     ///  - Táctil: un dedo = mover; dos dedos = zoom (pellizco) y giro; dos dedos en vertical = inclinar.
+    /// La entrada se lee y la cámara se mueve en Update, antes que ningún otro script (orden -100):
+    /// así está quieta cuando la UI proyecta los marcadores en LateUpdate, en el mismo fotograma.
     /// </summary>
     [RequireComponent(typeof(Camera))]
+    [DefaultExecutionOrder(-100)]
     public class CamaraMapa : MonoBehaviour
     {
         public Vector3 pivote = Vector3.zero;
@@ -40,7 +43,7 @@ namespace PriceMap.Vectorial
 
         void Awake() { cam = GetComponent<Camera>(); Aplicar(); }
 
-        void LateUpdate()
+        void Update()
         {
             if (Input.touchSupported && Input.touchCount > 0)
             {
