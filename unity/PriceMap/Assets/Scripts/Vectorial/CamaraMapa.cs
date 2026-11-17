@@ -7,7 +7,7 @@ namespace PriceMap.Vectorial
     /// Gira alrededor de un punto del suelo (pivote).
     ///  - Ratón: arrastrar con el botón izquierdo = mover; rueda = zoom; botón derecho = girar e inclinar.
     ///  - Teclado: WASD / flechas = mover; Q/E = girar; R/F = inclinar.
-    ///  - Táctil: un dedo = mover; dos dedos = zoom (pellizco) y giro.
+    ///  - Táctil: un dedo = mover; dos dedos = zoom (pellizco) y giro; dos dedos en vertical = inclinar.
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class CamaraMapa : MonoBehaviour
@@ -27,6 +27,8 @@ namespace PriceMap.Vectorial
         public float velocidadGiro = 0.25f;
         public float velocidadZoom = 0.12f;
         public float velocidadTeclado = 0.8f;
+        [Tooltip("Grados de inclinación por píxel de arrastre vertical con dos dedos")]
+        public float velocidadInclinacion = 0.15f;
 
         /// <summary>Lo pone el Arranque: true si el punto de pantalla está sobre un control de la interfaz.</summary>
         public System.Func<Vector2, bool> entradaBloqueada;
@@ -94,8 +96,10 @@ namespace PriceMap.Vectorial
         }
 
         float distDedosAnterior, anguloDedosAnterior;
+        TipoGesto modoDosDedos; // una vez decidido (inclinar o zoom/giro), se mantiene hasta levantar los dedos
         void Tactil()
         {
+            if (Input.touchCount < 2) modoDosDedos = TipoGesto.Nada;
             if (Input.touchCount == 1)
             {
                 var t = Input.GetTouch(0);
@@ -108,9 +112,20 @@ namespace PriceMap.Vectorial
             var a = Input.GetTouch(0); var b = Input.GetTouch(1);
             float dist = Vector2.Distance(a.position, b.position);
             float ang = Mathf.Atan2(b.position.y - a.position.y, b.position.x - a.position.x) * Mathf.Rad2Deg;
-            if (b.phase == TouchPhase.Began || a.phase == TouchPhase.Began) { distDedosAnterior = dist; anguloDedosAnterior = ang; return; }
-            if (distDedosAnterior > 1f) distancia *= distDedosAnterior / Mathf.Max(1f, dist);
-            giro -= Mathf.DeltaAngle(anguloDedosAnterior, ang);
+            bool empieza = b.phase == TouchPhase.Began || a.phase == TouchPhase.Began;
+            bool termina = a.phase == TouchPhase.Ended || a.phase == TouchPhase.Canceled || b.phase == TouchPhase.Ended || b.phase == TouchPhase.Canceled;
+            if (empieza || termina) { distDedosAnterior = dist; anguloDedosAnterior = ang; if (empieza) modoDosDedos = TipoGesto.Nada; return; }
+
+            var gesto = GestoDosDedos.Clasificar(a.deltaPosition, b.deltaPosition, distDedosAnterior, dist, anguloDedosAnterior, ang, out float dy);
+            if (modoDosDedos == TipoGesto.Nada) modoDosDedos = gesto;      // el primer movimiento claro decide el modo
+            else if (gesto != TipoGesto.Nada) gesto = modoDosDedos;        // y se mantiene durante todo el gesto
+            if (gesto == TipoGesto.Inclinar)
+                inclinacion -= dy * velocidadInclinacion; // subir los dedos inclina el mapa (más 3D), como Google Maps
+            else if (gesto == TipoGesto.ZoomGiro)
+            {
+                if (distDedosAnterior > 1f) distancia *= distDedosAnterior / Mathf.Max(1f, dist);
+                giro -= Mathf.DeltaAngle(anguloDedosAnterior, ang);
+            }
             distDedosAnterior = dist; anguloDedosAnterior = ang;
         }
 

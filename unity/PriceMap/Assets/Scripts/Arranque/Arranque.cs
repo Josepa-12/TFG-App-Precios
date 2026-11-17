@@ -29,7 +29,7 @@ namespace PriceMap.Arranque
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema)) { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
-            CapturaPruebas.SiSePide(gameObject, tema, preferencias);
+            CapturaPruebas.SiSePide(gameObject, tema, preferencias, mapa);
         }
 
         /// <summary>

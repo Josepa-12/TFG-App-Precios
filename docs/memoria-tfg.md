@@ -598,6 +598,11 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Textos:** pasan por el paquete Localization (tabla `Textos`, `es-ES`), que viaja en la APK como contenido de Addressables.
     - **Accesibilidad:** cada control se declara en la jerarquía de accesibilidad de Unity 6 para TalkBack. Con el lector activo aparecen los botones de acercar y alejar.
     - **Comprobación visual sin móvil:** un ejecutable de Windows lanzado con `-captura` guarda una captura en cada tema y registra la posición de cada elemento. Así se encontró que, sin el tema por defecto de Unity, la raíz de la interfaz medía 0 de alto.
+  - *Historia 1.2, parte 2 (17/11/2026): gestos y teselas alrededor de la vista.*
+    - **Inclinar:** el mapa se inclina arrastrando dos dedos en vertical, como en Google Maps (subir = más 3D). Una función pura decide en cada fotograma si el gesto es inclinar o ampliar y girar, según cuánto cambian la separación y el ángulo entre los dedos.
+    - **Carga de teselas:** se cargan las 3×3 de alrededor del centro de la vista (5×5 con la cámara alejada) y se liberan, mallas incluidas, las que quedan a más de 3 teselas. Así nunca hay más de 7×7 en memoria.
+    - **Sin conexión:** las teselas en caché se dibujan aunque no se pueda pedir la dirección de las teselas. Una tesela que falla se vuelve a pedir cuando cambia la vista.
+    - **Comprobación:** en el ejecutable de Windows, un recorrido de 5,5 km hacia el norte (desembocadura del Guadalquivir) deja 15 teselas cargadas.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

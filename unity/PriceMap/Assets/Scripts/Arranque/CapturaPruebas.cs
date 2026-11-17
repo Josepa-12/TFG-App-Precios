@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.IO;
 using PriceMap.Aplicacion;
+using PriceMap.Dominio;
+using PriceMap.Vectorial;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -17,8 +19,9 @@ namespace PriceMap.Arranque
         string carpeta;
         ServicioTema tema;
         IPreferencias preferencias;
+        MapaVectorial mapa;
 
-        public static void SiSePide(GameObject anfitrion, ServicioTema tema, IPreferencias preferencias)
+        public static void SiSePide(GameObject anfitrion, ServicioTema tema, IPreferencias preferencias, MapaVectorial mapa)
         {
 #if !(UNITY_STANDALONE || UNITY_EDITOR || DEVELOPMENT_BUILD)
             return; // nunca en la APK de verdad
@@ -30,6 +33,7 @@ namespace PriceMap.Arranque
             c.carpeta = args[i + 1];
             c.tema = tema;
             c.preferencias = preferencias;
+            c.mapa = mapa;
 #endif
         }
 
@@ -48,6 +52,18 @@ namespace PriceMap.Arranque
             if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
             else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             yield return new WaitForSeconds(1f); // CaptureScreenshot escribe el fichero al acabar el fotograma
+
+            // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
+            Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
+            mapa.Centrar(new Coordenada(36.8279, -6.3528));
+            yield return new WaitForSeconds(6f);
+            Debug.Log($"PriceMap: teselas cargadas a 5,5 km: {mapa.TeselasCargadas}");
+            if (mapa.TeselasCargadas > 49) Debug.LogError($"PriceMap: demasiadas teselas cargadas ({mapa.TeselasCargadas} > 7×7)");
+            yield return Capturar("lejos");
+            mapa.Centrar(new Coordenada(mapa.latitud, mapa.longitud));
+            yield return new WaitForSeconds(4f);
+            Debug.Log($"PriceMap: teselas cargadas al volver: {mapa.TeselasCargadas}");
+            yield return new WaitForSeconds(1f);
             Debug.Log("PriceMap: capturas guardadas en " + carpeta);
             Application.Quit();
         }

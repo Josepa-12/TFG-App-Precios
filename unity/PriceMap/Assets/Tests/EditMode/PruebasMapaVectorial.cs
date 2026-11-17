@@ -69,6 +69,34 @@ namespace PriceMap.Tests.EditMode
             Assert.Greater(camara.distancia, inicial, "Alejar debe aumentar la distancia de la cámara.");
         }
 
+        [Test]
+        public void ElMapaCargaAlrededorDeLaVistaYLiberaLoLejano()
+        {
+            var mapa = objMapa.AddComponent<MapaVectorial>();
+            var camara = objCamara.GetComponent<CamaraMapa>();
+            ((IMapa)mapa).Centrar(new Coordenada(36.7779, -6.3528));
+
+            mapa.ActualizarTeselas();
+            Assert.AreEqual(9, mapa.TeselasPendientes, "Al empezar, 3×3 teselas en cola.");
+
+            // Supongamos que ya se construyeron las 3×3 del centro
+            var origen = Geo.Tesela(36.7779, -6.3528, mapa.zoom);
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dx = -1; dx <= 1; dx++) mapa.SimularCargada(new Vector2Int(origen.x + dx, origen.y + dy));
+            Assert.AreEqual(9, mapa.TeselasCargadas);
+
+            // Cinco teselas al este (≈ 0,11° de longitud a zoom 14): todas quedan a más de 3 y se liberan
+            ((IMapa)mapa).Centrar(new Coordenada(36.7779, -6.3528 + 5 * 360.0 / (1 << mapa.zoom)));
+            mapa.ActualizarTeselas();
+            Assert.AreEqual(0, mapa.TeselasCargadas, "Las teselas lejanas se liberan.");
+            Assert.AreEqual(18, mapa.TeselasPendientes, "Las 9 iniciales siguen en cola y se añaden las 9 nuevas.");
+
+            // Con la cámara lejos se añade un anillo: 5×5 alrededor del nuevo centro
+            camara.distancia = 3000f;
+            mapa.ActualizarTeselas();
+            Assert.AreEqual(9 + 25, mapa.TeselasPendientes);
+        }
+
         [TestCase("PriceMap/PlanoPaleta")]
         [TestCase("PriceMap/EdificiosPaleta")]
         public void ElShaderDelMapaExisteConSuNombre(string nombre)

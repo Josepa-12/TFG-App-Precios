@@ -28,8 +28,12 @@ namespace PriceMap.Vectorial
         public double longitud = -6.3528;
         [Tooltip("OpenFreeMap llega hasta el zoom 14 (≈ 2 km por tesela en Sanlúcar)")]
         [Range(12, 14)] public int zoom = 14;
-        [Tooltip("1 → 3×3 teselas (unos 6 km de lado)")]
+        [Tooltip("Teselas alrededor del centro de la vista: 1 → 3×3 (unos 6 km de lado)")]
         [Range(0, 2)] public int radio = 1;
+        [Tooltip("Con la cámara más lejos que esto, se carga un anillo más (5×5)")]
+        public float distanciaAnilloExtra = 2000f;
+        [Tooltip("Se liberan las teselas a más de esta distancia del centro (en teselas)")]
+        public int radioLiberar = 3;
         public string tileJson = "https://tiles.openfreemap.org/planet";
 
         [Header("Aspecto")]
@@ -43,6 +47,27 @@ namespace PriceMap.Vectorial
         Material mSuelo, mVerde, mAgua, mBorde, mCalleMenor, mCalle, mEdificios;
         readonly List<TextMesh> etiquetas = new List<TextMesh>();
         readonly Dictionary<string, List<Vector3>> nombresColocados = new Dictionary<string, List<Vector3>>();
+
+        // Teselas cargadas (con lo que hay que deshacer al liberarlas), en cola y en carga
+        class TeselaCargada { public Transform raiz; public readonly List<(string nombre, Vector3 pos)> nombres = new List<(string, Vector3)>(); }
+        readonly Dictionary<Vector2Int, TeselaCargada> cargadas = new Dictionary<Vector2Int, TeselaCargada>();
+        readonly HashSet<Vector2Int> pendientes = new HashSet<Vector2Int>();
+        readonly Queue<Vector2Int> cola = new Queue<Vector2Int>();
+        Vector2Int centroAplicado = new Vector2Int(int.MinValue, int.MinValue);
+        int radioAplicado = -1;
+        string plantilla;            // dirección de las teselas de OpenFreeMap (cambia con cada versión de los datos)
+        float ultimoIntentoPlantilla = -999f;
+        float reintentarEn = -1f;    // si alguna tesela falló (sin red), cuándo volver a planificar aunque la vista no se mueva
+        const float EsperaReintento = 5f;
+
+        /// <summary>Número de teselas construidas ahora mismo (para comprobaciones y pruebas).</summary>
+        public int TeselasCargadas => cargadas.Count;
+        internal int TeselasPendientes => pendientes.Count;
+        internal int RadioLiberarEfectivo => Mathf.Max(radioLiberar, radio + 2); // nunca por debajo del anillo extra + 1
+
+        /// <summary>Para las pruebas: da por construida una tesela (sin descargarla).</summary>
+        internal void SimularCargada(Vector2Int t) =>
+            cargadas[t] = new TeselaCargada { raiz = new GameObject($"Tesela simulada {t}").transform };
         TemaMapa temaAplicado = (TemaMapa)(-1);
         CamaraMapa camara;
         Font fuente;
@@ -62,8 +87,25 @@ namespace PriceMap.Vectorial
             PrepararSombras();
             AplicarTema();
 
-            // Dirección de las teselas (incluye la versión de los datos, cambia con cada actualización)
-            string plantilla = null;
+            // Las teselas se cargan de una en una, de la cola que llena Update según el centro de la vista
+            while (true)
+            {
+                if (cola.Count == 0) { yield return null; continue; }
+                var t = cola.Dequeue();
+                if (PlanTeselas.Distancia(t, centroAplicado) <= radioAplicado) yield return CargarTesela(t.x, t.y);
+                pendientes.Remove(t);
+                // Si falló (sin red ni caché), se vuelve a planificar en unos segundos aunque la vista no se mueva
+                if (!cargadas.ContainsKey(t) && reintentarEn < 0f) reintentarEn = Time.realtimeSinceStartup + EsperaReintento;
+                // Si la vista se fue lejos mientras se cargaba, se libera ya (nunca más de 7×7)
+                else if (cargadas.ContainsKey(t) && PlanTeselas.Distancia(t, centroAplicado) > RadioLiberarEfectivo) Liberar(t);
+            }
+        }
+
+        /// <summary>Pide la dirección de las teselas (o usa la última guardada) como mucho cada 5 s.</summary>
+        IEnumerator ObtenerPlantilla()
+        {
+            if (plantilla != null || Time.realtimeSinceStartup - ultimoIntentoPlantilla < 5f) yield break;
+            ultimoIntentoPlantilla = Time.realtimeSinceStartup;
             string rutaPlantilla = Path.Combine(Application.persistentDataPath, "vectorial", "plantilla.txt");
             using (var req = UnityWebRequest.Get(tileJson))
             {
@@ -80,15 +122,49 @@ namespace PriceMap.Vectorial
                 }
                 else if (File.Exists(rutaPlantilla)) plantilla = File.ReadAllText(rutaPlantilla); // sin conexión: la última conocida
             }
-            if (plantilla == null) { Debug.LogWarning("PriceMap: no se pudo obtener la dirección de las teselas de OpenFreeMap."); yield break; }
+            if (plantilla == null) Debug.LogWarning("PriceMap: sin dirección de teselas de OpenFreeMap; solo se dibuja lo que está en caché.");
+        }
 
-            // Teselas alrededor del centro, de dentro hacia fuera
-            var centro = Geo.Tesela(latitud, longitud, zoom);
-            var lista = new List<Vector2Int>();
-            for (int dy = -radio; dy <= radio; dy++)
-                for (int dx = -radio; dx <= radio; dx++) lista.Add(new Vector2Int(centro.x + dx, centro.y + dy));
-            lista.Sort((a, b) => (a - centro).sqrMagnitude.CompareTo((b - centro).sqrMagnitude));
-            foreach (var t in lista) yield return CargarTesela(plantilla, t.x, t.y);
+        /// <summary>Carga las teselas que faltan alrededor del centro de la vista y libera las lejanas.</summary>
+        internal void ActualizarTeselas()
+        {
+            if (reintentarEn >= 0f && Time.realtimeSinceStartup >= reintentarEn)
+            {
+                reintentarEn = -1f;
+                radioAplicado = -1; // fuerza a planificar de nuevo: las que faltan vuelven a la cola
+            }
+            var pivote = camara != null ? camara.pivote : Vector3.zero;
+            var geo = Geo.AGeo(pivote);
+            var centro = Geo.Tesela(geo.lat, geo.lon, zoom);
+            int radioCarga = radio + (camara != null && camara.distancia > distanciaAnilloExtra ? 1 : 0);
+            if (centro == centroAplicado && radioCarga == radioAplicado) return;
+            centroAplicado = centro;
+            radioAplicado = radioCarga;
+
+            var plan = PlanTeselas.Calcular(centro, new List<Vector2Int>(cargadas.Keys), pendientes, radioCarga, RadioLiberarEfectivo);
+            foreach (var t in plan.aLiberar) Liberar(t);
+            foreach (var t in plan.aCargar) { pendientes.Add(t); cola.Enqueue(t); }
+        }
+
+        void Liberar(Vector2Int t)
+        {
+            if (!cargadas.TryGetValue(t, out var tesela)) return;
+            cargadas.Remove(t);
+            foreach (var (nombre, pos) in tesela.nombres)
+                if (nombresColocados.TryGetValue(nombre, out var usados)) usados.Remove(pos);
+            if (tesela.raiz == null) return;
+            var raizTesela = tesela.raiz;
+            etiquetas.RemoveAll(e => e == null || e.transform.IsChildOf(raizTesela));
+            // Las mallas creadas por código no se liberan solas al destruir el objeto
+            foreach (var f in tesela.raiz.GetComponentsInChildren<MeshFilter>(true))
+                if (f.sharedMesh != null) Destruir(f.sharedMesh);
+            Destruir(tesela.raiz.gameObject);
+        }
+
+        // Fuera de Play (pruebas EditMode) Unity no permite Destroy
+        static void Destruir(Object o)
+        {
+            if (Application.isPlaying) Destroy(o); else DestroyImmediate(o);
         }
 
         [System.Serializable] class TileJson { public string[] tiles; }
@@ -126,18 +202,25 @@ namespace PriceMap.Vectorial
         void Update()
         {
             if (mSuelo != null && tema != temaAplicado) AplicarTema(); // el tema puede llegar antes que Start
+            if (mSuelo != null) ActualizarTeselas();
             if (camara != null && sombras) QualitySettings.shadowDistance = Mathf.Clamp(camara.distancia * 2.2f, 250f, 5000f);
         }
 
         // ───────────────────────── Descarga ─────────────────────────
 
-        IEnumerator CargarTesela(string plantilla, int x, int y)
+        IEnumerator CargarTesela(int x, int y)
         {
             string ruta = Path.Combine(Application.persistentDataPath, "vectorial", zoom.ToString(), x.ToString(), y + ".pbf");
             byte[] datos = null;
-            if (File.Exists(ruta)) datos = File.ReadAllBytes(ruta);
+            if (File.Exists(ruta))
+            {
+                try { datos = File.ReadAllBytes(ruta); } // caché: funciona sin conexión
+                catch (System.Exception e) { Debug.LogWarning($"PriceMap: no se pudo leer la tesela en caché {ruta}: {e.Message}"); yield break; }
+            }
             else
             {
+                yield return ObtenerPlantilla();
+                if (plantilla == null) yield break; // sin red ni caché: se verá el fondo y se reintentará
                 string url = plantilla.Replace("{z}", zoom.ToString()).Replace("{x}", x.ToString()).Replace("{y}", y.ToString());
                 using var req = UnityWebRequest.Get(url);
                 yield return req.SendWebRequest();
@@ -151,7 +234,8 @@ namespace PriceMap.Vectorial
             Dictionary<string, CapaMVT> capas;
             try { capas = LectorMVT.Leer(datos); }
             catch (System.Exception e) { Debug.LogWarning($"PriceMap: tesela {zoom}/{x}/{y} ilegible: {e.Message}"); yield break; }
-            Construir(capas, x, y);
+            try { cargadas[new Vector2Int(x, y)] = Construir(capas, x, y); }
+            catch (System.Exception e) { Debug.LogWarning($"PriceMap: no se pudo construir la tesela {zoom}/{x}/{y}: {e.Message}"); yield break; }
             Debug.Log($"PriceMap: tesela vectorial {zoom}/{x}/{y} construida en {reloj.ElapsedMilliseconds} ms");
             yield return null; // reparte el trabajo entre fotogramas
         }
@@ -175,8 +259,9 @@ namespace PriceMap.Vectorial
             public bool Vacia => t.Count == 0;
         }
 
-        void Construir(Dictionary<string, CapaMVT> capas, int tx, int ty)
+        TeselaCargada Construir(Dictionary<string, CapaMVT> capas, int tx, int ty)
         {
+            var resultado = new TeselaCargada();
             var origen = Geo.CentroTesela(tx, ty, zoom, out float lado);
             Vector3 AMundo(Vector2 p, float ext) => origen + new Vector3((p.x / ext - 0.5f) * lado, 0f, (0.5f - p.y / ext) * lado);
 
@@ -245,7 +330,9 @@ namespace PriceMap.Vectorial
             Pieza(raiz, "Edificios", edificios, mEdificios, true);
 
             if (nombresDeCalles && capas.TryGetValue("transportation_name", out var cNombres))
-                Nombres(raiz, cNombres, AMundo);
+                Nombres(raiz, cNombres, AMundo, resultado.nombres);
+            resultado.raiz = raiz;
+            return resultado;
         }
 
         static bool CentroDentro(List<Vector2> anillo, float ext)
@@ -366,7 +453,7 @@ namespace PriceMap.Vectorial
         }
 
         // Nombres de calle: en el tramo recto más largo de cada calle, tumbados en el suelo y legibles de izquierda a derecha
-        void Nombres(Transform raiz, CapaMVT capa, Conversor aMundo)
+        void Nombres(Transform raiz, CapaMVT capa, Conversor aMundo, List<(string, Vector3)> colocados)
         {
             float anchoLetra = alturaTexto * 0.55f;
             foreach (var e in capa.elementos)
@@ -388,6 +475,7 @@ namespace PriceMap.Vectorial
                 bool cerca = false; foreach (var u in usados) if ((u - centro).sqrMagnitude < 300f * 300f) { cerca = true; break; }
                 if (cerca) continue;
                 usados.Add(centro);
+                colocados.Add((nombre, centro));
 
                 Vector3 dir = (mejorB - mejorA).normalized;
                 if (dir.x < 0) dir = -dir;                                   // que se lea de izquierda a derecha
@@ -450,7 +538,8 @@ namespace PriceMap.Vectorial
             Shader.SetGlobalColor("_PL_Edificio", p.edificio);
             Shader.SetGlobalColor("_PL_Fachada", p.fachada);
             Shader.SetGlobalColor("_PL_Sombra", p.sombra);
-            foreach (var t in etiquetas) if (t != null) t.color = p.etiqueta;
+            etiquetas.RemoveAll(t => t == null); // las de teselas liberadas
+            foreach (var t in etiquetas) t.color = p.etiqueta;
             if (Camera.main != null) Camera.main.backgroundColor = p.fondo;
         }
 
