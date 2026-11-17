@@ -603,6 +603,13 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Carga de teselas:** se cargan las 3×3 de alrededor del centro de la vista (5×5 con la cámara alejada) y se liberan, mallas incluidas, las que quedan a más de 3 teselas. Así nunca hay más de 7×7 en memoria.
     - **Sin conexión:** las teselas en caché se dibujan aunque no se pueda pedir la dirección de las teselas. Una tesela que falla se vuelve a pedir cuando cambia la vista.
     - **Comprobación:** en el ejecutable de Windows, un recorrido de 5,5 km hacia el norte (desembocadura del Guadalquivir) deja 15 teselas cargadas.
+- **5.4 Lógica de precios:**
+  - *Historia 1.3 (17/11/2026): precio, origen, frescura y variantes en el Dominio.* Reglas en C# puro, sin Unity, que comparten todas las pantallas y que nunca se guardan (AD-3):
+    - **Precio mostrado:** fijo, rango por persona (con máximo abierto en "Más de 50 €"), "desde" o "A consultar", siempre en céntimos.
+    - **Origen:** manda la declaración del negocio más reciente; si no hay, la web oficial, con su página y la fecha de consulta; si tampoco, "sin precio". Ningún precio sale sin origen, y los importes iguales o menores que 0 se descartan.
+    - **Frescura:** se mide desde la última confirmación. En hostelería, al día por debajo de 30 días y antiguo por encima de 60. En servicios y ocio, por debajo de 3 meses y por encima de 6 (meses de calendario). Los límites cuentan como "podría haber cambiado". Los umbrales están solo en `ParametrosNegocio`.
+    - **Variantes:** cada una tiene su precio y su frescura. Las de horario (también las que cruzan la medianoche) y las de día pueden estar vigentes; las de tipo de cliente nunca, porque no dependen del momento.
+    - **Pruebas:** cada regla tiene sus pruebas EditMode, con los límites exactos de la frescura.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
