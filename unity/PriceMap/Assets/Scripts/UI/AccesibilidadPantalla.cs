@@ -17,8 +17,9 @@ namespace PriceMap.UI
         {
             public VisualElement elemento;
             public Func<string> etiqueta, valor;
-            public Func<bool> visible;
+            public Func<bool> visible, seleccionado;
             public Action accion;
+            public bool enModal;
         }
 
         class Marca
@@ -35,14 +36,57 @@ namespace PriceMap.UI
         AccessibilityHierarchy jerarquia;
         // Nodos de los marcadores en la jerarquía activa, en el orden del recorrido
         readonly List<(Marca marca, AccessibilityNode nodo)> nodosMarcas = new List<(Marca, AccessibilityNode)>();
+        // Nodos de los controles en la jerarquía activa, para poder llevarles el foco
+        readonly Dictionary<VisualElement, AccessibilityNode> nodosControles = new Dictionary<VisualElement, AccessibilityNode>();
 
         public AccesibilidadPantalla(VisualElement raiz) => this.raiz = raiz;
 
-        public static bool LectorActivo => AssistiveSupport.isScreenReaderEnabled;
+        /// <summary>Solo para las pruebas: si no es null, sustituye al estado real del lector de pantalla.</summary>
+        internal static Func<bool> LectorForzado;
 
-        /// <summary>Declara un botón. Etiqueta y valor se leen cada vez que se reconstruye.</summary>
-        public void Boton(VisualElement elemento, Func<string> etiqueta, Action accion, Func<string> valor = null, Func<bool> visible = null) =>
-            controles.Add(new Control { elemento = elemento, etiqueta = etiqueta, valor = valor, accion = accion, visible = visible });
+        public static bool LectorActivo => LectorForzado?.Invoke() ?? AssistiveSupport.isScreenReaderEnabled;
+
+        /// <summary>Se lanza con cada aviso que se pide, esté o no el lector encendido (antes de mirarlo).</summary>
+        public static event Action<string> AnuncioPedido;
+
+        /// <summary>Se lanza con cada aviso que llega de verdad al lector (nunca con el lector apagado).</summary>
+        public static event Action<string> Anunciado;
+
+        bool modal;
+
+        /// <summary>
+        /// Modo modal (un menú abierto): el recorrido solo tiene los controles declarados con enModal,
+        /// y ningún marcador. Al cambiarlo se reconstruye la jerarquía.
+        /// </summary>
+        public bool Modal
+        {
+            get => modal;
+            set
+            {
+                if (modal == value) return;
+                modal = value;
+                Reconstruir();
+            }
+        }
+
+        /// <summary>Último control al que se pidió llevar el foco (también sin lector, para las pruebas).</summary>
+        public VisualElement Enfocado { get; private set; }
+
+        /// <summary>Si la última petición de foco movió también el de teclado o mando (Focus()).</summary>
+        internal bool FocoDeTeclado { get; private set; }
+
+        /// <summary>
+        /// Declara un botón. Etiqueta, valor y estado se leen cada vez que se reconstruye.
+        /// </summary>
+        /// <param name="seleccionado">Si devuelve true, el nodo lleva el estado Selected (la opción elegida de un menú).</param>
+        /// <param name="enModal">Si el control sigue en el recorrido con el modo modal activo.</param>
+        public void Boton(VisualElement elemento, Func<string> etiqueta, Action accion, Func<string> valor = null, Func<bool> visible = null,
+            Func<bool> seleccionado = null, bool enModal = false) =>
+            controles.Add(new Control
+            {
+                elemento = elemento, etiqueta = etiqueta, valor = valor, accion = accion, visible = visible,
+                seleccionado = seleccionado, enModal = enModal,
+            });
 
         /// <summary>
         /// Declara un marcador del mapa: texto sin acción (rol StaticText). Solo tiene nodo mientras es visible.
@@ -55,9 +99,54 @@ namespace PriceMap.UI
         public List<string> Recorrido()
         {
             var r = new List<string>();
-            foreach (var c in controles) if (c.visible == null || c.visible()) r.Add(c.etiqueta());
-            foreach (var m in MarcasVisibles()) r.Add(m.etiqueta());
+            foreach (var (etiqueta, _) in RecorridoConEstado()) r.Add(etiqueta);
             return r;
+        }
+
+        /// <summary>El mismo recorrido, con si cada entrada lleva el estado seleccionado.</summary>
+        public List<(string etiqueta, bool seleccionada)> RecorridoConEstado()
+        {
+            var r = new List<(string, bool)>();
+            foreach (var c in ControlesEnRecorrido()) r.Add((c.etiqueta(), Seleccionado(c)));
+            if (!Modal) foreach (var m in MarcasVisibles()) r.Add((m.etiqueta(), false));
+            return r;
+        }
+
+        IEnumerable<Control> ControlesEnRecorrido()
+        {
+            foreach (var c in controles)
+            {
+                if (Modal && !c.enModal) continue;
+                if (c.visible != null && !c.visible()) continue;
+                yield return c;
+            }
+        }
+
+        static bool Seleccionado(Control c) => c.seleccionado != null && c.seleccionado();
+
+        /// <summary>
+        /// Lleva el foco de TalkBack (SendLayoutChanged con su nodo) al control y, con el lector activo o si se
+        /// llegó por teclado o mando, también el de teclado (Focus()): tras un toque no se ve el anillo de foco.
+        /// Después se pide el anuncio, si lo hay, para que TalkBack no lo corte al leer el control enfocado.
+        /// Con panel, se hace en el siguiente pase: un menú recién mostrado aún no tiene estilo ni marco resueltos,
+        /// y el nodo se busca entonces en la jerarquía que esté activa.
+        /// </summary>
+        public void PedirFoco(VisualElement elemento, bool porNavegacion = false, string anuncio = null)
+        {
+            Enfocado = elemento;
+            bool teclado = FocoDeTeclado = elemento != null && (porNavegacion || LectorActivo);
+            if (elemento == null) { if (anuncio != null) Anunciar(anuncio); return; }
+            if (raiz?.panel == null) { Enfocar(elemento, teclado, anuncio); return; }
+            raiz.schedule.Execute(() => { if (Enfocado == elemento) Enfocar(elemento, teclado, anuncio); });
+        }
+
+        void Enfocar(VisualElement elemento, bool teclado, string anuncio)
+        {
+            if (teclado) elemento.Focus();
+            if (LectorActivo && jerarquia != null && AssistiveSupport.activeHierarchy == jerarquia
+                && nodosControles.TryGetValue(elemento, out var nodo) && jerarquia.ContainsNode(nodo))
+                AssistiveSupport.notificationDispatcher?.SendLayoutChanged(nodo);
+            if (anuncio != null) Anunciar(anuncio);
         }
 
         List<Marca> MarcasVisibles()
@@ -90,18 +179,20 @@ namespace PriceMap.UI
             if (!LectorActivo) { Desactivar(); return; }
             jerarquia = new AccessibilityHierarchy();
             nodosMarcas.Clear();
-            foreach (var c in controles)
+            nodosControles.Clear();
+            foreach (var c in ControlesEnRecorrido())
             {
-                if (c.visible != null && !c.visible()) continue;
                 var nodo = jerarquia.AddNode(c.etiqueta());
                 nodo.role = AccessibilityRole.Button;
                 if (c.valor != null) nodo.value = c.valor();
+                if (Seleccionado(c)) nodo.state = AccessibilityState.Selected;
+                nodosControles[c.elemento] = nodo;
                 var elemento = c.elemento;
                 nodo.frameGetter = () => MarcoEnPantalla(elemento);
                 var accion = c.accion;
                 nodo.invoked += () => { accion(); return true; };
             }
-            AnadirMarcas(MarcasVisibles());
+            if (!Modal) AnadirMarcas(MarcasVisibles()); // con un menú abierto, el mapa no está en el recorrido
             AssistiveSupport.activeHierarchy = jerarquia;
         }
 
@@ -111,7 +202,7 @@ namespace PriceMap.UI
         /// </summary>
         public void ActualizarMarcadores()
         {
-            if (!LectorActivo || jerarquia == null || AssistiveSupport.activeHierarchy != jerarquia) return;
+            if (!LectorActivo || Modal || jerarquia == null || AssistiveSupport.activeHierarchy != jerarquia) return;
             var visibles = MarcasVisibles();
             if (MismoOrden(visibles)) return;
             foreach (var (_, nodo) in nodosMarcas) if (jerarquia.ContainsNode(nodo)) jerarquia.RemoveNode(nodo, true);
@@ -146,12 +237,16 @@ namespace PriceMap.UI
             if (jerarquia != null && AssistiveSupport.activeHierarchy == jerarquia) AssistiveSupport.activeHierarchy = null;
             jerarquia = null;
             nodosMarcas.Clear();
+            nodosControles.Clear();
         }
 
         /// <summary>Lee en voz alta un aviso (por ejemplo, el nuevo tema).</summary>
         public static void Anunciar(string texto)
         {
-            if (LectorActivo) AssistiveSupport.notificationDispatcher?.SendAnnouncement(texto);
+            AnuncioPedido?.Invoke(texto);
+            if (!LectorActivo) return;
+            AssistiveSupport.notificationDispatcher?.SendAnnouncement(texto);
+            Anunciado?.Invoke(texto);
         }
 
         /// <summary>Rectángulo del elemento en píxeles de pantalla, con el origen arriba a la izquierda.</summary>

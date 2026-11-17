@@ -83,6 +83,10 @@ MonoBehaviour:
     m_Key: precios.opcion.ocio
     m_Metadata:
       m_Items: []
+  - m_Id: 101771815936000
+    m_Key: precios.anuncio
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

@@ -31,7 +31,8 @@ namespace PriceMap.UI
         CapaMarcadores capa;
         Rect zonaSeguraAplicada;
         float anchoAplicado;
-        bool temaYaAnunciado; // el primer tema (al arrancar) no se anuncia: solo los cambios del usuario
+        bool porNavegacion; // la última activación del filtro llegó por teclado o mando (NavigationSubmitEvent)
+        bool temaYaAnunciado;// el primer tema (al arrancar) no se anuncia: solo los cambios del usuario
 
         /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
@@ -102,10 +103,14 @@ namespace PriceMap.UI
         void CrearFiltro()
         {
             pildora = new PildoraPrecios(AlternarMenu);
-            menu = new MenuPrecios(f => { CerrarMenu(); filtro.Elegir(f); });
+            menu = new MenuPrecios(Elegir);
             var hueco = raiz.Q("hueco-precios");
             hueco.Add(pildora);
             hueco.Add(menu);
+            // Se recuerda si la píldora o una opción se activan por teclado o mando: solo entonces (o con el lector)
+            // se mueve también el foco de teclado, para que un toque no deje el anillo de foco a la vista
+            hueco.RegisterCallback<NavigationSubmitEvent>(_ => porNavegacion = true, TrickleDown.TrickleDown);
+            hueco.RegisterCallback<PointerDownEvent>(_ => porNavegacion = false, TrickleDown.TrickleDown);
             velo = raiz.Q("velo-menu");
             velo.pickingMode = PickingMode.Position;
             // Al soltar: el gesto empezó con el menú abierto, así que el mapa no lo ha recibido (TapaPunto)
@@ -113,9 +118,37 @@ namespace PriceMap.UI
             // Con la fuente grande: el menú se dispone al abrirlo, entonces se le aplica la escala
             menu.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
 
-            // TalkBack (mínimo de la parte 1): la píldora es un botón con la opción actual como valor
-            accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro);
+            // TalkBack: la píldora es un botón con la opción actual como valor; con el menú abierto el recorrido
+            // es modal (píldora, que lo cierra, y las 5 opciones), igual que el velo a la vista
+            accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro, enModal: true);
+            foreach (var o in menu.Opciones)
+            {
+                var opcion = o;
+                accesibilidad.Boton(opcion, () => opcion.Texto.text, opcion.Pulsar,
+                    visible: () => MenuAbierto, seleccionado: () => opcion.Elegida, enModal: true);
+            }
         }
+
+        /// <summary>Lo que hace una opción del menú: cierra, elige el filtro, devuelve el foco a la píldora y lo anuncia.</summary>
+        void Elegir(FiltroPrecios f)
+        {
+            bool navegacion = ConsumirNavegacion();
+            Cerrar(enfocar: false, navegacion);
+            filtro.Elegir(f); // reconstruye la jerarquía (AlCambiarFiltro): el foco se pide después
+            // El anuncio va tras mover el foco a la píldora, en el mismo pase: TalkBack no lo corta al leerla
+            accesibilidad.PedirFoco(pildora, navegacion, AnuncioFiltro(f));
+        }
+
+        // Si la última activación de la píldora o de una opción llegó por teclado o mando; se lee una sola vez
+        bool ConsumirNavegacion()
+        {
+            bool n = porNavegacion;
+            porNavegacion = false;
+            return n;
+        }
+
+        /// <summary>Anuncio de TalkBack al elegir: "Precios en el mapa: Hostelería".</summary>
+        public static string AnuncioFiltro(FiltroPrecios f) => Textos.T(ClavesTexto.PreciosAnuncio, Textos.T(TextosFiltro.ClaveOpcion(f)));
 
         /// <summary>Valor de la píldora para TalkBack: la opción elegida ("Hostelería").</summary>
         public string ValorFiltro() => Textos.T(TextosFiltro.ClaveOpcion(filtro.Actual));
@@ -133,24 +166,53 @@ namespace PriceMap.UI
         public bool MenuAbierto => menu != null && menu.Abierto;
 
         /// <summary>Abre el menú si está cerrado y lo cierra si está abierto (lo que hace la píldora).</summary>
-        public void AlternarMenu()
+        public void AlternarMenu() => AlternarMenu(ConsumirNavegacion());
+
+        /// <param name="porNavegacion">Si se llegó por teclado o mando: también se mueve el foco de teclado.</param>
+        internal void AlternarMenu(bool porNavegacion)
         {
             if (menu == null) return;
-            if (menu.Abierto) CerrarMenu();
+            if (menu.Abierto) Cerrar(enfocar: true, porNavegacion);
             else
             {
                 menu.Marcar(filtro.Actual);
                 menu.Mostrar(true);
                 velo.EnableInClassList("abierto", true);
+                accesibilidad.Modal = true; // reconstruye: solo la píldora y las opciones
+                // El foco de TalkBack (y el de teclado, con lector o por navegación) va a la opción elegida
+                foreach (var o in menu.Opciones)
+                    if (o.Elegida) accesibilidad.PedirFoco(o, porNavegacion);
             }
         }
 
-        /// <summary>Cierra el menú sin cambiar el filtro (al elegir o al tocar fuera).</summary>
-        public void CerrarMenu()
+        /// <summary>Cierra el menú sin cambiar el filtro (al tocar fuera) y devuelve el foco a la píldora.</summary>
+        public void CerrarMenu() => Cerrar(enfocar: true, ConsumirNavegacion());
+
+        void Cerrar(bool enfocar, bool porNavegacion)
         {
-            if (menu == null) return;
+            if (menu == null || !menu.Abierto) return;
             menu.Mostrar(false);
             velo.EnableInClassList("abierto", false);
+            accesibilidad.Modal = false; // reconstruye: vuelven los botones de tema y zoom y los marcadores
+            if (enfocar) accesibilidad.PedirFoco(pildora, porNavegacion);
+        }
+
+        /// <summary>
+        /// Botón atrás de Android (KeyCode.Escape): con el menú abierto lo cierra sin cambiar el filtro.
+        /// Con el menú cerrado no hace nada (la app no sale: Input.backButtonLeavesApp sigue en false).
+        /// Devuelve true si lo ha gestionado.
+        /// </summary>
+        public bool Atras()
+        {
+            if (!MenuAbierto) return false;
+            ConsumirNavegacion();
+            Cerrar(enfocar: true, porNavegacion: true); // atrás es una tecla: el foco de teclado vuelve a la píldora
+            return true;
+        }
+
+        void Update()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape)) Atras();
         }
 
         static IEnumerable<(Lugar, ResumenLugar)> ConResumen(ServicioLugares lugares, DateTime ahora)

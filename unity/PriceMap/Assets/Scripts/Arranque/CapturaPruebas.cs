@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
@@ -64,6 +65,7 @@ namespace PriceMap.Arranque
             yield return new WaitForSeconds(1f); // CaptureScreenshot escribe el fichero al acabar el fotograma
 
             yield return Marcadores();
+            yield return FiltroAbierto();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -104,6 +106,51 @@ namespace PriceMap.Arranque
                 if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
                 else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
                 Debug.Log($"PriceMap: preferencia del filtro restaurada ({filtroGuardado ?? "sin guardar"}; antes {filtroAntes}).");
+            }
+        }
+
+        /// <summary>
+        /// Captura "filtro": Hostelería elegida y el menú abierto. Registra el recorrido de TalkBack con el menú
+        /// abierto (píldora y las 5 opciones, Hostelería seleccionada) y deja el filtro y la preferencia como estaban.
+        /// </summary>
+        IEnumerator FiltroAbierto()
+        {
+            if (pantalla == null || pantalla.Pildora == null) { Debug.LogError("PriceMap: no hay píldora \"Precios\" que capturar."); yield break; }
+            var filtroGuardado = preferencias.Leer(ServicioFiltro.ClavePreferencia);
+            var filtroAntes = filtro.Actual;
+            filtro.Elegir(FiltroPrecios.Hosteleria);
+            try
+            {
+                yield return new WaitForSeconds(1f);
+                pantalla.AlternarMenu();
+                yield return new WaitForSeconds(0.5f);
+                var recorrido = pantalla.Accesibilidad.RecorridoConEstado();
+                var texto = new System.Text.StringBuilder();
+                foreach (var (etiqueta, seleccionada) in recorrido) texto.Append(" | ").Append(etiqueta).Append(seleccionada ? " (seleccionada)" : "");
+                Debug.Log($"PriceMap: recorrido de TalkBack con el menú abierto ({recorrido.Count}):{texto}");
+
+                var esperado = new List<(string, bool)> { (Textos.T(ClavesTexto.PreciosControl), false) };
+                foreach (var f in ReglaFiltro.Opciones) esperado.Add((Textos.T(TextosFiltro.ClaveOpcion(f)), f == FiltroPrecios.Hosteleria));
+                bool igual = recorrido.Count == esperado.Count;
+                for (int i = 0; igual && i < esperado.Count; i++) igual = recorrido[i] == esperado[i];
+                if (!igual) Debug.LogError("PriceMap: el recorrido con el menú abierto no es la píldora y las 5 opciones con Hostelería seleccionada.");
+                if (!pantalla.MenuAbierto) Debug.LogError("PriceMap: el menú \"Precios\" no está abierto en la captura.");
+                var anuncio = PantallaMapa.AnuncioFiltro(FiltroPrecios.Hosteleria);
+                Debug.Log($"PriceMap: anuncio al elegir Hostelería: \"{anuncio}\"");
+                if (anuncio.Contains(ClavesTexto.PreciosAnuncio)) Debug.LogError("PriceMap: falta el texto del anuncio del filtro en la tabla.");
+                yield return Capturar("filtro");
+                yield return new WaitForSeconds(1f);
+
+                pantalla.CerrarMenu();
+                Debug.Log($"PriceMap: menú cerrado; recorrido de TalkBack con {pantalla.Accesibilidad.Recorrido().Count} entradas (vuelven botones y marcadores).");
+            }
+            finally
+            {
+                if (pantalla.MenuAbierto) pantalla.CerrarMenu();
+                filtro.Elegir(filtroAntes);
+                if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
+                else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
+                Debug.Log($"PriceMap: preferencia del filtro restaurada tras la captura del menú ({filtroGuardado ?? "sin guardar"}; antes {filtroAntes}).");
             }
         }
 

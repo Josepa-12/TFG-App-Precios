@@ -629,6 +629,11 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Cerrar el menú:** un velo invisible a pantalla completa queda por encima del mapa y de los demás botones. Cualquier toque fuera solo cierra el menú: no mueve el mapa ni pulsa otro botón.
     - **Decisiones:** el menú no lleva el contador de sitios del prototipo, para que quede más limpio. La historia se partió en dos; TalkBack dentro del menú y el botón atrás van en la parte 2.
     - **Pruebas:** 170 pruebas EditMode. Cubren la regla, el servicio, cada caso (primer arranque, Todos, una plantilla, que se recuerde, valor dañado, cerrar sin elegir, marca de la opción) y la composición real al arrancar.
+  - *Historia 1.5, parte 2 (17/11/2026): menú "Precios" con TalkBack y botón atrás.*
+    - **Menú modal también para el lector:** con el menú abierto, TalkBack solo recorre la píldora y las 5 opciones. Los botones y los marcadores salen de la jerarquía mientras está abierto, igual que el velo los tapa a la vista. La opción elegida se marca como seleccionada (`AccessibilityState.Selected`).
+    - **Foco y anuncio:** al abrir el menú, el foco va a la opción elegida; al cerrarlo, vuelve a la píldora. Al elegir se anuncia "Precios en el mapa: Hostelería", después de mover el foco, para que TalkBack no lo corte. El foco del teclado solo se mueve con el lector activo o al navegar, así que con el dedo no aparece el borde de foco.
+    - **Botón atrás de Android:** cierra el menú sin cambiar el filtro. Con el menú cerrado no hace nada.
+    - **Pruebas:** 179 pruebas EditMode. Para probar la jerarquía real de TalkBack sin un lector se añadió un gancho interno que lo simula. Queda comprobar en un móvil real el botón atrás y el orden de anuncio y foco.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

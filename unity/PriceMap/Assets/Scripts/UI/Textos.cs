@@ -1,3 +1,4 @@
+using System;
 using UnityEngine.Localization.Settings;
 
 namespace PriceMap.UI
@@ -5,8 +6,12 @@ namespace PriceMap.UI
     /// <summary>Lee los textos de la tabla de Localization en el idioma activo (es-ES en la v1).</summary>
     public static class Textos
     {
+        /// <summary>Solo para las pruebas: si no es null, da los textos en lugar de Localization (sin locale en EditMode).</summary>
+        internal static Func<string, string> Forzados;
+
         public static string T(string clave)
         {
+            if (Forzados != null) return Forzados(clave);
             // Si falta la entrada, se ve la clave (fácil de detectar) y no el aviso interno de Localization
             var entrada = LocalizationSettings.StringDatabase.GetTable(ClavesTexto.Tabla)?.GetEntry(clave);
             var texto = entrada?.GetLocalizedString();

@@ -87,6 +87,10 @@ MonoBehaviour:
     m_Localized: Ocio
     m_Metadata:
       m_Items: []
+  - m_Id: 101771815936000
+    m_Localized: 'Precios en el mapa: {0}'
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

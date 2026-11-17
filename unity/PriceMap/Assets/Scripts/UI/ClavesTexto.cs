@@ -32,6 +32,8 @@ namespace PriceMap.UI
         public const string PreciosOpcionServicios = "precios.opcion.servicios";
         public const string PreciosOpcionHosteleria = "precios.opcion.hosteleria";
         public const string PreciosOpcionOcio = "precios.opcion.ocio";
+        /// <summary>TalkBack al elegir una opción: {0} nombre de la opción.</summary>
+        public const string PreciosAnuncio = "precios.anuncio";
 
         public static readonly string[] Todas =
         {
@@ -39,6 +41,7 @@ namespace PriceMap.UI
             MarcadorConPrecio, MarcadorSinPrecio,
             PreciosControl, PreciosVer, PreciosTodos, PreciosTitulo,
             PreciosOpcionNinguno, PreciosOpcionTodos, PreciosOpcionServicios, PreciosOpcionHosteleria, PreciosOpcionOcio,
+            PreciosAnuncio,
         };
     }
 }

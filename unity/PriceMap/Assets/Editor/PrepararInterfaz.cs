@@ -45,6 +45,7 @@ namespace PriceMap.EditorTools
             [ClavesTexto.PreciosOpcionServicios] = "Servicios locales",
             [ClavesTexto.PreciosOpcionHosteleria] = "Hostelería",
             [ClavesTexto.PreciosOpcionOcio] = "Ocio",
+            [ClavesTexto.PreciosAnuncio] = "Precios en el mapa: {0}",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

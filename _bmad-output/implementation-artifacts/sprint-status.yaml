@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-17-2026 10:00
-last_updated: 11-17-2026 18:30
+last_updated: 11-17-2026 21:45
 project: TFG-App-Precios
 project_key: NOKEY
 tracking_system: file-system
@@ -40,7 +40,7 @@ development_status:
   1-2-mapa-con-la-paleta-el-tema-claro-u-oscuro-y-los-gestos: done
   1-3-calcular-el-precio-su-origen-su-frescura-y-sus-variantes: done
   1-4-lugares-reales-de-sanlúcar-con-su-logo-en-el-mapa: done
-  1-5-filtro-precios-en-el-mapa: in-progress
+  1-5-filtro-precios-en-el-mapa: done
   1-6-puntos-de-interés-de-referencia-en-el-mapa: backlog
   1-7-ver-mi-posición-en-el-mapa: backlog
   1-8-ficha-del-lugar-con-sus-precios: backlog

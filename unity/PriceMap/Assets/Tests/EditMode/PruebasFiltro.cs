@@ -9,13 +9,15 @@ using PriceMap.EditorTools;
 using PriceMap.UI;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Accessibility;
 using UnityEngine.UIElements;
 
 namespace PriceMap.Tests.EditMode
 {
     /// <summary>
-    /// Filtro "Precios" del mapa (historia 1.5, parte 1): la regla del Dominio, el servicio y una prueba
-    /// por fila de la matriz de la especificación con la pantalla real y un mapa falso.
+    /// Filtro "Precios" del mapa (historia 1.5): la regla del Dominio, el servicio y una prueba por fila de las
+    /// matrices de las especificaciones (parte 1: filtro y menú; parte 2: TalkBack y botón atrás) con la pantalla
+    /// real y un mapa falso.
     /// </summary>
     public class PruebasFiltro
     {
@@ -61,6 +63,9 @@ namespace PriceMap.Tests.EditMode
         {
             foreach (var o in objetos) UnityEngine.Object.DestroyImmediate(o);
             objetos.Clear();
+            AccesibilidadPantalla.LectorForzado = null;
+            Textos.Forzados = null;
+            AssistiveSupport.activeHierarchy = null;
         }
 
         /// <summary>Pantalla con la interfaz real, compuesta como en el Arranque (Inicializar y luego Iniciar).</summary>
@@ -348,6 +353,192 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(PantallaMapa.EsControl(raiz, arbol.Q("hueco-precios")), "El hueco no tapa el mapa.");
             Assert.AreEqual(PickingMode.Ignore, p.Pildora.Texto.pickingMode);
             foreach (var o in p.Menu.Opciones) Assert.IsTrue(PantallaMapa.EsControl(raiz, o));
+        }
+
+        // ── Parte 2: TalkBack y botón atrás (una prueba por fila de la matriz) ──
+
+        static OpcionPrecios Opcion(PantallaMapa p, FiltroPrecios f) => p.Menu.Opciones.Single(o => o.Filtro == f);
+
+        static List<(string, bool)> RecorridoDelMenu(FiltroPrecios elegida)
+        {
+            var r = new List<(string, bool)> { (Textos.T(ClavesTexto.PreciosControl), false) };
+            foreach (var f in ReglaFiltro.Opciones) r.Add((Textos.T(ClaveEsperada[f]), f == elegida));
+            return r;
+        }
+
+        [Test]
+        public void AbrirConTalkBackSoloRecorreLaPildoraYLasCincoOpcionesConElFocoEnLaElegida()
+        {
+            var (p, _, filtro, _) = Pantalla(new PreferenciasFalsas());
+            filtro.Elegir(FiltroPrecios.Hosteleria);
+            p.Capa.Actualizar(Escala, AnchoPx, AltoPx);
+            Assert.Greater(p.Accesibilidad.Recorrido().Count, 2, "Con el menú cerrado están los botones y los marcadores.");
+
+            p.AlternarMenu(); // activar la píldora
+            Assert.IsTrue(p.MenuAbierto);
+            Assert.IsTrue(p.Accesibilidad.Modal);
+            CollectionAssert.AreEqual(RecorridoDelMenu(FiltroPrecios.Hosteleria), p.Accesibilidad.RecorridoConEstado(),
+                "Solo la píldora y las 5 opciones, en orden, con Hostelería seleccionada: sin tema, zoom ni marcadores.");
+            Assert.AreSame(Opcion(p, FiltroPrecios.Hosteleria), p.Accesibilidad.Enfocado, "El foco va a la opción elegida.");
+        }
+
+        [Test]
+        public void ElegirConTalkBackCierraAnunciaYDevuelveElFocoALaPildora()
+        {
+            var (p, _, filtro, _) = Pantalla(new PreferenciasFalsas());
+            filtro.Elegir(FiltroPrecios.Hosteleria);
+            p.AlternarMenu();
+            Textos.Forzados = c => PrepararInterfaz.TextosEs[c]; // en EditMode Localization no tiene locale: textos es-ES reales
+            var pedidos = Pedidos(() => Opcion(p, FiltroPrecios.Ocio).Pulsar()); // lo que hace el nodo de TalkBack al activarlo
+            Textos.Forzados = null;
+            p.Capa.Actualizar(Escala, AnchoPx, AltoPx);
+
+            CollectionAssert.AreEqual(new[] { AnuncioEs(FiltroPrecios.Ocio) }, pedidos, "Un solo anuncio: \"Precios en el mapa: Ocio\".");
+            Assert.AreEqual("Precios en el mapa: Ocio", AnuncioEs(FiltroPrecios.Ocio));
+
+            Assert.AreEqual(FiltroPrecios.Ocio, filtro.Actual);
+            Assert.IsFalse(p.MenuAbierto);
+            Assert.IsFalse(p.Accesibilidad.Modal);
+            Assert.AreSame(p.Pildora, p.Accesibilidad.Enfocado, "El foco vuelve a la píldora.");
+            var recorrido = p.Accesibilidad.Recorrido();
+            Assert.Contains(Textos.T(ClavesTexto.TemaCambiar), recorrido, "Vuelve el botón de tema.");
+            int ocio = Visibles(p);
+            Assert.Greater(ocio, 0);
+            Assert.AreEqual(2 + ocio, recorrido.Count, "Píldora, tema y los marcadores de Ocio (sin lector no hay zoom).");
+            Assert.IsFalse(p.Accesibilidad.RecorridoConEstado().Any(e => e.seleccionada), "Sin menú no hay nada seleccionado.");
+        }
+
+        [Test]
+        public void CerrarConLaPildoraNoCambiaElFiltroYDejaElFocoEnElla()
+        {
+            var (p, _, filtro, _) = Pantalla(new PreferenciasFalsas());
+            filtro.Elegir(FiltroPrecios.ServiciosLocales);
+            p.AlternarMenu();
+            p.AlternarMenu(); // activar la píldora con el menú abierto
+            Assert.IsFalse(p.MenuAbierto);
+            Assert.IsFalse(p.Accesibilidad.Modal);
+            Assert.AreEqual(FiltroPrecios.ServiciosLocales, filtro.Actual);
+            Assert.AreSame(p.Pildora, p.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void AtrasConElMenuLoCierraSinCambiarElFiltro()
+        {
+            var (p, _, filtro, _) = Pantalla(new PreferenciasFalsas());
+            filtro.Elegir(FiltroPrecios.Todos);
+            p.AlternarMenu();
+            Assert.IsTrue(p.Atras(), "Atrás lo gestiona el menú: la app no sale.");
+            Assert.IsFalse(p.MenuAbierto);
+            Assert.IsFalse(p.Velo.ClassListContains("abierto"));
+            Assert.IsFalse(p.Accesibilidad.Modal);
+            Assert.AreEqual(FiltroPrecios.Todos, filtro.Actual);
+            Assert.AreSame(p.Pildora, p.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void AtrasSinMenuNoHaceNada()
+        {
+            var prefs = new PreferenciasFalsas();
+            var (p, _, filtro, _) = Pantalla(prefs);
+            filtro.Elegir(FiltroPrecios.Ocio);
+            var antes = p.Accesibilidad.Recorrido();
+            Assert.IsFalse(p.Atras(), "Sin menú, atrás no lo gestiona esta pantalla.");
+            Assert.IsFalse(p.MenuAbierto);
+            Assert.AreEqual(FiltroPrecios.Ocio, filtro.Actual);
+            Assert.AreEqual("ocio", prefs.Leer(ServicioFiltro.ClavePreferencia));
+            Assert.IsNull(p.Accesibilidad.Enfocado, "No se mueve el foco.");
+            CollectionAssert.AreEqual(antes, p.Accesibilidad.Recorrido());
+        }
+
+        [Test]
+        public void ConElLectorApagadoNoSeAnunciaYElFiltroCambiaIgual()
+        {
+            Assume.That(AccesibilidadPantalla.LectorActivo, Is.False, "En el editor no hay lector de pantalla.");
+            var (p, _, filtro, _) = Pantalla(new PreferenciasFalsas());
+            var enviados = new List<string>();
+            Action<string> oir = enviados.Add;
+            AccesibilidadPantalla.Anunciado += oir;
+            List<string> pedidos;
+            try
+            {
+                p.AlternarMenu();
+                pedidos = Pedidos(() => Opcion(p, FiltroPrecios.Hosteleria).Pulsar());
+            }
+            finally { AccesibilidadPantalla.Anunciado -= oir; }
+            Assert.AreEqual(1, pedidos.Count, "El anuncio se pide...");
+            Assert.IsEmpty(enviados, "...pero no llega al lector apagado.");
+            Assert.AreEqual(FiltroPrecios.Hosteleria, filtro.Actual);
+            Assert.IsFalse(p.MenuAbierto);
+        }
+
+        [Test]
+        public void AbrirYCerrarConUnToqueNoMueveElFocoDeTeclado()
+        {
+            Assume.That(AccesibilidadPantalla.LectorActivo, Is.False, "En el editor no hay lector de pantalla.");
+            var (p, _, _, _) = Pantalla(new PreferenciasFalsas());
+            p.AlternarMenu(); // el camino del toque en la píldora (Clickable)
+            Assert.IsNotNull(p.Accesibilidad.Enfocado, "TalkBack sí recibe la petición de foco.");
+            Assert.IsFalse(p.Accesibilidad.FocoDeTeclado, "Tras un toque no se llama a Focus(): sin anillo de foco.");
+            Assert.IsNull(p.Pildora.focusController?.focusedElement);
+            p.AlternarMenu();
+            Assert.IsFalse(p.Accesibilidad.FocoDeTeclado);
+            p.AlternarMenu();
+            Opcion(p, FiltroPrecios.Ocio).Pulsar();
+            Assert.IsFalse(p.Accesibilidad.FocoDeTeclado);
+        }
+
+        [Test]
+        public void PorNavegacionOConAtrasSiSeMueveElFocoDeTeclado()
+        {
+            var (p, _, _, _) = Pantalla(new PreferenciasFalsas());
+            p.AlternarMenu(porNavegacion: true); // NavigationSubmitEvent en la píldora
+            Assert.IsTrue(p.Accesibilidad.FocoDeTeclado);
+            p.Atras();
+            Assert.AreSame(p.Pildora, p.Accesibilidad.Enfocado);
+            Assert.IsTrue(p.Accesibilidad.FocoDeTeclado, "Atrás es una tecla: el foco de teclado vuelve a la píldora.");
+        }
+
+        [Test]
+        public void ConElLectorLaJerarquiaDelMenuSoloTieneLaPildoraYLasOpciones()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            var (p, _, filtro, _) = Pantalla(new PreferenciasFalsas());
+            filtro.Elegir(FiltroPrecios.Hosteleria);
+            p.Capa.Actualizar(Escala, AnchoPx, AltoPx);
+            p.Accesibilidad.ActualizarMarcadores();
+            var antes = AssistiveSupport.activeHierarchy;
+            if (antes == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            Assert.IsTrue(antes.rootNodes.Any(n => n.role == AccessibilityRole.StaticText), "Con el menú cerrado hay marcadores.");
+
+            p.AlternarMenu();
+            p.Accesibilidad.Reconstruir();
+            p.Accesibilidad.ActualizarMarcadores();
+            var nodos = AssistiveSupport.activeHierarchy.rootNodes;
+            CollectionAssert.AreEqual(RecorridoDelMenu(FiltroPrecios.Hosteleria).Select(e => e.Item1), nodos.Select(n => n.label));
+            Assert.IsTrue(nodos.All(n => n.role == AccessibilityRole.Button), "Sin nodos StaticText de marcadores.");
+            foreach (var n in nodos)
+                Assert.AreEqual(n.label == Textos.T(ClavesTexto.PreciosOpcionHosteleria), (n.state & AccessibilityState.Selected) != 0, n.label);
+
+            p.CerrarMenu();
+            p.Accesibilidad.ActualizarMarcadores();
+            var despues = AssistiveSupport.activeHierarchy.rootNodes;
+            Assert.IsTrue(despues.Any(n => n.role == AccessibilityRole.StaticText), "Al cerrar vuelven los marcadores.");
+            Assert.IsTrue(despues.Any(n => n.label == Textos.T(ClavesTexto.TemaCambiar)), "Y el botón de tema.");
+            Assert.IsFalse(despues.Any(n => (n.state & AccessibilityState.Selected) != 0));
+        }
+
+        static string AnuncioEs(FiltroPrecios f) => Textos.Formatear(PrepararInterfaz.TextosEs[ClavesTexto.PreciosAnuncio],
+            PrepararInterfaz.TextosEs[TextosFiltro.ClaveOpcion(f)]);
+
+        /// <summary>Anuncios pedidos (esté o no el lector) mientras se ejecuta la acción.</summary>
+        static List<string> Pedidos(Action accion)
+        {
+            var pedidos = new List<string>();
+            Action<string> oir = pedidos.Add;
+            AccesibilidadPantalla.AnuncioPedido += oir;
+            try { accion(); }
+            finally { AccesibilidadPantalla.AnuncioPedido -= oir; }
+            return pedidos;
         }
 
         [Test]
