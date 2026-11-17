@@ -622,7 +622,13 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Aspecto, como el prototipo:** cuadrado redondeado con punta, cuya punta marca el sitio exacto. Lleva el color de su plantilla, el logo vectorial de su tipo de negocio (14 glifos del prototipo dibujados con un pequeño intérprete de trazos SVG) e insignia € si tiene precio. Sin precio, es más pequeño y translúcido.
     - **Colores y contraste:** los colores del marcador no cambian con el tema, para que el logo blanco siempre contraste. El naranja de hostelería se oscureció a `#D6740F` porque el original daba 2,997:1, por debajo del 3:1 que piden los iconos.
     - **TalkBack:** lee "Clínica Areas, clínica privada, desde 20 €" o "Bar Cachón, bar, aún no tiene precio". Primero recorre los botones y después los marcadores visibles, de arriba abajo. Los que quedan fuera de la pantalla no tienen nodo.
-    - **Pruebas:** 141 pruebas EditMode. Cubren colores, logos, insignia, ocultación fuera de vista, orden de pintado, formato de euros en castellano ("1234 €", "22,50 €"), textos de TalkBack, contraste y la proyección del mapa real.
+    - **Pruebas (1.4):** 141 pruebas EditMode. Cubren colores, logos, insignia, ocultación fuera de vista, orden de pintado, formato de euros en castellano ("1234 €", "22,50 €"), textos de TalkBack, contraste y la proyección del mapa real.
+  - *Historia 1.5, parte 1 (17/11/2026): filtro "Precios".*
+    - **Qué hace:** una píldora arriba a la izquierda abre un menú con Ninguno, Todos, Servicios locales, Hostelería y Ocio. El mapa muestra solo los lugares de esa plantilla. La primera vez es Ninguno: la píldora dice "Ver precios" y el mapa sale limpio (FR-2). La elección se guarda en el móvil.
+    - **Cómo está hecho:** la regla (qué plantillas entran en cada opción) está en el Dominio y el estado en un `ServicioFiltro`, igual que el tema. La capa de marcadores combina el filtro con "está en la pantalla" en cada fotograma.
+    - **Cerrar el menú:** un velo invisible a pantalla completa queda por encima del mapa y de los demás botones. Cualquier toque fuera solo cierra el menú: no mueve el mapa ni pulsa otro botón.
+    - **Decisiones:** el menú no lleva el contador de sitios del prototipo, para que quede más limpio. La historia se partió en dos; TalkBack dentro del menú y el botón atrás van en la parte 2.
+    - **Pruebas:** 170 pruebas EditMode. Cubren la regla, el servicio, cada caso (primer arranque, Todos, una plantilla, que se recuerde, valor dañado, cerrar sin elegir, marca de la opción) y la composición real al arrancar.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -760,4 +766,5 @@ Ideas de trabajo futuro ya identificadas:
 | 17/11/2026 | El marcador anuncia el precio más bajo del lugar ("desde"), sin contar precios con bono. Los conceptos que la web solo da con bono no se migran: si el negocio los quiere, los añade él | Un precio que solo vale para quien tiene bono no representa al lugar |
 | 17/11/2026 | Los centros sanitarios públicos nunca tienen precio (regla del Dominio) y se ven en el mapa como puntos de interés (historia 1.6) | No se paga en el momento; los datos del prototipo ya los excluían |
 | 17/11/2026 | Marcadores con punta, como en el prototipo, y con colores fijos en los dos temas (naranja de hostelería oscurecido a `#D6740F`) | Que se vea el punto exacto del lugar y que el logo blanco cumpla el contraste mínimo de 3:1 |
+| 17/11/2026 | Filtro "Precios": su elección se guarda en el móvil y el menú no lleva contador de sitios. Historia 1.5 dividida (TalkBack del menú y botón atrás en la parte 2) | FR-2 pide recordar la elección; el autor prefiere un menú limpio y especificaciones más cortas |
 | 16/11/2026 | Los recorridos de ejemplo no atribuyen precios inventados a negocios reales: en UJ-2, Andrés es el pionero que aporta el primer precio de ChemaBarber, que sigue en la app con su nombre | Mismo criterio que el prototipo: no inventar precios de negocios reales |

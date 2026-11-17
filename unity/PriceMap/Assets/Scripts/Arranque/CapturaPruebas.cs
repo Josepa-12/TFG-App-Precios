@@ -19,11 +19,12 @@ namespace PriceMap.Arranque
     {
         string carpeta;
         ServicioTema tema;
+        ServicioFiltro filtro;
         IPreferencias preferencias;
         MapaVectorial mapa;
         PantallaMapa pantalla;
 
-        public static void SiSePide(GameObject anfitrion, ServicioTema tema, IPreferencias preferencias, MapaVectorial mapa, PantallaMapa pantalla)
+        public static void SiSePide(GameObject anfitrion, ServicioTema tema, ServicioFiltro filtro, IPreferencias preferencias, MapaVectorial mapa, PantallaMapa pantalla)
         {
 #if !(UNITY_STANDALONE || UNITY_EDITOR || DEVELOPMENT_BUILD)
             return; // nunca en la APK de verdad
@@ -34,6 +35,7 @@ namespace PriceMap.Arranque
             var c = anfitrion.AddComponent<CapturaPruebas>();
             c.carpeta = args[i + 1];
             c.tema = tema;
+            c.filtro = filtro;
             c.preferencias = preferencias;
             c.mapa = mapa;
             c.pantalla = pantalla;
@@ -46,6 +48,11 @@ namespace PriceMap.Arranque
             var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
             yield return new WaitForSeconds(8f); // teselas descargadas y construidas
             Diagnostico();
+            var pildora = pantalla != null ? pantalla.Pildora : null;
+            Debug.Log($"PriceMap: filtro al arrancar {filtro.Actual}; píldora \"{pildora?.Texto.text ?? "-"}\"; " +
+                      $"marcadores visibles {Visibles()}");
+            if (filtro.Actual == FiltroPrecios.Ninguno && Visibles() > 0)
+                Debug.LogError("PriceMap: con el filtro Ninguno no debería verse ningún marcador.");
             yield return Capturar(tema.Actual.ToString().ToLowerInvariant());
             tema.Alternar();
             yield return new WaitForSeconds(1.5f);
@@ -81,6 +88,35 @@ namespace PriceMap.Arranque
         {
             var capa = pantalla != null ? pantalla.Capa : null;
             if (capa == null) { Debug.LogError("PriceMap: no hay capa de marcadores que capturar."); yield break; }
+            // Con Ninguno (por defecto) no hay marcadores: elige Todos para la captura y luego deja la preferencia como estaba
+            var filtroGuardado = preferencias.Leer(ServicioFiltro.ClavePreferencia);
+            var filtroAntes = filtro.Actual;
+            filtro.Elegir(FiltroPrecios.Todos);
+            try
+            {
+                var e = MarcadoresConTodos(capa);
+                while (e.MoveNext()) yield return e.Current;
+            }
+            finally
+            {
+                // Vuelve al filtro de antes en la app y deja la preferencia tal cual estaba (también "sin clave")
+                filtro.Elegir(filtroAntes);
+                if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
+                else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
+                Debug.Log($"PriceMap: preferencia del filtro restaurada ({filtroGuardado ?? "sin guardar"}; antes {filtroAntes}).");
+            }
+        }
+
+        int Visibles()
+        {
+            int n = 0;
+            var capa = pantalla != null ? pantalla.Capa : null;
+            if (capa != null) foreach (var m in capa.Marcadores) if (m.Visible) n++;
+            return n;
+        }
+
+        IEnumerator MarcadoresConTodos(CapaMarcadores capa)
+        {
             MarcadorLugar areas = null;
             foreach (var m in capa.Marcadores) if (m.Lugar.Id == "clinica-areas") areas = m;
             if (areas == null) { Debug.LogError("PriceMap: falta el marcador de Clínica Areas."); yield break; }

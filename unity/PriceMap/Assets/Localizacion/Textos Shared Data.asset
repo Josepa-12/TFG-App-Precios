@@ -47,6 +47,42 @@ MonoBehaviour:
     m_Key: marcador.anuncio.sinprecio
     m_Metadata:
       m_Items: []
+  - m_Id: 98635760001024
+    m_Key: precios.control
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166848
+    m_Key: precios.ver
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166849
+    m_Key: precios.todos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166850
+    m_Key: precios.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166851
+    m_Key: precios.opcion.ninguno
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166852
+    m_Key: precios.opcion.todos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166853
+    m_Key: precios.opcion.servicios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166854
+    m_Key: precios.opcion.hosteleria
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166855
+    m_Key: precios.opcion.ocio
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

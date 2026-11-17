@@ -20,10 +20,25 @@ namespace PriceMap.UI
         /// <summary>TalkBack de un marcador sin precio: {0} nombre, {1} tipo en minúsculas.</summary>
         public const string MarcadorSinPrecio = "marcador.anuncio.sinprecio";
 
+        /// <summary>Píldora del filtro "Precios" para TalkBack (el valor es la opción elegida).</summary>
+        public const string PreciosControl = "precios.control";
+        /// <summary>Texto de la píldora con Ninguno.</summary>
+        public const string PreciosVer = "precios.ver";
+        /// <summary>Texto de la píldora con Todos.</summary>
+        public const string PreciosTodos = "precios.todos";
+        public const string PreciosTitulo = "precios.titulo";
+        public const string PreciosOpcionNinguno = "precios.opcion.ninguno";
+        public const string PreciosOpcionTodos = "precios.opcion.todos";
+        public const string PreciosOpcionServicios = "precios.opcion.servicios";
+        public const string PreciosOpcionHosteleria = "precios.opcion.hosteleria";
+        public const string PreciosOpcionOcio = "precios.opcion.ocio";
+
         public static readonly string[] Todas =
         {
             TemaCambiar, TemaClaro, TemaOscuro, MapaAcercar, MapaAlejar, MapaAtribucion,
             MarcadorConPrecio, MarcadorSinPrecio,
+            PreciosControl, PreciosVer, PreciosTodos, PreciosTitulo,
+            PreciosOpcionNinguno, PreciosOpcionTodos, PreciosOpcionServicios, PreciosOpcionHosteleria, PreciosOpcionOcio,
         };
     }
 }

@@ -51,6 +51,42 @@ MonoBehaviour:
     m_Localized: "{0}, {1}, a\xFAn no tiene precio"
     m_Metadata:
       m_Items: []
+  - m_Id: 98635760001024
+    m_Localized: Precios en el mapa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166848
+    m_Localized: Ver precios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166849
+    m_Localized: Todos los precios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166850
+    m_Localized: Mostrar precios en el mapa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166851
+    m_Localized: Ninguno
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166852
+    m_Localized: Todos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166853
+    m_Localized: Servicios locales
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166854
+    m_Localized: "Hosteler\xEDa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 98635785166855
+    m_Localized: Ocio
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

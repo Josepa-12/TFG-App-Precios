@@ -60,6 +60,140 @@
     background-color: var(--color-surface-2);
 }
 
+/* Filtro "Precios" (DESIGN.md · prices-pill; EXPERIENCE.md · Mapa de inicio): píldora arriba a la
+   izquierda y su menú justo debajo */
+.hueco-precios {
+    position: absolute;
+    top: var(--espacio-4);
+    left: var(--espacio-3);
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.pildora-precios {
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--zona-tactil-min);
+    padding: var(--espacio-2) var(--espacio-4) var(--espacio-2) var(--espacio-3);
+    border-radius: var(--radio-pill);
+    background-color: var(--color-glass);
+    border-width: 1px;
+    border-color: var(--color-control-edge);
+    color: var(--color-text);
+}
+
+.pildora-precios:focus {
+    border-width: 2px;
+    border-color: var(--color-focus);
+}
+
+.pildora-precios:active {
+    background-color: var(--color-surface-2);
+}
+
+.pildora-precios__texto {
+    color: var(--color-text);
+    margin: 0 var(--espacio-2);
+    padding: 0;
+    white-space: normal;
+    flex-shrink: 1;
+}
+
+/* Con Ninguno: "Ver precios" atenuado */
+.pildora-precios--ninguno .pildora-precios__texto {
+    color: var(--color-muted);
+}
+
+.pildora-precios__flecha {
+    width: 12px;
+    height: 8px;
+    flex-shrink: 0;
+    color: var(--color-text);
+}
+
+/* Punto de color de cada opción (PuntoPrecios lo dibuja con su color) */
+.punto-precios {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.punto-precios--ninguno { color: var(--color-muted); }
+.punto-precios--todos { color: var(--color-accent); }
+.punto-precios--servicio { color: var(--color-pin-servicio); }
+.punto-precios--hosteleria { color: var(--color-pin-hosteleria); }
+.punto-precios--ocio { color: var(--color-pin-ocio); }
+
+.menu-precios {
+    margin-top: var(--espacio-2);
+    min-width: 240px;
+    padding: var(--espacio-2);
+    border-radius: var(--radio-lg);
+    background-color: var(--color-surface);
+    border-width: 1px;
+    border-color: var(--color-border);
+}
+
+.menu-precios__titulo {
+    color: var(--color-muted);
+    margin: 0;
+    padding: var(--espacio-1) var(--espacio-3) var(--espacio-2) var(--espacio-3);
+    white-space: normal;
+}
+
+.opcion-precios {
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--zona-tactil-min);
+    padding: var(--espacio-2) var(--espacio-3);
+    border-radius: var(--radio-md);
+    color: var(--color-text);
+}
+
+.opcion-precios:focus {
+    border-width: 2px;
+    border-color: var(--color-focus);
+}
+
+.opcion-precios--elegida {
+    background-color: var(--color-surface-2);
+}
+
+.opcion-precios__texto {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0 var(--espacio-3);
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}
+
+.opcion-precios__check {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--color-accent);
+    visibility: hidden;
+}
+
+.opcion-precios--elegida .opcion-precios__check {
+    visibility: visible;
+}
+
+/* Velo del menú: transparente y a pantalla completa, debajo de la píldora y del menú */
+.velo-menu {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+}
+
+.velo-menu.abierto {
+    display: flex;
+}
+
 /* Atribución obligatoria de OpenFreeMap y OpenStreetMap: pequeña, abajo a la derecha */
 .atribucion {
     position: absolute;

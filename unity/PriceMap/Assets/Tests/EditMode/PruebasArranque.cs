@@ -6,6 +6,9 @@ using PriceMap.Dominio;
 using PriceMap.UI;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
+using PriceMap.EditorTools;
+using UnityEditor;
 
 namespace PriceMap.Tests.EditMode
 {
@@ -34,6 +37,7 @@ namespace PriceMap.Tests.EditMode
         class SistemaOscuro : ITemaSistema { public bool EsOscuro => true; }
 
         static ServicioTema NuevoTema() => new ServicioTema(new PreferenciasFalsas(), new SistemaOscuro());
+        static ServicioFiltro Filtro() => new ServicioFiltro(new PreferenciasFalsas());
 
         class SinLugares : IRepositorioLugares
         {
@@ -60,7 +64,7 @@ namespace PriceMap.Tests.EditMode
         public void ConTodasLasPiezasLaPantallaRecibeElMapaYCentraEnLaPlazaDelCabildo()
         {
             var mapa = new MapaFalso();
-            Assert.IsTrue(Arranque.Arranque.Componer(mapa, pantalla, NuevoTema(), Lugares(), Ahora));
+            Assert.IsTrue(Arranque.Arranque.Componer(mapa, pantalla, NuevoTema(), Lugares(), Filtro(), Ahora));
             CollectionAssert.AreEqual(new[] { new Coordenada(36.7779, -6.3528) }, mapa.centrados);
         }
 
@@ -69,7 +73,7 @@ namespace PriceMap.Tests.EditMode
         {
             var mapa = new MapaFalso();
             var tema = NuevoTema();
-            Arranque.Arranque.Componer(mapa, pantalla, tema, Lugares(), Ahora);
+            Arranque.Arranque.Componer(mapa, pantalla, tema, Lugares(), Filtro(), Ahora);
             tema.Alternar();
             CollectionAssert.AreEqual(new[] { Tema.Oscuro, Tema.Claro }, mapa.temas);
         }
@@ -79,7 +83,7 @@ namespace PriceMap.Tests.EditMode
         {
             LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta el mapa"));
             bool ok = true;
-            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(null, pantalla, NuevoTema(), Lugares(), Ahora));
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(null, pantalla, NuevoTema(), Lugares(), Filtro(), Ahora));
             Assert.IsFalse(ok);
         }
 
@@ -88,7 +92,7 @@ namespace PriceMap.Tests.EditMode
         {
             LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta el ServicioTema"));
             bool ok = true;
-            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), pantalla, null, Lugares(), Ahora));
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), pantalla, null, Lugares(), Filtro(), Ahora));
             Assert.IsFalse(ok);
         }
 
@@ -97,8 +101,58 @@ namespace PriceMap.Tests.EditMode
         {
             LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta la PantallaMapa"));
             bool ok = true;
-            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), null, NuevoTema(), Lugares(), Ahora));
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), null, NuevoTema(), Lugares(), Filtro(), Ahora));
             Assert.IsFalse(ok);
+        }
+
+        [Test]
+        public void SinServicioDeFiltroAvisaYNoLanzaExcepcion()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta el ServicioFiltro"));
+            bool ok = true;
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), pantalla, NuevoTema(), Lugares(), null, Ahora));
+            Assert.IsFalse(ok);
+        }
+
+        [Test]
+        public void ComponerIniciaElFiltroGuardado()
+        {
+            var prefs = new PreferenciasFalsas();
+            prefs.Guardar(ServicioFiltro.ClavePreferencia, "ocio");
+            var filtro = new ServicioFiltro(prefs);
+            Assert.IsTrue(Arranque.Arranque.Componer(new MapaFalso(), pantalla, NuevoTema(), Lugares(), filtro, Ahora));
+            Assert.AreEqual(FiltroPrecios.Ocio, filtro.Actual);
+        }
+
+        /// <summary>
+        /// Componer entrega el filtro a una pantalla con interfaz de verdad (UIDocument con PantallaMapa.uxml):
+        /// con "ocio" guardado, la píldora dice "Ocio" y la capa filtra por ocio.
+        /// </summary>
+        [Test]
+        public void ComponerEntregaElFiltroGuardadoALaInterfaz()
+        {
+            var conInterfaz = new GameObject("Pantalla con interfaz");
+            try
+            {
+                conInterfaz.SetActive(false);
+                var documento = conInterfaz.AddComponent<UIDocument>();
+                documento.panelSettings = AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/UI/PanelSettings.asset");
+                documento.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml");
+                var conUi = conInterfaz.AddComponent<PantallaMapa>();
+                conInterfaz.SetActive(true); // UIDocument (ExecuteAlways) crea su árbol también en el editor
+                Assert.IsNotNull(documento.rootVisualElement?.Q("raiz"), "El UIDocument no ha creado el árbol de la interfaz.");
+
+                var prefs = new PreferenciasFalsas();
+                prefs.Guardar(ServicioFiltro.ClavePreferencia, "ocio");
+                var filtro = new ServicioFiltro(prefs);
+                Assert.IsTrue(Arranque.Arranque.Componer(new MapaFalso(), conUi, NuevoTema(), Lugares(), filtro, Ahora));
+
+                Assert.IsNotNull(conUi.Pildora);
+                Assert.AreEqual(FiltroPrecios.Ocio, conUi.Capa.Filtro);
+                Assert.AreEqual(Textos.T(ClavesTexto.PreciosOpcionOcio), conUi.Pildora.Texto.text);
+                Assert.AreEqual("Ocio", PrepararInterfaz.TextosEs[ClavesTexto.PreciosOpcionOcio]);
+            }
+            finally { Object.DestroyImmediate(conInterfaz); }
         }
 
         [Test]
@@ -106,7 +160,7 @@ namespace PriceMap.Tests.EditMode
         {
             LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta el ServicioLugares"));
             bool ok = true;
-            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), pantalla, NuevoTema(), null, Ahora));
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), pantalla, NuevoTema(), null, Filtro(), Ahora));
             Assert.IsFalse(ok);
         }
     }

@@ -36,6 +36,15 @@ namespace PriceMap.EditorTools
             [ClavesTexto.MapaAtribucion] = "OpenFreeMap © OpenMapTiles · Datos © colaboradores de OpenStreetMap",
             [ClavesTexto.MarcadorConPrecio] = "{0}, {1}, desde {2}",
             [ClavesTexto.MarcadorSinPrecio] = "{0}, {1}, aún no tiene precio",
+            [ClavesTexto.PreciosControl] = "Precios en el mapa",
+            [ClavesTexto.PreciosVer] = "Ver precios",
+            [ClavesTexto.PreciosTodos] = "Todos los precios",
+            [ClavesTexto.PreciosTitulo] = "Mostrar precios en el mapa",
+            [ClavesTexto.PreciosOpcionNinguno] = "Ninguno",
+            [ClavesTexto.PreciosOpcionTodos] = "Todos",
+            [ClavesTexto.PreciosOpcionServicios] = "Servicios locales",
+            [ClavesTexto.PreciosOpcionHosteleria] = "Hostelería",
+            [ClavesTexto.PreciosOpcionOcio] = "Ocio",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

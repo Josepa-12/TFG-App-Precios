@@ -19,6 +19,17 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4b-marcadores-de-los-lugares-en-el-mapa.md`
   summary: Probar con TalkBack en un Android real que los marcadores se anuncian y que sus nodos aparecen y desaparecen al mover el mapa. También comprobar a ojo, al arrastrar, que los marcadores no van un fotograma por detrás.
   evidence: Revisión de la 1.4 (parte 2), Verification Gap. Con el lector apagado, `AnadirMarcas` y `ActualizarMarcadores` no se ejecutan. No hay pruebas PlayMode del orden Update/LateUpdate. La captura de PC solo mide con la cámara quieta (0,5 px).
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-filtro-precios-en-el-mapa.md`
+  summary: Segunda parte de la historia 1.5: el menú "Precios" con TalkBack y la captura de comprobación.
+    - Con el menú abierto, las 5 opciones son botones de TalkBack y la elegida lleva el estado "seleccionado" (`AccessibilityState.Selected` o valor "seleccionado").
+    - Al elegir se anuncia "Precios en el mapa: Hostelería".
+    - Al cerrarse el menú, el foco vuelve a la píldora.
+    - El botón atrás de Android (`KeyCode.Escape`) cierra el menú sin cambiar el filtro.
+    - Captura "filtro" de PC con el menú abierto y Hostelería elegida.
+  evidence: El usuario pidió dividir la historia 1.5 el 17/11/2026 por tamaño (unos 2.700 tokens). La parte 1 deja la píldora, el menú básico, el filtro y la preferencia.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-filtro-precios-en-el-mapa.md`
+  summary: Probar con toques reales (en un panel o en el móvil) que la píldora abre el menú, que una opción filtra y que tocar fuera lo cierra (los `Clickable` del velo, la píldora y las opciones).
+  evidence: Revisión de la 1.5 (parte 1), Verification Gap. Las pruebas EditMode llaman a `AlternarMenu`, `CerrarMenu` y `Pulsar` directamente, porque no hay panel para enviar eventos de puntero. Hasta ahora solo lo comprobó un clic accidental en la captura de PC.
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-lugares-reales-de-sanlucar-con-su-logo-en-el-mapa.md`
   summary: Ignorar en git `unity/PriceMap/Assets/AddressableAssetsData/link.xml`, que cada build regenera.
   evidence: Se borró en `58e4bbb` y volvió a aparecer tras la build de PC de la verificación de la 1.4 (parte 1).

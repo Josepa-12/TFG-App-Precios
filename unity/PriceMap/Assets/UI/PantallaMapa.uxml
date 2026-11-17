@@ -14,5 +14,13 @@
             </ui:VisualElement>
             <ui:Label name="atribucion" class="atribucion t-caption" picking-mode="Ignore" />
         </ui:VisualElement>
+        <!-- Velo transparente del menú "Precios": siempre está en el árbol, oculto; con el menú abierto cubre
+             la pantalla entera (mapa, botones y marcadores), y tocarlo solo cierra el menú (PantallaMapa) -->
+        <ui:VisualElement name="velo-menu" class="velo-menu" picking-mode="Ignore" />
+        <!-- Filtro "Precios" arriba a la izquierda: píldora y, debajo, su menú, por encima del velo.
+             Va en su propia zona segura (mismos márgenes que zona-segura, los pone PantallaMapa) -->
+        <ui:VisualElement name="zona-segura-precios" class="zona-segura" picking-mode="Ignore">
+            <ui:VisualElement name="hueco-precios" class="hueco-precios" picking-mode="Ignore" />
+        </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

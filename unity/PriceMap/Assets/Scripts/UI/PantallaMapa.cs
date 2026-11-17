@@ -21,7 +21,10 @@ namespace PriceMap.UI
 
         IMapa mapa;
         ServicioTema tema;
-        VisualElement raiz, zonaSegura, zoom;
+        ServicioFiltro filtro;
+        VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo;
+        PildoraPrecios pildora;
+        MenuPrecios menu;
         BotonRedondo botonTema, botonAcercar, botonAlejar;
         Label atribucion;
         AccesibilidadPantalla accesibilidad;
@@ -32,25 +35,29 @@ namespace PriceMap.UI
 
         /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
-        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora)
+        /// <param name="filtro">Filtro "Precios"; sin él no hay píldora y se ven todos los lugares.</param>
+        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, lugares, ahora, raizDocumento);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
-        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento)
+        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
+            ServicioFiltro filtro = null)
         {
             this.mapa = mapa;
             this.tema = tema;
+            this.filtro = filtro;
             this.mapa.Centrar(VistaInicial);
 
             raiz = raizDocumento?.Q("raiz");
             if (raiz == null) return; // sin interfaz (p. ej. en pruebas): el mapa funciona igual
 
             zonaSegura = raiz.Q("zona-segura");
+            zonaSeguraPrecios = raiz.Q("zona-segura-precios");
             zoom = raiz.Q("zoom");
             atribucion = raiz.Q<Label>("atribucion");
             atribucion.text = Textos.T(ClavesTexto.MapaAtribucion);
@@ -63,6 +70,7 @@ namespace PriceMap.UI
             zoom.Add(botonAlejar);
 
             accesibilidad = new AccesibilidadPantalla(raiz);
+            if (this.filtro != null) CrearFiltro(); // la píldora va arriba a la izquierda: primera en TalkBack
             accesibilidad.Boton(botonTema, () => Textos.T(ClavesTexto.TemaCambiar), () => this.tema.Alternar(), ValorTema);
             accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), () => this.mapa.Acercar(), visible: () => AccesibilidadPantalla.LectorActivo);
             accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), () => this.mapa.Alejar(), visible: () => AccesibilidadPantalla.LectorActivo);
@@ -75,6 +83,12 @@ namespace PriceMap.UI
                 accesibilidad.Marcador(marcador.Cuerpo, () => marcador.Anuncio, () => marcador.Visible, () => marcador.Posicion);
             }
 
+            if (this.filtro != null)
+            {
+                this.filtro.Cambiado += AlCambiarFiltro;
+                AlCambiarFiltro(this.filtro.Actual); // por si ya se inició; el Arranque lo inicia justo después
+            }
+
             this.tema.Cambiado += AlCambiarTema;
             AssistiveSupport.screenReaderStatusChanged += AlCambiarLector;
             AccessibilitySettings.fontScaleChanged += AlCambiarEscalaFuente;
@@ -82,6 +96,61 @@ namespace PriceMap.UI
 
             AlCambiarLector(AccesibilidadPantalla.LectorActivo);
             // El tema inicial llega con ServicioTema.Iniciar (lo llama el Arranque justo después)
+        }
+
+        /// <summary>Píldora "Precios", su menú y el velo que lo cierra al tocar fuera (FR-2, UX-DR6).</summary>
+        void CrearFiltro()
+        {
+            pildora = new PildoraPrecios(AlternarMenu);
+            menu = new MenuPrecios(f => { CerrarMenu(); filtro.Elegir(f); });
+            var hueco = raiz.Q("hueco-precios");
+            hueco.Add(pildora);
+            hueco.Add(menu);
+            velo = raiz.Q("velo-menu");
+            velo.pickingMode = PickingMode.Position;
+            // Al soltar: el gesto empezó con el menú abierto, así que el mapa no lo ha recibido (TapaPunto)
+            velo.AddManipulator(new Clickable(CerrarMenu));
+            // Con la fuente grande: el menú se dispone al abrirlo, entonces se le aplica la escala
+            menu.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+
+            // TalkBack (mínimo de la parte 1): la píldora es un botón con la opción actual como valor
+            accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro);
+        }
+
+        /// <summary>Valor de la píldora para TalkBack: la opción elegida ("Hostelería").</summary>
+        public string ValorFiltro() => Textos.T(TextosFiltro.ClaveOpcion(filtro.Actual));
+
+        void AlCambiarFiltro(FiltroPrecios nuevo)
+        {
+            if (capa != null) capa.Filtro = nuevo;
+            if (pildora == null) return;
+            pildora.Mostrar(nuevo);
+            menu.Marcar(nuevo);
+            accesibilidad?.Reconstruir(); // el valor de la píldora ha cambiado
+        }
+
+        /// <summary>True con el menú "Precios" abierto.</summary>
+        public bool MenuAbierto => menu != null && menu.Abierto;
+
+        /// <summary>Abre el menú si está cerrado y lo cierra si está abierto (lo que hace la píldora).</summary>
+        public void AlternarMenu()
+        {
+            if (menu == null) return;
+            if (menu.Abierto) CerrarMenu();
+            else
+            {
+                menu.Marcar(filtro.Actual);
+                menu.Mostrar(true);
+                velo.EnableInClassList("abierto", true);
+            }
+        }
+
+        /// <summary>Cierra el menú sin cambiar el filtro (al elegir o al tocar fuera).</summary>
+        public void CerrarMenu()
+        {
+            if (menu == null) return;
+            menu.Mostrar(false);
+            velo.EnableInClassList("abierto", false);
         }
 
         static IEnumerable<(Lugar, ResumenLugar)> ConResumen(ServicioLugares lugares, DateTime ahora)
@@ -93,6 +162,7 @@ namespace PriceMap.UI
         void OnDestroy()
         {
             if (tema != null) tema.Cambiado -= AlCambiarTema;
+            if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
             AssistiveSupport.screenReaderStatusChanged -= AlCambiarLector;
             AccessibilitySettings.fontScaleChanged -= AlCambiarEscalaFuente;
             if (raiz != null) EscalaFuente.Olvidar(raiz);
@@ -101,10 +171,12 @@ namespace PriceMap.UI
 
         /// <summary>
         /// True si el punto de pantalla (origen abajo a la izquierda, como Input) cae sobre un control:
-        /// así el mapa no se mueve al pulsar un botón.
+        /// así el mapa no se mueve al pulsar un botón. Con el menú "Precios" abierto, todo el mapa
+        /// cuenta como tapado: ese toque solo cierra el menú.
         /// </summary>
         public bool TapaPunto(Vector2 pantalla)
         {
+            if (MenuAbierto) return true;
             if (raiz?.panel == null) return false;
             var p = RuntimePanelUtils.ScreenToPanel(raiz.panel, new Vector2(pantalla.x, Screen.height - pantalla.y));
             return EsControl(raiz, raiz.panel.Pick(p));
@@ -117,6 +189,10 @@ namespace PriceMap.UI
         /// <summary>Para las pruebas: tema que muestra la interfaz y botón de tema.</summary>
         public bool InterfazOscura => raiz != null && raiz.ClassListContains("tema-oscuro");
         public BotonRedondo BotonTema => botonTema;
+        /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
+        public PildoraPrecios Pildora => pildora;
+        public MenuPrecios Menu => menu;
+        public VisualElement Velo => velo;
         /// <summary>Capa de marcadores; null sin interfaz.</summary>
         public CapaMarcadores Capa => capa;
         public AccesibilidadPantalla Accesibilidad => accesibilidad;
@@ -158,7 +234,7 @@ namespace PriceMap.UI
         void RepintarIconos()
         {
             // El color nuevo del tema se resuelve en el siguiente pase de estilos
-            raiz.schedule.Execute(() => { botonTema.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint(); capa?.Repintar(); });
+            raiz.schedule.Execute(() => { botonTema.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint(); capa?.Repintar(); pildora?.Repintar(); menu?.Repintar(); });
         }
 
         /// <summary>Respeta las zonas seguras (barra de estado y de gestos) y aplica la escala de fuente.</summary>
@@ -173,10 +249,15 @@ namespace PriceMap.UI
             zonaSeguraAplicada = segura;
             anchoAplicado = ancho;
             float escala = ancho / Screen.width; // píxeles de pantalla → dp del panel
-            zonaSegura.style.left = segura.xMin * escala;
-            zonaSegura.style.right = (Screen.width - segura.xMax) * escala;
-            zonaSegura.style.top = (Screen.height - segura.yMax) * escala;
-            zonaSegura.style.bottom = segura.yMin * escala;
+            // La píldora va en su propia zona segura, encima del velo del menú: mismos márgenes
+            foreach (var zona in new[] { zonaSegura, zonaSeguraPrecios })
+            {
+                if (zona == null) continue;
+                zona.style.left = segura.xMin * escala;
+                zona.style.right = (Screen.width - segura.xMax) * escala;
+                zona.style.top = (Screen.height - segura.yMax) * escala;
+                zona.style.bottom = segura.yMin * escala;
+            }
         }
 
         // La cámara se mueve en Update (CamaraMapa, orden -100): aquí ya está quieta en este fotograma
