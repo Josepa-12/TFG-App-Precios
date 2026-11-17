@@ -6,6 +6,7 @@
         "UnityEditor.TestRunner",
         "PriceMap.Dominio",
         "PriceMap.Aplicacion",
+        "PriceMap.Adaptadores.Datos",
         "PriceMap.UI",
         "PriceMap.Arranque",
         "PriceMap.Vectorial",

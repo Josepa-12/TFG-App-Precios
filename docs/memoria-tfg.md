@@ -610,6 +610,12 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Frescura:** se mide desde la última confirmación. En hostelería, al día por debajo de 30 días y antiguo por encima de 60. En servicios y ocio, por debajo de 3 meses y por encima de 6 (meses de calendario). Los límites cuentan como "podría haber cambiado". Los umbrales están solo en `ParametrosNegocio`.
     - **Variantes:** cada una tiene su precio y su frescura. Las de horario (también las que cruzan la medianoche) y las de día pueden estar vigentes; las de tipo de cliente nunca, porque no dependen del momento.
     - **Pruebas:** cada regla tiene sus pruebas EditMode, con los límites exactos de la frescura.
+  - *Historia 1.4, parte 1 (17/11/2026): datos base de los lugares.*
+    - **Exportación:** un script de Node (`prototipo/herramientas/exportar-datos-unity.js`) pasa los lugares del prototipo a un JSON que va dentro de la app (`Assets/Datos/Resources/lugares.json`). Son los 121 lugares de OpenStreetMap más Clínica Areas, FisioSanlúcar y ChemaBarber. Cada lugar tiene un id estable, nombre, tipo, plantilla y coordenadas. Si encuentra ids repetidos, plantillas desconocidas o coordenadas fuera de Sanlúcar, el script no exporta nada.
+    - **Solo precios de la web oficial:** de Clínica Areas quedan 11 conceptos en 4 áreas, con su página y fecha de consulta y los importes en céntimos: 8 con importe y 3 "A consultar". Los tres precios que la web solo da con bono se quitan; si el negocio los quiere, los añade él.
+    - **Resumen para el mapa:** el Dominio calcula al leer si un lugar tiene precio y cuál anuncia: el importe más bajo, con la forma "desde" (Clínica Areas: desde 20 €). Un centro público nunca tiene precio.
+    - **Carga:** la app lee el JSON al arrancar. Si el fichero falta o está dañado, el mapa sale sin lugares y la app no se cae.
+    - **Pruebas:** 113 pruebas EditMode. Comprueban el JSON real (124 lugares, cada importe igual al de la web) y los casos de fichero dañado.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -743,4 +749,7 @@ Ideas de trabajo futuro ya identificadas:
 | 17/11/2026 | Proyecto de Unity organizado en capas con `.asmdef` y una prueba automática que impide dependencias prohibidas | Que la arquitectura hexagonal se cumpla sola, no por disciplina |
 | 17/11/2026 | Solo dos temas (claro y oscuro); el primero sigue al sistema y la elección se guarda en el móvil (en la cuenta desde la Épica 3) | FR-6 y UX-DR22; el tema "Original" de OSM era solo de la prueba técnica |
 | 17/11/2026 | Historia 1.2 dividida: primero la base de interfaz y el tema; después los gestos de inclinación y la carga de teselas alrededor de la vista | Especificación demasiado grande para implementarla de una vez con fiabilidad |
+| 17/11/2026 | Historia 1.4 dividida: primero los datos base de los lugares y su resumen de precio; después los marcadores con logo y TalkBack | Mismo motivo que la 1.2 |
+| 17/11/2026 | El marcador anuncia el precio más bajo del lugar ("desde"), sin contar precios con bono. Los conceptos que la web solo da con bono no se migran: si el negocio los quiere, los añade él | Un precio que solo vale para quien tiene bono no representa al lugar |
+| 17/11/2026 | Los centros sanitarios públicos nunca tienen precio (regla del Dominio) y se ven en el mapa como puntos de interés (historia 1.6) | No se paga en el momento; los datos del prototipo ya los excluían |
 | 16/11/2026 | Los recorridos de ejemplo no atribuyen precios inventados a negocios reales: en UJ-2, Andrés es el pionero que aporta el primer precio de ChemaBarber, que sigue en la app con su nombre | Mismo criterio que el prototipo: no inventar precios de negocios reales |

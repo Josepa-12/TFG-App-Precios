@@ -1,3 +1,4 @@
+using PriceMap.Adaptadores.Datos;
 using PriceMap.Adaptadores.Sistema;
 using PriceMap.Aplicacion;
 using PriceMap.UI;
@@ -24,6 +25,11 @@ namespace PriceMap.Arranque
 
             var preferencias = new PreferenciasLocales();
             var tema = new ServicioTema(preferencias, new TemaSistemaAndroid());
+
+            // Lugares base empaquetados (historia 1.4). Si fallan, el adaptador ya lo ha registrado y
+            // la app sigue con el mapa sin lugares. Los marcadores los recibirán en la parte 2.
+            var lugares = new ServicioLugares(new RepositorioLugaresJson());
+            if (lugares.Cargar().Ok) Debug.Log($"PriceMap: {lugares.Lugares.Count} lugares cargados.");
 
             // "mapa != null" usa la comparación de Unity (objeto destruido = nulo) antes de pasarlo como interfaz
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema)) { enabled = false; return; }
