@@ -24,6 +24,9 @@ namespace PriceMap.Tests.EditMode
             public void Acercar() { }
             public void Alejar() { }
             public PuntoPantalla Proyectar(Coordenada punto) => PuntoPantalla.Ninguno;
+            public IReadOnlyList<PuntoInteres> PuntosInteres { get; } = new PuntoInteres[0];
+            public event System.Action PuntosInteresCambiados { add { } remove { } }
+            public float DistanciaCamara => 900f;
         }
 
         class PreferenciasFalsas : IPreferencias

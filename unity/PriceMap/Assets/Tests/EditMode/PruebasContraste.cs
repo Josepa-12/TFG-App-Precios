@@ -90,6 +90,22 @@ namespace PriceMap.Tests.EditMode
             }
         }
 
+        /// <summary>El nombre de cada punto de interés se lee sobre el fondo del mapa de su tema (≥ 4,5:1).</summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LosNombresDeLosPuntosDeInteresCumplenElContraste(bool oscuro)
+        {
+            var c = Tema(oscuro);
+            int comprobados = 0;
+            foreach (var par in c)
+            {
+                if (!par.Key.StartsWith("poi-") || !par.Key.EndsWith("-texto")) continue;
+                comprobados++;
+                Assert.GreaterOrEqual(Contraste(par.Value, c["map-fondo"]), 4.5f, $"--color-{par.Key} sobre el fondo del mapa");
+            }
+            Assert.AreEqual(22, comprobados, "Un color de nombre por categoría.");
+        }
+
         /// <summary>El fondo del mapa está en dos sitios (USS y PaletaMapa): tienen que coincidir.</summary>
         [TestCase(false)]
         [TestCase(true)]

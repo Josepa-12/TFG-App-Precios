@@ -49,7 +49,12 @@ namespace PriceMap.Vectorial
         readonly Dictionary<string, List<Vector3>> nombresColocados = new Dictionary<string, List<Vector3>>();
 
         // Teselas cargadas (con lo que hay que deshacer al liberarlas), en cola y en carga
-        class TeselaCargada { public Transform raiz; public readonly List<(string nombre, Vector3 pos)> nombres = new List<(string, Vector3)>(); }
+        class TeselaCargada
+        {
+            public Transform raiz;
+            public readonly List<(string nombre, Vector3 pos)> nombres = new List<(string, Vector3)>();
+            public readonly List<PuntoInteres> puntos = new List<PuntoInteres>(); // capa "poi"
+        }
         readonly Dictionary<Vector2Int, TeselaCargada> cargadas = new Dictionary<Vector2Int, TeselaCargada>();
         readonly HashSet<Vector2Int> pendientes = new HashSet<Vector2Int>();
         readonly Queue<Vector2Int> cola = new Queue<Vector2Int>();
@@ -65,9 +70,17 @@ namespace PriceMap.Vectorial
         internal int TeselasPendientes => pendientes.Count;
         internal int RadioLiberarEfectivo => Mathf.Max(radioLiberar, radio + 2); // nunca por debajo del anillo extra + 1
 
-        /// <summary>Para las pruebas: da por construida una tesela (sin descargarla).</summary>
-        internal void SimularCargada(Vector2Int t) =>
-            cargadas[t] = new TeselaCargada { raiz = new GameObject($"Tesela simulada {t}").transform };
+        /// <summary>Para las pruebas: da por construida una tesela (sin descargarla), con sus puntos de interés.</summary>
+        internal void SimularCargada(Vector2Int t, IEnumerable<PuntoInteres> puntos = null)
+        {
+            var tesela = new TeselaCargada { raiz = new GameObject($"Tesela simulada {t}").transform };
+            if (puntos != null) tesela.puntos.AddRange(puntos);
+            cargadas[t] = tesela;
+            RecomponerPuntos();
+        }
+
+        // Puntos de interés de todas las teselas cargadas (se rehace al cargar o liberar una)
+        readonly List<PuntoInteres> puntosInteres = new List<PuntoInteres>();
         TemaMapa temaAplicado = (TemaMapa)(-1);
         CamaraMapa camara;
         Font fuente;
@@ -150,6 +163,7 @@ namespace PriceMap.Vectorial
         {
             if (!cargadas.TryGetValue(t, out var tesela)) return;
             cargadas.Remove(t);
+            if (tesela.puntos.Count > 0) RecomponerPuntos();
             foreach (var (nombre, pos) in tesela.nombres)
                 if (nombresColocados.TryGetValue(nombre, out var usados)) usados.Remove(pos);
             if (tesela.raiz == null) return;
@@ -207,6 +221,53 @@ namespace PriceMap.Vectorial
         System.Func<Vector2, bool> entradaBloqueada; // se pasa a la cámara en cuanto exista
         public void Alejar() { var c = Camara(); if (c != null) c.Alejar(); }
 
+        /// <summary>Puntos de interés (capa "poi") de las teselas cargadas, sin clasificar.</summary>
+        public IReadOnlyList<PuntoInteres> PuntosInteres => puntosInteres;
+
+        /// <summary>Se lanza al cargar o liberar una tesela con puntos de interés.</summary>
+        public event System.Action PuntosInteresCambiados;
+
+        /// <summary>Distancia de la cámara a su pivote (m); infinito si aún no hay cámara.</summary>
+        public float DistanciaCamara
+        {
+            get { var c = Camara(); return c != null ? c.distancia : float.PositiveInfinity; }
+        }
+
+        void RecomponerPuntos()
+        {
+            puntosInteres.Clear();
+            foreach (var t in cargadas.Values) puntosInteres.AddRange(t.puntos);
+            PuntosInteresCambiados?.Invoke();
+        }
+
+        /// <summary>Nombre que se ve: "name:es" y, si no lo hay, "name"; vacío si no tiene.</summary>
+        internal static string NombreDe(ElementoMVT e)
+        {
+            var es = e.Texto("name:es");
+            if (!string.IsNullOrWhiteSpace(es)) return es.Trim();
+            var nombre = e.Texto("name");
+            return string.IsNullOrWhiteSpace(nombre) ? "" : nombre.Trim();
+        }
+
+        /// <summary>
+        /// Puntos de la capa "poi" con su coordenada real. Solo los que caen dentro de la tesela: el
+        /// margen de cada tesela repite los de la vecina.
+        /// </summary>
+        internal static List<PuntoInteres> PuntosDe(CapaMVT capa, System.Func<Vector2, Coordenada> aCoordenada)
+        {
+            var r = new List<PuntoInteres>();
+            if (capa == null) return r;
+            foreach (var e in capa.elementos)
+            {
+                if (e.tipo != TipoGeometria.Punto || e.partes.Count == 0 || e.partes[0].Count == 0) continue;
+                var p = e.partes[0][0];
+                if (p.x < 0 || p.x >= capa.extension || p.y < 0 || p.y >= capa.extension) continue;
+                r.Add(new PuntoInteres(e.id, NombreDe(e), e.Texto("class"), e.Texto("subclass"),
+                    Mathf.RoundToInt(e.Numero("rank", 99f)), aCoordenada(p)));
+            }
+            return r;
+        }
+
         // Se busca al usarla: Centrar puede llamarse antes que Start
         CamaraMapa Camara()
         {
@@ -246,14 +307,27 @@ namespace PriceMap.Vectorial
                 File.WriteAllBytes(ruta, datos);
             }
 
+            ConstruirDesde(datos, x, y);
+            yield return null; // reparte el trabajo entre fotogramas
+        }
+
+        /// <summary>
+        /// Lee y construye la tesela a partir de sus bytes (ya descomprimidos) y la da por cargada; si trae
+        /// puntos de interés, rehace la lista y avisa. Devuelve false si es ilegible o no se pudo construir.
+        /// </summary>
+        internal bool ConstruirDesde(byte[] datos, int x, int y)
+        {
             var reloj = System.Diagnostics.Stopwatch.StartNew();
             Dictionary<string, CapaMVT> capas;
             try { capas = LectorMVT.Leer(datos); }
-            catch (System.Exception e) { Debug.LogWarning($"PriceMap: tesela {zoom}/{x}/{y} ilegible: {e.Message}"); yield break; }
-            try { cargadas[new Vector2Int(x, y)] = Construir(capas, x, y); }
-            catch (System.Exception e) { Debug.LogWarning($"PriceMap: no se pudo construir la tesela {zoom}/{x}/{y}: {e.Message}"); yield break; }
+            catch (System.Exception e) { Debug.LogWarning($"PriceMap: tesela {zoom}/{x}/{y} ilegible: {e.Message}"); return false; }
+            TeselaCargada tesela;
+            try { tesela = Construir(capas, x, y); }
+            catch (System.Exception e) { Debug.LogWarning($"PriceMap: no se pudo construir la tesela {zoom}/{x}/{y}: {e.Message}"); return false; }
+            cargadas[new Vector2Int(x, y)] = tesela;
+            if (tesela.puntos.Count > 0) RecomponerPuntos();
             Debug.Log($"PriceMap: tesela vectorial {zoom}/{x}/{y} construida en {reloj.ElapsedMilliseconds} ms");
-            yield return null; // reparte el trabajo entre fotogramas
+            return true;
         }
 
         // OpenFreeMap envía las teselas comprimidas con gzip; según la plataforma llegan ya descomprimidas o no
@@ -347,6 +421,14 @@ namespace PriceMap.Vectorial
 
             if (nombresDeCalles && capas.TryGetValue("transportation_name", out var cNombres))
                 Nombres(raiz, cNombres, AMundo, resultado.nombres);
+
+            // Puntos de interés: de coordenadas de tesela a lat/lon (los dibuja la UI, encima del mapa)
+            if (capas.TryGetValue("poi", out var cPoi))
+                resultado.puntos.AddRange(PuntosDe(cPoi, p =>
+                {
+                    var g = Geo.AGeo(AMundo(p, cPoi.extension));
+                    return new Coordenada(g.lat, g.lon);
+                }));
             resultado.raiz = raiz;
             return resultado;
         }

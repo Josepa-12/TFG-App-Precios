@@ -33,6 +33,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5b-menu-precios-con-talkback-y-boton-atras.md`
   summary: Comprobar en un Android real que el botón atrás cierra el menú "Precios" y que, con el menú cerrado, no saca de la app. También comprobar que TalkBack lee el anuncio y lleva el foco a la píldora al elegir.
   evidence: Revisión de la 1.5 (parte 2), Verification Gap. Las pruebas llaman a `Atras()` directamente, y `Update` con `KeyCode.Escape` no se prueba porque en EditMode no hay forma de simular el `Input` antiguo. `Input.backButtonLeavesApp` se queda en su valor por defecto (false).
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-6-puntos-de-interes-de-referencia-en-el-mapa.md`
+  summary: |
+    Segunda parte de la historia 1.6:
+    - **Repetidos:** ocultar el punto de interés que repite un lugar de la app con marcador visible (mismo nombre normalizado a menos de 80 m, id del elemento MVT, como `applyPoiDedup` en `prototipo/app.js:639-660`). Si el filtro oculta el lugar, el punto vuelve a verse.
+    - **Solapes:** ocultar los puntos que se pisan entre sí. Gana el de menor `rank`.
+    - **TalkBack:** el usuario lo decidió el 17/11/2026. Lee los puntos visibles después de los lugares de la app, con el formato "Mercadona, supermercado"; los sanitarios públicos, como "centro sanitario público".
+    - **Captura:** captura de PC con un repetido.
+  evidence: El usuario pidió dividir la historia 1.6 el 17/11/2026 por tamaño (unos 2.300 tokens). La parte 1 deja la lectura de la capa `poi`, las categorías y el dibujo.
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-lugares-reales-de-sanlucar-con-su-logo-en-el-mapa.md`
   summary: Ignorar en git `unity/PriceMap/Assets/AddressableAssetsData/link.xml`, que cada build regenera.
   evidence: Se borró en `58e4bbb` y volvió a aparecer tras la build de PC de la verificación de la 1.4 (parte 1).

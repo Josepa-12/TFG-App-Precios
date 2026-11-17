@@ -303,3 +303,128 @@
     width: 10px;
     height: 6px;
 }
+
+/* Puntos de interés de OpenStreetMap (prototipo: lugares.js · addPoiLayer). Cada .poi mide 0×0 y está
+   justo en la coordenada (CapaPuntosInteres lo mueve con translate): el círculo queda centrado en ella
+   y el nombre a su derecha. Van en una capa por debajo de los marcadores de lugar y no capturan toques. */
+.capa-puntos {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.poi {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+}
+
+/* Círculo de 24 dp con el color de la categoría, borde y glifo blancos */
+.poi__icono {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--poi-icono);
+    height: var(--poi-icono);
+    translate: -50% -50%;
+    border-radius: var(--radio-pill);
+    border-width: 2px;
+    border-color: var(--color-poi-borde);
+    background-color: var(--color-poi-talleres);
+    align-items: center;
+    justify-content: center;
+    color: var(--color-poi-borde);
+}
+
+.poi__glifo {
+    width: var(--poi-glifo);
+    height: var(--poi-glifo);
+    color: var(--color-poi-borde);
+}
+
+/* Nombre a la derecha del círculo, centrado en vertical, con halo del color de fondo del tema */
+.poi__nombre {
+    position: absolute;
+    left: 14px;
+    top: 0;
+    translate: 0 -50%;
+    max-width: var(--poi-nombre-ancho);
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    -unity-text-align: middle-left;
+    color: var(--color-poi-talleres-texto);
+    /* El contorno de TextCore va a caballo del borde de la letra: con más grosor se come el texto de 12 sp */
+    -unity-text-outline-width: 0.5px;
+    -unity-text-outline-color: var(--color-bg);
+}
+
+.poi--comer .poi__icono { background-color: var(--color-poi-comer); }
+.poi--comer .poi__nombre { color: var(--color-poi-comer-texto); }
+
+.poi--rapida .poi__icono { background-color: var(--color-poi-rapida); }
+.poi--rapida .poi__nombre { color: var(--color-poi-rapida-texto); }
+
+.poi--cafe .poi__icono { background-color: var(--color-poi-cafe); }
+.poi--cafe .poi__nombre { color: var(--color-poi-cafe-texto); }
+
+.poi--bares .poi__icono { background-color: var(--color-poi-bares); }
+.poi--bares .poi__nombre { color: var(--color-poi-bares-texto); }
+
+.poi--super .poi__icono { background-color: var(--color-poi-super); }
+.poi--super .poi__nombre { color: var(--color-poi-super-texto); }
+
+.poi--tiendas .poi__icono { background-color: var(--color-poi-tiendas); }
+.poi--tiendas .poi__nombre { color: var(--color-poi-tiendas-texto); }
+
+.poi--gasolina .poi__icono { background-color: var(--color-poi-gasolina); }
+.poi--gasolina .poi__nombre { color: var(--color-poi-gasolina-texto); }
+
+.poi--carga .poi__icono { background-color: var(--color-poi-carga); }
+.poi--carga .poi__nombre { color: var(--color-poi-carga-texto); }
+
+.poi--parking .poi__icono { background-color: var(--color-poi-parking); }
+.poi--parking .poi__nombre { color: var(--color-poi-parking-texto); }
+
+.poi--hoteles .poi__icono { background-color: var(--color-poi-hoteles); }
+.poi--hoteles .poi__nombre { color: var(--color-poi-hoteles-texto); }
+
+.poi--farmacia .poi__icono { background-color: var(--color-poi-farmacia); }
+.poi--farmacia .poi__nombre { color: var(--color-poi-farmacia-texto); }
+
+.poi--salud .poi__icono { background-color: var(--color-poi-salud); }
+.poi--salud .poi__nombre { color: var(--color-poi-salud-texto); }
+
+.poi--deporte .poi__icono { background-color: var(--color-poi-deporte); }
+.poi--deporte .poi__nombre { color: var(--color-poi-deporte-texto); }
+
+.poi--parques .poi__icono { background-color: var(--color-poi-parques); }
+.poi--parques .poi__nombre { color: var(--color-poi-parques-texto); }
+
+.poi--cultura .poi__icono { background-color: var(--color-poi-cultura); }
+.poi--cultura .poi__nombre { color: var(--color-poi-cultura-texto); }
+
+.poi--bancos .poi__icono { background-color: var(--color-poi-bancos); }
+.poi--bancos .poi__nombre { color: var(--color-poi-bancos-texto); }
+
+.poi--belleza .poi__icono { background-color: var(--color-poi-belleza); }
+.poi--belleza .poi__nombre { color: var(--color-poi-belleza-texto); }
+
+.poi--talleres .poi__icono { background-color: var(--color-poi-talleres); }
+.poi--talleres .poi__nombre { color: var(--color-poi-talleres-texto); }
+
+.poi--transporte .poi__icono { background-color: var(--color-poi-transporte); }
+.poi--transporte .poi__nombre { color: var(--color-poi-transporte-texto); }
+
+.poi--educacion .poi__icono { background-color: var(--color-poi-educacion); }
+.poi--educacion .poi__nombre { color: var(--color-poi-educacion-texto); }
+
+.poi--publico .poi__icono { background-color: var(--color-poi-publico); }
+.poi--publico .poi__nombre { color: var(--color-poi-publico-texto); }
+
+.poi--culto .poi__icono { background-color: var(--color-poi-culto); }
+.poi--culto .poi__nombre { color: var(--color-poi-culto-texto); }

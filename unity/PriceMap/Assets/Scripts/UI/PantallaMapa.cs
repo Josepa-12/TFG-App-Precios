@@ -29,6 +29,7 @@ namespace PriceMap.UI
         Label atribucion;
         AccesibilidadPantalla accesibilidad;
         CapaMarcadores capa;
+        CapaPuntosInteres capaPuntos;
         Rect zonaSeguraAplicada;
         float anchoAplicado;
         bool porNavegacion; // la última activación del filtro llegó por teclado o mando (NavigationSubmitEvent)
@@ -76,7 +77,15 @@ namespace PriceMap.UI
             accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), () => this.mapa.Acercar(), visible: () => AccesibilidadPantalla.LectorActivo);
             accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), () => this.mapa.Alejar(), visible: () => AccesibilidadPantalla.LectorActivo);
 
-            // Marcadores de los lugares, debajo de los botones (primer hijo de la raíz)
+            // Puntos de interés de OpenStreetMap, por debajo de los marcadores de lugar
+            var contenedorPuntos = raiz.Q("capa-puntos");
+            if (contenedorPuntos != null)
+            {
+                capaPuntos = new CapaPuntosInteres(contenedorPuntos, this.mapa);
+                this.mapa.PuntosInteresCambiados += AlCambiarPuntos;
+            }
+
+            // Marcadores de los lugares, debajo de los botones
             capa = new CapaMarcadores(raiz.Q("capa-marcadores"), this.mapa, ConResumen(lugares, ahora));
             foreach (var m in capa.Marcadores)
             {
@@ -225,6 +234,7 @@ namespace PriceMap.UI
         {
             if (tema != null) tema.Cambiado -= AlCambiarTema;
             if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
+            if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
             AssistiveSupport.screenReaderStatusChanged -= AlCambiarLector;
             AccessibilitySettings.fontScaleChanged -= AlCambiarEscalaFuente;
             if (raiz != null) EscalaFuente.Olvidar(raiz);
@@ -257,6 +267,11 @@ namespace PriceMap.UI
         public VisualElement Velo => velo;
         /// <summary>Capa de marcadores; null sin interfaz.</summary>
         public CapaMarcadores Capa => capa;
+        /// <summary>Capa de puntos de interés; null sin interfaz.</summary>
+        public CapaPuntosInteres CapaPuntos => capaPuntos;
+
+        // El mapa ha cargado o liberado una tesela: se crean o quitan las vistas de sus puntos
+        void AlCambiarPuntos() => capaPuntos?.Sincronizar();
         public AccesibilidadPantalla Accesibilidad => accesibilidad;
 
         /// <summary>Píxeles de pantalla → dp del panel; 0 mientras no hay disposición.</summary>
@@ -323,11 +338,17 @@ namespace PriceMap.UI
         }
 
         // La cámara se mueve en Update (CamaraMapa, orden -100): aquí ya está quieta en este fotograma
-        void LateUpdate()
+        void LateUpdate() => ActualizarCapas(EscalaDp);
+
+        /// <summary>
+        /// Lo que se hace cada fotograma: recoloca puntos de interés y marcadores con la escala dada
+        /// (píxeles de pantalla → dp; 0 mientras no hay disposición) y mantiene TalkBack al día.
+        /// </summary>
+        internal void ActualizarCapas(float escala)
         {
+            if (capaPuntos != null && escala > 0f) capaPuntos.Actualizar(escala);
             if (capa != null)
             {
-                float escala = EscalaDp;
                 if (escala > 0f) capa.Actualizar(escala);
                 // Con TalkBack: rehace los nodos de los marcadores si cambian los visibles o su orden
                 accesibilidad.ActualizarMarcadores();

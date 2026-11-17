@@ -35,6 +35,9 @@ namespace PriceMap.Tests.EditMode
             public void Acercar() { }
             public void Alejar() { }
             public PuntoPantalla Proyectar(Coordenada punto) => puntos.TryGetValue(punto, out var p) ? p : PuntoPantalla.Ninguno;
+            public IReadOnlyList<PuntoInteres> PuntosInteres { get; } = new PuntoInteres[0];
+            public event System.Action PuntosInteresCambiados { add { } remove { } }
+            public float DistanciaCamara => 900f;
         }
 
         /// <summary>Textos es-ES del generador (en EditMode Localization no carga la locale).</summary>
@@ -205,7 +208,9 @@ namespace PriceMap.Tests.EditMode
             var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
             var raiz = arbol.Q("raiz");
             var contenedor = raiz.Q("capa-marcadores");
-            Assert.AreEqual(0, raiz.IndexOf(contenedor), "La capa va debajo de los botones (primer hijo de la raíz).");
+            // Debajo de los botones: solo la capa de puntos de interés (1.6) va antes, por debajo de los marcadores
+            Assert.AreEqual(0, raiz.IndexOf(raiz.Q("capa-puntos")), "Los puntos de interés son el primer hijo de la raíz.");
+            Assert.AreEqual(1, raiz.IndexOf(contenedor), "La capa de marcadores va justo encima de los puntos y debajo de los botones.");
             var capa = new CapaMarcadores(contenedor, new MapaFalso(), new[] { (Real("clinica-areas"), ReglaResumen.Resumir(Real("clinica-areas"), Ahora)) }, TextosEs);
             Assert.AreEqual(PickingMode.Ignore, contenedor.pickingMode);
             Assert.IsFalse(PantallaMapa.EsControl(raiz, contenedor));

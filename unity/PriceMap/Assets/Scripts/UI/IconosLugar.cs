@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using PriceMap.Dominio;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -56,7 +57,48 @@ namespace PriceMap.UI
             ["landmark"] = "<path d=\"M3 22h18M6 18v-7M10 18v-7M14 18v-7M18 18v-7M12 2l8 5H4Z\"/>",
             ["ball"] = "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"m12 7 4 3-1.5 5h-5L8 10Z\"/>",
             ["pin"] = "<path d=\"M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/>",
+            // Los que solo usan los puntos de interés (historia 1.6)
+            ["basket"] = "<path d=\"m15 11-1 9M19 11l-4-7M2 11h20M3.5 11l1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4M4.5 15.5h15M5 11l4-7M9 11l1 9\"/>",
+            ["fuel"] = "<path d=\"M3 22h12M4 9h10M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0V9.8a2 2 0 0 0-.6-1.4L18 5\"/>",
+            ["zap"] = "<path d=\"M13 2 3 14h9l-1 8 10-12h-9l1-8Z\"/>",
+            ["bed"] = "<path d=\"M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9\"/>",
+            ["pill"] = "<path d=\"m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7ZM8.5 8.5l7 7\"/>",
+            ["tree"] = "<path d=\"M12 22v-7M17 8A5 5 0 0 0 7 8a4 4 0 0 0-1 7.9h12A4 4 0 0 0 17 8Z\"/>",
+            ["bank"] = "<path d=\"M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7Z\"/>",
+            ["bus"] = "<rect x=\"4\" y=\"3\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M4 11h16M8 19v2M16 19v2M8 15h.01M16 15h.01\"/>",
+            ["church"] = "<path d=\"M12 2v5M10 4h4M6 22V12l6-5 6 5v10M10 22v-5h4v5\"/>",
         };
+
+        /// <summary>Glifo de cada categoría de punto de interés (prototipo/lugares.js · POI_CATS[...].glyph).</summary>
+        public static string GlifoDe(CategoriaPoi categoria)
+        {
+            switch (categoria)
+            {
+                case CategoriaPoi.Comer: return "utensils";
+                case CategoriaPoi.Rapida: return "burger";
+                case CategoriaPoi.Cafe: return "coffee";
+                case CategoriaPoi.Bares: return "martini";
+                case CategoriaPoi.Super: return "basket";
+                case CategoriaPoi.Tiendas: return "bag";
+                case CategoriaPoi.Gasolina: return "fuel";
+                case CategoriaPoi.Carga: return "zap";
+                case CategoriaPoi.Parking: return "parking";
+                case CategoriaPoi.Hoteles: return "bed";
+                case CategoriaPoi.Farmacia: return "pill";
+                case CategoriaPoi.Salud: return "cross";
+                case CategoriaPoi.Deporte: return "dumbbell";
+                case CategoriaPoi.Parques: return "tree";
+                case CategoriaPoi.Cultura: return "ticket";
+                case CategoriaPoi.Bancos: return "bank";
+                case CategoriaPoi.Belleza: return "scissors";
+                case CategoriaPoi.Talleres: return "wrench";
+                case CategoriaPoi.Transporte: return "bus";
+                case CategoriaPoi.Educacion: return "school";
+                case CategoriaPoi.Publico: return "landmark";
+                case CategoriaPoi.Culto: return "church";
+                default: return Generico;
+            }
+        }
 
         static readonly HashSet<string> tiposAvisados = new HashSet<string>();
         static readonly Dictionary<string, IReadOnlyList<Orden>> interpretados = new Dictionary<string, IReadOnlyList<Orden>>();

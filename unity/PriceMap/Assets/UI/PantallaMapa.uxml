@@ -4,6 +4,8 @@
     <!-- El mapa ocupa toda la pantalla y los controles flotan encima (DESIGN.md · Layout).
          Los contenedores no capturan toques para que el mapa siga respondiendo a los gestos. -->
     <ui:VisualElement name="raiz" class="pm-raiz" picking-mode="Ignore">
+        <!-- Puntos de interés de OpenStreetMap (CapaPuntosInteres): debajo de los marcadores de lugar y sin capturar toques -->
+        <ui:VisualElement name="capa-puntos" class="capa-puntos" picking-mode="Ignore" />
         <!-- Marcadores de los lugares (CapaMarcadores): debajo de los controles y sin capturar toques -->
         <ui:VisualElement name="capa-marcadores" class="capa-marcadores" picking-mode="Ignore" />
         <!-- Zona segura: sus márgenes los pone PantallaMapa con Screen.safeArea -->

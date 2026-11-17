@@ -18,6 +18,8 @@ namespace PriceMap.Vectorial
     /// <summary>Un elemento (calle, edificio, lago...): tipo, atributos y geometría en coordenadas de tesela.</summary>
     public class ElementoMVT
     {
+        /// <summary>Id del elemento en la tesela (campo 1; 0 si no lo trae). En la capa poi sale del id de OSM.</summary>
+        public ulong id;
         public TipoGeometria tipo;
         public readonly Dictionary<string, object> atributos = new Dictionary<string, object>();
         /// <summary>Partes: líneas o anillos de polígono (x a la derecha, y hacia abajo).</summary>
@@ -147,6 +149,7 @@ namespace PriceMap.Vectorial
                         if (ki < claves.Count && vi < valores.Count) e.atributos[claves[ki]] = valores[vi];
                     }
                 }
+                else if (f == 1 && t == 0) e.id = Varint(b, ref i);
                 else if (f == 3 && t == 0) e.tipo = (TipoGeometria)(int)Varint(b, ref i);
                 else if (f == 4 && t == 2)
                 {

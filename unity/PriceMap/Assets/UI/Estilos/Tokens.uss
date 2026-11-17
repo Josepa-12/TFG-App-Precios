@@ -35,6 +35,55 @@
     --color-pin-hosteleria: #D6740F; /* más oscuro que --color-tpl-hosteleria: logo blanco ≥ 3:1 */
     --color-pin-ocio: #1F9D6B;
     --color-pin-borde: #FFFFFF;
+    /* Puntos de interés de OpenStreetMap (prototipo/lugares.js · POI_CATS): el círculo es igual en los
+       dos temas; el nombre (-texto) va oscurecido un 30 % en el claro y aclarado un 35 % en el oscuro
+       (shade del prototipo), con un halo de --color-bg; si así no llega a 4,5:1 sobre el fondo del
+       mapa, se oscurece algo más (comer, super) */
+    --color-poi-comer: #F07D1A;
+    --color-poi-rapida: #E5541F;
+    --color-poi-cafe: #9B6A3C;
+    --color-poi-bares: #D6336C;
+    --color-poi-super: #D99A00;
+    --color-poi-tiendas: #C9821A;
+    --color-poi-gasolina: #2F7DE1;
+    --color-poi-carga: #16A36A;
+    --color-poi-parking: #3B63D9;
+    --color-poi-hoteles: #7A5AF0;
+    --color-poi-farmacia: #E5484D;
+    --color-poi-salud: #C93434;
+    --color-poi-deporte: #0E9FB0;
+    --color-poi-parques: #2E9E5B;
+    --color-poi-cultura: #A33FD1;
+    --color-poi-bancos: #4D7C6B;
+    --color-poi-belleza: #E0609A;
+    --color-poi-talleres: #6B7280;
+    --color-poi-transporte: #4B5B7C;
+    --color-poi-educacion: #8C6E4E;
+    --color-poi-publico: #64748B;
+    --color-poi-culto: #7C7C8A;
+    --color-poi-borde: #FFFFFF;
+    --color-poi-comer-texto: #A35512; /* -32 %: con -30 % no llega a 4,5:1 sobre el fondo del mapa */
+    --color-poi-rapida-texto: #A03B16;
+    --color-poi-cafe-texto: #6C4A2A;
+    --color-poi-bares-texto: #96244C;
+    --color-poi-super-texto: #8B6300; /* -36 %: con -30 % no llega a 4,5:1 sobre el fondo del mapa */
+    --color-poi-tiendas-texto: #8D5B12;
+    --color-poi-gasolina-texto: #21589E;
+    --color-poi-carga-texto: #0F724A;
+    --color-poi-parking-texto: #294598;
+    --color-poi-hoteles-texto: #553FA8;
+    --color-poi-farmacia-texto: #A03236;
+    --color-poi-salud-texto: #8D2424;
+    --color-poi-deporte-texto: #0A6F7B;
+    --color-poi-parques-texto: #206F40;
+    --color-poi-cultura-texto: #722C92;
+    --color-poi-bancos-texto: #36574B;
+    --color-poi-belleza-texto: #9D436C;
+    --color-poi-talleres-texto: #4B505A;
+    --color-poi-transporte-texto: #344057;
+    --color-poi-educacion-texto: #624D37;
+    --color-poi-publico-texto: #465161;
+    --color-poi-culto-texto: #575761;
 
     /* Espaciado (4 / 8 / 12 / 16 / 24 / 32) */
     --espacio-1: 4px;
@@ -60,6 +109,9 @@
     --marcador-logo: 22px;
     --marcador-logo-sin-precio: 17px;
     --marcador-insignia: 18px;
+    --poi-icono: 24px;
+    --poi-glifo: 13px;
+    --poi-nombre-ancho: 96px; /* 8 em de 12 sp, como text-max-width del prototipo */
 
     -unity-font: url("../Fuentes/NunitoSans-Regular.ttf");
     color: var(--color-text);
@@ -91,6 +143,28 @@
     --color-fresh-podria: #FFD166;
     --color-fresh-antiguo: #7F8BAA;
     --color-map-fondo: #141B30;
+    --color-poi-comer-texto: #F5AA6A;
+    --color-poi-rapida-texto: #EE906D;
+    --color-poi-cafe-texto: #BE9E80;
+    --color-poi-bares-texto: #E47A9F;
+    --color-poi-super-texto: #E6BD59;
+    --color-poi-tiendas-texto: #DCAE6A;
+    --color-poi-gasolina-texto: #78AAEC;
+    --color-poi-carga-texto: #68C39E;
+    --color-poi-parking-texto: #809AE6;
+    --color-poi-hoteles-texto: #A994F5;
+    --color-poi-farmacia-texto: #EE888B;
+    --color-poi-salud-texto: #DC7B7B;
+    --color-poi-deporte-texto: #62C1CC;
+    --color-poi-parques-texto: #77C094;
+    --color-poi-cultura-texto: #C382E1;
+    --color-poi-bancos-texto: #8BAA9F;
+    --color-poi-belleza-texto: #EB98BD;
+    --color-poi-talleres-texto: #9FA3AC;
+    --color-poi-transporte-texto: #8A94AA;
+    --color-poi-educacion-texto: #B4A18C;
+    --color-poi-publico-texto: #9AA5B4;
+    --color-poi-culto-texto: #AAAAB3;
 }
 
 /* Tipografía: Varela Round para títulos, Nunito Sans para el resto (tamaños en dp, escalados a sp) */

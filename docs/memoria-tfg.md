@@ -634,6 +634,12 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Foco y anuncio:** al abrir el menú, el foco va a la opción elegida; al cerrarlo, vuelve a la píldora. Al elegir se anuncia "Precios en el mapa: Hostelería", después de mover el foco, para que TalkBack no lo corte. El foco del teclado solo se mueve con el lector activo o al navegar, así que con el dedo no aparece el borde de foco.
     - **Botón atrás de Android:** cierra el menú sin cambiar el filtro. Con el menú cerrado no hace nada.
     - **Pruebas:** 179 pruebas EditMode. Para probar la jerarquía real de TalkBack sin un lector se añadió un gancho interno que lo simula. Queda comprobar en un móvil real el botón atrás y el orden de anuncio y foco.
+  - *Historia 1.6, parte 1 (17/11/2026): puntos de interés de OpenStreetMap.*
+    - **De dónde salen:** de la capa `poi` de las mismas teselas de OpenFreeMap que ya dibujan el mapa. No hace falta otra descarga ni otro servicio. Cada tesela guarda sus puntos (con su id de OpenStreetMap) y el mapa los ofrece por el puerto `IMapa`.
+    - **Qué se dibuja:** una regla del Dominio, portada del prototipo, da a cada punto una de 22 categorías (supermercado, farmacia, gasolinera, banco…) y descarta las paradas de autobús y las oficinas. Los centros de salud, hospitales y ambulatorios públicos quedan marcados como sanidad pública; se excluyen los veterinarios y se comparan palabras completas.
+    - **Cómo se ve:** un círculo de color con su icono vectorial y el nombre al lado, por debajo de los marcadores de lugar (que son cuadrados con punta). Aparecen con la cámara a 1,2 km o menos. El color de cada nombre cumple el contraste de 4,5:1 en los dos temas.
+    - **Comprobación:** en la build de PC, a 900 m sobre el centro se ven 67 puntos de 16 categorías. Pasan 214 pruebas EditMode, incluida la ruta real de bytes de la tesela a coordenada (con menos de 3 m de error).
+    - **Pendiente (parte 2):** ocultar el punto que repite un lugar de la app, evitar que los nombres se pisen y que TalkBack los lea.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

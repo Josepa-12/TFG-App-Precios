@@ -66,6 +66,7 @@ namespace PriceMap.Arranque
 
             yield return Marcadores();
             yield return FiltroAbierto();
+            yield return Puntos();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -154,6 +155,50 @@ namespace PriceMap.Arranque
             }
         }
 
+        /// <summary>
+        /// Captura "puntos": el centro de Sanlúcar con los puntos de interés y los marcadores (filtro Todos).
+        /// Registra los puntos visibles por categoría y comprueba que no hay paradas de autobús ni oficinas.
+        /// </summary>
+        IEnumerator Puntos()
+        {
+            var capaPuntos = pantalla != null ? pantalla.CapaPuntos : null;
+            if (capaPuntos == null) { Debug.LogError("PriceMap: no hay capa de puntos de interés que capturar."); yield break; }
+            var filtroGuardado = preferencias.Leer(ServicioFiltro.ClavePreferencia);
+            var filtroAntes = filtro.Actual;
+            filtro.Elegir(FiltroPrecios.Todos);
+            try
+            {
+                mapa.Centrar(PantallaMapa.VistaInicial);
+                yield return new WaitForSeconds(3f);
+                yield return new WaitForEndOfFrame();
+                var porCategoria = new SortedDictionary<string, int>();
+                int visibles = 0, prohibidos = 0, sanidad = 0;
+                foreach (var v in capaPuntos.Vistas)
+                {
+                    if (!v.Visible) continue;
+                    visibles++;
+                    var c = v.Categoria.ToString();
+                    porCategoria[c] = porCategoria.TryGetValue(c, out var n) ? n + 1 : 1;
+                    if (v.Punto.Subclase == "bus_stop" || v.Punto.Subclase == "office") prohibidos++;
+                    if (v.SanidadPublica) sanidad++;
+                }
+                var texto = new System.Text.StringBuilder();
+                foreach (var par in porCategoria) texto.Append(' ').Append(par.Key).Append('=').Append(par.Value);
+                Debug.Log($"PriceMap: puntos de interés en las teselas {mapa.PuntosInteres.Count}, con categoría {capaPuntos.Vistas.Count}, " +
+                          $"visibles {visibles} (cámara a {mapa.DistanciaCamara:F0} m); sanidad pública visibles {sanidad}; por categoría:{texto}");
+                if (visibles == 0) Debug.LogError("PriceMap: ningún punto de interés visible en la captura de puntos.");
+                if (prohibidos > 0) Debug.LogError($"PriceMap: {prohibidos} paradas de autobús u oficinas visibles.");
+                yield return Capturar("puntos");
+                yield return new WaitForSeconds(1f);
+            }
+            finally
+            {
+                filtro.Elegir(filtroAntes);
+                if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
+                else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
+            }
+        }
+
         int Visibles()
         {
             int n = 0;
@@ -204,6 +249,7 @@ namespace PriceMap.Arranque
                 raiz.Query<UnityEngine.UIElements.VisualElement>().ForEach(e =>
                 {
                     if (e.GetFirstAncestorOfType<MarcadorLugar>() != null) return; // 124 marcadores: solo su raíz
+                    if (e is PuntoInteresVista || e.GetFirstAncestorOfType<PuntoInteresVista>() != null) return; // cientos de puntos
                     var t = e as UnityEngine.UIElements.TextElement;
                     Debug.Log($"PriceMap:   {e.name} [{string.Join(" ", e.GetClasses())}] {e.worldBound} display={e.resolvedStyle.display}" +
                               (t != null ? $" texto=\"{t.text}\" tamaño={t.resolvedStyle.fontSize} fuente={t.resolvedStyle.unityFont?.name ?? "-"} def={t.resolvedStyle.unityFontDefinition.fontAsset?.name ?? "-"} color={t.resolvedStyle.color}" : ""));

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using PriceMap.Dominio;
 
 namespace PriceMap.Aplicacion
@@ -25,5 +27,17 @@ namespace PriceMap.Aplicacion
         /// la izquierda). Sirve para colocar encima del mapa lo que dibuja la UI (marcadores).
         /// </summary>
         PuntoPantalla Proyectar(Coordenada punto);
+
+        /// <summary>
+        /// Puntos de interés de OpenStreetMap de las teselas cargadas ahora mismo, sin clasificar
+        /// (la UI aplica ReglaPuntosInteres). Cambia al cargar o liberar teselas.
+        /// </summary>
+        IReadOnlyList<PuntoInteres> PuntosInteres { get; }
+
+        /// <summary>Se lanza cuando cambia PuntosInteres (se carga o se libera una tesela).</summary>
+        event Action PuntosInteresCambiados;
+
+        /// <summary>Distancia de la cámara a su punto de mira, en metros (infinito si no hay cámara).</summary>
+        float DistanciaCamara { get; }
     }
 }
