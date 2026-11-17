@@ -9,11 +9,11 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-designs/ux-TFG-App-Precios-2026-11-16/EXPERIENCE.md
 ---
 
-# TFG-App-Precios (PrecioLocal) - Desglose en épicas
+# TFG-App-Precios (PriceMap) - Desglose en épicas
 
 ## Visión general
 
-Este documento recoge el desglose completo en épicas e historias de PrecioLocal, la app final para Android en Unity. Descompone en historias implementables los requisitos del PRD, las decisiones de la arquitectura y los requisitos del diseño de UX.
+Este documento recoge el desglose completo en épicas e historias de PriceMap, la app final para Android en Unity. Descompone en historias implementables los requisitos del PRD, las decisiones de la arquitectura y los requisitos del diseño de UX.
 
 ## Inventario de requisitos
 
@@ -93,9 +93,9 @@ NFR8: El servidor solo permite a un cliente crear aportes, avisos y visitas a su
 
 ### Requisitos adicionales (arquitectura)
 
-- **Proyecto base existente (brownfield), no plantilla nueva:** `unity/PrecioLocal` (Unity 6000.3.28f1, render integrado) con el mapa vectorial de la opción C (`PrecioLocal.Vectorial`, `Geo`, `CamaraMapa`, `Marcador`). La primera historia reorganiza ese proyecto en capas con `.asmdef` y retira Cesium y las escenas de prueba A y B.
+- **Proyecto base existente (brownfield), no plantilla nueva:** `unity/PriceMap` (Unity 6000.3.28f1, render integrado) con el mapa vectorial de la opción C (`PriceMap.Vectorial`, `Geo`, `CamaraMapa`, `Marcador`). La primera historia reorganiza ese proyecto en capas con `.asmdef` y retira Cesium y las escenas de prueba A y B.
 - AD-1: capas hexagonales impuestas con `.asmdef` (Dominio sin UnityEngine; UI solo ve Aplicación y Dominio).
-- AD-2: una sola raíz de composición `PrecioLocal.Arranque`; sin singletons ni localizadores para lógica.
+- AD-2: una sola raíz de composición `PriceMap.Arranque`; sin singletons ni localizadores para lógica.
 - AD-3: el precio mostrado, su origen, la frescura y "en revisión" se calculan en el Dominio al leer; nunca se guardan.
 - AD-4: aportes, avisos y visitas son inmutables (solo crear).
 - AD-5: un único escritor por entidad (tabla de dueños: datos base empaquetados, `lugares`, `propiedad`, `declaraciones`, `ofertas`, `aportes`, `avisos`, `usuarios/<uid>/visitas`, `usuarios/<uid>/aportes`, `usuarios/<uid>`, `contactosLugares`, `evaluacion`).
@@ -261,9 +261,9 @@ para que la app arranque sobre una base ordenada en la que crecerán todas las f
 
 **Criterios de aceptación:**
 
-**Dado** el proyecto existente `unity/PrecioLocal`
+**Dado** el proyecto existente `unity/PriceMap`
 **Cuando** se reorganiza según la arquitectura
-**Entonces** existen los ensamblados `PrecioLocal.Dominio` (con `noEngineReferences: true`), `PrecioLocal.Aplicacion`, `PrecioLocal.Adaptadores.*`, `PrecioLocal.Vectorial`, `PrecioLocal.UI`, `PrecioLocal.Arranque` y uno de pruebas EditMode del Dominio, con las referencias del diagrama de AD-1 y ninguna otra
+**Entonces** existen los ensamblados `PriceMap.Dominio` (con `noEngineReferences: true`), `PriceMap.Aplicacion`, `PriceMap.Adaptadores.*`, `PriceMap.Vectorial`, `PriceMap.UI`, `PriceMap.Arranque` y uno de pruebas EditMode del Dominio, con las referencias del diagrama de AD-1 y ninguna otra
 **Y** el código del mapa vectorial existente (`LectorMVT`, `Triangulador`, `MapaVectorial`, `Geo`, `CamaraMapa`, `Marcador`) queda en sus capas sin cambiar su comportamiento
 
 **Dado** el proyecto reorganizado

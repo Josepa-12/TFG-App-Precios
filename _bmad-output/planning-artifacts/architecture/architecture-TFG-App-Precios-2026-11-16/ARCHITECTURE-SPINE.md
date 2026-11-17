@@ -1,10 +1,10 @@
 ---
-name: 'PrecioLocal — app Android'
+name: 'PriceMap — app Android'
 type: architecture-spine
 purpose: build-substrate
 altitude: initiative
 paradigm: 'hexagonal (puertos y adaptadores), versión ligera'
-scope: 'App final PrecioLocal para Android en Unity: todas las funciones del PRD (FR-1 a FR-60) y su backend en Firebase'
+scope: 'App final PriceMap para Android en Unity: todas las funciones del PRD (FR-1 a FR-60) y su backend en Firebase'
 status: final
 created: '2026-11-16'
 updated: '2026-11-17'
@@ -14,11 +14,11 @@ sources:
   - ../../prds/prd-TFG-App-Precios-2026-11-16/addendum.md
   - ../../ux-designs/ux-TFG-App-Precios-2026-11-16/DESIGN.md
   - ../../ux-designs/ux-TFG-App-Precios-2026-11-16/EXPERIENCE.md
-  - ../../../../unity/PrecioLocal/
+  - ../../../../unity/PriceMap/
 companions: []
 ---
 
-# Architecture Spine — PrecioLocal (app Android)
+# Architecture Spine — PriceMap (app Android)
 
 ## Design Paradigm
 
@@ -26,19 +26,19 @@ companions: []
 
 | Capa | Namespace / ensamblado (`.asmdef`) | Contiene |
 |---|---|---|
-| Dominio | `PrecioLocal.Dominio` (sin referencias a UnityEngine) | Entidades, reglas de precio, frescura, reputación, recompensas, plan, variantes; configuración de parámetros |
-| Aplicación | `PrecioLocal.Aplicacion` | Casos de uso y servicios (visitas, aportes, cuentas, negocio, plan, búsqueda, navegación); **puertos** (interfaces) |
-| Adaptadores | `PrecioLocal.Adaptadores.*` (`Firebase`, `Rutas`, `Busqueda`, `Notificaciones`, `Gps`, `Voz`, `Datos`) y `PrecioLocal.Vectorial` (mapa) | Implementaciones de los puertos con SDK y servicios externos |
-| Presentación | `PrecioLocal.UI` | Pantallas de UI Toolkit, controladores de vista, tema |
-| Arranque | `PrecioLocal.Arranque` | Raíz de composición: crea adaptadores y servicios y los entrega a la UI |
+| Dominio | `PriceMap.Dominio` (sin referencias a UnityEngine) | Entidades, reglas de precio, frescura, reputación, recompensas, plan, variantes; configuración de parámetros |
+| Aplicación | `PriceMap.Aplicacion` | Casos de uso y servicios (visitas, aportes, cuentas, negocio, plan, búsqueda, navegación); **puertos** (interfaces) |
+| Adaptadores | `PriceMap.Adaptadores.*` (`Firebase`, `Rutas`, `Busqueda`, `Notificaciones`, `Gps`, `Voz`, `Datos`) y `PriceMap.Vectorial` (mapa) | Implementaciones de los puertos con SDK y servicios externos |
+| Presentación | `PriceMap.UI` | Pantallas de UI Toolkit, controladores de vista, tema |
+| Arranque | `PriceMap.Arranque` | Raíz de composición: crea adaptadores y servicios y los entrega a la UI |
 
 ```mermaid
 flowchart LR
-  UI[Presentación<br/>PrecioLocal.UI] --> APP[Aplicación<br/>servicios + puertos]
+  UI[Presentación<br/>PriceMap.UI] --> APP[Aplicación<br/>servicios + puertos]
   APP --> DOM[Dominio<br/>C# puro]
   ADP[Adaptadores<br/>Firebase, Rutas, Búsqueda,<br/>Notificaciones, GPS, Voz, Datos] --> APP
   ADP --> DOM
-  MAP[Mapa vectorial<br/>PrecioLocal.Vectorial] --> APP
+  MAP[Mapa vectorial<br/>PriceMap.Vectorial] --> APP
   BOOT[Arranque] --> UI
   BOOT --> ADP
   BOOT --> MAP
@@ -51,19 +51,19 @@ flowchart LR
 
 - **Binds:** all
 - **Prevents:** reglas de negocio dentro de pantallas o adaptadores; la UI llamando a Firebase directamente.
-- **Rule:** las dependencias siguen el diagrama de Design Paradigm y se imponen con `.asmdef`. `PrecioLocal.Dominio` tiene `noEngineReferences: true` y no referencia ningún otro ensamblado del proyecto. `PrecioLocal.UI` solo referencia Aplicación y Dominio, nunca un adaptador. Los adaptadores implementan puertos declarados en Aplicación.
+- **Rule:** las dependencias siguen el diagrama de Design Paradigm y se imponen con `.asmdef`. `PriceMap.Dominio` tiene `noEngineReferences: true` y no referencia ningún otro ensamblado del proyecto. `PriceMap.UI` solo referencia Aplicación y Dominio, nunca un adaptador. Los adaptadores implementan puertos declarados en Aplicación.
 
 ### AD-2 — Una sola raíz de composición [ADOPTED]
 
 - **Binds:** all
 - **Prevents:** dos módulos creando su propia instancia de Firestore, del GPS o del mapa con estados distintos.
-- **Rule:** solo `PrecioLocal.Arranque` crea adaptadores y servicios y los pasa por constructor o inicialización. Prohibidos los singletons y localizadores de servicios para lógica (`FirebaseFirestore.DefaultInstance` solo aparece dentro del adaptador de Firebase).
+- **Rule:** solo `PriceMap.Arranque` crea adaptadores y servicios y los pasa por constructor o inicialización. Prohibidos los singletons y localizadores de servicios para lógica (`FirebaseFirestore.DefaultInstance` solo aparece dentro del adaptador de Firebase).
 
 ### AD-3 — El precio mostrado es derivado y nunca se guarda [ADOPTED]
 
 - **Binds:** FR-8, FR-9, FR-31 a FR-35, FR-60
 - **Prevents:** clientes que muestran precios distintos para el mismo concepto; escrituras de un precio calculado por un móvil desactualizado.
-- **Rule:** el precio mostrado, su origen, la frescura y el estado "en revisión" los calcula `PrecioLocal.Dominio` en el momento de leer, a partir de: precio de la web (datos base), declaraciones del negocio, aportes y avisos. Ningún documento tiene un campo de precio calculado. El cálculo se hace por concepto y por variante.
+- **Rule:** el precio mostrado, su origen, la frescura y el estado "en revisión" los calcula `PriceMap.Dominio` en el momento de leer, a partir de: precio de la web (datos base), declaraciones del negocio, aportes y avisos. Ningún documento tiene un campo de precio calculado. El cálculo se hace por concepto y por variante.
 
 ### AD-4 — Aportes, avisos y visitas son inmutables [ADOPTED]
 
@@ -144,7 +144,7 @@ flowchart LR
 
 - **Binds:** FR-1 a FR-6, FR-17, FR-18 a FR-20
 - **Prevents:** pantallas que crean `GameObject` en el mapa o mezclan coordenadas de Unity con latitud y longitud.
-- **Rule:** `PrecioLocal.Vectorial` es el único renderizador del mapa e implementa el puerto `IMapa` (tema, marcadores, ruta, posición, centrar, eventos de toque y pulsación larga). Dominio y Aplicación usan latitud/longitud en `double`; `Vector3` solo existe dentro del adaptador del mapa (vía `Geo`).
+- **Rule:** `PriceMap.Vectorial` es el único renderizador del mapa e implementa el puerto `IMapa` (tema, marcadores, ruta, posición, centrar, eventos de toque y pulsación larga). Dominio y Aplicación usan latitud/longitud en `double`; `Vector3` solo existe dentro del adaptador del mapa (vía `Geo`).
 
 ### AD-14 — Parámetros de negocio en un solo sitio
 
@@ -192,7 +192,7 @@ flowchart LR
 | Datos en Firestore | Colecciones en plural y minúsculas (`lugares`, `aportes`); campos en `camelCase` castellano (`conceptoId`, `importeCent`, `creado`) |
 | Errores | Los puertos devuelven `Resultado<T>` (éxito o error con código); no se lanzan excepciones a través de capas; la UI traduce el código a texto (EXPERIENCE.md · Voice and Tone) |
 | Asincronía | `Task`/`async` en Aplicación y adaptadores; vuelta al hilo principal solo en Presentación |
-| Registro técnico | `Debug.Log` con prefijo `PrecioLocal:` solo en adaptadores y arranque; nunca datos personales |
+| Registro técnico | `Debug.Log` con prefijo `PriceMap:` solo en adaptadores y arranque; nunca datos personales |
 | Tema y estilo | Colores y medidas solo desde los tokens de DESIGN.md, traducidos a variables USS; nada de colores sueltos en el código |
 | Textos | Todos los textos visibles en tablas del paquete Localization de Unity (NFR-5), con `es-ES` como única locale de la v1; el código usa claves |
 | Pruebas | Unity Test Framework: el Dominio con pruebas EditMode; cada regla de AD-3 y AD-14 con su prueba |
@@ -220,7 +220,7 @@ flowchart LR
 ```mermaid
 flowchart LR
   subgraph Movil[Móvil Android]
-    APPK[App PrecioLocal<br/>Unity]
+    APPK[App PriceMap<br/>Unity]
     DATOS[(Datos base<br/>empaquetados)]
     CACHE[(Caché Firestore<br/>+ teselas)]
   end
@@ -255,10 +255,10 @@ erDiagram
 **Entornos y despliegue:** un único proyecto de Firebase para el TFG. Las reglas de Firestore están en `firebase/firestore.rules` y se despliegan con Firebase CLI. La colección `contactosLugares` se siembra con un script del administrador versionado en `firebase/sembrar/` a partir de los datos base. La app se distribuye como APK instalada a mano o con Firebase App Distribution, sin Google Play.
 
 ```text
-unity/PrecioLocal/
+unity/PriceMap/
   Assets/
     Scripts/
-      Dominio/            # PrecioLocal.Dominio (sin UnityEngine)
+      Dominio/            # PriceMap.Dominio (sin UnityEngine)
       Aplicacion/         # servicios + puertos
       Adaptadores/        # Firebase, Rutas, Busqueda, Notificaciones, Gps, Voz, Datos
       Vectorial/          # mapa (existente): LectorMVT, Triangulador, MapaVectorial

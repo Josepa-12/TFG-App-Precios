@@ -1,4 +1,4 @@
-# Revisión de accesibilidad — PrecioLocal
+# Revisión de accesibilidad — PriceMap
 
 **Postura:** auditor de accesibilidad para una app de consumo en Android, con WCAG 2.2 AA y las pautas de accesibilidad de Android como referencia. Asumo un usuario de TalkBack, otro con la fuente al 200 % y otro con dificultades motoras.
 

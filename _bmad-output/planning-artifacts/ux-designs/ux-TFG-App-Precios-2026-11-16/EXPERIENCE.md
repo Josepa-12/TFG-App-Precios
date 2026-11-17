@@ -1,5 +1,5 @@
 ---
-name: PrecioLocal
+name: PriceMap
 status: final
 created: 2026-11-16
 updated: 2026-11-16
@@ -9,7 +9,7 @@ sources:
   - ../../../../prototipo/
 ---
 
-# PrecioLocal — Experiencia
+# PriceMap — Experiencia
 
 ## Foundation
 

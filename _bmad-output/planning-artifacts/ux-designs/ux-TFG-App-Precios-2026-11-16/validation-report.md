@@ -1,4 +1,4 @@
-# Informe de validación — PrecioLocal
+# Informe de validación — PriceMap
 
 - **DESIGN.md:** `DESIGN.md`
 - **EXPERIENCE.md:** `EXPERIENCE.md`

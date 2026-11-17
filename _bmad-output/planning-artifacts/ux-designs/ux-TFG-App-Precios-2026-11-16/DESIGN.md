@@ -1,5 +1,5 @@
 ---
-name: PrecioLocal
+name: PriceMap
 description: App de mapa y navegación cuyo dato principal es cuánto cuesta cada sitio. Cercana, limpia, al estilo de Mapas de Apple, con la recompensa en amarillo.
 status: final
 created: 2026-11-16
@@ -159,7 +159,7 @@ components:
 
 ## Brand & Style
 
-PrecioLocal quiere que saber el precio antes de ir sea tan normal como saber cómo llegar. El mapa manda: ocupa toda la pantalla, se ve limpio por defecto y los controles flotan encima, como en Mapas de Apple. La app es cercana y amable, nunca como un comparador frío: formas redondeadas, tipografía blanda y un amarillo cálido que aparece solo cuando el usuario gana algo.
+PriceMap quiere que saber el precio antes de ir sea tan normal como saber cómo llegar. El mapa manda: ocupa toda la pantalla, se ve limpio por defecto y los controles flotan encima, como en Mapas de Apple. La app es cercana y amable, nunca como un comparador frío: formas redondeadas, tipografía blanda y un amarillo cálido que aparece solo cuando el usuario gana algo.
 
 Dos ideas sostienen la identidad. Primero, **el precio con su origen**: cada número va acompañado de dónde sale y cuánto de fresco está. Segundo, **la recompensa visible**: monedas, nivel y cosméticos se ven en el propio mapa, no escondidos en un menú.
 

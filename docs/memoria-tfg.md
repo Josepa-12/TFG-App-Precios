@@ -584,6 +584,13 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - edificios extruidos;
     - GPS real en el móvil.
 - **5.2 Arquitectura:** estructura del proyecto y módulos.
+  - *Historia 1.1 (17/11/2026): nueva estructura del proyecto.* Tras la planificación con BMAD (sprint con 9 épicas y 53 historias en `_bmad-output/implementation-artifacts/sprint-status.yaml`), la primera historia convierte la prueba técnica en la base de la app:
+    - **Nombre:** la app pasa a llamarse **PriceMap**. El proyecto queda en `unity/PriceMap` y el identificador Android es `com.pricemap.app`.
+    - **Mapa:** se queda solo la opción C, el mapa vectorial con datos de OpenStreetMap servidos por OpenFreeMap. Se retiran Cesium y las escenas de prueba A (teselas de imagen) y B (Cesium). El shader de los edificios, que llevaba "Cesium" en el nombre, pasa a llamarse `EdificiosPaleta`.
+    - **Capas:** el código se divide con `.asmdef` en Dominio (C# puro, sin Unity), Aplicación (servicios y puertos), Adaptadores, Vectorial (el mapa), UI y Arranque. Una prueba automática lee los `.asmdef` y falla si alguna capa usa otra que no le corresponde.
+    - **Composición:** un único componente `Arranque` en la escena `Principal` conecta las piezas y entrega el mapa a la UI a través del puerto `IMapa`, sin singletons.
+    - **Android:** la APK se compila por línea de comandos (`ConfigurarAndroid.CompilarApk`): minSdk 26, targetSdk 35, IL2CPP ARM64 y solo vertical, con un tamaño de unos 17 MB.
+    - **Pruebas:** 9 pruebas EditMode (capas, coordenadas y arranque) que pasan en el Test Runner por lotes.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -713,4 +720,6 @@ Ideas de trabajo futuro ya identificadas:
 | 17/11/2026 | Épicas e historias con BMAD (`_bmad-output/planning-artifacts/epics.md`): 9 épicas y 53 historias con criterios Dado/Cuando/Entonces; orden 1 explorar → 2 llegar → 3 cuenta → 4 aportar → 5 tienda → 6 evaluación → 7 precios fiables → 8 negocio → 9 plan, revisado en una mesa redonda de agentes | Las épicas 1 a 6 son lo mínimo para las pruebas con usuarios; la frescura va en la épica 1 porque la ficha la necesita |
 | 17/11/2026 | GPS en segundo plano solo durante una ruta, con notificación fija de navegación (servicio en primer plano de Android); nunca sin ruta | Que la visita verificada se cree con el móvil en el bolsillo y la pantalla apagada, sin seguir al usuario fuera de la navegación |
 | 16/11/2026 | Lugares base empaquetados en la app; Firestore solo para lo que cambia; caché de Firestore para el uso sin conexión | Arranque rápido, uso sin conexión desde el primer día y menos cuota |
+| 17/11/2026 | La app se llama PriceMap (`com.pricemap.app`); el mapa se hace solo con OpenStreetMap (OpenFreeMap) y se retira Cesium | Decisión del autor al empezar la implementación (historia 1.1) |
+| 17/11/2026 | Proyecto de Unity organizado en capas con `.asmdef` y una prueba automática que impide dependencias prohibidas | Que la arquitectura hexagonal se cumpla sola, no por disciplina |
 | 16/11/2026 | Los recorridos de ejemplo no atribuyen precios inventados a negocios reales: en UJ-2, Andrés es el pionero que aporta el primer precio de ChemaBarber, que sigue en la app con su nombre | Mismo criterio que el prototipo: no inventar precios de negocios reales |

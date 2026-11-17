@@ -1,18 +1,18 @@
 ---
-title: PRD — PrecioLocal (app final)
+title: PRD — PriceMap (app final)
 status: final
 created: 2026-11-16
 updated: 2026-11-16
 ---
 
-# PRD: PrecioLocal
+# PRD: PriceMap
 *Nombre provisional — confirmar.*
 
 ## 0. Propósito del documento
 
-Este PRD define la **app móvil final** de PrecioLocal que se construye para el TFG (entrega: 11/12/2026). Es la fuente de requisitos para crear las épicas e historias (`bmad-create-epics-and-stories`) y, si se hacen, la arquitectura y el diseño UX.
+Este PRD define la **app móvil final** de PriceMap que se construye para el TFG (entrega: 11/12/2026). Es la fuente de requisitos para crear las épicas e historias (`bmad-create-epics-and-stories`) y, si se hacen, la arquitectura y el diseño UX.
 
-Parte de un **prototipo web navegable ya construido y validado** (`prototipo/index.html`), descrito en el documento *"PrecioLocal — Todo lo realizado en el prototipo web"* y en `docs/memoria-tfg.md` (cap. 4). Este PRD no repite el prototipo: lo convierte en requisitos para la app real. Lo que el prototipo **simula** (inicio con Google, verificación del negocio, GPS, pregunta una hora después con la app cerrada, guardado en la nube) aquí debe funcionar de verdad.
+Parte de un **prototipo web navegable ya construido y validado** (`prototipo/index.html`), descrito en el documento *"PriceMap — Todo lo realizado en el prototipo web"* y en `docs/memoria-tfg.md` (cap. 4). Este PRD no repite el prototipo: lo convierte en requisitos para la app real. Lo que el prototipo **simula** (inicio con Google, verificación del negocio, GPS, pregunta una hora después con la app cerrada, guardado en la nube) aquí debe funcionar de verdad.
 
 Estructura: el vocabulario se fija en el Glosario (§3) y se usa igual en todo el documento; las funciones se agrupan en §4 con requisitos (FR) numerados de forma global; las suposiciones confirmadas se recogen en §11. Las decisiones técnicas están en `addendum.md`.
 
@@ -25,7 +25,7 @@ Estructura: el vocabulario se fija en el Glosario (§3) y se usa igual en todo e
 
 Antes de ir a un sitio casi nunca se sabe cuánto va a costar: una sesión de fisioterapia, una pista de pádel o una cena. Los mapas habituales dicen cómo llegar, el horario y las reseñas, pero no el precio, o solo un "€€" vago. Para saberlo hay que llamar, buscar en la web del negocio o ir y descubrirlo allí.
 
-PrecioLocal es una app de mapa y navegación en la que el dato principal de cada sitio es **cuánto cuesta**. Los precios se mantienen entre todos: cuando alguien llega a un sitio navegando con la app, una hora después se le pregunta, con un toque, si el precio mostrado es correcto o cuánto pagó. Las aportaciones se premian con monedas, niveles e insignias, y las monedas se canjean por cosméticos que se ven en el propio mapa.
+PriceMap es una app de mapa y navegación en la que el dato principal de cada sitio es **cuánto cuesta**. Los precios se mantienen entre todos: cuando alguien llega a un sitio navegando con la app, una hora después se le pregunta, con un toque, si el precio mostrado es correcto o cuánto pagó. Las aportaciones se premian con monedas, niveles e insignias, y las monedas se canjean por cosméticos que se ven en el propio mapa.
 
 El poder está en los clientes: el negocio puede declarar sus precios, pero si los clientes que han ido pagan otra cosa, manda lo que pagan los clientes. Y ningún precio se inventa: cada precio dice de dónde sale.
 
@@ -420,7 +420,7 @@ La gamificación es, junto a los precios, la novedad de la app, así que todos l
 
 1. ¿Las visitas pendientes caducan? ¿A los cuántos días?
 2. ¿Cuál es la curva de niveles definitiva y el precio de cada cosmético tras las pruebas?
-3. ¿Se mantiene el nombre "PrecioLocal"?
+3. ¿Se mantiene el nombre "PriceMap"?
 
 ## 11. Suposiciones confirmadas
 

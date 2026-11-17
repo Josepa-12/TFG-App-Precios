@@ -1,0 +1,16 @@
+{
+    "name": "PriceMap.Aplicacion",
+    "rootNamespace": "PriceMap.Aplicacion",
+    "references": [
+        "PriceMap.Dominio"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

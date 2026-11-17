@@ -1,0 +1,20 @@
+{
+    "name": "PriceMap.Arranque",
+    "rootNamespace": "PriceMap.Arranque",
+    "references": [
+        "PriceMap.Dominio",
+        "PriceMap.Aplicacion",
+        "PriceMap.Adaptadores.Datos",
+        "PriceMap.Vectorial",
+        "PriceMap.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

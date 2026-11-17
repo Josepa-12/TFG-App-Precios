@@ -1,6 +1,6 @@
 # Revisión editorial (estructura + redacción) — DESIGN.md y EXPERIENCE.md
 
-**Lectura del propósito:** estos documentos existen para que quien construya la app en Unity (persona o agente) sepa cómo se ve y cómo funciona cada pantalla de PrecioLocal.
+**Lectura del propósito:** estos documentos existen para que quien construya la app en Unity (persona o agente) sepa cómo se ve y cómo funciona cada pantalla de PriceMap.
 
 **Modelo de estructura:** Referencia (consulta por apartados, esquema fijo de BMAD).
 

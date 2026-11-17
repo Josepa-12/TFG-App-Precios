@@ -1,10 +1,10 @@
-# Anexo técnico del PRD — PrecioLocal
+# Anexo técnico del PRD — PriceMap
 
 Decisiones y contexto técnico que no son requisitos de producto, para arquitectura y desarrollo.
 
 ## Plataforma y motor
 - **Unity 6.3 LTS** (6000.3.28f1), render integrado, compilando para **Android**. iOS descartado en la v1 porque no se puede compilar desde Windows.
-- Proyecto existente: `unity/PrecioLocal` (rama `unity`).
+- Proyecto existente: `unity/PriceMap` (rama `unity`).
 
 ## Mapa (prueba técnica 5.1)
 - Elegida la **opción C**: teselas vectoriales de **OpenFreeMap** (formato Mapbox Vector Tile, esquema OpenMapTiles, zoom 14), leídas y dibujadas con código propio: `LectorMVT.cs`, `Triangulador.cs`, `MapaVectorial.cs`, `PlanoPaleta.shader`.
