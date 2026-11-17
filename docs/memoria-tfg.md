@@ -640,6 +640,12 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Cómo se ve:** un círculo de color con su icono vectorial y el nombre al lado, por debajo de los marcadores de lugar (que son cuadrados con punta). Aparecen con la cámara a 1,2 km o menos. El color de cada nombre cumple el contraste de 4,5:1 en los dos temas.
     - **Comprobación:** en la build de PC, a 900 m sobre el centro se ven 67 puntos de 16 categorías. Pasan 214 pruebas EditMode, incluida la ruta real de bytes de la tesela a coordenada (con menos de 3 m de error).
     - **Pendiente (parte 2):** ocultar el punto que repite un lugar de la app, evitar que los nombres se pisen y que TalkBack los lea.
+  - *Historia 1.6, parte 2 (17/11/2026): puntos sin repetidos ni solapes.*
+    - **Repetidos:** una regla del Dominio, portada de `applyPoiDedup` del prototipo, oculta el punto que repite un lugar de la app cuyo marcador se está viendo. Se considera repetido si tiene el mismo nombre (sin mayúsculas, tildes ni signos) y está a menos de 80 m (distancia haversine). Si el filtro "Precios" oculta el lugar, el punto vuelve a verse; otra sucursal más lejos se ve siempre.
+    - **Solapes:** en cada fotograma, los puntos que caben en pantalla se ordenan por importancia (`rank` de OpenStreetMap y, si empatan, el id). Un punto cuya caja (icono más nombre) pisa a otro ya mostrado se oculta entero. Los marcadores de lugar no participan y siempre se ven.
+    - **Rendimiento:** los nombres normalizados se calculan una sola vez, para no generar basura en memoria en cada fotograma en el móvil.
+    - **Comprobación:** en la build de PC se ven 46 puntos y se ocultan 29 por repetidos y 25 por solapes, con 0 pares solapados. Pasan 237 pruebas EditMode.
+    - **Pendiente (parte 3):** que TalkBack lea los puntos visibles después de los lugares.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

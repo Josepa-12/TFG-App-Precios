@@ -40,6 +40,7 @@ namespace PriceMap.UI
             this.contenedor = contenedor ?? throw new ArgumentNullException(nameof(contenedor));
             this.mapa = mapa ?? throw new ArgumentNullException(nameof(mapa));
             contenedor.pickingMode = PickingMode.Ignore;
+            nombreLugar = NombreLugar; // un solo delegado para todos los fotogramas
             Sincronizar();
         }
 
@@ -78,29 +79,98 @@ namespace PriceMap.UI
         }
 
         /// <summary>Recoloca los puntos con el tamaño de la pantalla actual.</summary>
-        public void Actualizar(float escalaDp) => Actualizar(escalaDp, Screen.width, Screen.height);
+        public void Actualizar(float escalaDp, IReadOnlyList<Lugar> lugaresVisibles = null) =>
+            Actualizar(escalaDp, Screen.width, Screen.height, lugaresVisibles);
 
         /// <summary>
         /// Recoloca los puntos. escalaDp convierte píxeles de pantalla en dp del panel. Con la cámara
-        /// más lejos que DistanciaMaxima se ocultan todos sin proyectarlos.
+        /// más lejos que DistanciaMaxima se ocultan todos sin proyectarlos. De los que caben en pantalla:
+        /// se ocultan los que repiten un lugar de lugaresVisibles (cuyo marcador se ve ahora,
+        /// ReglaPuntosInteres.EsRepetido) y, por orden de rank (y de id si empatan), los que pisan a uno ya
+        /// mostrado (icono y nombre, PuntoInteresVista.Caja). Los marcadores de lugar no cuentan para los solapes.
         /// </summary>
-        public void Actualizar(float escalaDp, float anchoPx, float altoPx)
+        public void Actualizar(float escalaDp, float anchoPx, float altoPx, IReadOnlyList<Lugar> lugaresVisibles = null)
         {
             if (escalaDp <= 0f || float.IsNaN(escalaDp) || float.IsInfinity(escalaDp)) return;
             float ancho = anchoPx * escalaDp, alto = altoPx * escalaDp;
             bool cerca = mapa.DistanciaCamara <= DistanciaMaxima;
+            OcultosPorRepetido = 0;
+            OcultosPorSolape = 0;
+            candidatos.Clear();
             foreach (var v in orden)
             {
                 if (!cerca) { v.Mostrar(false); continue; }
                 var p = mapa.Proyectar(v.Punto.Posicion);
                 var dp = new Vector2(p.X * escalaDp, p.Y * escalaDp);
-                bool ver = p.Delante && !float.IsNaN(dp.x) && !float.IsNaN(dp.y)
-                           && dp.x >= -MargenDp && dp.x <= ancho + MargenDp
-                           && dp.y >= -MargenDp && dp.y <= alto + MargenDp;
-                v.Mostrar(ver);
-                if (ver) v.Colocar(dp);
+                bool enPantalla = p.Delante && !float.IsNaN(dp.x) && !float.IsNaN(dp.y)
+                                  && dp.x >= -MargenDp && dp.x <= ancho + MargenDp
+                                  && dp.y >= -MargenDp && dp.y <= alto + MargenDp;
+                if (!enPantalla) { v.Mostrar(false); continue; }
+                if (lugaresVisibles != null && lugaresVisibles.Count > 0
+                    && ReglaPuntosInteres.EsRepetidoNormalizado(v.NombreNormalizado, v.Punto.Posicion, lugaresVisibles, nombreLugar))
+                {
+                    v.Mostrar(false); // ya sale como lugar de la app: solo se ve su marcador
+                    OcultosPorRepetido++;
+                    continue;
+                }
+                v.Candidata = dp;
+                candidatos.Add(v);
             }
+
+            // Solapes: primero los más importantes; uno que pisa a otro ya mostrado se oculta entero
+            candidatos.Sort(PorImportancia);
+            cajasMostradas.Clear();
+            foreach (var v in candidatos)
+            {
+                var caja = v.Caja(v.Candidata);
+                bool pisa = false;
+                foreach (var otra in cajasMostradas)
+                    if (caja.Overlaps(otra)) { pisa = true; break; }
+                if (pisa) { v.Mostrar(false); OcultosPorSolape++; continue; }
+                cajasMostradas.Add(caja);
+                v.Mostrar(true);
+                v.Colocar(v.Candidata);
+            }
+            candidatos.Clear();
         }
+
+        readonly List<PuntoInteresVista> candidatos = new List<PuntoInteresVista>();
+        readonly List<Rect> cajasMostradas = new List<Rect>();
+        static readonly Comparison<PuntoInteresVista> PorImportancia = CompararImportancia;
+
+        // Nombre normalizado de cada lugar, calculado una vez (los lugares no cambian de nombre)
+        readonly Dictionary<Lugar, string> nombresLugares = new Dictionary<Lugar, string>();
+        Func<Lugar, string> nombreLugar;
+
+        string NombreLugar(Lugar l)
+        {
+            if (!nombresLugares.TryGetValue(l, out var n)) nombresLugares[l] = n = ReglaPuntosInteres.NombreNormalizado(l.Nombre);
+            return n;
+        }
+
+        /// <summary>Olvida las medidas de los nombres (al cambiar la escala de fuente): se vuelven a estimar o medir.</summary>
+        public void OlvidarMedidas()
+        {
+            foreach (var v in orden) v.OlvidarMedida();
+        }
+
+        /// <summary>Menor rank primero; si empatan, menor id; después, nombre y posición (orden estable entre fotogramas).</summary>
+        internal static int CompararImportancia(PuntoInteresVista a, PuntoInteresVista b)
+        {
+            int c = a.Punto.Rank.CompareTo(b.Punto.Rank);
+            if (c != 0) return c;
+            c = a.Punto.Id.CompareTo(b.Punto.Id);
+            if (c != 0) return c;
+            c = string.CompareOrdinal(a.Punto.Nombre, b.Punto.Nombre);
+            if (c != 0) return c;
+            c = a.Punto.Posicion.Latitud.CompareTo(b.Punto.Posicion.Latitud);
+            return c != 0 ? c : a.Punto.Posicion.Longitud.CompareTo(b.Punto.Posicion.Longitud);
+        }
+
+        /// <summary>Puntos en pantalla ocultados en la última actualización por repetir un lugar visible.</summary>
+        public int OcultosPorRepetido { get; private set; }
+        /// <summary>Puntos en pantalla ocultados en la última actualización por pisar a otro más importante.</summary>
+        public int OcultosPorSolape { get; private set; }
 
         /// <summary>Número de puntos que se ven ahora.</summary>
         public int Visibles

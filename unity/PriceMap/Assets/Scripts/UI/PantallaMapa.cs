@@ -306,7 +306,11 @@ namespace PriceMap.UI
             accesibilidad.Reconstruir();
         }
 
-        void AlCambiarEscalaFuente(float escala) { if (raiz != null) EscalaFuente.Aplicar(raiz, escala); }
+        void AlCambiarEscalaFuente(float escala)
+        {
+            if (raiz != null) EscalaFuente.Aplicar(raiz, escala);
+            capaPuntos?.OlvidarMedidas(); // los nombres cambian de tamaño: las cajas de los solapes también
+        }
 
         void RepintarIconos()
         {
@@ -337,6 +341,16 @@ namespace PriceMap.UI
             }
         }
 
+        readonly List<Lugar> lugaresVisibles = new List<Lugar>();
+
+        /// <summary>Lugares cuyo marcador se ve ahora (tras CapaMarcadores.Actualizar); se reutiliza la lista.</summary>
+        List<Lugar> LugaresVisibles()
+        {
+            lugaresVisibles.Clear();
+            if (capa != null) foreach (var m in capa.Marcadores) if (m.Visible) lugaresVisibles.Add(m.Lugar);
+            return lugaresVisibles;
+        }
+
         // La cámara se mueve en Update (CamaraMapa, orden -100): aquí ya está quieta en este fotograma
         void LateUpdate() => ActualizarCapas(EscalaDp);
 
@@ -346,13 +360,14 @@ namespace PriceMap.UI
         /// </summary>
         internal void ActualizarCapas(float escala)
         {
-            if (capaPuntos != null && escala > 0f) capaPuntos.Actualizar(escala);
+            // Primero los marcadores: los puntos que repiten un lugar visible ahora se ocultan (FR-4)
             if (capa != null)
             {
                 if (escala > 0f) capa.Actualizar(escala);
                 // Con TalkBack: rehace los nodos de los marcadores si cambian los visibles o su orden
                 accesibilidad.ActualizarMarcadores();
             }
+            if (capaPuntos != null && escala > 0f) capaPuntos.Actualizar(escala, LugaresVisibles());
             // Botones y marcadores se mueven (zona segura, escala de fuente, mapa): TalkBack necesita sus marcos al día
             if (accesibilidad != null && AccesibilidadPantalla.LectorActivo) AssistiveSupport.activeHierarchy?.RefreshNodeFrames();
         }

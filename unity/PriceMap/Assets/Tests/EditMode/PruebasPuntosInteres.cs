@@ -202,7 +202,12 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void LejosNoSeVeNingunPunto()
         {
-            var (capa, mapa) = Capa(Punto("bank", null), Punto("cafe", null, lat: 36.778));
+            var a = Punto("bank", null);
+            var b = Punto("cafe", null, lat: 36.778);
+            var (capa, mapa) = Capa(a, b);
+            // Separados: no se pisan (parte 2)
+            mapa.proyecciones[a.Posicion] = new PuntoPantalla(100f, 100f, 300f);
+            mapa.proyecciones[b.Posicion] = new PuntoPantalla(100f, 600f, 300f);
             mapa.distancia = 2000f;
             capa.Actualizar(1f, Ancho, Alto);
             Assert.AreEqual(0, capa.Visibles);
@@ -323,6 +328,315 @@ namespace PriceMap.Tests.EditMode
         }
 
         class SistemaClaro : ITemaSistema { public bool EsOscuro => false; }
+
+        // ───────────────────────── Parte 2: repetidos (matriz) ─────────────────────────
+
+        /// <summary>Metros por grado de latitud con el radio de Coordenada (haversine).</summary>
+        const double MetrosPorGrado = Coordenada.RadioTierraMetros * Math.PI / 180.0;
+
+        static readonly Coordenada SitioCachon = new Coordenada(36.7779, -6.3528);
+        static Coordenada AlNorte(Coordenada c, double metros) => new Coordenada(c.Latitud + metros / MetrosPorGrado, c.Longitud);
+
+        static Lugar LugarApp(string id, string nombre, Coordenada posicion, Plantilla plantilla = Plantilla.Hosteleria) =>
+            new Lugar(id, nombre, "Bar", plantilla, posicion);
+
+        static PuntoInteres PuntoEn(string nombre, Coordenada posicion, int rank = 10, ulong id = 1, string clase = "bar") =>
+            new PuntoInteres(id, nombre, clase, null, rank, posicion);
+
+        [TestCase("Bar Cachón", "bar cachon")]
+        [TestCase("BAR CACHÓN!", "bar cachon")]
+        [TestCase("  Bar   -  Cachón  ", "bar cachon")]
+        [TestCase("Peña Ü's", "pena u s")]
+        [TestCase("", "")]
+        [TestCase(null, "")]
+        public void ElNombreSeNormaliza(string nombre, string esperado) =>
+            Assert.AreEqual(esperado, ReglaPuntosInteres.NombreNormalizado(nombre));
+
+        [Test]
+        public void LaDistanciaEsHaversine()
+        {
+            Assert.AreEqual(0.0, SitioCachon.DistanciaMetros(SitioCachon), 1e-9);
+            Assert.AreEqual(20.0, SitioCachon.DistanciaMetros(AlNorte(SitioCachon, 20)), 0.01);
+            Assert.AreEqual(MetrosPorGrado, new Coordenada(0, 0).DistanciaMetros(new Coordenada(0, 1)), 0.5, "Un grado en el ecuador.");
+            var b = new Coordenada(36.7800, -6.3500);
+            Assert.AreEqual(SitioCachon.DistanciaMetros(b), b.DistanciaMetros(SitioCachon), 1e-9, "Simétrica.");
+        }
+
+        [Test]
+        public void RepetidoVisibleSeOcultaEnLaRegla()
+        {
+            var lugares = new[] { LugarApp("bar-cachon", "Bar Cachón", SitioCachon) };
+            Assert.IsTrue(ReglaPuntosInteres.EsRepetido("Bar Cachón", AlNorte(SitioCachon, 20), lugares));
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetido("Bar Cachón", AlNorte(SitioCachon, 20), new Lugar[0]), "Sin el lugar visible no es repetido.");
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetido("Bar Cachón", AlNorte(SitioCachon, 20), null));
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetido("", SitioCachon, lugares), "Sin nombre nunca es repetido.");
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetido("Bar Otro", SitioCachon, lugares), "Otro nombre en el mismo sitio.");
+        }
+
+        [Test]
+        public void TildesYSignosSonElMismoNombre()
+        {
+            var lugares = new[] { LugarApp("bar-cachon", "Bar Cachón", SitioCachon) };
+            Assert.IsTrue(ReglaPuntosInteres.EsRepetido("BAR CACHÓN!", AlNorte(SitioCachon, 10), lugares));
+        }
+
+        [Test]
+        public void OtraSucursalAMasDe80MetrosSeVe()
+        {
+            var lugares = new[] { LugarApp("mercadona", "Mercadona", SitioCachon, Plantilla.ServicioLocal) };
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetido("Mercadona", AlNorte(SitioCachon, 300), lugares));
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetido("Mercadona", AlNorte(SitioCachon, ReglaPuntosInteres.UmbralRepetidoMetros + 1), lugares));
+            Assert.IsTrue(ReglaPuntosInteres.EsRepetido("Mercadona", AlNorte(SitioCachon, ReglaPuntosInteres.UmbralRepetidoMetros - 1), lugares));
+        }
+
+        /// <summary>Marcadores y puntos sobre el mismo mapa falso, actualizados en el orden de PantallaMapa.</summary>
+        static (CapaMarcadores marcadores, CapaPuntosInteres puntos, MapaFalso mapa) Ambas(Lugar lugar, params PuntoInteres[] puntos)
+        {
+            var mapa = new MapaFalso();
+            mapa.puntos.AddRange(puntos);
+            var marcadores = new CapaMarcadores(new VisualElement(), mapa,
+                new[] { (lugar, ReglaResumen.Resumir(lugar, DateTime.UtcNow)) }, c => PriceMap.EditorTools.PrepararInterfaz.TextosEs[c]);
+            return (marcadores, new CapaPuntosInteres(new VisualElement(), mapa), mapa);
+        }
+
+        static void Fotograma(CapaMarcadores marcadores, CapaPuntosInteres puntos)
+        {
+            marcadores.Actualizar(1f, Ancho, Alto);
+            var visibles = marcadores.Marcadores.Where(m => m.Visible).Select(m => m.Lugar).ToList();
+            puntos.Actualizar(1f, Ancho, Alto, visibles);
+        }
+
+        [Test]
+        public void RepetidoDeUnMarcadorVisibleSoloSeVeElMarcador()
+        {
+            var lugar = LugarApp("bar-cachon", "Bar Cachón", SitioCachon);
+            var (marcadores, puntos, _) = Ambas(lugar, PuntoEn("Bar Cachón", AlNorte(SitioCachon, 20)));
+            marcadores.Filtro = FiltroPrecios.Todos;
+            Fotograma(marcadores, puntos);
+            Assert.IsTrue(marcadores.Marcadores[0].Visible);
+            Assert.IsFalse(puntos.Vistas.Single().Visible);
+            Assert.AreEqual(DisplayStyle.None, puntos.Vistas.Single().style.display.value);
+            Assert.AreEqual(1, puntos.OcultosPorRepetido);
+        }
+
+        [Test]
+        public void ConElLugarOcultoPorElFiltroSeVeElPunto()
+        {
+            var lugar = LugarApp("bar-cachon", "Bar Cachón", SitioCachon);
+            var (marcadores, puntos, mapa) = Ambas(lugar, PuntoEn("Bar Cachón", AlNorte(SitioCachon, 20)));
+            marcadores.Filtro = FiltroPrecios.Todos;
+            Fotograma(marcadores, puntos);
+            Assert.IsFalse(puntos.Vistas.Single().Visible);
+
+            marcadores.Filtro = FiltroPrecios.Ninguno;
+            Fotograma(marcadores, puntos);
+            Assert.IsFalse(marcadores.Marcadores[0].Visible);
+            Assert.IsTrue(puntos.Vistas.Single().Visible, "El filtro oculta el lugar: el punto vuelve.");
+            Assert.AreEqual(0, puntos.OcultosPorRepetido);
+
+            // Y si el lugar sale de la pantalla, también
+            marcadores.Filtro = FiltroPrecios.Todos;
+            mapa.proyecciones[lugar.Posicion] = new PuntoPantalla(-500f, 900f, 300f);
+            Fotograma(marcadores, puntos);
+            Assert.IsFalse(marcadores.Marcadores[0].Visible);
+            Assert.IsTrue(puntos.Vistas.Single().Visible);
+        }
+
+        [Test]
+        public void OtraSucursalSeVenLosDos()
+        {
+            var lugar = LugarApp("mercadona", "Mercadona", SitioCachon, Plantilla.ServicioLocal);
+            var (marcadores, puntos, _) = Ambas(lugar, PuntoEn("Mercadona", AlNorte(SitioCachon, 300), clase: "grocery"));
+            marcadores.Filtro = FiltroPrecios.Todos;
+            Fotograma(marcadores, puntos);
+            Assert.IsTrue(marcadores.Marcadores[0].Visible);
+            Assert.IsTrue(puntos.Vistas.Single().Visible);
+        }
+
+        // ───────────────────────── Parte 2: solapes (matriz) ─────────────────────────
+
+        [Test]
+        public void EnUnSolapeSeVeElDeMenorRank()
+        {
+            var menos = PuntoEn("Menos importante", new Coordenada(36.70, -6.35), rank: 10, id: 1);
+            var mas = PuntoEn("Más importante", new Coordenada(36.71, -6.35), rank: 3, id: 2);
+            var (capa, mapa) = Capa(menos, mas); // el de rank 10 va primero en la lista: manda el rank, no el orden
+            mapa.proyecciones[menos.Posicion] = new PuntoPantalla(505f, 905f, 300f);
+            mapa.proyecciones[mas.Posicion] = new PuntoPantalla(500f, 900f, 300f);
+            capa.Actualizar(1f, Ancho, Alto);
+            var vMas = capa.Vistas.Single(v => v.Punto == mas);
+            var vMenos = capa.Vistas.Single(v => v.Punto == menos);
+            Assert.IsTrue(vMas.Visible);
+            Assert.IsFalse(vMenos.Visible);
+            Assert.AreEqual(DisplayStyle.None, vMenos.style.display.value, "Se oculta entero: icono y nombre.");
+            Assert.AreEqual(1, capa.OcultosPorSolape);
+        }
+
+        [Test]
+        public void SinSolapeSeVenLosDos()
+        {
+            var a = PuntoEn("Uno", new Coordenada(36.70, -6.35), rank: 3, id: 1);
+            var b = PuntoEn("Dos", new Coordenada(36.71, -6.35), rank: 10, id: 2);
+            var (capa, mapa) = Capa(a, b);
+            mapa.proyecciones[a.Posicion] = new PuntoPantalla(100f, 100f, 300f);
+            mapa.proyecciones[b.Posicion] = new PuntoPantalla(100f, 400f, 300f);
+            capa.Actualizar(1f, Ancho, Alto);
+            Assert.AreEqual(2, capa.Visibles);
+            Assert.AreEqual(0, capa.OcultosPorSolape);
+        }
+
+        [Test]
+        public void EnUnEmpateDeRankSeVeElDeMenorId()
+        {
+            // El de menor id tiene el nombre que va detrás: solo la regla del id lo deja ver
+            var nueve = PuntoEn("Cinco", new Coordenada(36.70, -6.35), rank: 5, id: 9);
+            var cinco = PuntoEn("Nueve", new Coordenada(36.71, -6.35), rank: 5, id: 5);
+            var (capa, mapa) = Capa(nueve, cinco);
+            mapa.proyecciones[nueve.Posicion] = new PuntoPantalla(500f, 900f, 300f);
+            mapa.proyecciones[cinco.Posicion] = new PuntoPantalla(510f, 902f, 300f);
+            capa.Actualizar(1f, Ancho, Alto);
+            Assert.IsTrue(capa.Vistas.Single(v => v.Punto == cinco).Visible);
+            Assert.IsFalse(capa.Vistas.Single(v => v.Punto == nueve).Visible);
+        }
+
+        [Test]
+        public void EnCascadaUnPuntoOcultoNoTapaAOtro()
+        {
+            // Sin nombre: solo círculos de 24 dp. A pisa a B; C solo pisa a B, que ya está oculto
+            var a = PuntoEn("", new Coordenada(36.70, -6.35), rank: 1, id: 1);
+            var b = PuntoEn("", new Coordenada(36.71, -6.35), rank: 2, id: 2);
+            var c = PuntoEn("", new Coordenada(36.72, -6.35), rank: 3, id: 3);
+            var (capa, mapa) = Capa(a, b, c);
+            mapa.proyecciones[a.Posicion] = new PuntoPantalla(100f, 500f, 300f); // 88..112
+            mapa.proyecciones[b.Posicion] = new PuntoPantalla(110f, 500f, 300f); // 98..122
+            mapa.proyecciones[c.Posicion] = new PuntoPantalla(130f, 500f, 300f); // 118..142
+            capa.Actualizar(1f, Ancho, Alto);
+            Assert.IsTrue(capa.Vistas.Single(v => v.Punto == a).Visible);
+            Assert.IsFalse(capa.Vistas.Single(v => v.Punto == b).Visible);
+            Assert.IsTrue(capa.Vistas.Single(v => v.Punto == c).Visible, "Solo pisaba a uno oculto.");
+            Assert.AreEqual(1, capa.OcultosPorSolape);
+        }
+
+        static string NombreDeLugar(Lugar l) => ReglaPuntosInteres.NombreNormalizado(l.Nombre);
+
+        [Test]
+        public void A80MetrosJustosNoEsRepetido()
+        {
+            Assert.IsFalse(ReglaPuntosInteres.DentroDelUmbral(ReglaPuntosInteres.UmbralRepetidoMetros), "Estrictamente menos de 80 m.");
+            Assert.IsTrue(ReglaPuntosInteres.DentroDelUmbral(ReglaPuntosInteres.UmbralRepetidoMetros - 1e-6));
+            var lugares = new[] { LugarApp("bar-cachon", "Bar Cachón", SitioCachon) };
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetido("Bar Cachón", AlNorte(SitioCachon, 80.001), lugares));
+            Assert.IsFalse(ReglaPuntosInteres.EsRepetidoNormalizado("bar cachon", AlNorte(SitioCachon, 80.001), lugares,
+                NombreDeLugar));
+        }
+
+        [Test]
+        public void UnLugarSinNombreNuncaHaceRepetido()
+        {
+            var lugares = new[] { LugarApp("sin-nombre", "", SitioCachon) };
+            foreach (var nombre in new[] { "¡!", "Bar", "" })
+            {
+                Assert.IsFalse(ReglaPuntosInteres.EsRepetido(nombre, SitioCachon, lugares), nombre);
+                Assert.IsFalse(ReglaPuntosInteres.EsRepetidoNormalizado(ReglaPuntosInteres.NombreNormalizado(nombre), SitioCachon,
+                    lugares, NombreDeLugar), nombre);
+            }
+            // En la capa: el punto "¡!" (nombre normalizado vacío) junto al lugar sin nombre se ve
+            var (capa, _) = Capa(PuntoEn("¡!", SitioCachon));
+            capa.Actualizar(1f, Ancho, Alto, lugares);
+            Assert.IsTrue(capa.Vistas.Single().Visible);
+            Assert.AreEqual(0, capa.OcultosPorRepetido);
+        }
+
+        [Test]
+        public void OlvidarLasMedidasVuelveALaEstimacion()
+        {
+            var (capa, _) = Capa(PuntoEn("Bar Cachón", SitioCachon));
+            var v = capa.Vistas.Single();
+            v.MedidaRecordada = new Vector2(200f, 50f); // como si se hubiera dispuesto con la fuente grande
+            Assert.AreEqual(PuntoInteresVista.NombreIzquierdaDp + 200f, v.Caja(Vector2.zero).xMax);
+
+            capa.OlvidarMedidas();
+            var estimada = v.EstimarNombre();
+            Assert.AreEqual(Vector2.zero, v.MedidaRecordada);
+            Assert.AreEqual(estimada, v.MedidaNombre);
+            Assert.AreEqual(PuntoInteresVista.NombreIzquierdaDp + estimada.x, v.Caja(Vector2.zero).xMax);
+        }
+
+        [Test]
+        public void LasMedidasDeLaCajaSonLasDeLosEstilos()
+        {
+            var tokens = File.ReadAllText(Path.Combine(Application.dataPath, "UI/Estilos/Tokens.uss"));
+            var uss = File.ReadAllText(Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            float Px(string texto, string patron)
+            {
+                var m = System.Text.RegularExpressions.Regex.Match(texto, patron);
+                Assert.IsTrue(m.Success, patron);
+                return float.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            Assert.AreEqual(PuntoInteresVista.IconoDp, Px(tokens, @"--poi-icono:\s*([\d.]+)px"));
+            Assert.AreEqual(PuntoInteresVista.NombreAnchoMaxDp, Px(tokens, @"--poi-nombre-ancho:\s*([\d.]+)px"));
+            Assert.AreEqual(PuntoInteresVista.NombreIzquierdaDp, Px(uss, @"\.poi__nombre\s*\{[^}]*?\bleft:\s*([\d.]+)px"));
+        }
+
+        [Test]
+        public void ElNombreCuentaEnLaCaja()
+        {
+            // El de la izquierda tiene un nombre largo que llega al círculo del de la derecha
+            var izq = PuntoEn("Nombre largo de verdad", new Coordenada(36.70, -6.35), rank: 3, id: 1);
+            var der = PuntoEn("", new Coordenada(36.71, -6.35), rank: 10, id: 2);
+            var (capa, mapa) = Capa(izq, der);
+            mapa.proyecciones[izq.Posicion] = new PuntoPantalla(100f, 500f, 300f);
+            mapa.proyecciones[der.Posicion] = new PuntoPantalla(180f, 500f, 300f); // 80 dp: lejos para los círculos solos
+            capa.Actualizar(1f, Ancho, Alto);
+            Assert.IsFalse(capa.Vistas.Single(v => v.Punto == der).Visible, "El nombre del primero lo pisa.");
+
+            // Sin nombre, solo el círculo de 24 dp
+            var caja = capa.Vistas.Single(v => v.Punto == der).Caja(new Vector2(50f, 50f));
+            Assert.AreEqual(Rect.MinMaxRect(38f, 38f, 62f, 62f), caja);
+            var conNombre = capa.Vistas.Single(v => v.Punto == izq).Caja(Vector2.zero);
+            Assert.AreEqual(-PuntoInteresVista.IconoDp / 2f, conNombre.xMin);
+            Assert.Greater(conNombre.xMax, PuntoInteresVista.NombreIzquierdaDp + 50f);
+            Assert.LessOrEqual(conNombre.xMax, PuntoInteresVista.NombreIzquierdaDp + PuntoInteresVista.NombreAnchoMaxDp);
+        }
+
+        [Test]
+        public void LaPantallaActualizaLosMarcadoresAntesQueLosPuntos()
+        {
+            var objeto = new GameObject("Pantalla de prueba");
+            try
+            {
+                var pantalla = objeto.AddComponent<PantallaMapa>();
+                var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
+                var mapa = new MapaFalso();
+                var lugar = LugarApp("bar-cachon", "Bar Cachón", SitioCachon);
+                var punto = PuntoEn("Bar Cachón", AlNorte(SitioCachon, 20));
+                mapa.proyecciones[lugar.Posicion] = new PuntoPantalla(5f, 6f, 100f);
+                mapa.proyecciones[punto.Posicion] = new PuntoPantalla(5f, 6f, 100f);
+                mapa.puntos.Add(punto);
+                var lugares = new ServicioLugares(new UnLugar(lugar));
+                lugares.Cargar();
+                var filtro = new ServicioFiltro(new PreferenciasEnMemoria());
+                pantalla.Inicializar(mapa, new ServicioTema(new PreferenciasEnMemoria(), new SistemaClaro()), lugares, DateTime.UtcNow, arbol, filtro);
+                filtro.Iniciar(); // Ninguno por defecto
+
+                pantalla.ActualizarCapas(2f);
+                Assert.IsTrue(pantalla.CapaPuntos.Vistas.Single().Visible, "Con Ninguno el lugar no se ve: el punto sí.");
+
+                // Un solo fotograma tras el cambio basta: los marcadores se actualizan primero
+                filtro.Elegir(FiltroPrecios.Todos);
+                pantalla.ActualizarCapas(2f);
+                Assert.IsTrue(pantalla.Capa.Marcadores.Single().Visible);
+                Assert.IsFalse(pantalla.CapaPuntos.Vistas.Single().Visible, "Repite el lugar visible: solo se ve el marcador.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(objeto); }
+        }
+
+        class UnLugar : IRepositorioLugares
+        {
+            readonly Lugar lugar;
+            public UnLugar(Lugar lugar) { this.lugar = lugar; }
+            public Resultado<IReadOnlyList<Lugar>> Cargar() => Resultado<IReadOnlyList<Lugar>>.Exito(new[] { lugar });
+        }
 
         // ───────────────────────── Lectura de la tesela ─────────────────────────
 

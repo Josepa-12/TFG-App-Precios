@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace PriceMap.Dominio
@@ -82,5 +85,75 @@ namespace PriceMap.Dominio
         public static bool EsSanidadPublica(CategoriaPoi categoria, string nombre, string clase = null, string subclase = null) =>
             categoria == CategoriaPoi.Salud && clase != Veterinario && subclase != Veterinario
             && !string.IsNullOrEmpty(nombre) && SanidadPublica.IsMatch(nombre);
+
+        /// <summary>
+        /// Distancia (m) por debajo de la cual un punto con el mismo nombre que un lugar de la app es ese
+        /// mismo sitio (applyPoiDedup del prototipo). Más lejos es otra sucursal y se ve.
+        /// </summary>
+        public const double UmbralRepetidoMetros = 80.0;
+
+        /// <summary>
+        /// Nombre para comparar: minúsculas, sin tildes, sin signos y sin espacios repetidos
+        /// ("BAR  CACHÓN!" → "bar cachon"). Vacío si no hay nombre.
+        /// </summary>
+        public static string NombreNormalizado(string nombre)
+        {
+            if (string.IsNullOrEmpty(nombre)) return "";
+            var descompuesto = nombre.Normalize(NormalizationForm.FormD);
+            var sb = new StringBuilder(descompuesto.Length);
+            bool espacio = false;
+            foreach (var c in descompuesto)
+            {
+                var cat = CharUnicodeInfo.GetUnicodeCategory(c);
+                if (cat == UnicodeCategory.NonSpacingMark || cat == UnicodeCategory.SpacingCombiningMark
+                    || cat == UnicodeCategory.EnclosingMark) continue; // tildes y diéresis
+                if (char.IsLetterOrDigit(c))
+                {
+                    if (espacio && sb.Length > 0) sb.Append(' ');
+                    espacio = false;
+                    sb.Append(char.ToLowerInvariant(c));
+                }
+                else espacio = true; // signos y espacios separan palabras, nunca se repiten
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// True si el punto (nombre y posición) repite uno de los lugares de la app cuyo marcador se ve
+        /// ahora: mismo nombre normalizado y a menos de UmbralRepetidoMetros. Entonces solo se ve el lugar.
+        /// Un punto sin nombre nunca es repetido.
+        /// </summary>
+        public static bool EsRepetido(string nombre, Coordenada posicion, IEnumerable<Lugar> lugaresVisibles)
+        {
+            if (lugaresVisibles == null || string.IsNullOrEmpty(nombre)) return false;
+            string n = null; // se calcula solo si hay algún lugar cerca
+            foreach (var l in lugaresVisibles)
+            {
+                if (l == null || !DentroDelUmbral(posicion.DistanciaMetros(l.Posicion))) continue;
+                n ??= NombreNormalizado(nombre);
+                if (n.Length > 0 && NombreNormalizado(l.Nombre) == n) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Igual que EsRepetido, con los nombres ya normalizados (para cada fotograma, sin crear texto):
+        /// nombreNormalizado es el del punto y nombreNormalizadoDe da el de cada lugar (la UI lo guarda).
+        /// </summary>
+        public static bool EsRepetidoNormalizado(string nombreNormalizado, Coordenada posicion,
+            IReadOnlyList<Lugar> lugaresVisibles, Func<Lugar, string> nombreNormalizadoDe)
+        {
+            if (lugaresVisibles == null || nombreNormalizadoDe == null || string.IsNullOrEmpty(nombreNormalizado)) return false;
+            for (int i = 0; i < lugaresVisibles.Count; i++)
+            {
+                var l = lugaresVisibles[i];
+                if (l != null && DentroDelUmbral(posicion.DistanciaMetros(l.Posicion)) && nombreNormalizadoDe(l) == nombreNormalizado)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>True si a esa distancia (m) aún es el mismo sitio: estrictamente menos de UmbralRepetidoMetros.</summary>
+        public static bool DentroDelUmbral(double metros) => metros < UmbralRepetidoMetros;
     }
 }

@@ -157,7 +157,8 @@ namespace PriceMap.Arranque
 
         /// <summary>
         /// Captura "puntos": el centro de Sanlúcar con los puntos de interés y los marcadores (filtro Todos).
-        /// Registra los puntos visibles por categoría y comprueba que no hay paradas de autobús ni oficinas.
+        /// Registra los puntos visibles por categoría y comprueba que no hay paradas de autobús ni oficinas,
+        /// cuántos se ocultan por repetir un lugar visible y por solape, y que ningún par visible se pisa.
         /// </summary>
         IEnumerator Puntos()
         {
@@ -188,6 +189,35 @@ namespace PriceMap.Arranque
                           $"visibles {visibles} (cámara a {mapa.DistanciaCamara:F0} m); sanidad pública visibles {sanidad}; por categoría:{texto}");
                 if (visibles == 0) Debug.LogError("PriceMap: ningún punto de interés visible en la captura de puntos.");
                 if (prohibidos > 0) Debug.LogError($"PriceMap: {prohibidos} paradas de autobús u oficinas visibles.");
+
+                // Repetidos y solapes (parte 2): con las cajas reales tras la disposición (círculo y nombre)
+                var cajas = new List<(Rect caja, string nombre)>();
+                foreach (var v in capaPuntos.Vistas)
+                {
+                    if (!v.Visible) continue;
+                    var caja = v.Icono.worldBound;
+                    if (v.Nombre != null && v.Nombre.worldBound.width > 0f)
+                        caja = Rect.MinMaxRect(Mathf.Min(caja.xMin, v.Nombre.worldBound.xMin), Mathf.Min(caja.yMin, v.Nombre.worldBound.yMin),
+                                               Mathf.Max(caja.xMax, v.Nombre.worldBound.xMax), Mathf.Max(caja.yMax, v.Nombre.worldBound.yMax));
+                    if (float.IsNaN(caja.x)) continue;
+                    // Medio dp de tolerancia: bordes que solo se tocan por redondeo no cuentan como solape
+                    cajas.Add((Rect.MinMaxRect(caja.xMin + 0.25f, caja.yMin + 0.25f, caja.xMax - 0.25f, caja.yMax - 0.25f), v.Punto.Nombre));
+                }
+                int pares = 0; string ejemplo = "-";
+                for (int i = 0; i < cajas.Count; i++)
+                    for (int j = i + 1; j < cajas.Count; j++)
+                        if (cajas[i].caja.Overlaps(cajas[j].caja)) { pares++; if (pares == 1) ejemplo = $"\"{cajas[i].nombre}\" y \"{cajas[j].nombre}\""; }
+                int repetidosVisibles = 0;
+                var lugares = new List<Lugar>();
+                foreach (var m in pantalla.Capa.Marcadores) if (m.Visible) lugares.Add(m.Lugar);
+                foreach (var v in capaPuntos.Vistas)
+                    if (v.Visible && ReglaPuntosInteres.EsRepetido(v.Punto.Nombre, v.Punto.Posicion, lugares)) repetidosVisibles++;
+                Debug.Log($"PriceMap: puntos ocultos por repetir un lugar visible {capaPuntos.OcultosPorRepetido}, por solape {capaPuntos.OcultosPorSolape}; " +
+                          $"pares de puntos visibles que se solapan {pares} (medidos {cajas.Count}; primero: {ejemplo}); " +
+                          $"puntos visibles que repiten un lugar visible {repetidosVisibles}");
+                if (pares > 0) Debug.LogError($"PriceMap: {pares} pares de puntos de interés visibles se solapan.");
+                if (repetidosVisibles > 0) Debug.LogError($"PriceMap: {repetidosVisibles} puntos salen a la vez como lugar y como punto.");
+                if (capaPuntos.OcultosPorSolape == 0) Debug.LogError("PriceMap: ningún punto oculto por solape en el centro de Sanlúcar.");
                 yield return Capturar("puntos");
                 yield return new WaitForSeconds(1f);
             }

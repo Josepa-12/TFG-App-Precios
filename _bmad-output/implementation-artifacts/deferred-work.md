@@ -41,6 +41,18 @@
     - **TalkBack:** el usuario lo decidió el 17/11/2026. Lee los puntos visibles después de los lugares de la app, con el formato "Mercadona, supermercado"; los sanitarios públicos, como "centro sanitario público".
     - **Captura:** captura de PC con un repetido.
   evidence: El usuario pidió dividir la historia 1.6 el 17/11/2026 por tamaño (unos 2.300 tokens). La parte 1 deja la lectura de la capa `poi`, las categorías y el dibujo.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-6b-repetidos-solapes-y-talkback-de-los-puntos.md`
+  summary: |
+    Tercera parte de la historia 1.6: TalkBack lee los puntos de interés visibles (el usuario lo decidió el 17/11/2026).
+    - **Qué dice:** "Mercadona, supermercado". Sin nombre, solo la categoría; si es sanitario público, "Centro de Salud X, centro sanitario público".
+    - **Categorías:** los nombres salen de `POI_CATS.one` en minúsculas, por Localization, salvo super, que es "supermercado".
+    - **Orden:** primero los botones, luego los lugares de la app y después los puntos, cada grupo de arriba abajo.
+    - **Cuándo no se leen:** los puntos ocultos (lejos, fuera de pantalla, repetidos o pisados) no tienen nodo, y con el menú "Precios" abierto no se leen.
+    - **Cambios necesarios:** `AccesibilidadPantalla` necesita grupos de marcas (lugares antes que puntos) y `QuitarMarcador`, porque las vistas de puntos se crean y destruyen con las teselas.
+  evidence: El usuario pidió el 17/11/2026 separar la parte 2 de la historia 1.6 (unos 2.100 tokens). La parte 2 deja los repetidos y los solapes.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-6b-repetidos-solapes-y-talkback-de-los-puntos.md`
+  summary: Probar con un panel de UI Toolkit dispuesto, o en el móvil, que la caja de solape de un punto usa la medida real de su nombre (y no la estimada), y que los puntos no parpadean al moverse el mapa.
+  evidence: Revisión de la 1.6 (parte 2), Verification Gap. Las pruebas EditMode no tienen disposición y siempre usan la estimación. La medida real solo se comprueba en la captura de PC (0 pares solapados).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-lugares-reales-de-sanlucar-con-su-logo-en-el-mapa.md`
   summary: Ignorar en git `unity/PriceMap/Assets/AddressableAssetsData/link.xml`, que cada build regenera.
   evidence: Se borró en `58e4bbb` y volvió a aparecer tras la build de PC de la verificación de la 1.4 (parte 1).

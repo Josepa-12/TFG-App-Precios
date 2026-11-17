@@ -43,6 +43,7 @@ namespace PriceMap.UI
             Categoria = categoria;
             Glifo = IconosLugar.GlifoDe(categoria);
             SanidadPublica = ReglaPuntosInteres.EsSanidadPublica(categoria, punto.Nombre, punto.Clase, punto.Subclase);
+            NombreNormalizado = ReglaPuntosInteres.NombreNormalizado(punto.Nombre);
             name = punto.Id != 0 ? "poi-" + punto.Id : "poi-sin-id"; // sin id, no se repite "poi-0"
 
             AddToClassList("poi");
@@ -77,6 +78,7 @@ namespace PriceMap.UI
             if (Nombre.resolvedStyle.fontSize <= 0f) return;
             Nombre.UnregisterCallback<GeometryChangedEvent>(PrimeraDisposicion);
             EscalaFuente.Aplicar(this, AccessibilitySettings.fontScale);
+            escalaAplicada = true;
         }
 
         /// <summary>Clase USS de la categoría ("poi--super"): da el color del círculo y del nombre.</summary>
@@ -97,6 +99,79 @@ namespace PriceMap.UI
             colocado = true;
             Posicion = dp;
             style.translate = new Translate(dp.x, dp.y);
+        }
+
+        // ───────── Caja para los solapes (CapaPuntosInteres) ─────────
+
+        /// <summary>Diámetro del círculo (dp), como --poi-icono de Tokens.uss.</summary>
+        public const float IconoDp = 24f;
+        /// <summary>Distancia del centro del círculo al borde izquierdo del nombre (dp), como left de .poi__nombre.</summary>
+        public const float NombreIzquierdaDp = 14f;
+        /// <summary>Ancho máximo del nombre (dp), como --poi-nombre-ancho: más largo, pasa a otra línea.</summary>
+        public const float NombreAnchoMaxDp = 96f;
+        /// <summary>Tamaño de letra (dp) con el que se estima el nombre si aún no tiene estilo (t-caption).</summary>
+        const float LetraPorDefectoDp = 12f;
+
+        /// <summary>Dónde caería en esta actualización (dp), mientras la capa decide los solapes.</summary>
+        internal Vector2 Candidata;
+
+        /// <summary>Nombre normalizado para los repetidos (ReglaPuntosInteres), calculado una sola vez.</summary>
+        public string NombreNormalizado { get; }
+
+        /// <summary>Última medida real del nombre; (0, 0) si aún no se ha dispuesto o se ha olvidado.</summary>
+        internal Vector2 MedidaRecordada { get; set; }
+
+        /// <summary>Olvida la medida recordada (al cambiar la escala de fuente): hasta la próxima disposición se estima.</summary>
+        internal void OlvidarMedida() => MedidaRecordada = Vector2.zero;
+
+        bool escalaAplicada; // la escala de fuente del sistema ya está en el tamaño de letra del nombre
+
+        /// <summary>
+        /// Ancho y alto del nombre (dp): los de su disposición si ya la tiene (se recuerdan, porque al
+        /// ocultarse la disposición queda a cero) o, si nunca se ha dispuesto, una estimación por el número
+        /// de letras. (0, 0) sin nombre.
+        /// </summary>
+        public Vector2 MedidaNombre
+        {
+            get
+            {
+                if (Nombre == null) return Vector2.zero;
+                var l = Nombre.layout;
+                if (Visible && l.width > 0f && l.height > 0f && !float.IsNaN(l.width) && !float.IsNaN(l.height))
+                    MedidaRecordada = new Vector2(l.width, l.height);
+                return MedidaRecordada != Vector2.zero ? MedidaRecordada : EstimarNombre();
+            }
+        }
+
+        /// <summary>
+        /// Estimación del nombre sin disposición, a lo alto: ~0,65 em por letra (con la escala de fuente del
+        /// sistema si aún no se ha aplicado), en líneas de como mucho NombreAnchoMaxDp.
+        /// </summary>
+        internal Vector2 EstimarNombre()
+        {
+            float letra = Nombre.resolvedStyle.fontSize;
+            if (!(letra > 0f) || float.IsInfinity(letra)) letra = LetraPorDefectoDp;
+            if (!escalaAplicada)
+            {
+                float escala = AccessibilitySettings.fontScale;
+                if (escala > 0f && !float.IsNaN(escala) && !float.IsInfinity(escala)) letra *= escala;
+            }
+            float ancho = Nombre.text.Length * letra * 0.65f;
+            int lineas = Mathf.Max(1, Mathf.CeilToInt(ancho / NombreAnchoMaxDp));
+            return new Vector2(Mathf.Min(ancho, NombreAnchoMaxDp), lineas * letra * 1.3f);
+        }
+
+        /// <summary>
+        /// Caja que ocupa el punto (dp del panel) con el círculo centrado en centro: el círculo de IconoDp
+        /// y, a su derecha y centrado en vertical, el nombre (MedidaNombre).
+        /// </summary>
+        public Rect Caja(Vector2 centro)
+        {
+            const float radio = IconoDp / 2f;
+            var nombre = MedidaNombre;
+            float derecha = nombre.x > 0f ? Mathf.Max(radio, NombreIzquierdaDp + nombre.x) : radio;
+            float medioAlto = Mathf.Max(radio, nombre.y / 2f);
+            return Rect.MinMaxRect(centro.x - radio, centro.y - medioAlto, centro.x + derecha, centro.y + medioAlto);
         }
 
         void DibujarGlifo(MeshGenerationContext mgc) =>
