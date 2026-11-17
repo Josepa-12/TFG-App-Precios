@@ -1,0 +1,75 @@
+/* Pantalla del mapa (EXPERIENCE.md · Mapa de inicio; mockups/key-mapa-inicio.html). */
+
+.pm-raiz {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.zona-segura {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Botones redondos arriba a la derecha: tema y, con TalkBack, acercar y alejar */
+.pila-derecha {
+    position: absolute;
+    top: var(--espacio-4);
+    right: var(--espacio-4);
+    flex-direction: column;
+}
+
+.zoom {
+    margin-top: var(--espacio-3);
+    flex-direction: column;
+    display: none;
+}
+
+.zoom.visible {
+    display: flex;
+}
+
+.zoom > .boton-redondo {
+    margin-bottom: var(--espacio-3);
+}
+
+/* Botón redondo con fondo de cristal (DESIGN.md · Components · round-button) */
+.boton-redondo {
+    width: var(--boton-redondo);
+    height: var(--boton-redondo);
+    min-width: var(--zona-tactil-min);
+    min-height: var(--zona-tactil-min);
+    border-radius: var(--radio-pill);
+    background-color: var(--color-glass);
+    border-width: 1px;
+    border-color: var(--color-control-edge);
+    color: var(--color-text);
+}
+
+.boton-redondo:focus {
+    border-width: 2px;
+    border-color: var(--color-focus);
+}
+
+.boton-redondo:active {
+    background-color: var(--color-surface-2);
+}
+
+/* Atribución obligatoria de OpenFreeMap y OpenStreetMap: pequeña, abajo a la derecha */
+.atribucion {
+    position: absolute;
+    right: var(--espacio-2);
+    bottom: var(--espacio-2);
+    max-width: 90%;
+    padding: 2px var(--espacio-2);
+    border-radius: var(--radio-xs);
+    background-color: var(--color-glass);
+    color: var(--color-muted);
+    white-space: normal;
+    -unity-text-align: middle-right;
+}

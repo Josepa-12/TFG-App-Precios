@@ -1,3 +1,4 @@
+using PriceMap.Adaptadores.Sistema;
 using PriceMap.Aplicacion;
 using PriceMap.UI;
 using PriceMap.Vectorial;
@@ -16,29 +17,40 @@ namespace PriceMap.Arranque
 
         void Start()
         {
+            Application.targetFrameRate = 60; // Android limita a 30 por defecto (NFR-1 pide ≥ 30)
+
             if (mapa == null) mapa = FindFirstObjectByType<MapaVectorial>();
             if (pantallaMapa == null) pantallaMapa = FindFirstObjectByType<PantallaMapa>();
 
+            var preferencias = new PreferenciasLocales();
+            var tema = new ServicioTema(preferencias, new TemaSistemaAndroid());
+
             // "mapa != null" usa la comparación de Unity (objeto destruido = nulo) antes de pasarlo como interfaz
-            if (!Componer(mapa != null ? mapa : null, pantallaMapa)) enabled = false;
+            if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema)) { enabled = false; return; }
+
+            mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
+            CapturaPruebas.SiSePide(gameObject, tema, preferencias);
         }
 
         /// <summary>
         /// Conecta las piezas. Si falta alguna, lo registra y devuelve false sin lanzar excepciones.
         /// </summary>
-        public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa)
+        public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema)
         {
-            if (mapa == null || pantallaMapa == null)
+            if (mapa == null || pantallaMapa == null || tema == null)
             {
                 var faltan = new System.Collections.Generic.List<string>();
                 if (mapa == null) faltan.Add("el mapa (MapaVectorial)");
                 if (pantallaMapa == null) faltan.Add("la PantallaMapa");
+                if (tema == null) faltan.Add("el ServicioTema");
                 Debug.LogError("PriceMap: falta " + string.Join(" y ", faltan) + " en la escena; la app no puede arrancar.");
                 return false;
             }
 
-            pantallaMapa.Inicializar(mapa);
-            Debug.Log("PriceMap: app compuesta (mapa → pantalla del mapa).");
+            tema.Cambiado += mapa.AplicarTema;   // el mapa y la interfaz cambian a la vez (FR-6)
+            pantallaMapa.Inicializar(mapa, tema);
+            tema.Iniciar();
+            Debug.Log($"PriceMap: app compuesta (mapa → pantalla del mapa), tema {tema.Actual}.");
             return true;
         }
     }

@@ -591,6 +591,13 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Composición:** un único componente `Arranque` en la escena `Principal` conecta las piezas y entrega el mapa a la UI a través del puerto `IMapa`, sin singletons.
     - **Android:** la APK se compila por línea de comandos (`ConfigurarAndroid.CompilarApk`): minSdk 26, targetSdk 35, IL2CPP ARM64 y solo vertical, con un tamaño de unos 17 MB.
     - **Pruebas:** 9 pruebas EditMode (capas, coordenadas y arranque) que pasan en el Test Runner por lotes.
+  - *Historia 1.2, parte 1 (17/11/2026): base de interfaz y tema.* La historia se dividió en dos por tamaño. La primera parte añade sobre el mapa la primera capa de interfaz con UI Toolkit:
+    - **Tokens:** los de DESIGN.md (paletas B y D, espaciados, radios y tipografías) están en `Tokens.uss`. Una prueba automática calcula el contraste WCAG de los textos y los bordes en los dos temas, también sobre el cristal de los botones encima del mapa.
+    - **Fuentes:** Varela Round y Nunito Sans, con licencia OFL. Las variantes 400, 600 y 800 de Nunito Sans se generan con fonttools a partir de la fuente variable. Los tamaños se multiplican por la escala de fuente del sistema (sp).
+    - **Tema:** un `ServicioTema` en la capa de aplicación, que observan a la vez el mapa y la interfaz. El primer arranque sigue el tema del sistema (modo oscuro de Android leído por JNI) y después se recuerda la elección.
+    - **Textos:** pasan por el paquete Localization (tabla `Textos`, `es-ES`), que viaja en la APK como contenido de Addressables.
+    - **Accesibilidad:** cada control se declara en la jerarquía de accesibilidad de Unity 6 para TalkBack. Con el lector activo aparecen los botones de acercar y alejar.
+    - **Comprobación visual sin móvil:** un ejecutable de Windows lanzado con `-captura` guarda una captura en cada tema y registra la posición de cada elemento. Así se encontró que, sin el tema por defecto de Unity, la raíz de la interfaz medía 0 de alto.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -722,4 +729,6 @@ Ideas de trabajo futuro ya identificadas:
 | 16/11/2026 | Lugares base empaquetados en la app; Firestore solo para lo que cambia; caché de Firestore para el uso sin conexión | Arranque rápido, uso sin conexión desde el primer día y menos cuota |
 | 17/11/2026 | La app se llama PriceMap (`com.pricemap.app`); el mapa se hace solo con OpenStreetMap (OpenFreeMap) y se retira Cesium | Decisión del autor al empezar la implementación (historia 1.1) |
 | 17/11/2026 | Proyecto de Unity organizado en capas con `.asmdef` y una prueba automática que impide dependencias prohibidas | Que la arquitectura hexagonal se cumpla sola, no por disciplina |
+| 17/11/2026 | Solo dos temas (claro y oscuro); el primero sigue al sistema y la elección se guarda en el móvil (en la cuenta desde la Épica 3) | FR-6 y UX-DR22; el tema "Original" de OSM era solo de la prueba técnica |
+| 17/11/2026 | Historia 1.2 dividida: primero la base de interfaz y el tema; después los gestos de inclinación y la carga de teselas alrededor de la vista | Especificación demasiado grande para implementarla de una vez con fiabilidad |
 | 16/11/2026 | Los recorridos de ejemplo no atribuyen precios inventados a negocios reales: en UJ-2, Andrés es el pionero que aporta el primer precio de ChemaBarber, que sigue en la app con su nombre | Mismo criterio que el prototipo: no inventar precios de negocios reales |

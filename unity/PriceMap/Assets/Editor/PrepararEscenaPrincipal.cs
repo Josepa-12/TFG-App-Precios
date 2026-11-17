@@ -4,12 +4,13 @@ using PriceMap.Vectorial;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace PriceMap.EditorTools
 {
     /// <summary>
     /// Crea la escena principal de la app: el mapa vectorial de Sanlúcar (OpenStreetMap vía OpenFreeMap),
-    /// la cámara 2.5D, la pantalla del mapa y el Arranque, que conecta las piezas (AD-2).
+    /// la cámara 2.5D, la interfaz (UIDocument con PantallaMapa) y el Arranque, que conecta las piezas (AD-2).
     /// Incluye la posición simulada y 4 sitios de ejemplo hasta que la historia 1.4 traiga los lugares reales.
     /// Menú: PriceMap ▸ Preparar escena principal. Es la única escena del build.
     /// </summary>
@@ -32,6 +33,7 @@ namespace PriceMap.EditorTools
         {
             // Regenerar sustituye la escena abierta: antes, ofrecer guardar lo que haya sin guardar
             if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+            PrepararInterfaz.Asegurar();
             Directory.CreateDirectory("Assets/Scenes");
             Directory.CreateDirectory(CarpetaMateriales);
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -62,7 +64,11 @@ namespace PriceMap.EditorTools
             CrearPosicion(raiz);
             foreach (var s in Sitios) CrearSitio(raiz, s.nombre, s.tipo, s.lat, s.lon);
 
+            // Interfaz (UI Toolkit) sobre el mapa
             var pantalla = new GameObject("Pantalla del mapa").AddComponent<PantallaMapa>();
+            var documento = pantalla.GetComponent<UIDocument>();
+            documento.panelSettings = AssetDatabase.LoadAssetAtPath<PanelSettings>(PrepararInterfaz.RutaPanelSettings);
+            documento.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(PrepararInterfaz.RutaPantallaMapa);
 
             // Raíz de composición: referencias puestas aquí para no tener que buscarlas al arrancar
             var arranque = new GameObject("Arranque").AddComponent<Arranque.Arranque>();

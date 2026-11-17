@@ -18,9 +18,8 @@ namespace PriceMap.Vectorial
     ///  - edificios extruidos con su altura real (render_height de OpenMapTiles);
     ///  - nombres de calles sobre el suelo.
     /// Todo con los colores exactos de la paleta del proyecto (no hay que recolorear imágenes).
-    /// En Play: tecla T = tema (Claro / Oscuro / Original).
     ///
-    /// Atribución obligatoria: OpenFreeMap © OpenMapTiles · Datos © colaboradores de OpenStreetMap.
+    /// Atribución obligatoria (la muestra PantallaMapa): OpenFreeMap © OpenMapTiles · Datos © colaboradores de OpenStreetMap.
     /// </summary>
     public class MapaVectorial : MonoBehaviour, IMapa
     {
@@ -103,17 +102,30 @@ namespace PriceMap.Vectorial
             if (c != null) c.CentrarEn(destino.Latitud, destino.Longitud);
         }
 
+        /// <summary>Pinta el mapa con la paleta del tema; se aplica en el siguiente fotograma.</summary>
+        public void AplicarTema(Tema nuevo) => tema = nuevo == Tema.Oscuro ? TemaMapa.Oscuro : TemaMapa.Claro;
+
+        public void Acercar() { var c = Camara(); if (c != null) c.Acercar(); }
+
+        /// <summary>Para no mover el mapa cuando el dedo empieza sobre un control de la interfaz.</summary>
+        public System.Func<Vector2, bool> EntradaBloqueada
+        {
+            set { entradaBloqueada = value; Camara(); }
+        }
+        System.Func<Vector2, bool> entradaBloqueada; // se pasa a la cámara en cuanto exista
+        public void Alejar() { var c = Camara(); if (c != null) c.Alejar(); }
+
         // Se busca al usarla: Centrar puede llamarse antes que Start
         CamaraMapa Camara()
         {
             if (camara == null) camara = FindFirstObjectByType<CamaraMapa>();
+            if (camara != null && entradaBloqueada != null) camara.entradaBloqueada = entradaBloqueada;
             return camara;
         }
 
         void Update()
         {
-            if (Input.GetKeyDown(KeyCode.T)) tema = (TemaMapa)(((int)tema + 1) % 3);
-            if (tema != temaAplicado) AplicarTema();
+            if (mSuelo != null && tema != temaAplicado) AplicarTema(); // el tema puede llegar antes que Start
             if (camara != null && sombras) QualitySettings.shadowDistance = Mathf.Clamp(camara.distancia * 2.2f, 250f, 5000f);
         }
 
@@ -456,16 +468,6 @@ namespace PriceMap.Vectorial
                 sol.shadowBias = 0.2f; sol.shadowNormalBias = 0f;
                 sol.transform.rotation = Quaternion.Euler(42f, 35f, 0f); // sol de tarde desde el suroeste
             }
-        }
-
-        void OnGUI()
-        {
-            var p = PaletaMapa.De(tema);
-            var estilo = new GUIStyle(GUI.skin.label) { fontSize = 12, alignment = TextAnchor.LowerRight };
-            estilo.normal.textColor = p.etiqueta;
-            GUI.Label(new Rect(0, Screen.height - 24, Screen.width - 8, 20), "OpenFreeMap © OpenMapTiles · Datos © colaboradores de OpenStreetMap", estilo);
-            estilo.alignment = TextAnchor.LowerLeft;
-            GUI.Label(new Rect(8, Screen.height - 24, 300, 20), $"Tema: {tema} (T)", estilo);
         }
     }
 }

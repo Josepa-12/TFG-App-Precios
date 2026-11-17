@@ -8,7 +8,10 @@
         "PriceMap.Aplicacion",
         "PriceMap.UI",
         "PriceMap.Arranque",
-        "PriceMap.Vectorial"
+        "PriceMap.Vectorial",
+        "PriceMap.Editor",
+        "Unity.Localization",
+        "Unity.Localization.Editor"
     ],
     "includePlatforms": [
         "Editor"

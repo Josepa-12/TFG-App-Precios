@@ -3,7 +3,8 @@
     "rootNamespace": "PriceMap.UI",
     "references": [
         "PriceMap.Aplicacion",
-        "PriceMap.Dominio"
+        "PriceMap.Dominio",
+        "Unity.Localization"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

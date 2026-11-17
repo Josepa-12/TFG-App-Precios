@@ -28,19 +28,34 @@ namespace PriceMap.Vectorial
         public float velocidadZoom = 0.12f;
         public float velocidadTeclado = 0.8f;
 
+        /// <summary>Lo pone el Arranque: true si el punto de pantalla está sobre un control de la interfaz.</summary>
+        public System.Func<Vector2, bool> entradaBloqueada;
+
         Camera cam;
         Vector3? sueloAnterior;
+        bool gestoSobreInterfaz; // el gesto empezó sobre un botón: el mapa no se mueve hasta soltar
         static readonly Plane Suelo = new Plane(Vector3.up, Vector3.zero);
 
         void Awake() { cam = GetComponent<Camera>(); Aplicar(); }
 
         void LateUpdate()
         {
-            if (Input.touchSupported && Input.touchCount > 0) Tactil();
-            else Raton();
+            if (Input.touchSupported && Input.touchCount > 0)
+            {
+                if (Input.GetTouch(0).phase == TouchPhase.Began && Input.touchCount == 1) gestoSobreInterfaz = SobreInterfaz(Input.GetTouch(0).position);
+                if (!gestoSobreInterfaz) Tactil();
+            }
+            else
+            {
+                if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)) gestoSobreInterfaz = SobreInterfaz(Input.mousePosition);
+                if (!Input.GetMouseButton(0) && !Input.GetMouseButton(1) && Input.touchCount == 0) gestoSobreInterfaz = false;
+                if (!gestoSobreInterfaz) Raton();
+            }
             Teclado();
             Aplicar();
         }
+
+        bool SobreInterfaz(Vector2 pantalla) => entradaBloqueada != null && entradaBloqueada(pantalla);
 
         void Aplicar()
         {
@@ -110,6 +125,14 @@ namespace PriceMap.Vectorial
             if (Input.GetKey(KeyCode.R)) inclinacion += 40f * Time.deltaTime;
             if (Input.GetKey(KeyCode.F)) inclinacion -= 40f * Time.deltaTime;
         }
+
+        /// <summary>Acerca un paso (botón de zoom).</summary>
+        public void Acercar() { distancia *= PasoZoom; Aplicar(); }
+
+        /// <summary>Aleja un paso (botón de zoom).</summary>
+        public void Alejar() { distancia /= PasoZoom; Aplicar(); }
+
+        const float PasoZoom = 0.6f;
 
         /// <summary>Centra la cámara en una coordenada geográfica.</summary>
         public void CentrarEn(double lat, double lon) { pivote = Geo.ALocal(lat, lon); Aplicar(); }

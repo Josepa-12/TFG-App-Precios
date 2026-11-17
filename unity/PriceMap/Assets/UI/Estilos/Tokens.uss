@@ -1,0 +1,93 @@
+/* Tokens de DESIGN.md traducidos a variables USS (UX-DR1 a UX-DR3).
+   Ningún color, tipografía, espaciado ni radio fuera de este fichero.
+   1 px del panel = 1 dp (PanelSettings de tamaño físico constante a 160 dpi);
+   los tamaños de letra se multiplican por la escala de fuente del sistema (EscalaFuente) = sp. */
+
+.pm-raiz {
+    /* Paleta B (tema claro) */
+    --color-bg: #F3F5FB;
+    --color-surface: #FFFFFF;
+    --color-surface-2: #EEF2FC;
+    --color-border: #D3DCF2;
+    --color-text: #13235B;
+    --color-muted: #4B5878;
+    --color-accent: #2F5BEA;
+    --color-accent-ink: #FFFFFF;
+    --color-accent-soft: #D3DCF2;
+    --color-reward: #FFC93C;
+    --color-reward-ink: #13235B;
+    --color-reward-edge: #C99300;
+    --color-success: #0E7A4F;
+    --color-danger: #D6334A;
+    --color-control-edge: #6E7A99;
+    --color-focus: #2F5BEA;
+    --color-glass: rgba(255, 255, 255, 0.74);
+    --color-tpl-servicio: #2F5BEA;
+    --color-tpl-hosteleria: #E07B12;
+    --color-tpl-ocio: #1F9D6B;
+    --color-fresh-al-dia: #0E7A4F;
+    --color-fresh-podria: #A87A00;
+    --color-fresh-antiguo: #6E7A99;
+    --color-map-fondo: #E9EDF7;
+
+    /* Espaciado (4 / 8 / 12 / 16 / 24 / 32) */
+    --espacio-1: 4px;
+    --espacio-2: 8px;
+    --espacio-3: 12px;
+    --espacio-4: 16px;
+    --espacio-5: 24px;
+    --espacio-6: 32px;
+
+    /* Radios */
+    --radio-xs: 6px;
+    --radio-sm: 10px;
+    --radio-md: 14px;
+    --radio-lg: 18px;
+    --radio-sheet: 24px;
+    --radio-pill: 999px;
+
+    /* Tamaños de componentes (mínimos) */
+    --boton-redondo: 48px;
+    --zona-tactil-min: 48px;
+
+    -unity-font: url("../Fuentes/NunitoSans-Regular.ttf");
+    color: var(--color-text);
+}
+
+/* Paleta D (tema oscuro): cada token con su par -dark */
+.pm-raiz.tema-oscuro {
+    --color-bg: #0F1424;
+    --color-surface: #1A2238;
+    --color-surface-2: #232D49;
+    --color-border: #2A3A63;
+    --color-text: #E6ECFA;
+    --color-muted: #9AA6C4;
+    --color-accent: #4C7DFF;
+    --color-accent-ink: #0B1020;
+    --color-accent-soft: #2A3A63;
+    --color-reward: #FFD166;
+    --color-reward-ink: #1A1300;
+    --color-reward-edge: #C99A2E;
+    --color-success: #4ADE9B;
+    --color-danger: #FF6B81;
+    --color-control-edge: #7F8BAA;
+    --color-focus: #8FB0FF;
+    --color-glass: rgba(26, 34, 56, 0.74);
+    --color-tpl-servicio: #4C7DFF;
+    --color-tpl-hosteleria: #F59A3C;
+    --color-tpl-ocio: #3DD69B;
+    --color-fresh-al-dia: #4ADE9B;
+    --color-fresh-podria: #FFD166;
+    --color-fresh-antiguo: #7F8BAA;
+    --color-map-fondo: #141B30;
+}
+
+/* Tipografía: Varela Round para títulos, Nunito Sans para el resto (tamaños en dp, escalados a sp) */
+.t-display { -unity-font: url("../Fuentes/VarelaRound-Regular.ttf"); font-size: 26px; }
+.t-title { -unity-font: url("../Fuentes/VarelaRound-Regular.ttf"); font-size: 20px; }
+.t-heading { -unity-font: url("../Fuentes/VarelaRound-Regular.ttf"); font-size: 17px; }
+.t-body { -unity-font: url("../Fuentes/NunitoSans-Regular.ttf"); font-size: 16px; }
+.t-label { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 14px; }
+.t-meta { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 13px; }
+.t-caption { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 12px; }
+.t-price { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 22px; }

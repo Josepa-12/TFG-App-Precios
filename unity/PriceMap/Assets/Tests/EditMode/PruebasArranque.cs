@@ -15,8 +15,24 @@ namespace PriceMap.Tests.EditMode
         class MapaFalso : IMapa
         {
             public readonly List<Coordenada> centrados = new List<Coordenada>();
+            public readonly List<Tema> temas = new List<Tema>();
             public void Centrar(Coordenada destino) => centrados.Add(destino);
+            public void AplicarTema(Tema tema) => temas.Add(tema);
+            public void Acercar() { }
+            public void Alejar() { }
         }
+
+        class PreferenciasFalsas : IPreferencias
+        {
+            readonly Dictionary<string, string> datos = new Dictionary<string, string>();
+            public string Leer(string clave) => datos.TryGetValue(clave, out var v) ? v : null;
+            public void Guardar(string clave, string valor) => datos[clave] = valor;
+            public void Borrar(string clave) => datos.Remove(clave);
+        }
+
+        class SistemaOscuro : ITemaSistema { public bool EsOscuro => true; }
+
+        static ServicioTema NuevoTema() => new ServicioTema(new PreferenciasFalsas(), new SistemaOscuro());
 
         GameObject objeto;
         PantallaMapa pantalla;
@@ -35,8 +51,18 @@ namespace PriceMap.Tests.EditMode
         public void ConTodasLasPiezasLaPantallaRecibeElMapaYCentraEnLaPlazaDelCabildo()
         {
             var mapa = new MapaFalso();
-            Assert.IsTrue(Arranque.Arranque.Componer(mapa, pantalla));
+            Assert.IsTrue(Arranque.Arranque.Componer(mapa, pantalla, NuevoTema()));
             CollectionAssert.AreEqual(new[] { new Coordenada(36.7779, -6.3528) }, mapa.centrados);
+        }
+
+        [Test]
+        public void ElMapaRecibeElTemaInicialYCadaCambio()
+        {
+            var mapa = new MapaFalso();
+            var tema = NuevoTema();
+            Arranque.Arranque.Componer(mapa, pantalla, tema);
+            tema.Alternar();
+            CollectionAssert.AreEqual(new[] { Tema.Oscuro, Tema.Claro }, mapa.temas);
         }
 
         [Test]
@@ -44,7 +70,16 @@ namespace PriceMap.Tests.EditMode
         {
             LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta el mapa"));
             bool ok = true;
-            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(null, pantalla));
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(null, pantalla, NuevoTema()));
+            Assert.IsFalse(ok);
+        }
+
+        [Test]
+        public void SinServicioDeTemaAvisaYNoLanzaExcepcion()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta el ServicioTema"));
+            bool ok = true;
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), pantalla, null));
             Assert.IsFalse(ok);
         }
 
@@ -53,7 +88,7 @@ namespace PriceMap.Tests.EditMode
         {
             LogAssert.Expect(LogType.Error, new Regex("^PriceMap: falta la PantallaMapa"));
             bool ok = true;
-            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), null));
+            Assert.DoesNotThrow(() => ok = Arranque.Arranque.Componer(new MapaFalso(), null, NuevoTema()));
             Assert.IsFalse(ok);
         }
     }

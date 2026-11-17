@@ -67,7 +67,10 @@ namespace PriceMap.Tests.EditMode
                     errores.Add($"{a.name} no es ninguna capa de la arquitectura");
                     continue;
                 }
-                foreach (var r in a.references.Where(r => !permitidas.Contains(r)))
+                // Los paquetes de Unity (Localization, Addressables...) se permiten fuera del Dominio;
+                // entre capas del proyecto manda la tabla de AD-1
+                var aComprobar = a.name == Dominio ? a.references : a.references.Where(r => r.StartsWith("PriceMap."));
+                foreach (var r in aComprobar.Where(r => !permitidas.Contains(r)))
                     errores.Add($"{a.name} → {r}");
                 if (a.name == Dominio && !a.noEngineReferences)
                     errores.Add($"{Dominio} debe tener noEngineReferences: true");
@@ -98,7 +101,8 @@ namespace PriceMap.Tests.EditMode
             {
                 new Asmdef { name = "PriceMap.UI", references = new[] { Aplicacion, "PriceMap.Vectorial" } },
                 new Asmdef { name = "PriceMap.Adaptadores.Datos", references = new[] { "PriceMap.UI" } },
-                new Asmdef { name = Dominio, references = new[] { Aplicacion }, noEngineReferences = false },
+                new Asmdef { name = Dominio, references = new[] { Aplicacion, "Unity.Localization" }, noEngineReferences = false },
+                new Asmdef { name = "PriceMap.Vectorial", references = new[] { Aplicacion, "Unity.Localization" } },
                 new Asmdef { name = "PriceMap.Extra" },
                 new Asmdef { name = "PriceMap.Arranque", references = new[] { "PriceMap.UI", "PriceMap.Vectorial" } },
             };
@@ -107,6 +111,8 @@ namespace PriceMap.Tests.EditMode
                 "PriceMap.UI → PriceMap.Vectorial",
                 "PriceMap.Adaptadores.Datos → PriceMap.UI",
                 "PriceMap.Dominio → PriceMap.Aplicacion",
+                "PriceMap.Dominio → Unity.Localization",
+
                 "PriceMap.Dominio debe tener noEngineReferences: true",
                 "PriceMap.Extra no es ninguna capa de la arquitectura",
             }, Incumplimientos(falsos));

@@ -6,7 +6,11 @@
         "PriceMap.Aplicacion",
         "PriceMap.Vectorial",
         "PriceMap.UI",
-        "PriceMap.Arranque"
+        "PriceMap.Arranque",
+        "Unity.Localization",
+        "Unity.Localization.Editor",
+        "Unity.Addressables",
+        "Unity.Addressables.Editor"
     ],
     "includePlatforms": [
         "Editor"

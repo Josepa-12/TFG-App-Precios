@@ -1,5 +1,7 @@
 using System.IO;
 using UnityEditor;
+using UnityEditor.AddressableAssets;
+using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
@@ -47,6 +49,17 @@ namespace PriceMap.EditorTools
             Configurar();
             if (!File.Exists(PrepararEscenaPrincipal.RutaEscena)) PrepararEscenaPrincipal.Crear();
             Directory.CreateDirectory(Path.GetDirectoryName(RutaApk));
+            EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android);
+
+            // Las tablas de Localization viajan como contenido de Addressables: se construye antes de la APK
+            AddressableAssetSettingsDefaultObject.GetSettings(true);
+            AddressableAssetSettings.BuildPlayerContent(out var contenido);
+            if (!string.IsNullOrEmpty(contenido.Error))
+            {
+                Debug.LogError("PriceMap: falló el contenido de Addressables: " + contenido.Error);
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                return;
+            }
 
             var informe = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
@@ -56,10 +69,47 @@ namespace PriceMap.EditorTools
                 options = BuildOptions.None,
             });
 
+            Terminar(informe, RutaApk);
+        }
+
+        /// <summary>
+        /// Ejecutable de Windows solo para comprobar la interfaz sin móvil: lanzado con
+        /// "-captura &lt;carpeta&gt;" guarda una captura en cada tema y sale (CapturaPruebas).
+        /// </summary>
+        public static void CompilarPcPruebas()
+        {
+            const string ruta = "Builds/PC/PriceMap.exe";
+            if (!File.Exists(PrepararEscenaPrincipal.RutaEscena)) PrepararEscenaPrincipal.Crear();
+            // El contenido de Addressables se construye para la plataforma activa: tiene que ser Windows
+            EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Standalone, BuildTarget.StandaloneWindows64);
+            AddressableAssetSettingsDefaultObject.GetSettings(true);
+            AddressableAssetSettings.BuildPlayerContent(out var contenido);
+            if (!string.IsNullOrEmpty(contenido.Error))
+            {
+                Debug.LogError("PriceMap: falló el contenido de Addressables: " + contenido.Error);
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                return;
+            }
+            PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+            PlayerSettings.defaultScreenWidth = 412;  // ancho de referencia de EXPERIENCE.md (dp)
+            PlayerSettings.defaultScreenHeight = 915;
+            PlayerSettings.resizableWindow = false;
+            var informe = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+            {
+                scenes = new[] { PrepararEscenaPrincipal.RutaEscena },
+                locationPathName = ruta,
+                target = BuildTarget.StandaloneWindows64,
+                options = BuildOptions.None,
+            });
+            Terminar(informe, ruta);
+        }
+
+        static void Terminar(BuildReport informe, string ruta)
+        {
             bool ok = informe.summary.result == BuildResult.Succeeded;
             Debug.Log(ok
-                ? $"PriceMap: APK creada en {RutaApk} ({informe.summary.totalSize / (1024 * 1024)} MB)."
-                : $"PriceMap: la compilación de Android ha fallado ({informe.summary.result}, {informe.summary.totalErrors} errores).");
+                ? $"PriceMap: compilación creada en {ruta} ({informe.summary.totalSize / (1024 * 1024)} MB)."
+                : $"PriceMap: la compilación ha fallado ({informe.summary.result}, {informe.summary.totalErrors} errores).");
             if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
         }
     }

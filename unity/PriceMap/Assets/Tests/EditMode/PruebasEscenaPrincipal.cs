@@ -35,6 +35,15 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(1, Buscar<MapaVectorial>().Length);
             Assert.AreEqual(1, Buscar<PantallaMapa>().Length);
             Assert.AreEqual(1, Buscar<CamaraMapa>().Length);
+
+            var documento = Buscar<PantallaMapa>()[0].GetComponent<UnityEngine.UIElements.UIDocument>();
+            Assert.IsNotNull(documento, "La PantallaMapa necesita su UIDocument.");
+            Assert.IsNotNull(documento.panelSettings, "El UIDocument no tiene PanelSettings.");
+            Assert.IsNotNull(documento.visualTreeAsset, "El UIDocument no tiene PantallaMapa.uxml.");
+            Assert.AreEqual(UnityEngine.UIElements.PanelScaleMode.ConstantPhysicalSize, documento.panelSettings.scaleMode, "1 px del panel debe ser 1 dp.");
+            Assert.AreEqual(160f, documento.panelSettings.referenceDpi);
+            Assert.IsNotNull(documento.panelSettings.themeStyleSheet,
+                "Sin PriceMap.tss la raíz del UIDocument mide 0 de alto y la interfaz no se ve.");
         }
 
         [Test]

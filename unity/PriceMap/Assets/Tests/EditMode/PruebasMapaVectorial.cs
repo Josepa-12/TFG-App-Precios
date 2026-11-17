@@ -44,6 +44,31 @@ namespace PriceMap.Tests.EditMode
             Assert.That(Vector3.Distance(pivote, esperado), Is.LessThan(0.01f), $"pivote {pivote}, esperado {esperado}");
         }
 
+        [Test]
+        public void ElTemaDeLaAppEligeLaPaletaDelMapa()
+        {
+            var mapa = objMapa.AddComponent<MapaVectorial>();
+            ((IMapa)mapa).AplicarTema(Tema.Oscuro);
+            Assert.AreEqual(TemaMapa.Oscuro, mapa.tema);
+            ((IMapa)mapa).AplicarTema(Tema.Claro);
+            Assert.AreEqual(TemaMapa.Claro, mapa.tema);
+        }
+
+        [Test]
+        public void LosBotonesDeZoomAcercanYAlejan()
+        {
+            IMapa mapa = objMapa.AddComponent<MapaVectorial>();
+            var camara = objCamara.GetComponent<CamaraMapa>();
+            float inicial = camara.distancia;
+
+            mapa.Acercar();
+            Assert.Less(camara.distancia, inicial, "Acercar debe reducir la distancia de la cámara.");
+            mapa.Alejar();
+            Assert.AreEqual(inicial, camara.distancia, 0.01f, "Alejar deshace un paso de Acercar.");
+            mapa.Alejar();
+            Assert.Greater(camara.distancia, inicial, "Alejar debe aumentar la distancia de la cámara.");
+        }
+
         [TestCase("PriceMap/PlanoPaleta")]
         [TestCase("PriceMap/EdificiosPaleta")]
         public void ElShaderDelMapaExisteConSuNombre(string nombre)

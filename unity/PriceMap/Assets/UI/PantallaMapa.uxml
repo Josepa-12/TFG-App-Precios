@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Estilos/Tokens.uss" />
+    <Style src="PantallaMapa.uss" />
+    <!-- El mapa ocupa toda la pantalla y los controles flotan encima (DESIGN.md · Layout).
+         Los contenedores no capturan toques para que el mapa siga respondiendo a los gestos. -->
+    <ui:VisualElement name="raiz" class="pm-raiz" picking-mode="Ignore">
+        <!-- Zona segura: sus márgenes los pone PantallaMapa con Screen.safeArea -->
+        <ui:VisualElement name="zona-segura" class="zona-segura" picking-mode="Ignore">
+            <ui:VisualElement name="pila-derecha" class="pila-derecha" picking-mode="Ignore">
+                <ui:VisualElement name="hueco-tema" picking-mode="Ignore" />
+                <ui:VisualElement name="zoom" class="zoom" picking-mode="Ignore" />
+            </ui:VisualElement>
+            <ui:Label name="atribucion" class="atribucion t-caption" picking-mode="Ignore" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

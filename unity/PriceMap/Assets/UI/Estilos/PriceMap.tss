@@ -1,0 +1,12 @@
+/* Tema de UI Toolkit de PriceMap: solo los tokens propios (sin el tema por defecto de Unity). */
+@import url("Tokens.uss");
+
+/* El tema por defecto de Unity es el que estira la raíz de cada UIDocument a toda la pantalla;
+   sin él hay que hacerlo aquí, o la raíz mide 0 de alto y lo anclado abajo queda fuera. */
+.unity-ui-document__root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
