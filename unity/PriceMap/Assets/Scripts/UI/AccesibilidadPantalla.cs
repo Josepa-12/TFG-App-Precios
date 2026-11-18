@@ -26,6 +26,7 @@ namespace PriceMap.UI
             public Func<bool> visible, seleccionado;
             public Action accion;
             public bool enModal;
+            public bool esTexto; // texto sin acción (rol StaticText), p. ej. el de una ventana modal
         }
 
         class Marca
@@ -110,6 +111,13 @@ namespace PriceMap.UI
                 elemento = elemento, etiqueta = etiqueta, valor = valor, accion = accion, visible = visible,
                 seleccionado = seleccionado, enModal = enModal,
             });
+
+        /// <summary>
+        /// Declara un texto entre los controles (rol StaticText, sin acción), en su orden de declaración:
+        /// p. ej. el texto de una ventana modal, antes de sus botones.
+        /// </summary>
+        public void Texto(VisualElement elemento, Func<string> etiqueta, Func<bool> visible = null, bool enModal = false) =>
+            controles.Add(new Control { elemento = elemento, etiqueta = etiqueta, visible = visible, enModal = enModal, esTexto = true });
 
         /// <summary>
         /// Declara un marcador del mapa: texto sin acción (rol StaticText). Solo tiene nodo mientras es visible.
@@ -245,14 +253,14 @@ namespace PriceMap.UI
             foreach (var c in ControlesEnRecorrido())
             {
                 var nodo = jerarquia.AddNode(c.etiqueta());
-                nodo.role = AccessibilityRole.Button;
+                nodo.role = c.esTexto ? AccessibilityRole.StaticText : AccessibilityRole.Button;
                 if (c.valor != null) nodo.value = c.valor();
                 if (Seleccionado(c)) nodo.state = AccessibilityState.Selected;
                 nodosControles[c.elemento] = nodo;
                 var elemento = c.elemento;
                 nodo.frameGetter = () => MarcoEnPantalla(elemento);
                 var accion = c.accion;
-                nodo.invoked += () => { accion(); return true; };
+                if (accion != null) nodo.invoked += () => { accion(); return true; };
             }
             if (!Modal) AnadirMarcas(MarcasVisibles()); // con un menú abierto, el mapa no está en el recorrido
             AssistiveSupport.activeHierarchy = jerarquia;

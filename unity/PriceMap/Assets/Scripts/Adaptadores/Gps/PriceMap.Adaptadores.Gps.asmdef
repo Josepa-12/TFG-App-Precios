@@ -1,0 +1,17 @@
+{
+    "name": "PriceMap.Adaptadores.Gps",
+    "rootNamespace": "PriceMap.Adaptadores.Gps",
+    "references": [
+        "PriceMap.Aplicacion",
+        "PriceMap.Dominio"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

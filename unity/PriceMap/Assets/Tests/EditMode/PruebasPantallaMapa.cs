@@ -26,6 +26,7 @@ namespace PriceMap.Tests.EditMode
             public IReadOnlyList<PuntoInteres> PuntosInteres { get; } = new PuntoInteres[0];
             public event System.Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
+            public float Giro => 0f;
         }
 
         class PreferenciasFalsas : IPreferencias

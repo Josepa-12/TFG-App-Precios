@@ -46,13 +46,17 @@ namespace PriceMap.Tests.EditMode
                 "Sin PriceMap.tss la raíz del UIDocument mide 0 de alto y la interfaz no se ve.");
         }
 
-        /// <summary>Los lugares los dibuja la interfaz (historia 1.4): en la escena solo queda "Tu posición".</summary>
+        /// <summary>
+        /// Los lugares (historia 1.4) y la posición del usuario (historia 1.7) los dibuja la interfaz: en la escena
+        /// ya no queda ningún marcador 3D, tampoco "Tu posición (simulada)".
+        /// </summary>
         [Test]
-        public void ElUnicoMarcadorDeLaEscenaEsTuPosicion()
+        public void NoQuedaNingunMarcadorFijoEnLaEscena()
         {
-            var marcadores = Buscar<Marcador>();
-            Assert.AreEqual(1, marcadores.Length, "Sobran marcadores fijos: " + string.Join(", ", marcadores.Select(m => m.nombre)));
-            Assert.AreEqual("Tu posición", marcadores[0].nombre);
+            var nombres = escena.GetRootGameObjects()
+                .SelectMany(g => g.GetComponentsInChildren<UnityEngine.Transform>(true)).Select(t => t.name).ToArray();
+            CollectionAssert.DoesNotContain(nombres, "Tu posición (simulada)");
+            CollectionAssert.DoesNotContain(nombres, "Marcadores");
         }
 
         [Test]

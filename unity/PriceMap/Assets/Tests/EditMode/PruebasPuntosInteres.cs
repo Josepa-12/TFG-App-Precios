@@ -37,6 +37,7 @@ namespace PriceMap.Tests.EditMode
             public IReadOnlyList<PuntoInteres> PuntosInteres => puntos;
             public event Action PuntosInteresCambiados;
             public float DistanciaCamara => distancia;
+            public float Giro => 0f;
             public void Cambiar() => PuntosInteresCambiados?.Invoke();
         }
 

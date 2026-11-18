@@ -63,8 +63,16 @@ namespace PriceMap.UI
         public const string PoiPublico = "poi.categoria.publico";
         public const string PoiCulto = "poi.categoria.culto";
 
+        /// <summary>Botón de ubicación para TalkBack (con posición).</summary>
+        public const string UbicacionCentrar = "ubicacion.centrar";
+        /// <summary>Explicación antes de pedir el permiso de ubicación.</summary>
+        public const string UbicacionExplicacion = "ubicacion.explicacion";
+        public const string UbicacionPermitir = "ubicacion.permitir";
+        public const string UbicacionAhoraNo = "ubicacion.ahorano";
+
         public static readonly string[] Todas =
         {
+            UbicacionCentrar, UbicacionExplicacion, UbicacionPermitir, UbicacionAhoraNo,
             TemaCambiar, TemaClaro, TemaOscuro, MapaAcercar, MapaAlejar, MapaAtribucion,
             MarcadorConPrecio, MarcadorSinPrecio,
             PreciosControl, PreciosVer, PreciosTodos, PreciosTitulo,

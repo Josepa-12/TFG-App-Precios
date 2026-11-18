@@ -38,6 +38,7 @@ namespace PriceMap.Tests.EditMode
             public IReadOnlyList<PuntoInteres> PuntosInteres { get; } = new PuntoInteres[0];
             public event System.Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
+            public float Giro => 0f;
         }
 
         class PreferenciasFalsas : IPreferencias
@@ -274,7 +275,10 @@ namespace PriceMap.Tests.EditMode
             VisualElement precios = p.Pildora;
             while (precios.parent != raiz) precios = precios.parent;
             Assert.Greater(raiz.IndexOf(precios), velo, "La píldora y el menú quedan encima del velo.");
-            Assert.AreEqual(raiz.childCount - 1, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
+            // Solo la explicación del permiso de ubicación (historia 1.7, modal) va encima: tiene que tapar también la píldora
+            var explicacion = arbol.Q("hueco-explicacion");
+            Assert.AreEqual(raiz.childCount - 1, raiz.IndexOf(explicacion), "La explicación de la ubicación es lo último.");
+            Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
         }
 
         static readonly Dictionary<FiltroPrecios, string> ClaveEsperada = new Dictionary<FiltroPrecios, string>

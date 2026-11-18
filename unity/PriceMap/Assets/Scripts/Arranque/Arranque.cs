@@ -1,5 +1,6 @@
 using System;
 using PriceMap.Adaptadores.Datos;
+using PriceMap.Adaptadores.Gps;
 using PriceMap.Adaptadores.Sistema;
 using PriceMap.Aplicacion;
 using PriceMap.UI;
@@ -17,6 +18,8 @@ namespace PriceMap.Arranque
         [SerializeField] MapaVectorial mapa;
         [SerializeField] PantallaMapa pantallaMapa;
 
+        ServicioUbicacion ubicacion;
+
         void Start()
         {
             Application.targetFrameRate = 60; // Android limita a 30 por defecto (NFR-1 pide ≥ 30)
@@ -33,19 +36,43 @@ namespace PriceMap.Arranque
             var lugares = new ServicioLugares(new RepositorioLugaresJson());
             if (lugares.Cargar().Ok) Debug.Log($"PriceMap: {lugares.Lugares.Count} lugares cargados.");
 
+            // Posición del usuario (historia 1.7): GPS y brújula del móvil. La captura de pruebas usa una
+            // ubicación falsa para no pedir permisos ni depender del GPS del PC.
+            IUbicacion fuenteUbicacion = CapturaPruebas.SePide() ? CapturaPruebas.UbicacionFalsa() : gameObject.AddComponent<UbicacionUnity>();
+            ubicacion = new ServicioUbicacion(fuenteUbicacion, preferencias);
+
             // "mapa != null" usa la comparación de Unity (objeto destruido = nulo) antes de pasarlo como interfaz.
             // "Ahora" lo da el Arranque (AD-12): con él se calcula el resumen del precio de cada lugar.
-            if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow)) { enabled = false; return; }
+            if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion)) { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
         }
 
+        // GPS solo con la app delante (NFR-3): se apagan ubicación y brújula en segundo plano y se encienden al volver
+        void OnApplicationPause(bool enPausa) => AlPausar(ubicacion, enPausa);
+
+        void OnApplicationFocus(bool conFoco) => AlCambiarFoco(ubicacion, conFoco);
+
+        /// <summary>Lo que hace OnApplicationPause: en pausa se detiene; al salir de ella se reanuda.</summary>
+        internal static void AlPausar(ServicioUbicacion ubicacion, bool enPausa) => AplicarPrimerPlano(ubicacion, delante: !enPausa);
+
+        /// <summary>Lo que hace OnApplicationFocus: sin foco se detiene; con foco se reanuda.</summary>
+        internal static void AlCambiarFoco(ServicioUbicacion ubicacion, bool conFoco) => AplicarPrimerPlano(ubicacion, delante: conFoco);
+
+        /// <summary>Con la app delante se reanudan ubicación y brújula; si no, se detienen. Sin servicio, nada.</summary>
+        internal static void AplicarPrimerPlano(ServicioUbicacion ubicacion, bool delante)
+        {
+            if (ubicacion == null) return;
+            if (delante) ubicacion.Reanudar(); else ubicacion.Pausar();
+        }
+
         /// <summary>
         /// Conecta las piezas. Si falta alguna, lo registra y devuelve false sin lanzar excepciones.
         /// </summary>
+        /// <param name="ubicacion">Posición del usuario; sin ella (null) no hay botón de ubicación ni círculo.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
-            ServicioFiltro filtro, DateTime ahora)
+            ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -60,10 +87,12 @@ namespace PriceMap.Arranque
             }
 
             tema.Cambiado += mapa.AplicarTema;   // el mapa y la interfaz cambian a la vez (FR-6)
-            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro);
+            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
-            Debug.Log($"PriceMap: app compuesta (mapa → pantalla del mapa), tema {tema.Actual}, filtro {filtro.Actual}.");
+            ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso
+            Debug.Log($"PriceMap: app compuesta (mapa → pantalla del mapa), tema {tema.Actual}, filtro {filtro.Actual}" +
+                      (ubicacion != null ? $", ubicación {ubicacion.Estado}." : "."));
             return true;
         }
     }

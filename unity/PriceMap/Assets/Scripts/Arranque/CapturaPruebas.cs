@@ -25,22 +25,47 @@ namespace PriceMap.Arranque
         MapaVectorial mapa;
         PantallaMapa pantalla;
 
-        public static void SiSePide(GameObject anfitrion, ServicioTema tema, ServicioFiltro filtro, IPreferencias preferencias, MapaVectorial mapa, PantallaMapa pantalla)
+        /// <summary>Carpeta de "-captura &lt;carpeta&gt;", o null si no se pide (o en la APK de verdad).</summary>
+        static string CarpetaPedida()
         {
 #if !(UNITY_STANDALONE || UNITY_EDITOR || DEVELOPMENT_BUILD)
-            return; // nunca en la APK de verdad
+            return null; // nunca en la APK de verdad
 #else
             var args = Environment.GetCommandLineArgs();
             int i = Array.IndexOf(args, "-captura");
-            if (i < 0 || i + 1 >= args.Length) return;
+            return i < 0 || i + 1 >= args.Length ? null : args[i + 1];
+#endif
+        }
+
+        /// <summary>True si se ha lanzado con "-captura &lt;carpeta&gt;" (el Arranque usa entonces la ubicación falsa).</summary>
+        public static bool SePide() => CarpetaPedida() != null;
+
+        /// <summary>Posición en la Plaza del Cabildo con el móvil mirando al este: la captura no pide permisos ni usa el GPS.</summary>
+        public static IUbicacion UbicacionFalsa() => new UbicacionCaptura();
+
+        /// <summary>Ubicación fija para la captura: Activa desde el principio; Iniciar y Detener no hacen nada.</summary>
+        class UbicacionCaptura : IUbicacion
+        {
+            public EstadoUbicacion Estado => EstadoUbicacion.Activa;
+            public Coordenada? Posicion => PantallaMapa.VistaInicial;
+            public float? Rumbo => 90f;
+            public event Action Cambiado { add { } remove { } }
+            public void PedirPermiso() { }
+            public void Iniciar() { }
+            public void Detener() { }
+        }
+
+        public static void SiSePide(GameObject anfitrion, ServicioTema tema, ServicioFiltro filtro, IPreferencias preferencias, MapaVectorial mapa, PantallaMapa pantalla)
+        {
+            var carpetaPedida = CarpetaPedida();
+            if (carpetaPedida == null) return;
             var c = anfitrion.AddComponent<CapturaPruebas>();
-            c.carpeta = args[i + 1];
+            c.carpeta = carpetaPedida;
             c.tema = tema;
             c.filtro = filtro;
             c.preferencias = preferencias;
             c.mapa = mapa;
             c.pantalla = pantalla;
-#endif
         }
 
         IEnumerator Start()
@@ -49,6 +74,7 @@ namespace PriceMap.Arranque
             var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
             yield return new WaitForSeconds(8f); // teselas descargadas y construidas
             Diagnostico();
+            Ubicacion();
             var pildora = pantalla != null ? pantalla.Pildora : null;
             Debug.Log($"PriceMap: filtro al arrancar {filtro.Actual}; píldora \"{pildora?.Texto.text ?? "-"}\"; " +
                       $"marcadores visibles {Visibles()}");
@@ -276,6 +302,27 @@ namespace PriceMap.Arranque
                 if (malLeidos == 1) ejemplo = $"\"{v.Punto.Nombre}\" ({v.Categoria}) se esperaba \"{esperado}\" con la categoría \"{categoria}\"";
             }
             if (malLeidos > 0) Debug.LogError($"PriceMap: {malLeidos} puntos no se leen como \"nombre, categoría\" o solo la categoría; primero: {ejemplo}");
+        }
+
+        /// <summary>
+        /// Historia 1.7: el botón de ubicación está en la pila derecha, debajo del de tema; con la ubicación falsa
+        /// (Plaza del Cabildo, rumbo 90°) se ve el círculo con el cono y no sale la explicación del permiso.
+        /// </summary>
+        void Ubicacion()
+        {
+            var boton = pantalla != null ? pantalla.BotonUbicacion : null;
+            var pila = boton?.parent?.parent;
+            var tema = pantalla != null ? pantalla.BotonTema : null;
+            bool enPila = pila != null && pila.name == "pila-derecha";
+            bool debajo = enPila && tema != null && boton.worldBound.yMin >= tema.worldBound.yMax;
+            var marcador = pantalla != null ? pantalla.MarcadorPosicion : null;
+            Debug.Log($"PriceMap: botón de ubicación {(boton != null ? boton.worldBound.ToString() : "-")} en la pila derecha {enPila}, debajo del de tema {debajo}; " +
+                      $"círculo visible {marcador?.Visible ?? false}, cono {marcador?.ConoVisible ?? false} a {marcador?.AnguloCono ?? 0f:F1}° (giro del mapa {mapa.Giro:F1}°); " +
+                      $"explicación abierta {pantalla?.ExplicacionAbierta ?? false}");
+            if (!enPila) Debug.LogError("PriceMap: el botón de ubicación no está en la pila derecha.");
+            else if (!debajo) Debug.LogError("PriceMap: el botón de ubicación no está debajo del de tema.");
+            if (marcador == null || !marcador.Visible || !marcador.ConoVisible) Debug.LogError("PriceMap: no se ve el círculo de la posición con su cono.");
+            if (pantalla != null && pantalla.ExplicacionAbierta) Debug.LogError("PriceMap: con la ubicación falsa no debería salir la explicación del permiso.");
         }
 
         int Visibles()

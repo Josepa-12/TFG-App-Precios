@@ -59,3 +59,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-lugares-reales-de-sanlucar-con-su-logo-en-el-mapa.md`
   summary: Ignorar en git `unity/PriceMap/Assets/AddressableAssetsData/link.xml`, que cada build regenera.
   evidence: Se borró en `58e4bbb` y volvió a aparecer tras la build de PC de la verificación de la 1.4 (parte 1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ver-mi-posicion-en-el-mapa.md`
+  summary: Historia 1.7 (parte 2). El segundo toque del botón de ubicación, ya centrado, orienta el mapa al norte (`IMapa.OrientarNorte()`, giro 0); si el usuario mueve el mapa, el siguiente toque vuelve a centrar. TalkBack lee el estado del botón ("Centrar en mi posición", "Orientar al norte", "Buscando tu posición", "Ubicación desactivada"). Con el permiso denegado, al tocar el botón sale el aviso "La ubicación está desactivada. Puedes activarla en Ajustes > Aplicaciones > PriceMap > Permisos." con un botón "Abrir Ajustes" que lleva a los ajustes de la app. Captura de PC "posicion" con una ubicación simulada (círculo y cono).
+  evidence: El usuario pidió el 18/11/2026 partir la 1.7 (unos 2.600 tokens). La parte 1 deja la ubicación, el permiso con su explicación, el marcador y el centrado.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ver-mi-posicion-en-el-mapa.md`
+  summary: En la parte 2 de la 1.7, distinguir "ubicación del móvil apagada" (permiso concedido, pero `Input.location.isEnabledByUser` es false o el estado es `Failed`) de "buscando", para que el botón y TalkBack no digan "Buscando tu posición" sin fin y se indique que hay que activar la ubicación.
+  evidence: Revisión de la 1.7 (parte 1), hallazgo 3 (medium). `UbicacionUnity.Update` solo actúa con `LocationServiceStatus.Running`, así que el estado se queda en `Buscando`. En la parte 1 se ve igual que buscando (sin círculo y el botón no hace nada), pero el aviso de la parte 2 necesita saberlo.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ver-mi-posicion-en-el-mapa.md`
+  summary: Separar `UbicacionUnity` de `Input.location`, `Input.compass` y `Permission` detrás de una interfaz pequeña, para probar en EditMode sus transiciones (denegado, permiso retirado, orden de las respuestas, umbral de 1° del rumbo).
+  evidence: Revisión de la 1.7 (parte 1), hallazgos 10 (Blind Hunter y Verification Gap). El adaptador real no se ejecuta en ninguna prueba ni en la captura, que usa una ubicación falsa. Hoy sus errores solo aparecerían probando en un móvil.

@@ -39,5 +39,11 @@ namespace PriceMap.Aplicacion
 
         /// <summary>Distancia de la cámara a su punto de mira, en metros (infinito si no hay cámara).</summary>
         float DistanciaCamara { get; }
+
+        /// <summary>
+        /// Giro del mapa en grados: rumbo hacia el que mira la cámara (0 = norte arriba, en sentido horario).
+        /// Un rumbo real se ve en pantalla girado (rumbo − Giro).
+        /// </summary>
+        float Giro { get; }
     }
 }

@@ -8,10 +8,13 @@
         <ui:VisualElement name="capa-puntos" class="capa-puntos" picking-mode="Ignore" />
         <!-- Marcadores de los lugares (CapaMarcadores): debajo de los controles y sin capturar toques -->
         <ui:VisualElement name="capa-marcadores" class="capa-marcadores" picking-mode="Ignore" />
+        <!-- Posición del usuario (MarcadorPosicion): encima de los lugares y de los puntos, debajo de los controles -->
+        <ui:VisualElement name="capa-posicion" class="capa-posicion" picking-mode="Ignore" />
         <!-- Zona segura: sus márgenes los pone PantallaMapa con Screen.safeArea -->
         <ui:VisualElement name="zona-segura" class="zona-segura" picking-mode="Ignore">
             <ui:VisualElement name="pila-derecha" class="pila-derecha" picking-mode="Ignore">
                 <ui:VisualElement name="hueco-tema" picking-mode="Ignore" />
+                <ui:VisualElement name="hueco-ubicacion" class="hueco-ubicacion" picking-mode="Ignore" />
                 <ui:VisualElement name="zoom" class="zoom" picking-mode="Ignore" />
             </ui:VisualElement>
             <ui:Label name="atribucion" class="atribucion t-caption" picking-mode="Ignore" />
@@ -24,5 +27,7 @@
         <ui:VisualElement name="zona-segura-precios" class="zona-segura" picking-mode="Ignore">
             <ui:VisualElement name="hueco-precios" class="hueco-precios" picking-mode="Ignore" />
         </ui:VisualElement>
+        <!-- Explicación del permiso de ubicación (ExplicacionUbicacion): ventana modal por encima de todo -->
+        <ui:VisualElement name="hueco-explicacion" class="hueco-explicacion" picking-mode="Ignore" />
     </ui:VisualElement>
 </ui:UXML>

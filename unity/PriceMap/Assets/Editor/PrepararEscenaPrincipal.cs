@@ -11,14 +11,13 @@ namespace PriceMap.EditorTools
     /// <summary>
     /// Crea la escena principal de la app: el mapa vectorial de Sanlúcar (OpenStreetMap vía OpenFreeMap),
     /// la cámara 2.5D, la interfaz (UIDocument con PantallaMapa) y el Arranque, que conecta las piezas (AD-2).
-    /// Incluye la posición simulada (hasta la historia 1.7). Los lugares no van en la escena: los dibuja la
-    /// interfaz encima del mapa (CapaMarcadores, historia 1.4).
+    /// Ni los lugares ni la posición del usuario van en la escena: los dibuja la interfaz encima del mapa
+    /// (CapaMarcadores, historia 1.4; MarcadorPosicion, historia 1.7).
     /// Menú: PriceMap ▸ Preparar escena principal. Es la única escena del build.
     /// </summary>
     public static class PrepararEscenaPrincipal
     {
         public const string RutaEscena = "Assets/Scenes/Principal.unity";
-        const string CarpetaMateriales = "Assets/Materiales";
 
         [MenuItem("PriceMap/Preparar escena principal")]
         public static void Crear()
@@ -27,7 +26,6 @@ namespace PriceMap.EditorTools
             if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
             PrepararInterfaz.Asegurar();
             Directory.CreateDirectory("Assets/Scenes");
-            Directory.CreateDirectory(CarpetaMateriales);
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var luz = new GameObject("Luz direccional").AddComponent<Light>();
@@ -52,9 +50,6 @@ namespace PriceMap.EditorTools
             var mapa = new GameObject("Mapa vectorial (OpenStreetMap)").AddComponent<MapaVectorial>();
             Geo.LatitudOrigen = mapa.latitud; Geo.LongitudOrigen = mapa.longitud;
 
-            var raiz = new GameObject("Marcadores").transform;
-            CrearPosicion(raiz);
-
             // Interfaz (UI Toolkit) sobre el mapa
             var pantalla = new GameObject("Pantalla del mapa").AddComponent<PantallaMapa>();
             var documento = pantalla.GetComponent<UIDocument>();
@@ -72,40 +67,6 @@ namespace PriceMap.EditorTools
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(RutaEscena, true) };
             AssetDatabase.SaveAssets();
             Debug.Log("PriceMap: escena principal creada en " + RutaEscena + ". Pulsa Play para cargar el mapa.");
-        }
-
-        static Material Material(string nombre, Shader shader, Color color)
-        {
-            string ruta = $"{CarpetaMateriales}/{nombre}.mat";
-            var m = AssetDatabase.LoadAssetAtPath<Material>(ruta);
-            if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, ruta); }
-            m.shader = shader;
-            if (m.HasProperty("_Color")) m.color = color;
-            EditorUtility.SetDirty(m);
-            return m;
-        }
-
-        static Material Opaco(TipoMarcador t) => Material("Marcador " + t, Shader.Find("Standard"), Marcador.ColorDe(t));
-
-        static void CrearPosicion(Transform raiz)
-        {
-            var go = new GameObject("Tu posición (simulada)");
-            go.transform.SetParent(raiz);
-            var m = go.AddComponent<Marcador>();
-            m.nombre = "Tu posición"; m.tipo = TipoMarcador.Posicion; m.latitud = 36.7779; m.longitud = -6.3528;
-            Pieza(go.transform, PrimitiveType.Cylinder, new Vector3(0, 0.6f, 0), new Vector3(26, 0.6f, 26), Material("Blanco", Shader.Find("Standard"), Color.white)).name = "Borde";
-            Pieza(go.transform, PrimitiveType.Cylinder, new Vector3(0, 1.2f, 0), new Vector3(18, 0.8f, 18), Opaco(TipoMarcador.Posicion)).name = "Punto";
-            m.Colocar();
-        }
-
-        static GameObject Pieza(Transform padre, PrimitiveType tipo, Vector3 pos, Vector3 escala, Material mat)
-        {
-            var p = GameObject.CreatePrimitive(tipo);
-            Object.DestroyImmediate(p.GetComponent<Collider>());
-            p.transform.SetParent(padre, false);
-            p.transform.localPosition = pos; p.transform.localScale = escala;
-            p.GetComponent<Renderer>().sharedMaterial = mat;
-            return p;
         }
 
         /// <summary>

@@ -233,6 +233,12 @@ namespace PriceMap.Vectorial
             get { var c = Camara(); return c != null ? c.distancia : float.PositiveInfinity; }
         }
 
+        /// <summary>Giro de la cámara en grados (0 = norte arriba, sentido horario); 0 si aún no hay cámara.</summary>
+        public float Giro
+        {
+            get { var c = Camara(); return c != null ? c.giro : 0f; }
+        }
+
         void RecomponerPuntos()
         {
             puntosInteres.Clear();

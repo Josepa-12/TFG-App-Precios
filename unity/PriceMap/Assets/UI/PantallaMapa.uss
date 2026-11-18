@@ -24,6 +24,11 @@
     flex-direction: column;
 }
 
+/* Botón de ubicación, debajo del de tema */
+.hueco-ubicacion {
+    margin-top: var(--espacio-3);
+}
+
 .zoom {
     margin-top: var(--espacio-3);
     flex-direction: column;
@@ -302,6 +307,132 @@
 .marcador--sin-precio .marcador__punta {
     width: 10px;
     height: 6px;
+}
+
+/* Posición del usuario (prototipo: styles.css · .me). .marcador-posicion mide 0×0 y está justo en la
+   coordenada (MarcadorPosicion lo mueve con translate); el cono y el círculo van centrados en ella.
+   Nada captura toques. */
+.capa-posicion {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.marcador-posicion {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+}
+
+/* Cono translúcido (sector dibujado con Painter2D hacia arriba; lo gira style.rotate alrededor de su centro) */
+.marcador-posicion__cono {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--posicion-cono);
+    height: var(--posicion-cono);
+    translate: -50% -50%;
+    color: var(--color-posicion-cono);
+}
+
+.marcador-posicion__punto {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--posicion-punto);
+    height: var(--posicion-punto);
+    translate: -50% -50%;
+    border-radius: var(--radio-pill);
+    border-width: 3px;
+    border-color: var(--color-posicion-borde);
+    background-color: var(--color-posicion);
+}
+
+/* Explicación del permiso de ubicación: velo a pantalla completa y tarjeta centrada */
+.hueco-explicacion {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.explicacion-ubicacion {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    padding: var(--espacio-5);
+    background-color: var(--color-velo-modal);
+}
+
+.explicacion-ubicacion__tarjeta {
+    width: 100%;
+    max-width: var(--modal-ancho-max);
+    padding: var(--espacio-5);
+    border-radius: var(--radio-lg);
+    background-color: var(--color-surface);
+    border-width: 1px;
+    border-color: var(--color-border);
+}
+
+.explicacion-ubicacion__texto {
+    margin: 0 0 var(--espacio-5) 0;
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}
+
+.explicacion-ubicacion__botones {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.explicacion-ubicacion__boton {
+    min-height: var(--zona-tactil-min);
+    min-width: var(--zona-tactil-min);
+    margin: var(--espacio-1) 0 0 var(--espacio-2);
+    padding: var(--espacio-2) var(--espacio-4);
+    border-radius: var(--radio-pill);
+    border-width: 1px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.explicacion-ubicacion__boton--secundario,
+.explicacion-ubicacion__boton--secundario:hover {
+    background-color: var(--color-surface);
+    border-color: var(--color-control-edge);
+    color: var(--color-text);
+}
+
+.explicacion-ubicacion__boton--principal,
+.explicacion-ubicacion__boton--principal:hover {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-ink);
+}
+
+.explicacion-ubicacion__boton--secundario:active {
+    background-color: var(--color-surface-2);
+}
+
+.explicacion-ubicacion__boton:focus {
+    border-width: 2px;
+    border-color: var(--color-focus);
+}
+
+/* Sobre el acento, el foco no se vería con su mismo color */
+.explicacion-ubicacion__boton--principal:focus {
+    border-color: var(--color-text);
 }
 
 /* Puntos de interés de OpenStreetMap (prototipo: lugares.js · addPoiLayer). Cada .poi mide 0×0 y está

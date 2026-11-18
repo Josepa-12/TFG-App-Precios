@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace PriceMap.UI
 {
-    public enum Icono { Sol, Luna, Mas, Menos }
+    public enum Icono { Sol, Luna, Mas, Menos, Diana }
 
     /// <summary>
     /// Botón redondo de 48 dp con fondo de cristal (DESIGN.md · round-button) y un icono dibujado
@@ -51,7 +51,23 @@ namespace PriceMap.UI
                 case Icono.Luna: Luna(p, c); break;
                 case Icono.Mas: Linea(p, c + new Vector2(-7, 0), c + new Vector2(7, 0)); Linea(p, c + new Vector2(0, -7), c + new Vector2(0, 7)); break;
                 case Icono.Menos: Linea(p, c + new Vector2(-7, 0), c + new Vector2(7, 0)); break;
+                case Icono.Diana: Diana(p, c); break;
             }
+        }
+
+        // Diana de ubicación: aro, punto central y cuatro marcas hacia los puntos cardinales
+        static void Diana(Painter2D p, Vector2 c)
+        {
+            p.BeginPath();
+            p.Arc(c, 6.5f, 0f, 360f);
+            p.Stroke();
+            p.BeginPath();
+            p.Arc(c, 2.5f, 0f, 360f);
+            p.Fill();
+            Linea(p, c + new Vector2(0, -6.5f), c + new Vector2(0, -10f));
+            Linea(p, c + new Vector2(0, 6.5f), c + new Vector2(0, 10f));
+            Linea(p, c + new Vector2(-6.5f, 0), c + new Vector2(-10f, 0));
+            Linea(p, c + new Vector2(6.5f, 0), c + new Vector2(10f, 0));
         }
 
         static void Linea(Painter2D p, Vector2 a, Vector2 b)

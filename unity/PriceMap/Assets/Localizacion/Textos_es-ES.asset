@@ -187,6 +187,23 @@ MonoBehaviour:
     m_Localized: lugar de culto
     m_Metadata:
       m_Items: []
+  - m_Id: 365829618130944
+    m_Localized: "Centrar en mi posici\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 365829647491072
+    m_Localized: "PriceMap usa tu ubicaci\xF3n solo mientras tienes la app abierta,
+      para mostrarte d\xF3nde est\xE1s en el mapa. No la guarda ni la comparte."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 365829647491073
+    m_Localized: Permitir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 365829647491074
+    m_Localized: Ahora no
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

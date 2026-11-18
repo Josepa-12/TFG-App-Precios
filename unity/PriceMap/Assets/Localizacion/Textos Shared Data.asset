@@ -183,6 +183,22 @@ MonoBehaviour:
     m_Key: poi.categoria.culto
     m_Metadata:
       m_Items: []
+  - m_Id: 365829618130944
+    m_Key: ubicacion.centrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 365829647491072
+    m_Key: ubicacion.explicacion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 365829647491073
+    m_Key: ubicacion.permitir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 365829647491074
+    m_Key: ubicacion.ahorano
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

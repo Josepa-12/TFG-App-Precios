@@ -35,6 +35,13 @@
     --color-pin-hosteleria: #D6740F; /* más oscuro que --color-tpl-hosteleria: logo blanco ≥ 3:1 */
     --color-pin-ocio: #1F9D6B;
     --color-pin-borde: #FFFFFF;
+    /* Posición del usuario (historia 1.7): círculo #2F5BEA con borde blanco y cono translúcido del mismo
+       azul; igual en los dos temas, como los marcadores */
+    --color-posicion: #2F5BEA;
+    --color-posicion-borde: #FFFFFF;
+    --color-posicion-cono: rgba(47, 91, 234, 0.28);
+    /* Velo detrás de una ventana modal (explicación del permiso de ubicación) */
+    --color-velo-modal: rgba(15, 20, 36, 0.45);
     /* Puntos de interés de OpenStreetMap (prototipo/lugares.js · POI_CATS): el círculo es igual en los
        dos temas; el nombre (-texto) va oscurecido un 30 % en el claro y aclarado un 35 % en el oscuro
        (shade del prototipo), con un halo de --color-bg; si así no llega a 4,5:1 sobre el fondo del
@@ -112,6 +119,9 @@
     --poi-icono: 24px;
     --poi-glifo: 13px;
     --poi-nombre-ancho: 96px; /* 8 em de 12 sp, como text-max-width del prototipo */
+    --posicion-punto: 18px;
+    --posicion-cono: 80px;
+    --modal-ancho-max: 360px;
 
     -unity-font: url("../Fuentes/NunitoSans-Regular.ttf");
     color: var(--color-text);

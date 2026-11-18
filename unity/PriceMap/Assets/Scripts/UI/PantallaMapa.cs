@@ -22,10 +22,13 @@ namespace PriceMap.UI
         IMapa mapa;
         ServicioTema tema;
         ServicioFiltro filtro;
+        ServicioUbicacion ubicacion;
         VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo;
         PildoraPrecios pildora;
         MenuPrecios menu;
-        BotonRedondo botonTema, botonAcercar, botonAlejar;
+        BotonRedondo botonTema, botonUbicacion, botonAcercar, botonAlejar;
+        MarcadorPosicion marcadorPosicion;
+        ExplicacionUbicacion explicacion;
         Label atribucion;
         AccesibilidadPantalla accesibilidad;
         CapaMarcadores capa;
@@ -38,21 +41,24 @@ namespace PriceMap.UI
         /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
         /// <param name="filtro">Filtro "Precios"; sin él no hay píldora y se ven todos los lugares.</param>
-        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro)
+        /// <param name="ubicacion">Posición del usuario; sin ella no hay botón de ubicación ni círculo.</param>
+        public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
+            ServicioUbicacion ubicacion = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
-            ServicioFiltro filtro = null)
+            ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null)
         {
             this.mapa = mapa;
             this.tema = tema;
             this.filtro = filtro;
+            this.ubicacion = ubicacion;
             this.mapa.Centrar(VistaInicial);
 
             raiz = raizDocumento?.Q("raiz");
@@ -66,6 +72,12 @@ namespace PriceMap.UI
 
             botonTema = new BotonRedondo(Icono.Luna, () => this.tema.Alternar()) { name = "boton-tema" };
             raiz.Q("hueco-tema").Add(botonTema);
+            var huecoUbicacion = raiz.Q("hueco-ubicacion");
+            if (this.ubicacion != null && huecoUbicacion != null)
+            {
+                botonUbicacion = new BotonRedondo(Icono.Diana, TocarUbicacion) { name = "boton-ubicacion" };
+                huecoUbicacion.Add(botonUbicacion);
+            }
             botonAcercar = new BotonRedondo(Icono.Mas, () => this.mapa.Acercar()) { name = "boton-acercar" };
             botonAlejar = new BotonRedondo(Icono.Menos, () => this.mapa.Alejar()) { name = "boton-alejar" };
             zoom.Add(botonAcercar);
@@ -74,6 +86,8 @@ namespace PriceMap.UI
             accesibilidad = new AccesibilidadPantalla(raiz);
             if (this.filtro != null) CrearFiltro(); // la píldora va arriba a la izquierda: primera en TalkBack
             accesibilidad.Boton(botonTema, () => Textos.T(ClavesTexto.TemaCambiar), () => this.tema.Alternar(), ValorTema);
+            if (botonUbicacion != null)
+                accesibilidad.Boton(botonUbicacion, () => Textos.T(ClavesTexto.UbicacionCentrar), TocarUbicacion);
             accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), () => this.mapa.Acercar(), visible: () => AccesibilidadPantalla.LectorActivo);
             accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), () => this.mapa.Alejar(), visible: () => AccesibilidadPantalla.LectorActivo);
 
@@ -97,6 +111,9 @@ namespace PriceMap.UI
                 accesibilidad.Marcador(marcador.Cuerpo, () => marcador.Anuncio, () => marcador.Visible, () => marcador.Posicion);
             }
 
+            // Posición del usuario, encima de lugares y puntos, y la explicación del permiso (modal)
+            if (this.ubicacion != null) CrearUbicacion();
+
             if (this.filtro != null)
             {
                 this.filtro.Cambiado += AlCambiarFiltro;
@@ -110,6 +127,75 @@ namespace PriceMap.UI
 
             AlCambiarLector(AccesibilidadPantalla.LectorActivo);
             // El tema inicial llega con ServicioTema.Iniciar (lo llama el Arranque justo después)
+
+            // Primera apertura sin permiso: la explicación sale antes de pedirlo, una sola vez
+            if (this.ubicacion != null && this.ubicacion.DebeExplicarAlAbrir) AbrirExplicacion();
+        }
+
+        /// <summary>Círculo de la posición y ventana de la explicación del permiso, con su recorrido de TalkBack.</summary>
+        void CrearUbicacion()
+        {
+            var capaPosicion = raiz.Q("capa-posicion");
+            if (capaPosicion != null)
+            {
+                marcadorPosicion = new MarcadorPosicion();
+                capaPosicion.Add(marcadorPosicion);
+            }
+
+            explicacion = new ExplicacionUbicacion(PermitirUbicacion, AhoraNoUbicacion);
+            (raiz.Q("hueco-explicacion") ?? raiz).Add(explicacion);
+            // Con la fuente grande: la ventana se dispone al abrirla, entonces se le aplica la escala
+            explicacion.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            // TalkBack: con la ventana abierta el recorrido es modal (texto, "Ahora no" y "Permitir")
+            accesibilidad.Texto(explicacion.Texto, () => explicacion.Texto.text, () => ExplicacionAbierta, enModal: true);
+            accesibilidad.Boton(explicacion.AhoraNo, () => explicacion.AhoraNo.text, AhoraNoUbicacion, visible: () => ExplicacionAbierta, enModal: true);
+            accesibilidad.Boton(explicacion.Permitir, () => explicacion.Permitir.text, PermitirUbicacion, visible: () => ExplicacionAbierta, enModal: true);
+        }
+
+        /// <summary>True con la explicación del permiso de ubicación a la vista.</summary>
+        public bool ExplicacionAbierta => explicacion != null && explicacion.Abierta;
+
+        /// <summary>
+        /// Lo que hace el botón de ubicación: sin permiso vuelve a salir la explicación; con posición, el mapa se
+        /// centra en el usuario; buscando o denegado, nada (el aviso de denegado es de la parte 2).
+        /// </summary>
+        public void TocarUbicacion()
+        {
+            if (ubicacion == null || ExplicacionAbierta) return;
+            switch (ubicacion.AlTocarBoton())
+            {
+                case AccionUbicacion.Explicar: AbrirExplicacion(); break;
+                case AccionUbicacion.Centrar: mapa.Centrar(ubicacion.Posicion.Value); break;
+            }
+        }
+
+        /// <summary>Muestra la explicación (modal) y guarda que ya salió.</summary>
+        void AbrirExplicacion()
+        {
+            if (explicacion == null || explicacion.Abierta) return;
+            if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            explicacion.Mostrar(true);
+            ubicacion.MarcarExplicacionMostrada();
+            accesibilidad.Modal = true; // reconstruye: solo el texto y los dos botones
+            accesibilidad.PedirFoco(explicacion.Texto);
+        }
+
+        /// <summary>"Permitir": cierra la explicación y lanza el permiso de Android.</summary>
+        public void PermitirUbicacion()
+        {
+            CerrarExplicacion();
+            ubicacion?.Permitir();
+        }
+
+        /// <summary>"Ahora no" (o el botón atrás): cierra la explicación sin pedir el permiso.</summary>
+        public void AhoraNoUbicacion() => CerrarExplicacion();
+
+        void CerrarExplicacion()
+        {
+            if (!ExplicacionAbierta) return;
+            explicacion.Mostrar(false);
+            accesibilidad.Modal = false; // reconstruye: vuelven los botones y los marcadores
+            if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
         }
 
         /// <summary>Píldora "Precios", su menú y el velo que lo cierra al tocar fuera (FR-2, UX-DR6).</summary>
@@ -133,7 +219,9 @@ namespace PriceMap.UI
 
             // TalkBack: la píldora es un botón con la opción actual como valor; con el menú abierto el recorrido
             // es modal (píldora, que lo cierra, y las 5 opciones), igual que el velo a la vista
-            accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro, enModal: true);
+            // (con la explicación de la ubicación abierta, la píldora sale del recorrido modal)
+            accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro,
+                visible: () => !ExplicacionAbierta, enModal: true);
             foreach (var o in menu.Opciones)
             {
                 var opcion = o;
@@ -211,12 +299,13 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Botón atrás de Android (KeyCode.Escape): con el menú abierto lo cierra sin cambiar el filtro.
-        /// Con el menú cerrado no hace nada (la app no sale: Input.backButtonLeavesApp sigue en false).
-        /// Devuelve true si lo ha gestionado.
+        /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con el
+        /// menú abierto lo cierra sin cambiar el filtro. Si no, no hace nada (la app no sale:
+        /// Input.backButtonLeavesApp sigue en false). Devuelve true si lo ha gestionado.
         /// </summary>
         public bool Atras()
         {
+            if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (!MenuAbierto) return false;
             ConsumirNavegacion();
             Cerrar(enfocar: true, porNavegacion: true); // atrás es una tecla: el foco de teclado vuelve a la píldora
@@ -248,11 +337,11 @@ namespace PriceMap.UI
         /// <summary>
         /// True si el punto de pantalla (origen abajo a la izquierda, como Input) cae sobre un control:
         /// así el mapa no se mueve al pulsar un botón. Con el menú "Precios" abierto, todo el mapa
-        /// cuenta como tapado: ese toque solo cierra el menú.
+        /// cuenta como tapado: ese toque solo cierra el menú. Con la explicación de la ubicación, también.
         /// </summary>
         public bool TapaPunto(Vector2 pantalla)
         {
-            if (MenuAbierto) return true;
+            if (MenuAbierto || ExplicacionAbierta) return true;
             if (raiz?.panel == null) return false;
             var p = RuntimePanelUtils.ScreenToPanel(raiz.panel, new Vector2(pantalla.x, Screen.height - pantalla.y));
             return EsControl(raiz, raiz.panel.Pick(p));
@@ -265,6 +354,10 @@ namespace PriceMap.UI
         /// <summary>Para las pruebas: tema que muestra la interfaz y botón de tema.</summary>
         public bool InterfazOscura => raiz != null && raiz.ClassListContains("tema-oscuro");
         public BotonRedondo BotonTema => botonTema;
+        /// <summary>Botón de ubicación, círculo de la posición y explicación del permiso; null sin interfaz o sin ubicación.</summary>
+        public BotonRedondo BotonUbicacion => botonUbicacion;
+        public MarcadorPosicion MarcadorPosicion => marcadorPosicion;
+        public ExplicacionUbicacion Explicacion => explicacion;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;
@@ -331,7 +424,11 @@ namespace PriceMap.UI
         void RepintarIconos()
         {
             // El color nuevo del tema se resuelve en el siguiente pase de estilos
-            raiz.schedule.Execute(() => { botonTema.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint(); capa?.Repintar(); pildora?.Repintar(); menu?.Repintar(); });
+            raiz.schedule.Execute(() =>
+            {
+                botonTema.MarkDirtyRepaint(); botonUbicacion?.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint();
+                capa?.Repintar(); pildora?.Repintar(); menu?.Repintar(); marcadorPosicion?.Repintar();
+            });
         }
 
         /// <summary>Respeta las zonas seguras (barra de estado y de gestos) y aplica la escala de fuente.</summary>
@@ -379,6 +476,8 @@ namespace PriceMap.UI
             // Primero los marcadores: los puntos que repiten un lugar visible ahora se ocultan (FR-4)
             if (capa != null && escala > 0f) capa.Actualizar(escala);
             if (capaPuntos != null && escala > 0f) capaPuntos.Actualizar(escala, LugaresVisibles());
+            // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
+            if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, ubicacion.Posicion, ubicacion.Rumbo, escala);
             // Con TalkBack: rehace los nodos de marcadores y puntos si cambian los visibles o su orden
             // (después de las dos capas, para que los puntos ocultos en este fotograma no tengan nodo)
             accesibilidad?.ActualizarMarcadores();

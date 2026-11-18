@@ -70,6 +70,10 @@ namespace PriceMap.EditorTools
             [ClavesTexto.PoiEducacion] = "centro educativo",
             [ClavesTexto.PoiPublico] = "servicio público",
             [ClavesTexto.PoiCulto] = "lugar de culto",
+            [ClavesTexto.UbicacionCentrar] = "Centrar en mi posición",
+            [ClavesTexto.UbicacionExplicacion] = "PriceMap usa tu ubicación solo mientras tienes la app abierta, para mostrarte dónde estás en el mapa. No la guarda ni la comparte.",
+            [ClavesTexto.UbicacionPermitir] = "Permitir",
+            [ClavesTexto.UbicacionAhoraNo] = "Ahora no",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]
