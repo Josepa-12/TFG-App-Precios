@@ -77,7 +77,7 @@ namespace PriceMap.UI
         {
             if (Nombre.resolvedStyle.fontSize <= 0f) return;
             Nombre.UnregisterCallback<GeometryChangedEvent>(PrimeraDisposicion);
-            EscalaFuente.Aplicar(this, AccessibilitySettings.fontScale);
+            EscalaFuente.Aplicar(this, EscalaFuente.Sistema);
             escalaAplicada = true;
         }
 
@@ -172,7 +172,7 @@ namespace PriceMap.UI
             if (!(letra > 0f) || float.IsInfinity(letra)) letra = LetraPorDefectoDp;
             if (!escalaAplicada)
             {
-                float escala = AccessibilitySettings.fontScale;
+                float escala = EscalaFuente.Sistema;
                 if (escala > 0f && !float.IsNaN(escala) && !float.IsInfinity(escala)) letra *= escala;
             }
             float ancho = Nombre.text.Length * letra * 0.65f;

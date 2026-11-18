@@ -100,3 +100,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-8c-talkback-de-la-ficha.md`
   summary: Probar en un móvil con TalkBack la ficha. Tocar dos veces un marcador tiene que abrirla y deslizar tiene que recorrer solo la ficha y desplazarla hasta el nodo con el foco. Hay que ver si TalkBack llega a los nodos que quedan fuera de la parte visible o dibuja su marco sobre el mapa, y comprobar que atrás devuelve el foco al marcador. Sin verificar; si falla, sería medium.
   evidence: Revisión de la 1.8 (parte 3), hallazgo 6 (Blind Hunter). `frameGetter` da el marco sin recortar al `ScrollView`; en EditMode no hay disposición ni TalkBack real.
+- source_spec: `_bmad-output/implementation-artifacts/spec-mapa-sin-solapes-con-precios.md`
+  summary: Dos lugares reales comparten coordenada. Con la regla de solapes, uno queda oculto a cualquier zoom y no se puede tocar ni lo anuncia TalkBack. Hay que corregir la coordenada en los datos o decidir cómo mostrar dos lugares en el mismo punto (agrupar o desplazar).
+  evidence: Revisión del arreglo de solapes, hallazgo 8. `PruebasFiltro` espera ver 123 de 124 lugares por esa pareja.
+- source_spec: `_bmad-output/implementation-artifacts/spec-mapa-sin-solapes-con-precios.md`
+  summary: Probar en EditMode, con un panel dispuesto, las zonas reales de los controles (`ZonasControles`) y que las filas de la ficha no se encogen. Hoy solo lo comprueba la captura de PC.
+  evidence: Revisión del arreglo de solapes, hallazgo 9 (Verification Gap). Quitar `Ocupar(pildora)` o los `flex-shrink: 0` no rompe ninguna prueba EditMode.

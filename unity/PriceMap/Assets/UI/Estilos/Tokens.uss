@@ -22,9 +22,11 @@
     --color-control-edge: #6E7A99;
     --color-focus: #2F5BEA;
     --color-ahora-texto: #2F5BEA; /* chip "Ahora" de la variante vigente sobre surface-2 */
-    /* Cristal de los controles flotantes: 0,76 y no 0,74 como el prototipo, para que el icono en
-       --color-accent-text llegue a 4,5:1 sobre la fachada de los edificios (con 0,74 da 4,498:1) */
-    --color-glass: rgba(255, 255, 255, 0.76);
+    /* Cristal de los controles flotantes: 0,90 (el prototipo usa 0,74 con desenfoque). Unity no difumina
+       lo de detrás, así que los nombres de calle del mapa, que no se ocultan, apenas se leen debajo.
+       Mínimo medido sobre los colores del mapa (PruebasContraste): icono --color-accent-text 5,11:1, texto 13,7:1,
+       muted 6,56:1, borde del control 3,96:1 (con 0,76 el icono daba 4,57:1) */
+    --color-glass: rgba(255, 255, 255, 0.90);
     --color-glass-edge: rgba(255, 255, 255, 0.9);   /* borde casi invisible del cristal (prototipo --glass-edge) */
     --color-accent-text: #2F5BEA;                    /* iconos de la columna de controles (prototipo --accent-text) */
     --color-sombra: rgba(19, 35, 91, 0.16);          /* sombra suave de los controles (prototipo --shadow) */
@@ -168,9 +170,11 @@
     --color-control-edge: #7F8BAA;
     --color-focus: #8FB0FF;
     --color-ahora-texto: #8FB0FF; /* el acento oscuro no llega a 4,5:1 sobre surface-2 */
-    --color-glass: rgba(26, 34, 56, 0.74);
+    /* 0,90 como en claro: sin desenfoque, lo de debajo apenas se lee. Mínimo sobre los colores del mapa: icono
+       --color-accent-text 7,16:1, texto 12,9:1, muted 6,29:1, borde del control 4,5:1 */
+    --color-glass: rgba(26, 34, 56, 0.90);
     --color-glass-edge: rgba(76, 125, 255, 0.28);
-    --color-accent-text: #8FB0FF;   /* el acento oscuro no llega a 4,5:1 sobre el cristal */
+    --color-accent-text: #8FB0FF;   /* el acento oscuro (#4C7DFF) no llega a 4,5:1 sobre el cristal al 0,90 (4,15:1) */
     --color-sombra: rgba(0, 0, 0, 0.45);
     --color-tpl-servicio: #4C7DFF;
     --color-tpl-hosteleria: #F59A3C;

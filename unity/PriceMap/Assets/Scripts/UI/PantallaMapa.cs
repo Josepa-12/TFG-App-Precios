@@ -23,7 +23,7 @@ namespace PriceMap.UI
         ServicioTema tema;
         ServicioFiltro filtro;
         ServicioUbicacion ubicacion;
-        VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo;
+        VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo, columnaControles;
         PildoraPrecios pildora;
         MenuPrecios menu;
         BotonRedondo botonTema, botonUbicacion, botonAcercar, botonAlejar;
@@ -73,6 +73,7 @@ namespace PriceMap.UI
             zonaSegura = raiz.Q("zona-segura");
             zonaSeguraPrecios = raiz.Q("zona-segura-precios");
             zoom = raiz.Q("zoom");
+            columnaControles = raiz.Q("columna-controles");
             atribucion = raiz.Q<Label>("atribucion");
             atribucion.text = Textos.T(ClavesTexto.MapaAtribucion);
 
@@ -128,7 +129,7 @@ namespace PriceMap.UI
             ficha = new FichaLugar(CerrarFicha);
             (raiz.Q("hueco-ficha") ?? raiz).Add(ficha);
             // Con la fuente grande: la ficha se dispone al abrirla, entonces se le aplica la escala
-            ficha.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            ficha.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema));
             // Abierta sin medida (primer fotograma), el lugar se centró con el 72 %: al disponerse, con su borde real
             ficha.Hoja.RegisterCallback<GeometryChangedEvent>(_ => RecentrarFichaPendiente());
             this.mapa.Toque += AlTocarMapa;
@@ -179,7 +180,7 @@ namespace PriceMap.UI
             explicacion = new ExplicacionUbicacion(PermitirUbicacion, AhoraNoUbicacion);
             (raiz.Q("hueco-explicacion") ?? raiz).Add(explicacion);
             // Con la fuente grande: la ventana se dispone al abrirla, entonces se le aplica la escala
-            explicacion.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            explicacion.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema));
             // TalkBack: con la ventana abierta el recorrido es modal (texto, "Ahora no" y "Permitir")
             accesibilidad.Texto(explicacion.Texto, () => explicacion.Texto.text, () => ExplicacionAbierta, enModal: true);
             accesibilidad.Boton(explicacion.AhoraNo, () => explicacion.AhoraNo.text, AhoraNoUbicacion, visible: () => ExplicacionAbierta, enModal: true);
@@ -188,7 +189,7 @@ namespace PriceMap.UI
             // Aviso de ubicación desactivada (denegado o apagada): misma ventana, mismo hueco y mismo recorrido modal
             aviso = new AvisoUbicacion(AbrirAjustesUbicacion, CerrarAviso);
             (raiz.Q("hueco-explicacion") ?? raiz).Add(aviso);
-            aviso.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            aviso.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema));
             accesibilidad.Texto(aviso.Texto, () => aviso.Texto.text, () => AvisoAbierto, enModal: true);
             accesibilidad.Boton(aviso.Cerrar, () => aviso.Cerrar.text, CerrarAviso, visible: () => AvisoAbierto, enModal: true);
             accesibilidad.Boton(aviso.AbrirAjustes, () => aviso.AbrirAjustes.text, AbrirAjustesUbicacion, visible: () => AvisoAbierto, enModal: true);
@@ -348,6 +349,7 @@ namespace PriceMap.UI
 
             // TalkBack: la ficha es modal (solo sus nodos) y el foco va al título; al cerrarla vuelve a este marcador
             marcadorFicha = MarcadorDe(lugar);
+            if (capa != null) capa.Fijado = marcadorFicha; // su marcador no lo oculta ni la píldora ni otro que lo pise
             DeclararFichaEnTalkBack();
             if (accesibilidad.Modal) accesibilidad.Reconstruir(); // de una ficha a otra: los nodos de la nueva
             else accesibilidad.Modal = true;
@@ -432,6 +434,7 @@ namespace PriceMap.UI
             // TalkBack: fuera los nodos de la ficha, vuelve el mapa y el foco al marcador que la abrió, si se ve
             var marcador = marcadorFicha;
             marcadorFicha = null;
+            if (capa != null) capa.Fijado = null;
             accesibilidad.QuitarControles(ficha);
             accesibilidad.Modal = false;
             accesibilidad.PedirFoco(marcador != null && marcador.Visible ? marcador.Cuerpo : null);
@@ -454,7 +457,7 @@ namespace PriceMap.UI
             // Al soltar: el gesto empezó con el menú abierto, así que el mapa no lo ha recibido (TapaPunto)
             velo.AddManipulator(new Clickable(CerrarMenu));
             // Con la fuente grande: el menú se dispone al abrirlo, entonces se le aplica la escala
-            menu.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            menu.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema));
 
             // TalkBack: la píldora es un botón con la opción actual como valor; con el menú abierto el recorrido
             // es modal (píldora, que lo cierra, y las 5 opciones), igual que el velo a la vista
@@ -683,7 +686,7 @@ namespace PriceMap.UI
         /// <summary>Respeta las zonas seguras (barra de estado y de gestos) y aplica la escala de fuente.</summary>
         void AjustarDisposicion()
         {
-            EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale);
+            EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema);
 
             var segura = Screen.safeArea;
             float ancho = raiz.layout.width;
@@ -706,6 +709,34 @@ namespace PriceMap.UI
         }
 
         readonly List<Lugar> lugaresVisibles = new List<Lugar>();
+        readonly List<Rect> zonasOcupadas = new List<Rect>();
+
+        /// <summary>
+        /// Zonas (dp del panel) donde no se pinta ni marcador ni punto de interés: la píldora, el menú "Precios"
+        /// abierto y las columnas de botones. Sin medida (antes de la primera disposición) no cuentan.
+        /// Se reutiliza la lista; tras ActualizarCapas lleva además las zonas de los marcadores visibles.
+        /// </summary>
+        public IReadOnlyList<Rect> ZonasControles()
+        {
+            zonasOcupadas.Clear();
+            if (raiz == null) return zonasOcupadas;
+            Ocupar(pildora);
+            if (MenuAbierto) Ocupar(menu);
+            Ocupar(columnaControles); // tema y ubicación
+            if (zoom != null && zoom.ClassListContains("visible")) Ocupar(zoom);
+            return zonasOcupadas;
+        }
+
+        void Ocupar(VisualElement e)
+        {
+            if (e == null || e.panel == null || e.resolvedStyle.display == DisplayStyle.None) return;
+            var r = e.worldBound;
+            if (float.IsNaN(r.width) || float.IsNaN(r.height) || r.width <= 0f || r.height <= 0f) return;
+            zonasOcupadas.Add(r);
+        }
+
+        /// <summary>Para las pruebas y la captura: zonas ocupadas en la última actualización (controles y marcadores).</summary>
+        public IReadOnlyList<Rect> ZonasOcupadas => zonasOcupadas;
 
         /// <summary>Lugares cuyo marcador se ve ahora (tras CapaMarcadores.Actualizar); se reutiliza la lista.</summary>
         List<Lugar> LugaresVisibles()
@@ -724,9 +755,19 @@ namespace PriceMap.UI
         /// </summary>
         internal void ActualizarCapas(float escala)
         {
-            // Primero los marcadores: los puntos que repiten un lugar visible ahora se ocultan (FR-4)
-            if (capa != null && escala > 0f) capa.Actualizar(escala);
-            if (capaPuntos != null && escala > 0f) capaPuntos.Actualizar(escala, LugaresVisibles());
+            // Primero los marcadores (sin pisar los controles); después los puntos, que no pisan ni controles ni
+            // marcadores visibles y se ocultan si repiten un lugar visible (FR-4)
+            if (escala > 0f) ZonasControles();
+            if (capa != null && escala > 0f) capa.Actualizar(escala, zonasOcupadas);
+            if (capaPuntos != null && escala > 0f)
+            {
+                if (capa != null)
+                {
+                    var zonas = capa.ZonasVisibles; // con un bucle: AddRange sobre la interfaz asignaría memoria
+                    for (int i = 0; i < zonas.Count; i++) zonasOcupadas.Add(zonas[i]);
+                }
+                capaPuntos.Actualizar(escala, LugaresVisibles(), zonasOcupadas);
+            }
             // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
             if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, ubicacion.Posicion, ubicacion.Rumbo, escala);
             if (escala > 0f) ultimaEscala = escala;

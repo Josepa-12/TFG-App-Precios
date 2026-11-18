@@ -10,7 +10,8 @@ namespace PriceMap.UI
     /// <summary>
     /// Capa de UI Toolkit con un marcador por lugar, debajo de los botones. Cada fotograma (LateUpdate,
     /// con la cámara ya quieta) pide al mapa dónde cae cada lugar y mueve su marcador; oculta los que
-    /// están detrás de la cámara o fuera de la pantalla y pinta encima los más cercanos.
+    /// están detrás de la cámara o fuera de la pantalla, y de dos que se pisan deja solo uno (el que tiene precio
+    /// y, entre iguales, el más cercano).
     /// </summary>
     public class CapaMarcadores
     {
@@ -31,8 +32,8 @@ namespace PriceMap.UI
         public VisualElement Contenedor => contenedor;
 
         /// <summary>
-        /// Filtro "Precios": solo se ven los lugares de las plantillas que incluye (y además en vista).
-        /// Sin filtro (null), se ven todos.
+        /// Filtro "Precios": solo se ven los lugares de las plantillas que incluye (y además en vista), tengan o no
+        /// precio. Sin filtro (null), se ven todos.
         /// </summary>
         public FiltroPrecios? Filtro
         {
@@ -60,19 +61,26 @@ namespace PriceMap.UI
         }
 
         /// <summary>Recoloca los marcadores con el tamaño de la pantalla actual.</summary>
-        public bool Actualizar(float escalaDp) => Actualizar(escalaDp, Screen.width, Screen.height);
+        public bool Actualizar(float escalaDp, IReadOnlyList<Rect> ocupadas = null) =>
+            Actualizar(escalaDp, Screen.width, Screen.height, ocupadas);
 
         /// <summary>
-        /// Recoloca los marcadores. escalaDp convierte píxeles de pantalla en dp del panel.
+        /// Recoloca los marcadores. escalaDp convierte píxeles de pantalla en dp del panel. Solo se ven los
+        /// lugares de las plantillas del filtro. De los que caben en pantalla, en el orden de Prioridad (el de la
+        /// ficha abierta, los que tienen precio, el que ya se veía, el más cercano), se oculta el que pisa (ZonaDp) a
+        /// uno ya mostrado o a una de las zonas ocupadas (los controles, en dp del panel): nunca se ven dos que se
+        /// pisan. El fijado (Fijado) no se oculta por solapes.
         /// Devuelve true si ha cambiado el conjunto de marcadores visibles (para TalkBack).
         /// </summary>
-        public bool Actualizar(float escalaDp, float anchoPx, float altoPx)
+        public bool Actualizar(float escalaDp, float anchoPx, float altoPx, IReadOnlyList<Rect> ocupadas = null)
         {
             if (escalaDp <= 0f || float.IsNaN(escalaDp) || float.IsInfinity(escalaDp)) return false;
             float ancho = anchoPx * escalaDp, alto = altoPx * escalaDp;
             // Un cambio de filtro cuenta como cambio aunque no cambie ningún visible (TalkBack lo rehace)
             bool cambio = filtroCambiado;
             filtroCambiado = false;
+            OcultosPorSolape = 0;
+            candidatos.Clear();
             foreach (var m in marcadores)
             {
                 // Fuera del filtro no hace falta proyectarlo: se oculta igual
@@ -83,12 +91,82 @@ namespace PriceMap.UI
                            && dp.x >= -MargenDp && dp.x <= ancho + MargenDp
                            // El marcador cuelga hacia arriba de su punto: por encima del borde superior ya no asoma
                            && dp.y >= 0f && dp.y <= alto + MargenDp;
-                if (ver != m.Visible) { m.Mostrar(ver); cambio = true; }
-                if (ver) m.Colocar(dp, p.Profundidad);
+                if (!ver)
+                {
+                    if (m.Visible) { m.Mostrar(false); cambio = true; }
+                    continue;
+                }
+                m.Colocar(dp, p.Profundidad); // ZonaDp ya es la de este fotograma
+                candidatos.Add(m);
             }
+
+            // Solapes: por prioridad (Prioridad); uno que pisa a otro ya mostrado o un control se oculta. El de la ficha
+            // abierta va primero y no lo ocultan ni los controles
+            prioridad.Fijado = Fijado;
+            candidatos.Sort(prioridad);
+            zonasVisibles.Clear();
+            foreach (var m in candidatos)
+            {
+                var zona = m.ZonaDp;
+                bool pisa = m != Fijado && (Pisa(zona, zonasVisibles) || (ocupadas != null && Pisa(zona, ocupadas)));
+                if (pisa) OcultosPorSolape++;
+                else zonasVisibles.Add(zona);
+                if (m.Visible == pisa) { m.Mostrar(!pisa); cambio = true; }
+            }
+            candidatos.Clear();
             if (!EnOrden()) contenedor.Sort(Comparar);
             return cambio;
         }
+
+        /// <summary>True si la zona pisa alguna de las dadas (las vacías, sin medida, no cuentan).</summary>
+        internal static bool Pisa(Rect zona, IReadOnlyList<Rect> otras)
+        {
+            for (int i = 0; i < otras.Count; i++)
+            {
+                var o = otras[i];
+                if (!(o.width > 0f) || !(o.height > 0f)) continue;
+                if (zona.Overlaps(o)) return true;
+            }
+            return false;
+        }
+
+        readonly List<MarcadorLugar> candidatos = new List<MarcadorLugar>();
+        readonly List<Rect> zonasVisibles = new List<Rect>();
+        readonly Prioridad prioridad = new Prioridad(); // un solo comparador: ordenar no asigna memoria
+
+        /// <summary>
+        /// Marcador del lugar de la ficha abierta (lo pone PantallaMapa): nunca se oculta por solapes ni por controles
+        /// y gana a cualquier otro que lo pise. Null sin ficha.
+        /// </summary>
+        public MarcadorLugar Fijado { get; set; }
+
+        /// <summary>
+        /// Orden de los solapes: el fijado; después los que tienen precio; entre iguales, el que ya se veía en el
+        /// fotograma anterior (histéresis: al girar no se alternan dos que se pisan); después los más cercanos a la
+        /// cámara y, a igual distancia, por orden de llegada (estable entre fotogramas).
+        /// </summary>
+        sealed class Prioridad : IComparer<MarcadorLugar>
+        {
+            public MarcadorLugar Fijado;
+
+            public int Compare(MarcadorLugar a, MarcadorLugar b)
+            {
+                if (ReferenceEquals(a, b)) return 0;
+                if (a == Fijado) return -1;
+                if (b == Fijado) return 1;
+                if (a.TienePrecio != b.TienePrecio) return a.TienePrecio ? -1 : 1;
+                // Visible aún es el del fotograma anterior: las bajas y altas de este se aplican después de ordenar
+                if (a.Visible != b.Visible) return a.Visible ? -1 : 1;
+                int c = a.Profundidad.CompareTo(b.Profundidad);
+                return c != 0 ? c : a.Indice.CompareTo(b.Indice);
+            }
+        }
+
+        /// <summary>Zonas (dp del panel, ZonaDp) de los marcadores que se ven tras la última actualización.</summary>
+        public IReadOnlyList<Rect> ZonasVisibles => zonasVisibles;
+
+        /// <summary>Marcadores en pantalla ocultados en la última actualización por pisar a otro que gana o un control.</summary>
+        public int OcultosPorSolape { get; private set; }
 
         /// <summary>True si los visibles ya van del más lejano al más cercano (el último se pinta encima).</summary>
         bool EnOrden()

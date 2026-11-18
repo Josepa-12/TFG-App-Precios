@@ -25,17 +25,26 @@ namespace PriceMap.Tests.EditMode
         const float Escala = 0.5f;
         const float AnchoPx = 1080f, AltoPx = 1920f;
 
-        /// <summary>Proyecta todo al centro de la pantalla salvo las coordenadas que se digan.</summary>
+        /// <summary>
+        /// Reparte cada coordenada en su casilla de una rejilla de la pantalla (10 columnas de 50 dp y filas de 60 dp,
+        /// sin que se pisen dos marcadores), salvo las coordenadas que se digan o si se da un punto por defecto.
+        /// </summary>
         class MapaFalso : IMapa
         {
             public readonly Dictionary<Coordenada, PuntoPantalla> puntos = new Dictionary<Coordenada, PuntoPantalla>();
-            public PuntoPantalla porDefecto = new PuntoPantalla(500f, 900f, 300f);
+            public PuntoPantalla? porDefecto;
             public void Centrar(Coordenada destino) { }
             public void Centrar(Coordenada destino, PuntoPantalla enPantalla) { }
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }
-            public PuntoPantalla Proyectar(Coordenada punto) => puntos.TryGetValue(punto, out var p) ? p : porDefecto;
+            public PuntoPantalla Proyectar(Coordenada punto)
+            {
+                if (puntos.TryGetValue(punto, out var p)) return p;
+                if (porDefecto != null) return porDefecto.Value;
+                int i = puntos.Count;
+                return puntos[punto] = new PuntoPantalla((25f + (i % 10) * 50f) / Escala, (60f + (i / 10) * 60f) / Escala, 300f + i);
+            }
             public IReadOnlyList<PuntoInteres> PuntosInteres { get; } = new PuntoInteres[0];
             public event System.Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
@@ -107,6 +116,12 @@ namespace PriceMap.Tests.EditMode
         }
 
         static int Visibles(PantallaMapa p) => p.Capa.Marcadores.Count(m => m.Visible);
+        /// <summary>
+        /// Lugares de las plantillas del filtro, con o sin precio, que se ven en la rejilla del mapa falso: uno por
+        /// coordenada (dos lugares reales comparten coordenada, se pisan y solo se ve uno).
+        /// </summary>
+        static int DelFiltro(PantallaMapa p, FiltroPrecios f) =>
+            p.Capa.Marcadores.Where(m => ReglaFiltro.Incluye(f, m.Lugar.Plantilla)).Select(m => m.Lugar.Posicion).Distinct().Count();
         static IEnumerable<Plantilla> PlantillasVisibles(PantallaMapa p) => p.Capa.Marcadores.Where(m => m.Visible).Select(m => m.Lugar.Plantilla).Distinct();
 
         // ── Regla del Dominio ──
@@ -198,7 +213,10 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(p.Pildora.ClassListContains("pildora-precios--ninguno"));
             Assert.IsTrue(p.Pildora.Punto.ClassListContains("punto-precios--todos"), "Con Todos, el punto es del acento.");
             Assert.AreEqual(124, Lugares().Lugares.Count);
-            Assert.AreEqual(124, Visibles(p));
+            // Los 124, con o sin precio, salvo uno de los dos que comparten coordenada (se pisan)
+            Assert.AreEqual(123, DelFiltro(p, FiltroPrecios.Todos));
+            Assert.AreEqual(123, Visibles(p));
+            Assert.IsTrue(p.Capa.Marcadores.Any(m => m.Visible && !m.TienePrecio), "Los sin precio también se ven.");
         }
 
         [Test]
@@ -211,7 +229,8 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(p.MenuAbierto, "Se cierra al elegir.");
             Assert.AreEqual(Textos.T(ClavesTexto.PreciosOpcionHosteleria), p.Pildora.Texto.text);
             Assert.IsTrue(p.Pildora.Punto.ClassListContains("punto-precios--hosteleria"));
-            Assert.AreEqual(89, Visibles(p));
+            Assert.AreEqual(89, p.Capa.Marcadores.Count(m => m.Lugar.Plantilla == Plantilla.Hosteleria), "89 lugares de hostelería.");
+            Assert.AreEqual(DelFiltro(p, FiltroPrecios.Hosteleria), Visibles(p));
             CollectionAssert.AreEqual(new[] { Plantilla.Hosteleria }, PlantillasVisibles(p));
         }
 
@@ -224,7 +243,7 @@ namespace PriceMap.Tests.EditMode
             var (p, _, filtro, _) = Pantalla(prefs);
             Assert.AreEqual(FiltroPrecios.Ocio, filtro.Actual);
             Assert.AreEqual(Textos.T(ClavesTexto.PreciosOpcionOcio), p.Pildora.Texto.text);
-            Assert.AreEqual(Lugares().Lugares.Count(l => l.Plantilla == Plantilla.Ocio), Visibles(p));
+            Assert.AreEqual(DelFiltro(p, FiltroPrecios.Ocio), Visibles(p));
             CollectionAssert.AreEqual(new[] { Plantilla.Ocio }, PlantillasVisibles(p));
         }
 
@@ -714,7 +733,9 @@ namespace PriceMap.Tests.EditMode
             pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx);
             Assert.IsNull(pantalla.Pildora);
             Assert.IsNull(pantalla.Capa.Filtro);
-            Assert.AreEqual(124, Visibles(pantalla));
+            // Sin filtro se ven todos, también los sin precio; dos lugares comparten coordenada y se pisan: se ve uno
+            Assert.AreEqual(Lugares().Lugares.Select(l => l.Posicion).Distinct().Count(), Visibles(pantalla));
+            Assert.AreEqual(123, Visibles(pantalla));
         }
     }
 }

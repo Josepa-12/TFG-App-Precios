@@ -128,6 +128,28 @@ namespace PriceMap.Tests.EditMode
             StringAssert.Contains("--color-sombra: rgba(0, 0, 0, 0.45)", oscuro);
             StringAssert.Contains("--color-glass-edge: rgba(255, 255, 255, 0.9)", claro);
             StringAssert.Contains("--color-glass-edge: rgba(76, 125, 255, 0.28)", oscuro);
+            // Fila "Cristal": sin desenfoque en Unity, el cristal sube a 0,90 en los dos temas
+            StringAssert.Contains("--color-glass: rgba(255, 255, 255, 0.90)", claro);
+            StringAssert.Contains("--color-glass: rgba(26, 34, 56, 0.90)", oscuro);
+        }
+
+        /// <summary>
+        /// Fila "Bajo un control": la píldora y la columna de tema y ubicación cuentan como zonas ocupadas (sin
+        /// panel no tienen medida y no cuentan; con el menú cerrado, el menú no cuenta).
+        /// </summary>
+        [Test]
+        public void SinMedidaLosControlesNoOcupanNada()
+        {
+            var objeto = new GameObject("Pantalla de prueba");
+            try
+            {
+                var pantalla = objeto.AddComponent<PantallaMapa>();
+                var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
+                var prefs = new PreferenciasFalsas();
+                pantalla.Inicializar(new MapaFalso(), new ServicioTema(prefs, new SistemaClaro()), null, System.DateTime.UtcNow, arbol, new ServicioFiltro(prefs));
+                Assert.IsEmpty(pantalla.ZonasControles(), "Sin disposición (EditMode, sin panel) no hay rectángulos que contar.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(objeto); }
         }
 
         /// <summary>Captura de PC: el panel mide 412 dp de ancho, sea cual sea la ventana (escala con el ancho).</summary>

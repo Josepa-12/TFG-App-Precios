@@ -699,8 +699,20 @@
     overflow: hidden;
 }
 
+/* El contenido mide lo que suman sus filas y se desplaza dentro del viewport. Sin el tema por defecto, el
+   contenedor encogía (flex-shrink 1) hasta el alto del viewport y, con él, cada fila y cada encabezado: los
+   textos se dibujaban fuera de su caja, montados sobre la fila siguiente. Ni el contenedor ni sus hijos encogen. */
 .ficha__contenido .unity-scroll-view__content-container {
+    flex-shrink: 0;
     padding: 0 var(--espacio-4) var(--espacio-4) var(--espacio-4);
+}
+
+.ficha__area,
+.ficha__concepto,
+.ficha__sin-precio,
+.ficha__concepto-izquierda > *,
+.ficha__concepto-derecha > * {
+    flex-shrink: 0;
 }
 
 .ficha__area {

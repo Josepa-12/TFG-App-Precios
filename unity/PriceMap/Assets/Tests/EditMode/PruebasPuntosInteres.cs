@@ -408,7 +408,46 @@ namespace PriceMap.Tests.EditMode
         {
             marcadores.Actualizar(1f, Ancho, Alto);
             var visibles = marcadores.Marcadores.Where(m => m.Visible).Select(m => m.Lugar).ToList();
-            puntos.Actualizar(1f, Ancho, Alto, visibles);
+            puntos.Actualizar(1f, Ancho, Alto, visibles, marcadores.ZonasVisibles);
+        }
+
+        /// <summary>Fila "Punto bajo marcador": un punto que pisa la zona de un marcador visible se oculta y cuenta como solape.</summary>
+        [Test]
+        public void UnPuntoQuePisaUnMarcadorSeOculta()
+        {
+            var lugar = LugarApp("clinica", "Clínica Areas", SitioCachon, Plantilla.ServicioLocal);
+            var plaza = PuntoEn("Plaza de los Milagros", AlNorte(SitioCachon, 15), rank: 1);
+            var (marcadores, puntos, mapa) = Ambas(lugar, plaza);
+            mapa.proyecciones[lugar.Posicion] = new PuntoPantalla(500f, 900f, 300f);
+            mapa.proyecciones[plaza.Posicion] = new PuntoPantalla(500f, 870f, 300f); // dentro del cuerpo del marcador
+            marcadores.Filtro = FiltroPrecios.Todos;
+            Fotograma(marcadores, puntos);
+            Assert.IsTrue(marcadores.Marcadores[0].Visible);
+            var v = puntos.Vistas.Single();
+            Assert.IsFalse(v.Visible, "Nada se pinta encima de un marcador.");
+            Assert.AreEqual(1, puntos.OcultosPorSolape);
+            Assert.AreEqual(0, puntos.OcultosPorRepetido);
+
+            // Fila "Punto libre": lejos del marcador, se ve
+            mapa.proyecciones[plaza.Posicion] = new PuntoPantalla(200f, 400f, 300f);
+            Fotograma(marcadores, puntos);
+            Assert.IsTrue(v.Visible);
+            Assert.AreEqual(0, puntos.OcultosPorSolape);
+        }
+
+        /// <summary>Fila "Bajo un control": un punto cuya caja pisa la píldora o la columna de botones se oculta.</summary>
+        [Test]
+        public void UnPuntoBajoUnControlSeOculta()
+        {
+            var p = PuntoEn("Mercadona", new Coordenada(36.70, -6.35), clase: "grocery");
+            var (capa, mapa) = Capa(p);
+            mapa.proyecciones[p.Posicion] = new PuntoPantalla(60f, 40f, 300f);
+            var pildora = new List<Rect> { new Rect(16f, 16f, 160f, 48f) };
+            capa.Actualizar(1f, Ancho, Alto, null, pildora);
+            Assert.IsFalse(capa.Vistas.Single().Visible);
+            Assert.AreEqual(1, capa.OcultosPorSolape);
+            capa.Actualizar(1f, Ancho, Alto, null, new List<Rect> { new Rect(900f, 16f, 48f, 96f) });
+            Assert.IsTrue(capa.Vistas.Single().Visible, "Lejos de los controles se ve.");
         }
 
         [Test]
@@ -451,7 +490,9 @@ namespace PriceMap.Tests.EditMode
         public void OtraSucursalSeVenLosDos()
         {
             var lugar = LugarApp("mercadona", "Mercadona", SitioCachon, Plantilla.ServicioLocal);
-            var (marcadores, puntos, _) = Ambas(lugar, PuntoEn("Mercadona", AlNorte(SitioCachon, 300), clase: "grocery"));
+            var otra = PuntoEn("Mercadona", AlNorte(SitioCachon, 300), clase: "grocery");
+            var (marcadores, puntos, mapa) = Ambas(lugar, otra);
+            mapa.proyecciones[otra.Posicion] = new PuntoPantalla(500f, 500f, 300f); // a 300 m: lejos del marcador en pantalla
             marcadores.Filtro = FiltroPrecios.Todos;
             Fotograma(marcadores, puntos);
             Assert.IsTrue(marcadores.Marcadores[0].Visible);
@@ -686,7 +727,7 @@ namespace PriceMap.Tests.EditMode
         static void FotogramaPantalla(PantallaMapa p)
         {
             p.Capa.Actualizar(1f, Ancho, Alto);
-            p.CapaPuntos.Actualizar(1f, Ancho, Alto, p.Capa.Marcadores.Where(m => m.Visible).Select(m => m.Lugar).ToList());
+            p.CapaPuntos.Actualizar(1f, Ancho, Alto, p.Capa.Marcadores.Where(m => m.Visible).Select(m => m.Lugar).ToList(), p.Capa.ZonasVisibles);
             p.Accesibilidad.ActualizarMarcadores();
         }
 
@@ -904,6 +945,25 @@ namespace PriceMap.Tests.EditMode
             mapa.distancia = 2000f; // lejos: ningún punto
             p.ActualizarCapas(2f);
             Assert.IsFalse(NodosActivos().Any(n => n.label == "Mercadona, supermercado"));
+        }
+
+        /// <summary>Por la pantalla real (ActualizarCapas): las zonas de los marcadores visibles ocultan el punto que las pisa.</summary>
+        [Test]
+        public void LaPantallaOcultaElPuntoQuePisaUnMarcador()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarApp("bar-cachon", "Bar Cachón", SitioCachon);
+            // Cerca de la esquina (dentro con cualquier pantalla); a 2 dp/px, punta del marcador en (40, 80) dp
+            mapa.proyecciones[lugar.Posicion] = new PuntoPantalla(20f, 40f, 100f);
+            var mercadona = Punto("grocery", "supermarket", "Mercadona", 36.70, 1);
+            mapa.puntos.Add(mercadona);
+            mapa.proyecciones[mercadona.Posicion] = new PuntoPantalla(20f, 30f, 100f); // (40, 60) dp: dentro del marcador
+            var p = PantallaConPuntos(mapa, lugar);
+            p.ActualizarCapas(2f);
+            Assert.IsTrue(p.Capa.Marcadores.Single().Visible);
+            Assert.IsFalse(p.CapaPuntos.Vistas.Single().Visible, "Nada se pinta encima de un marcador.");
+            Assert.AreEqual(1, p.CapaPuntos.OcultosPorSolape);
+            Assert.AreEqual(0, p.CapaPuntos.OcultosPorRepetido);
         }
 
         [Test]

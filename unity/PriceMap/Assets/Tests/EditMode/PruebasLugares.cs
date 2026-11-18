@@ -101,18 +101,15 @@ namespace PriceMap.Tests.EditMode
             {
                 ["traumatologia/consulta-de-traumatologia"] = ValorPrecio.Fijo(9000),
                 ["traumatologia/tratamiento-ecoguiado"] = ValorPrecio.Fijo(5000),
-                ["traumatologia/infiltraciones"] = null,
-                ["traumatologia/factores-de-crecimiento"] = null,
                 ["fisioterapia/sesion-de-fisioterapia"] = ValorPrecio.Desde(4000),
                 ["fisioterapia/tratamiento-vossman"] = ValorPrecio.Fijo(4500),
                 ["fisioterapia/ondas-de-choque"] = ValorPrecio.Fijo(5000),
-                ["fisioterapia/recuperacion-con-frio-aquilo-phisiolab"] = null,
                 ["suelo-pelvico/valoracion-de-suelo-pelvico"] = ValorPrecio.Fijo(4500),
                 ["suelo-pelvico/sesion-de-suelo-pelvico-incluye-phenix"] = ValorPrecio.Fijo(3500),
                 ["readaptacion-y-entrenamiento/sesion-alterg"] = ValorPrecio.Fijo(2000),
             };
 
-            Assert.AreEqual(11, areas.Conceptos.Count);
+            Assert.AreEqual(8, areas.Conceptos.Count);
             Assert.AreEqual(4, areas.Conceptos.Select(c => c.Area).Distinct().Count());
             CollectionAssert.AreEquivalent(esperados.Keys, areas.Conceptos.Select(c => c.Id));
             foreach (var c in areas.Conceptos)
@@ -122,8 +119,17 @@ namespace PriceMap.Tests.EditMode
                 Assert.AreEqual(Consulta, c.Fuentes.Web.FechaConsulta, c.Id);
                 Assert.AreEqual(Plantilla.ServicioLocal, c.Fuentes.Plantilla, c.Id);
             }
-            Assert.AreEqual(8, areas.Conceptos.Count(c => !c.Fuentes.Web.EsConsultar));
-            Assert.AreEqual(3, areas.Conceptos.Count(c => c.Fuentes.Web.EsConsultar));
+            Assert.AreEqual(0, areas.Conceptos.Count(c => c.Fuentes.Web.EsConsultar), "Los conceptos sin importe no se exportan (18/11/2026).");
+        }
+
+        /// <summary>Fila "Datos de Clínica Areas": sin Infiltraciones, Factores de crecimiento ni Recuperación con frío.</summary>
+        [Test]
+        public void ClinicaAreasNoTraeConceptosSinImporte()
+        {
+            var nombres = Real("clinica-areas").Conceptos.Select(c => c.Nombre).ToList();
+            CollectionAssert.DoesNotContain(nombres, "Infiltraciones");
+            CollectionAssert.DoesNotContain(nombres, "Factores de crecimiento");
+            Assert.IsFalse(nombres.Any(n => n.StartsWith("Recuperación con frío")));
         }
 
         [Test]

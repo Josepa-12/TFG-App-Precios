@@ -89,17 +89,19 @@ namespace PriceMap.UI
         }
 
         /// <summary>Recoloca los puntos con el tamaño de la pantalla actual.</summary>
-        public void Actualizar(float escalaDp, IReadOnlyList<Lugar> lugaresVisibles = null) =>
-            Actualizar(escalaDp, Screen.width, Screen.height, lugaresVisibles);
+        public void Actualizar(float escalaDp, IReadOnlyList<Lugar> lugaresVisibles = null, IReadOnlyList<Rect> ocupadas = null) =>
+            Actualizar(escalaDp, Screen.width, Screen.height, lugaresVisibles, ocupadas);
 
         /// <summary>
         /// Recoloca los puntos. escalaDp convierte píxeles de pantalla en dp del panel. Con la cámara
         /// más lejos que DistanciaMaxima se ocultan todos sin proyectarlos. De los que caben en pantalla:
         /// se ocultan los que repiten un lugar de lugaresVisibles (cuyo marcador se ve ahora,
         /// ReglaPuntosInteres.EsRepetido) y, por orden de rank (y de id si empatan), los que pisan a uno ya
-        /// mostrado (icono y nombre, PuntoInteresVista.Caja). Los marcadores de lugar no cuentan para los solapes.
+        /// mostrado o una zona ocupada (icono y nombre, PuntoInteresVista.Caja). Las zonas ocupadas (dp del
+        /// panel) son las de los marcadores visibles y los controles: nada se pinta encima de un marcador.
         /// </summary>
-        public void Actualizar(float escalaDp, float anchoPx, float altoPx, IReadOnlyList<Lugar> lugaresVisibles = null)
+        public void Actualizar(float escalaDp, float anchoPx, float altoPx, IReadOnlyList<Lugar> lugaresVisibles = null,
+            IReadOnlyList<Rect> ocupadas = null)
         {
             if (escalaDp <= 0f || float.IsNaN(escalaDp) || float.IsInfinity(escalaDp)) return;
             float ancho = anchoPx * escalaDp, alto = altoPx * escalaDp;
@@ -133,9 +135,8 @@ namespace PriceMap.UI
             foreach (var v in candidatos)
             {
                 var caja = v.Caja(v.Candidata);
-                bool pisa = false;
-                foreach (var otra in cajasMostradas)
-                    if (caja.Overlaps(otra)) { pisa = true; break; }
+                // Los marcadores y los controles cuentan como ya mostrados
+                bool pisa = CapaMarcadores.Pisa(caja, cajasMostradas) || (ocupadas != null && CapaMarcadores.Pisa(caja, ocupadas));
                 if (pisa) { v.Mostrar(false); OcultosPorSolape++; continue; }
                 cajasMostradas.Add(caja);
                 v.Mostrar(true);

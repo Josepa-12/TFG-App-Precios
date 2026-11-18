@@ -328,15 +328,147 @@ namespace PriceMap.Tests.EditMode
         {
             var a = Sintetico("a", "Bar", lat: 36.70); var b = Sintetico("b", "Bar", lat: 36.71); var c = Sintetico("c", "Bar", lat: 36.72);
             var (capa, mapa) = Capa(a, b, c);
-            mapa.puntos[a.Posicion] = new PuntoPantalla(100f, 100f, 50f);   // el más cercano
-            mapa.puntos[b.Posicion] = new PuntoPantalla(100f, 100f, 900f);  // el más lejano
-            mapa.puntos[c.Posicion] = new PuntoPantalla(100f, 100f, 300f);
+            // Separados 60 dp (120 px): no se pisan, así que se ven los tres
+            mapa.puntos[a.Posicion] = new PuntoPantalla(100f, 200f, 50f);   // el más cercano
+            mapa.puntos[b.Posicion] = new PuntoPantalla(220f, 200f, 900f);  // el más lejano
+            mapa.puntos[c.Posicion] = new PuntoPantalla(340f, 200f, 300f);
             capa.Actualizar(Escala, AnchoPx, AltoPx);
             CollectionAssert.AreEqual(new[] { "b", "c", "a" }, Orden(capa), "Del más lejano al más cercano (el último se pinta encima).");
 
-            mapa.puntos[a.Posicion] = new PuntoPantalla(100f, 100f, 2000f); // ahora "a" es el más lejano
+            mapa.puntos[a.Posicion] = new PuntoPantalla(100f, 200f, 2000f); // ahora "a" es el más lejano
             capa.Actualizar(Escala, AnchoPx, AltoPx);
             CollectionAssert.AreEqual(new[] { "a", "b", "c" }, Orden(capa));
+        }
+
+        static Lugar ConPrecio(string id, double lat)
+        {
+            var web = new PrecioWeb(ValorPrecio.Desde(2000), "https://ejemplo.es/tarifas", new DateTime(2026, 11, 1));
+            return new Lugar(id, "Lugar " + id, "Clínica privada", Plantilla.ServicioLocal, new Coordenada(lat, -6.35),
+                conceptos: new[] { new Concepto("sesion", "", "Sesión", "sesión", new FuentesPrecio(Plantilla.ServicioLocal, web)) });
+        }
+
+        /// <summary>Fila "Dos marcadores con precio": si se pisan solo se ve el más cercano; al acercar hasta que no se pisan, los dos.</summary>
+        [Test]
+        public void DeDosConPrecioQueSePisanSoloSeVeElMasCercanoYAlAcercarLosDos()
+        {
+            var lejos = ConPrecio("lejos", 36.70); var cerca = ConPrecio("cerca", 36.71);
+            var (capa, mapa) = Capa(lejos, cerca);
+            capa.Filtro = FiltroPrecios.Todos;
+            mapa.puntos[lejos.Posicion] = new PuntoPantalla(400f, 600f, 900f);
+            mapa.puntos[cerca.Posicion] = new PuntoPantalla(430f, 610f, 300f); // 15 dp al lado: las zonas de 42 dp se pisan
+            Assert.IsTrue(capa.Marcadores.All(m => m.TienePrecio));
+            Assert.IsTrue(capa.Actualizar(Escala, AnchoPx, AltoPx));
+            CollectionAssert.AreEqual(new[] { false, true }, capa.Marcadores.Select(m => m.Visible), "Solo el más cercano a la cámara.");
+            Assert.AreEqual(1, capa.OcultosPorSolape);
+            Assert.AreEqual(1, capa.ZonasVisibles.Count);
+            Assert.AreSame(capa.Marcadores[1], capa.MasCercano(capa.Marcadores[0].ZonaDp.center), "El toque solo mira los visibles.");
+
+            // Al acercar el zoom se separan en pantalla: 60 dp, ya no se pisan
+            mapa.puntos[cerca.Posicion] = new PuntoPantalla(520f, 600f, 300f);
+            Assert.IsTrue(capa.Actualizar(Escala, AnchoPx, AltoPx), "Cambia el conjunto visible (TalkBack lo rehace).");
+            CollectionAssert.AreEqual(new[] { true, true }, capa.Marcadores.Select(m => m.Visible));
+            Assert.AreEqual(0, capa.OcultosPorSolape);
+            for (int i = 0; i < 10; i++) capa.Actualizar(Escala, AnchoPx, AltoPx);
+            Assert.IsFalse(capa.Actualizar(Escala, AnchoPx, AltoPx), "Sin cambios, nada que avisar.");
+        }
+
+        /// <summary>
+        /// Filas "Sin precio visible" y "Con precio gana": con Todos, la Taberna Santo Domingo (sin precio) se ve si no
+        /// pisa nada; si pisa a Clínica Areas se oculta aunque esté más cerca de la cámara, y vuelve al acercar.
+        /// </summary>
+        [Test]
+        public void LaTabernaSinPrecioSeVeSalvoQuePiseAClinicaAreas()
+        {
+            var taberna = Reales().Single(l => l.Nombre == "Taberna Santo Domingo");
+            var areas = Real("clinica-areas");
+            var (capa, mapa) = Capa(taberna, areas);
+            capa.Filtro = FiltroPrecios.Todos;
+            mapa.puntos[taberna.Posicion] = new PuntoPantalla(200f, 600f, 100f);
+            mapa.puntos[areas.Posicion] = new PuntoPantalla(600f, 600f, 300f);
+            capa.Actualizar(Escala, AnchoPx, AltoPx);
+            Assert.IsFalse(capa.Marcadores[0].TienePrecio);
+            CollectionAssert.AreEqual(new[] { true, true }, capa.Marcadores.Select(m => m.Visible), "Sin precio también se ve.");
+            Assert.IsTrue(capa.Marcadores[0].ClassListContains("marcador--sin-precio"), "Pequeño y atenuado.");
+
+            // A 15 m: en pantalla la taberna pisa a la clínica
+            mapa.puntos[taberna.Posicion] = new PuntoPantalla(620f, 610f, 100f);
+            Assert.IsTrue(capa.Actualizar(Escala, AnchoPx, AltoPx));
+            CollectionAssert.AreEqual(new[] { false, true }, capa.Marcadores.Select(m => m.Visible), "Gana la que tiene precio.");
+            Assert.AreEqual(1, capa.OcultosPorSolape);
+
+            // Al acercar se separan y vuelven las dos
+            mapa.puntos[taberna.Posicion] = new PuntoPantalla(720f, 600f, 100f);
+            capa.Actualizar(Escala, AnchoPx, AltoPx);
+            CollectionAssert.AreEqual(new[] { true, true }, capa.Marcadores.Select(m => m.Visible));
+        }
+
+        /// <summary>
+        /// Histéresis: de dos de igual prioridad que se pisan, el que ya se veía sigue viéndose aunque al girar el otro
+        /// pase a estar más cerca de la cámara (sin parpadeo ni TalkBack rehaciéndose); al separarse, los dos.
+        /// </summary>
+        [Test]
+        public void AlCruzarseLasProfundidadesSigueElQueYaSeVeia()
+        {
+            var a = ConPrecio("a", 36.70); var b = ConPrecio("b", 36.71);
+            var (capa, mapa) = Capa(a, b);
+            mapa.puntos[a.Posicion] = new PuntoPantalla(400f, 600f, 300f); // a, más cerca: gana al empezar
+            mapa.puntos[b.Posicion] = new PuntoPantalla(420f, 600f, 900f);
+            capa.Actualizar(Escala, AnchoPx, AltoPx);
+            CollectionAssert.AreEqual(new[] { true, false }, capa.Marcadores.Select(m => m.Visible));
+
+            // Al girar se cruzan: ahora b está más cerca, pero siguen pisándose
+            for (int i = 0; i < 5; i++)
+            {
+                mapa.puntos[a.Posicion] = new PuntoPantalla(400f, 600f, i % 2 == 0 ? 900f : 300f);
+                mapa.puntos[b.Posicion] = new PuntoPantalla(420f, 600f, i % 2 == 0 ? 300f : 900f);
+                Assert.IsFalse(capa.Actualizar(Escala, AnchoPx, AltoPx), "El conjunto visible no cambia.");
+                CollectionAssert.AreEqual(new[] { true, false }, capa.Marcadores.Select(m => m.Visible), $"Giro {i}");
+            }
+
+            mapa.puntos[b.Posicion] = new PuntoPantalla(600f, 600f, 300f); // se separan
+            capa.Actualizar(Escala, AnchoPx, AltoPx);
+            CollectionAssert.AreEqual(new[] { true, true }, capa.Marcadores.Select(m => m.Visible));
+        }
+
+        /// <summary>
+        /// El marcador de la ficha abierta (Fijado) no lo ocultan ni los controles ni otro que lo pise, aunque ese
+        /// tenga precio y esté más cerca; sin ficha, vuelven las reglas normales.
+        /// </summary>
+        [Test]
+        public void ElMarcadorFijadoNuncaSeOculta()
+        {
+            var sinPrecio = Sintetico("sin", "Bar", Plantilla.Hosteleria);
+            var conPrecio = ConPrecio("con", 36.71);
+            var (capa, mapa) = Capa(sinPrecio, conPrecio);
+            mapa.puntos[sinPrecio.Posicion] = new PuntoPantalla(100f, 140f, 900f); // punta en (50, 70) dp, bajo la píldora
+            mapa.puntos[conPrecio.Posicion] = new PuntoPantalla(110f, 140f, 100f);
+            var pildora = new List<Rect> { new Rect(16f, 16f, 160f, 48f) };
+            capa.Fijado = capa.Marcadores[0];
+            capa.Actualizar(Escala, AnchoPx, AltoPx, pildora);
+            CollectionAssert.AreEqual(new[] { true, false }, capa.Marcadores.Select(m => m.Visible), "Gana el fijado, bajo la píldora y sin precio.");
+            Assert.AreEqual(1, capa.OcultosPorSolape);
+
+            capa.Fijado = null;
+            capa.Actualizar(Escala, AnchoPx, AltoPx, pildora);
+            Assert.IsFalse(capa.Marcadores[0].Visible, "Sin ficha, la píldora lo oculta.");
+        }
+
+        /// <summary>Fila "Bajo un control": un marcador cuya zona pisa una zona ocupada (la píldora o la columna) se oculta.</summary>
+        [Test]
+        public void UnMarcadorBajoUnControlSeOculta()
+        {
+            var areas = Real("clinica-areas");
+            var (capa, mapa) = Capa(areas);
+            capa.Filtro = FiltroPrecios.Todos;
+            mapa.puntos[areas.Posicion] = new PuntoPantalla(100f, 140f, 300f); // punta en (50, 70) dp
+            var pildora = new List<Rect> { new Rect(16f, 16f, 160f, 48f) };
+            capa.Actualizar(Escala, AnchoPx, AltoPx, pildora);
+            Assert.IsFalse(capa.Marcadores[0].Visible, "Debajo de la píldora no se pinta.");
+            Assert.AreEqual(1, capa.OcultosPorSolape);
+            capa.Actualizar(Escala, AnchoPx, AltoPx, new List<Rect> { new Rect(400f, 16f, 48f, 96f) });
+            Assert.IsTrue(capa.Marcadores[0].Visible, "Lejos de los controles, sí.");
+            capa.Actualizar(Escala, AnchoPx, AltoPx, new List<Rect> { new Rect(0f, 0f, float.NaN, float.NaN), default });
+            Assert.IsTrue(capa.Marcadores[0].Visible, "Zonas sin medida no cuentan.");
         }
 
         static string[] Orden(CapaMarcadores capa) =>

@@ -5,7 +5,7 @@
 //
 // Reglas (spec de la historia 1.4):
 // - Solo precios de la web oficial, cada uno con su página y su fecha de consulta.
-// - Importes en céntimos enteros. Precio null = "consultar" (se exporta sin importe).
+// - Importes en céntimos enteros. Los conceptos sin importe ("consultar") no se exportan (18/11/2026).
 // - Los precios "con bono" no se usan: el concepto no se exporta.
 // - PLACE_CONCEPTS (sugerencias del prototipo) no se migra.
 // Termina con error si hay ids repetidos, una plantilla desconocida o coordenadas fuera de Sanlúcar.
@@ -53,12 +53,11 @@ function conceptos(id) {
       if (/bono/i.test(opciones.nota || '')) { conBono++; continue; } // precio con bono: no se usa
       const cid = `${slug(area)}/${slug(nombre)}`;
       if (lista.some(c => c.id === cid)) fallo(`${id}: concepto repetido ${cid}`);
-      let forma = 'consultar', cent = 0;
-      if (precio !== null && precio !== undefined) {
-        if (typeof precio !== 'number' || !(precio > 0)) fallo(`${id}/${cid}: importe no válido (${precio})`);
-        forma = opciones.desde ? 'desde' : 'fijo';
-        cent = Math.round(precio * 100);
-      }
+      // Sin importe ("consultar") no se exporta: decisión del 18/11/2026, la ficha solo muestra precios publicados
+      if (precio === null || precio === undefined) continue;
+      if (typeof precio !== 'number' || !(precio > 0)) fallo(`${id}/${cid}: importe no válido (${precio})`);
+      const forma = opciones.desde ? 'desde' : 'fijo';
+      const cent = Math.round(precio * 100);
       lista.push({ id: cid, area, nombre, unidad: unidad || '', forma, cent, url: web.url, fecha });
     }
   }

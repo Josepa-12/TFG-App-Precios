@@ -1364,26 +1364,6 @@
      "fecha": "2026-11-13"
     },
     {
-     "id": "traumatologia/infiltraciones",
-     "area": "Traumatología",
-     "nombre": "Infiltraciones",
-     "unidad": "servicio",
-     "forma": "consultar",
-     "cent": 0,
-     "url": "https://clinicaareas.com/tarifas",
-     "fecha": "2026-11-13"
-    },
-    {
-     "id": "traumatologia/factores-de-crecimiento",
-     "area": "Traumatología",
-     "nombre": "Factores de crecimiento",
-     "unidad": "servicio",
-     "forma": "consultar",
-     "cent": 0,
-     "url": "https://clinicaareas.com/tarifas",
-     "fecha": "2026-11-13"
-    },
-    {
      "id": "fisioterapia/sesion-de-fisioterapia",
      "area": "Fisioterapia",
      "nombre": "Sesión de fisioterapia",
@@ -1410,16 +1390,6 @@
      "unidad": "sesión",
      "forma": "fijo",
      "cent": 5000,
-     "url": "https://clinicaareas.com/tarifas",
-     "fecha": "2026-11-13"
-    },
-    {
-     "id": "fisioterapia/recuperacion-con-frio-aquilo-phisiolab",
-     "area": "Fisioterapia",
-     "nombre": "Recuperación con frío (Aquilo / Phisiolab)",
-     "unidad": "sesión",
-     "forma": "consultar",
-     "cent": 0,
      "url": "https://clinicaareas.com/tarifas",
      "fecha": "2026-11-13"
     },

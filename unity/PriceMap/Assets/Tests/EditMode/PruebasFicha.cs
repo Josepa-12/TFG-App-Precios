@@ -248,17 +248,36 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual("90" + Nbsp + "€", ficha.Fila("traumatologia/consulta-de-traumatologia").Precio.text);
             Assert.IsNull(ficha.Fila("traumatologia/tratamiento-ecoguiado").Unidad, "La unidad \"servicio\" no se muestra.");
 
-            var infiltraciones = ficha.Fila("traumatologia/infiltraciones");
+            // Sin los conceptos sin importe ("Consultar"), borrados de los datos el 18/11/2026
+            Assert.IsNull(ficha.Fila("traumatologia/infiltraciones"));
+            Assert.IsNull(ficha.Fila("traumatologia/factores-de-crecimiento"));
+            Assert.IsNull(ficha.Fila("fisioterapia/recuperacion-con-frio-aquilo-phisiolab"));
+            Assert.IsTrue(ficha.Filas.All(f => f.Precio.text != "Consultar"));
+
+            // Agrupados por área y en el orden de los datos: los 8 conceptos, sin "Aún no tiene precio"
+            Assert.AreEqual(8, ficha.Filas.Count);
+            Assert.AreEqual("traumatologia/consulta-de-traumatologia", ficha.Filas[0].Concepto.Id);
+            Assert.AreEqual("readaptacion-y-entrenamiento/sesion-alterg", ficha.Filas[7].Concepto.Id);
+            Assert.IsNull(ficha.SinPrecio);
+        }
+
+        /// <summary>Lugar sintético con un concepto sin importe: "Consultar" se sigue probando sin datos reales.</summary>
+        static Lugar ConConsultar() => new Lugar("clinica-prueba", "Clínica de prueba", "Clínica privada", Plantilla.ServicioLocal,
+            new Coordenada(36.78, -6.35), conceptos: new[]
+            {
+                new Concepto("traumatologia/infiltraciones", "Traumatología", "Infiltraciones", "servicio",
+                    new FuentesPrecio(Plantilla.ServicioLocal, new PrecioWeb(null, "https://ejemplo.es/tarifas", new DateTime(2026, 11, 13)))),
+            });
+
+        [Test]
+        public void UnConceptoSinImporteDiceConsultarSinFrescuraNiUnidad()
+        {
+            pantalla.AbrirFicha(ConConsultar());
+            var infiltraciones = pantalla.Ficha.Fila("traumatologia/infiltraciones");
             Assert.AreEqual("Consultar", infiltraciones.Precio.text);
             Assert.AreEqual("Publicado en su web · 13/11/2026", infiltraciones.Origen.text);
             Assert.IsNull(infiltraciones.Frescura, "Sin importe no hay punto de frescura.");
             Assert.IsNull(infiltraciones.Unidad);
-
-            // Agrupados por área y en el orden de los datos: los 11 conceptos, sin "Aún no tiene precio"
-            Assert.AreEqual(11, ficha.Filas.Count);
-            Assert.AreEqual("traumatologia/consulta-de-traumatologia", ficha.Filas[0].Concepto.Id);
-            Assert.AreEqual("readaptacion-y-entrenamiento/sesion-alterg", ficha.Filas[10].Concepto.Id);
-            Assert.IsNull(ficha.SinPrecio);
         }
 
         [Test]
@@ -388,15 +407,80 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void ConDosMarcadoresSolapadosGanaElMasCercanoALaCamara()
+        public void ConDosMarcadoresSolapadosSinPrecioGanaElMasCercanoALaCamara()
         {
-            var lejos = LugarId("clinica-areas");
+            var lejos = LugarId("chemabarber");
             var cerca = LugarId("fisiosanlucar");
             mapa.puntos[lejos.Posicion] = new PuntoPantalla(Punta.x / Escala, Punta.y / Escala, 500f);
             mapa.puntos[cerca.Posicion] = new PuntoPantalla(Punta.x / Escala, Punta.y / Escala, 200f);
             pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx);
-            Assert.IsTrue(Tocar(Punta), "En la punta, la distancia a los dos es 0.");
-            Assert.AreEqual("fisiosanlucar", pantalla.Ficha.Lugar.Id, "Gana el que se pinta encima (menor profundidad).");
+            Assert.IsFalse(pantalla.Capa.Marcadores.Single(m => m.Lugar == lejos).Visible, "De dos que se pisan solo se ve uno.");
+            Assert.IsTrue(Tocar(Punta), "En la punta se toca el que se ve.");
+            Assert.AreEqual("fisiosanlucar", pantalla.Ficha.Lugar.Id, "Entre dos sin precio, gana el más cercano a la cámara.");
+        }
+
+        /// <summary>Fila "Con precio gana": un lugar sin precio más cercano que pisa a Clínica Areas se oculta.</summary>
+        [Test]
+        public void ConDosMarcadoresSolapadosGanaElQueTienePrecio()
+        {
+            var conPrecio = LugarId("clinica-areas");
+            var sinPrecio = LugarId("fisiosanlucar");
+            mapa.puntos[conPrecio.Posicion] = new PuntoPantalla(Punta.x / Escala, Punta.y / Escala, 500f);
+            mapa.puntos[sinPrecio.Posicion] = new PuntoPantalla((Punta.x + 10f) / Escala, Punta.y / Escala, 200f);
+            pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx);
+            Assert.IsTrue(pantalla.Capa.Marcadores.Single(m => m.Lugar == conPrecio).Visible);
+            Assert.IsFalse(pantalla.Capa.Marcadores.Single(m => m.Lugar == sinPrecio).Visible, "Aunque esté más cerca de la cámara.");
+            Assert.IsTrue(Tocar(Punta));
+            Assert.AreEqual("clinica-areas", pantalla.Ficha.Lugar.Id);
+        }
+
+        /// <summary>
+        /// Con su ficha abierta, el marcador del lugar no se oculta aunque lo pise otro con precio ni bajo un control;
+        /// al cerrarla vuelven las reglas normales.
+        /// </summary>
+        [Test]
+        public void ElMarcadorDeLaFichaAbiertaNuncaSeOculta()
+        {
+            var conPrecio = LugarId("clinica-areas");
+            var chema = LugarId("chemabarber");
+            mapa.puntos[conPrecio.Posicion] = new PuntoPantalla(Punta.x / Escala, Punta.y / Escala, 200f);
+            mapa.puntos[chema.Posicion] = new PuntoPantalla((Punta.x + 10f) / Escala, Punta.y / Escala, 500f);
+            var marcadorChema = pantalla.Capa.Marcadores.Single(m => m.Lugar == chema);
+            var marcadorAreas = pantalla.Capa.Marcadores.Single(m => m.Lugar == conPrecio);
+            var control = new List<Rect> { new Rect(Punta.x - 10f, Punta.y - 40f, 40f, 30f) }; // un control encima de los dos
+            pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx);
+            Assert.IsFalse(marcadorChema.Visible, "Sin ficha gana el que tiene precio.");
+
+            pantalla.AbrirFicha(chema);
+            Assert.AreSame(marcadorChema, pantalla.Capa.Fijado);
+            pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx, control);
+            Assert.IsTrue(marcadorChema.Visible, "El de la ficha abierta se ve, bajo el control y pisando al que tiene precio.");
+            Assert.IsFalse(marcadorAreas.Visible);
+
+            pantalla.CerrarFicha();
+            Assert.IsNull(pantalla.Capa.Fijado);
+            pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx, control);
+            Assert.IsFalse(marcadorChema.Visible, "Cerrada la ficha, el control lo oculta.");
+        }
+
+        /// <summary>Fila "TalkBack": con el lector, un marcador oculto por solape no está en el recorrido.</summary>
+        [Test]
+        public void UnMarcadorOcultoPorSolapeNoEstaEnElRecorrido()
+        {
+            var conPrecio = LugarId("clinica-areas");
+            var sinPrecio = LugarId("fisiosanlucar");
+            mapa.puntos[conPrecio.Posicion] = new PuntoPantalla(Punta.x / Escala, Punta.y / Escala, 500f);
+            mapa.puntos[sinPrecio.Posicion] = new PuntoPantalla((Punta.x + 10f) / Escala, Punta.y / Escala, 200f);
+            pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx);
+            ConLector();
+            Acc.ActualizarMarcadores();
+            var visible = pantalla.Capa.Marcadores.Single(m => m.Lugar == conPrecio);
+            var oculto = pantalla.Capa.Marcadores.Single(m => m.Lugar == sinPrecio);
+            Assert.IsFalse(oculto.Visible);
+            var recorrido = Acc.Recorrido();
+            CollectionAssert.Contains(recorrido, visible.Anuncio);
+            CollectionAssert.DoesNotContain(recorrido, oculto.Anuncio, "El oculto por solape no sale.");
+            CollectionAssert.DoesNotContain(AssistiveSupport.activeHierarchy.rootNodes.Select(n => n.label).ToList(), oculto.Anuncio);
         }
 
         // ── Variantes y centrado (historia 1.8, parte 2) ──
@@ -713,7 +797,7 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void LaFraseDeConsultarNoTieneUnidadNiFrescura()
         {
-            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            pantalla.AbrirFicha(ConConsultar());
             var fila = pantalla.Ficha.Fila("traumatologia/infiltraciones");
             Assert.AreEqual("Infiltraciones", fila.Nombre.text);
             Assert.AreEqual("Infiltraciones, Consultar. Publicado en su web el 13/11/2026", fila.Anuncio);

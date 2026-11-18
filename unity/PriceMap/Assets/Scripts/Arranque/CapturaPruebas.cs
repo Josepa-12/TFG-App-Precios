@@ -450,8 +450,9 @@ namespace PriceMap.Arranque
         /// <summary>
         /// Historia 1.8 (parte 1), captura "ficha": con Todos, el mapa centrado en Clínica Areas y un toque (simulado
         /// en la punta de su marcador llamando directamente a PantallaMapa.TocarMapa, sin pasar por CamaraMapa) abre su ficha. Registra áreas y filas
-        /// y comprueba "desde 40 €", "Consultar", el origen y la frescura; después el botón atrás la cierra. Deja el
-        /// filtro y la preferencia como estaban.
+        /// y comprueba "desde 40 €", que no queda ningún "Consultar", el origen, la frescura y que ningún texto se monta
+        /// (SolapesFicha); después el botón atrás la cierra. La repite a 360 dp con la fuente al 130 % (captura
+        /// "ficha-estrecha"). Deja el filtro, la preferencia, el ancho y la fuente como estaban.
         /// </summary>
         IEnumerator Ficha()
         {
@@ -479,30 +480,117 @@ namespace PriceMap.Arranque
                 else
                 {
                     var sesion = ficha.Fila("fisioterapia/sesion-de-fisioterapia");
-                    var infiltraciones = ficha.Fila("traumatologia/infiltraciones");
                     if (sesion == null || sesion.Precio.text != "desde " + FormatoPrecio.Euros(4000)) Debug.LogError("PriceMap: falta \"Sesión de fisioterapia · desde 40 €\".");
                     else if (sesion.Frescura == null) Debug.LogError("PriceMap: la sesión de fisioterapia no tiene punto de frescura.");
-                    if (infiltraciones == null || infiltraciones.Precio.text != Textos.T(ClavesTexto.FichaConsultar)) Debug.LogError("PriceMap: falta \"Infiltraciones · Consultar\".");
+                    // Los conceptos sin importe se borraron de los datos (18/11/2026)
+                    if (ficha.Filas.Any(f => f.Precio.text == Textos.T(ClavesTexto.FichaConsultar))) Debug.LogError("PriceMap: la ficha de Clínica Areas aún tiene conceptos \"Consultar\".");
                     if (sesion != null && !sesion.Origen.text.Contains("13/11/2026")) Debug.LogError("PriceMap: el origen no lleva la fecha de la web.");
                 }
                 yield return new WaitForSeconds(1f);
                 yield return new WaitForEndOfFrame();
-                Debug.Log($"PriceMap: hoja de la ficha {ficha.Hoja.worldBound} (panel {ficha.worldBound}); contenido {ficha.Contenido.worldBound}");
+                Debug.Log($"PriceMap: hoja de la ficha {ficha.Hoja.worldBound} (panel {ficha.worldBound}); contenido {ficha.Contenido.worldBound}; " +
+                          $"filas {ficha.Contenido.contentContainer.worldBound.height:F0} dp de alto en un viewport de {ficha.Contenido.contentViewport.worldBound.height:F0} dp");
+                SolapesFicha($"{AnchoMovilDp:F0} dp");
                 ComprobarCentrado(areas.Lugar);
+                // El marcador de la ficha abierta no lo oculta la píldora aunque el centrado lo deje debajo
+                Debug.Log($"PriceMap: con la ficha abierta, marcador de Clínica Areas visible {areas.Visible} en {areas.ZonaDp}");
+                if (!areas.Visible) Debug.LogError("PriceMap: con su ficha abierta, el marcador de Clínica Areas no se ve.");
                 yield return Capturar("ficha");
                 yield return new WaitForSeconds(1f);
                 pantalla.Atras();
                 yield return null;
                 Debug.Log($"PriceMap: tras el botón atrás, ficha abierta {pantalla.FichaAbierta}");
                 if (pantalla.FichaAbierta) Debug.LogError("PriceMap: el botón atrás no ha cerrado la ficha.");
+
+                // La misma ficha en un móvil estrecho (360 dp) y con la fuente al 130 %
+                EscalaFuente.Forzada = () => 1.3f;
+                CambiarAnchoPanel(360f);
+                yield return new WaitForSeconds(0.5f);
+                pantalla.AbrirFicha(areas.Lugar);
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                float anchoPanel = Screen.width * pantalla.EscalaDp;
+                Debug.Log($"PriceMap: ficha estrecha en un panel de {anchoPanel:F0} dp con la fuente al 130 % " +
+                          $"(título a {ficha.Titulo.resolvedStyle.fontSize:F1} dp)");
+                if (Mathf.Abs(anchoPanel - 360f) > 0.5f) Debug.LogError($"PriceMap: la ficha estrecha se midió en un panel de {anchoPanel:F1} dp y no de 360 dp.");
+                SolapesFicha("360 dp y fuente al 130 %");
+                yield return Capturar("ficha-estrecha");
+                yield return new WaitForSeconds(1f);
+                // Se cierra la ficha y se vuelve a 412 dp y a la fuente del sistema; después, unos fotogramas para que se
+                // disponga: si la siguiente ficha se abre en el mismo fotograma, la hoja aún tiene la medida de esta
+                pantalla.CerrarFicha();
+                RestaurarAnchoYFuente();
+                yield return new WaitForSeconds(0.5f);
             }
             finally
             {
+                RestaurarAnchoYFuente();
                 pantalla.CerrarFicha();
                 filtro.Elegir(filtroAntes);
                 if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
                 else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
             }
+        }
+
+        /// <summary>Panel de 412 dp y fuente del sistema, como antes de la ficha estrecha.</summary>
+        void RestaurarAnchoYFuente()
+        {
+            if (EscalaFuente.Forzada == null) return;
+            EscalaFuente.Forzada = null;
+            CambiarAnchoPanel(AnchoMovilDp);
+            var raiz = pantalla.GetComponent<UIDocument>()?.rootVisualElement;
+            if (raiz != null) EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema); // ficha y puntos creados con el 130 %
+            pantalla.CapaPuntos?.OlvidarMedidas();
+        }
+
+        /// <summary>Cambia el ancho (dp) del panel de la captura; vuelve con AnchoMovilDp.</summary>
+        void CambiarAnchoPanel(float anchoDp)
+        {
+            if (ajustesCambiados == null) return;
+            ajustesCambiados.referenceResolution = new Vector2Int((int)anchoDp,
+                Screen.width > 0 ? Mathf.RoundToInt(anchoDp * Screen.height / Screen.width) : 915);
+        }
+
+        /// <summary>
+        /// Ninguna caja de texto de la ficha abierta pisa a otra (medio dp de tolerancia) y ningún texto necesita más
+        /// alto del que tiene su caja (si no, se dibuja fuera de ella, encima de lo de debajo). Da Debug.LogError si falla.
+        /// </summary>
+        void SolapesFicha(string caso)
+        {
+            var hoja = pantalla.Ficha.Hoja;
+            var textos = new List<TextElement>();
+            hoja.Query<TextElement>().ForEach(t =>
+            {
+                if (string.IsNullOrEmpty(t.text) || t.resolvedStyle.display == DisplayStyle.None) return;
+                var b = t.worldBound;
+                if (float.IsNaN(b.x) || b.width <= 0f) return;
+                textos.Add(t);
+            });
+            int pares = 0, desbordados = 0;
+            string ejemplo = "-";
+            for (int i = 0; i < textos.Count; i++)
+            {
+                var a = textos[i].worldBound;
+                var ra = Rect.MinMaxRect(a.xMin + 0.5f, a.yMin + 0.5f, a.xMax - 0.5f, a.yMax - 0.5f);
+                for (int j = i + 1; j < textos.Count; j++)
+                {
+                    if (!ra.Overlaps(textos[j].worldBound)) continue;
+                    pares++;
+                    if (ejemplo == "-") ejemplo = $"\"{textos[i].text}\" pisa \"{textos[j].text}\"";
+                }
+                // Alto que necesita el texto con su ancho actual (más 1 dp: medido justo a su ancho, el redondeo parte
+                // en dos líneas textos que caben en una)
+                var necesita = textos[i].MeasureTextSize(textos[i].text, textos[i].contentRect.width + 1f, VisualElement.MeasureMode.Exactly,
+                    0f, VisualElement.MeasureMode.Undefined);
+                if (necesita.y > textos[i].contentRect.height + 1f)
+                {
+                    desbordados++;
+                    if (ejemplo == "-") ejemplo = $"\"{textos[i].text}\" necesita {necesita.y:F1} dp y tiene {textos[i].contentRect.height:F1}";
+                }
+            }
+            Debug.Log($"PriceMap: ficha ({caso}): {textos.Count} textos; pares que se pisan {pares}; textos más altos que su caja {desbordados} (primero: {ejemplo})");
+            if (textos.Count == 0) Debug.LogError($"PriceMap: ficha ({caso}) sin textos medidos.");
+            if (pares > 0 || desbordados > 0) Debug.LogError($"PriceMap: la ficha ({caso}) tiene textos montados: {pares} pares y {desbordados} desbordados.");
         }
 
         /// <summary>
@@ -558,6 +646,7 @@ namespace PriceMap.Arranque
                 if (vigente.Count != 1 || vigente[0].Variante.Id != "pista@franja" || vigente[0].Chip == null)
                     Debug.LogError("PriceMap: la franja de la hora actual no va destacada con \"Ahora\".");
                 ComprobarCentrado(lugar);
+                SolapesFicha("variantes");
                 yield return Capturar("variantes");
                 yield return new WaitForSeconds(1f);
             }
@@ -573,6 +662,64 @@ namespace PriceMap.Arranque
             var capa = pantalla != null ? pantalla.Capa : null;
             if (capa != null) foreach (var m in capa.Marcadores) if (m.Visible) n++;
             return n;
+        }
+
+        /// <summary>
+        /// Ningún par de marcadores visibles que se pisa y ningún punto de interés visible encima de un marcador;
+        /// tampoco nada debajo de un control (cuenta además los sin precio visibles, solo informativo). Con las cajas
+        /// reales tras la disposición y medio dp de tolerancia (bordes que solo se tocan por redondeo).
+        /// </summary>
+        void SolapesConMarcadores(CapaMarcadores capa)
+        {
+            static Rect Encoger(Rect r) => Rect.MinMaxRect(r.xMin + 0.25f, r.yMin + 0.25f, r.xMax - 0.25f, r.yMax - 0.25f);
+            static Rect Unir(Rect a, Rect b) => Rect.MinMaxRect(Mathf.Min(a.xMin, b.xMin), Mathf.Min(a.yMin, b.yMin),
+                                                                Mathf.Max(a.xMax, b.xMax), Mathf.Max(a.yMax, b.yMax));
+            int sinPrecio = 0;
+            var zonas = new List<(Rect zona, string id)>();
+            foreach (var m in capa.Marcadores)
+            {
+                if (!m.Visible) continue;
+                if (!m.TienePrecio) sinPrecio++;
+                var zona = Unir(m.Cuerpo.worldBound, m.Punta.worldBound);
+                if (!float.IsNaN(zona.x)) zonas.Add((Encoger(zona), m.Lugar.Id));
+            }
+            int paresMarcadores = 0; string ejemplo = "-";
+            for (int i = 0; i < zonas.Count; i++)
+                for (int j = i + 1; j < zonas.Count; j++)
+                    if (zonas[i].zona.Overlaps(zonas[j].zona)) { paresMarcadores++; if (ejemplo == "-") ejemplo = $"{zonas[i].id} y {zonas[j].id}"; }
+
+            int paresPuntos = 0;
+            var cajas = new List<Rect>();
+            var capaPuntos = pantalla.CapaPuntos;
+            if (capaPuntos != null)
+                foreach (var v in capaPuntos.Vistas)
+                {
+                    if (!v.Visible) continue;
+                    var caja = v.Icono.worldBound;
+                    if (v.Nombre != null && v.Nombre.worldBound.width > 0f) caja = Unir(caja, v.Nombre.worldBound);
+                    if (float.IsNaN(caja.x)) continue;
+                    caja = Encoger(caja);
+                    cajas.Add(caja);
+                    foreach (var z in zonas)
+                        if (caja.Overlaps(z.zona)) { paresPuntos++; if (ejemplo == "-") ejemplo = $"\"{v.Punto.Nombre}\" sobre {z.id}"; }
+                }
+
+            // Controles (las mismas zonas que usa la pantalla: píldora, menú abierto y columnas): ni marcadores ni puntos debajo
+            int bajoControles = 0;
+            var controles = new List<Rect>(pantalla.ZonasControles()); // copia: la pantalla rehace la lista cada fotograma
+            if (controles.Count == 0) Debug.LogError("PriceMap: la pantalla no da ninguna zona de controles medida.");
+            foreach (var c in controles)
+            {
+                var r = Encoger(c);
+                foreach (var z in zonas) if (r.Overlaps(z.zona)) bajoControles++;
+                foreach (var k in cajas) if (r.Overlaps(k)) bajoControles++;
+            }
+
+            Debug.Log($"PriceMap: marcadores sin precio visibles {sinPrecio}; ocultos por solape {capa.OcultosPorSolape}; " +
+                      $"pares que se pisan {paresMarcadores + paresPuntos} (marcadores {paresMarcadores}, puntos sobre marcador {paresPuntos}; " +
+                      $"primero: {ejemplo}); bajo un control {bajoControles}");
+            if (paresMarcadores + paresPuntos > 0) Debug.LogError($"PriceMap: {paresMarcadores + paresPuntos} pares se pisan con un marcador.");
+            if (bajoControles > 0) Debug.LogError($"PriceMap: {bajoControles} marcadores o puntos debajo de un control.");
         }
 
         IEnumerator MarcadoresConTodos(CapaMarcadores capa)
@@ -602,6 +749,8 @@ namespace PriceMap.Arranque
                       $"mayor desvío punta-proyección {mayor:F3} px ({peor})");
             if (medidos == 0) Debug.LogError("PriceMap: ningún marcador visible en la captura de marcadores.");
             else if (mayor >= 1f) Debug.LogError($"PriceMap: desvío de los marcadores {mayor:F3} px ≥ 1 px");
+            if (!areas.Visible) Debug.LogError("PriceMap: Clínica Areas no se ve en la captura de marcadores.");
+            SolapesConMarcadores(capa);
             yield return Capturar("marcadores");
             yield return new WaitForSeconds(1f);
         }
