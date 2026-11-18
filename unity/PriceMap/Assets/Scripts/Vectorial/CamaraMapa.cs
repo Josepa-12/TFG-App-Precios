@@ -36,9 +36,17 @@ namespace PriceMap.Vectorial
         /// <summary>Lo pone el Arranque: true si el punto de pantalla está sobre un control de la interfaz.</summary>
         public System.Func<Vector2, bool> entradaBloqueada;
 
+        /// <summary>
+        /// Toque sobre el mapa (historia 1.8): el dedo, o el botón izquierdo en PC, se suelta habiéndose movido
+        /// menos de 6 dp. Punto de pantalla en px con origen abajo a la izquierda, como Input. No se lanza si el
+        /// gesto empezó sobre la interfaz (entradaBloqueada) ni con dos dedos.
+        /// </summary>
+        public event System.Action<Vector2> Tocado;
+
         Camera cam;
         Vector3? sueloAnterior;
         bool gestoSobreInterfaz; // el gesto empezó sobre un botón: el mapa no se mueve hasta soltar
+        readonly DetectorToque toque = new DetectorToque();
         static readonly Plane Suelo = new Plane(Vector3.up, Vector3.zero);
 
         void Awake() { cam = GetComponent<Camera>(); Aplicar(); }
@@ -49,16 +57,47 @@ namespace PriceMap.Vectorial
             {
                 if (Input.GetTouch(0).phase == TouchPhase.Began && Input.touchCount == 1) gestoSobreInterfaz = SobreInterfaz(Input.GetTouch(0).position);
                 if (!gestoSobreInterfaz) Tactil();
+                ToqueTactil();
             }
             else
             {
                 if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1)) gestoSobreInterfaz = SobreInterfaz(Input.mousePosition);
                 if (!Input.GetMouseButton(0) && !Input.GetMouseButton(1) && Input.touchCount == 0) gestoSobreInterfaz = false;
                 if (!gestoSobreInterfaz) Raton();
+                // En el móvil Unity también simula el ratón con el dedo: ahí el toque solo se lee de los dedos
+                if (!Input.touchSupported) ToqueRaton();
             }
             Teclado();
             Aplicar();
         }
+
+        void ToqueTactil()
+        {
+            var t = Input.GetTouch(0);
+            if (t.phase == TouchPhase.Began && Input.touchCount == 1)
+            {
+                if (gestoSobreInterfaz) toque.Cancelar(); else toque.Empezar(t.position);
+            }
+            if (Input.touchCount > 1) toque.Anular();
+            if (t.phase == TouchPhase.Moved) toque.Mover(t.position);
+            else if (t.phase == TouchPhase.Canceled) toque.Cancelar();
+            else if (t.phase == TouchPhase.Ended && toque.Soltar(t.position, Screen.dpi)) Tocado?.Invoke(t.position);
+        }
+
+        void ToqueRaton()
+        {
+            Vector2 pos = Input.mousePosition;
+            if (Input.GetMouseButtonDown(0))
+            {
+                if (gestoSobreInterfaz) toque.Cancelar(); else toque.Empezar(pos);
+            }
+            if (Input.GetMouseButton(1)) toque.Anular();
+            if (Input.GetMouseButton(0)) toque.Mover(pos);
+            if (Input.GetMouseButtonUp(0) && toque.Soltar(pos, Screen.dpi)) Tocado?.Invoke(pos);
+        }
+
+        /// <summary>Solo para las pruebas: lanza Tocado como si el dedo se soltara en ese punto (px, origen abajo).</summary>
+        internal void SimularToque(Vector2 pantalla) => Tocado?.Invoke(pantalla);
 
         bool SobreInterfaz(Vector2 pantalla) => entradaBloqueada != null && entradaBloqueada(pantalla);
 

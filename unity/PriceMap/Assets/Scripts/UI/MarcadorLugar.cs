@@ -10,7 +10,7 @@ namespace PriceMap.UI
     /// de su plantilla, borde blanco, logo del tipo de negocio, punta abajo e insignia € si tiene precio;
     /// sin precio, más pequeño y atenuado. El elemento mide 0×0 y está justo en la coordenada: la punta
     /// cae ahí y el resto cuelga hacia arriba (PantallaMapa.uss). No captura toques: el mapa sigue
-    /// moviéndose al arrastrar encima (la ficha llega en la historia 1.8).
+    /// moviéndose al arrastrar encima; el toque que abre la ficha lo resuelve PantallaMapa con DistanciaDp.
     /// </summary>
     public class MarcadorLugar : VisualElement
     {
@@ -101,6 +101,26 @@ namespace PriceMap.UI
             return precio == null
                 ? Textos.Formatear(textos(ClavesTexto.MarcadorSinPrecio), lugar.Nombre, tipo)
                 : Textos.Formatear(textos(ClavesTexto.MarcadorConPrecio), lugar.Nombre, tipo, FormatoPrecio.Euros(precio.Value.MinCent));
+        }
+
+        /// <summary>Lado del cuerpo en dp (--marcador o --marcador-sin-precio de Tokens.uss).</summary>
+        public float LadoDp => TienePrecio ? 42f : 32f;
+        /// <summary>Alto de la punta en dp (.marcador__punta de PantallaMapa.uss).</summary>
+        public float PuntaDp => TienePrecio ? 8f : 6f;
+
+        /// <summary>Rectángulo (dp del panel) que ocupan el cuerpo y la punta, que cuelgan hacia arriba de Posicion.</summary>
+        public Rect ZonaDp => new Rect(Posicion.x - LadoDp / 2f, Posicion.y - PuntaDp - LadoDp, LadoDp, LadoDp + PuntaDp);
+
+        /// <summary>
+        /// Distancia (dp) de un punto del panel al marcador dibujado (cuerpo y punta): 0 si cae encima.
+        /// La usa el toque en el mapa (historia 1.8): el marcador no captura toques.
+        /// </summary>
+        public float DistanciaDp(Vector2 punto)
+        {
+            var r = ZonaDp;
+            float dx = Mathf.Max(0f, Mathf.Max(r.xMin - punto.x, punto.x - r.xMax));
+            float dy = Mathf.Max(0f, Mathf.Max(r.yMin - punto.y, punto.y - r.yMax));
+            return Mathf.Sqrt(dx * dx + dy * dy);
         }
 
         /// <summary>Muestra u oculta el marcador; display solo se toca si cambia.</summary>

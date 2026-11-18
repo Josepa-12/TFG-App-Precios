@@ -152,6 +152,24 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(detras.Delante);
         }
 
+        [Test]
+        public void ElToqueDeLaCamaraLlegaPorElPuertoUnaVezYConLaYDesdeArriba()
+        {
+            IMapa mapa = objMapa.AddComponent<MapaVectorial>();
+            var camara = objCamara.GetComponent<CamaraMapa>();
+            var recibidos = new System.Collections.Generic.List<PuntoPantalla>();
+            mapa.Toque += recibidos.Add;
+            // La cámara se busca (y se suscribe) al usarla; dos usos no deben suscribirla dos veces
+            mapa.Centrar(new Coordenada(36.78, -6.35));
+            mapa.Centrar(new Coordenada(36.78, -6.35));
+
+            camara.SimularToque(new Vector2(120f, 30f));
+
+            Assert.AreEqual(1, recibidos.Count, "El toque llega una sola vez.");
+            Assert.AreEqual(120f, recibidos[0].X, 1e-3f);
+            Assert.AreEqual(Screen.height - 30f, recibidos[0].Y, 1e-3f, "Y se cuenta desde arriba, como Proyectar.");
+        }
+
         [TestCase("PriceMap/PlanoPaleta")]
         [TestCase("PriceMap/EdificiosPaleta")]
         public void ElShaderDelMapaExisteConSuNombre(string nombre)

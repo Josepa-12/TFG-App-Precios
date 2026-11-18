@@ -234,6 +234,74 @@ MonoBehaviour:
     m_Localized: Cerrar
     m_Metadata:
       m_Items: []
+  - m_Id: 440245349769216
+    m_Localized: Cerrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129344
+    m_Localized: "{0} \xB7 {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129345
+    m_Localized: Servicio local
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129346
+    m_Localized: "Hosteler\xEDa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129347
+    m_Localized: Ocio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129348
+    m_Localized: "A\xFAn no tiene precio"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129349
+    m_Localized: Consultar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129350
+    m_Localized: desde {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129351
+    m_Localized: "{0}\u2013{1} por persona"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129352
+    m_Localized: "m\xE1s de {0} por persona"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129353
+    m_Localized: /{0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129354
+    m_Localized: "Publicado en su web \xB7 {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129355
+    m_Localized: Declarado por el negocio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129356
+    m_Localized: "Seg\xFAn lo que pagaron {0} clientes"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129357
+    m_Localized: "Al d\xEDa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129358
+    m_Localized: "Podr\xEDa haber cambiado"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129359
+    m_Localized: Antiguo
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

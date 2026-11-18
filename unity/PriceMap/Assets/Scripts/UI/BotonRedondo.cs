@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace PriceMap.UI
 {
-    public enum Icono { Sol, Luna, Mas, Menos, Diana }
+    public enum Icono { Sol, Luna, Mas, Menos, Diana, Cerrar }
 
     /// <summary>
     /// Botón redondo de 48 dp con fondo de cristal (DESIGN.md · round-button) y un icono dibujado
@@ -13,6 +13,7 @@ namespace PriceMap.UI
     public class BotonRedondo : VisualElement
     {
         Icono icono;
+        readonly Action alPulsar;
 
         public Icono Icono
         {
@@ -23,6 +24,7 @@ namespace PriceMap.UI
         public BotonRedondo(Icono icono, Action alPulsar)
         {
             this.icono = icono;
+            this.alPulsar = alPulsar;
             AddToClassList("boton-redondo");
             focusable = true;
             pickingMode = PickingMode.Position;
@@ -32,6 +34,9 @@ namespace PriceMap.UI
             // El color cambia con el tema: volver a dibujar el icono cuando cambie el estilo
             RegisterCallback<GeometryChangedEvent>(_ => MarkDirtyRepaint());
         }
+
+        /// <summary>Lo que hace el botón al tocarlo (también lo usan las pruebas y TalkBack).</summary>
+        public void Pulsar() => alPulsar?.Invoke();
 
         void Dibujar(MeshGenerationContext mgc)
         {
@@ -52,6 +57,8 @@ namespace PriceMap.UI
                 case Icono.Mas: Linea(p, c + new Vector2(-7, 0), c + new Vector2(7, 0)); Linea(p, c + new Vector2(0, -7), c + new Vector2(0, 7)); break;
                 case Icono.Menos: Linea(p, c + new Vector2(-7, 0), c + new Vector2(7, 0)); break;
                 case Icono.Diana: Diana(p, c); break;
+                // Aspa de cerrar (ficha del lugar, historia 1.8)
+                case Icono.Cerrar: Linea(p, c + new Vector2(-6, -6), c + new Vector2(6, 6)); Linea(p, c + new Vector2(-6, 6), c + new Vector2(6, -6)); break;
             }
         }
 

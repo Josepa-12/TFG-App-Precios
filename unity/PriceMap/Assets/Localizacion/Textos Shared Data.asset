@@ -227,6 +227,74 @@ MonoBehaviour:
     m_Key: ubicacion.cerrar
     m_Metadata:
       m_Items: []
+  - m_Id: 440245349769216
+    m_Key: ficha.cerrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129344
+    m_Key: ficha.tipo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129345
+    m_Key: plantilla.servicio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129346
+    m_Key: plantilla.hosteleria
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129347
+    m_Key: plantilla.ocio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129348
+    m_Key: ficha.sinprecio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129349
+    m_Key: ficha.consultar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129350
+    m_Key: ficha.precio.desde
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129351
+    m_Key: ficha.precio.rango
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129352
+    m_Key: ficha.precio.rangoabierto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129353
+    m_Key: ficha.unidad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129354
+    m_Key: ficha.origen.web
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129355
+    m_Key: ficha.origen.declarado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129356
+    m_Key: ficha.origen.clientes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129357
+    m_Key: frescura.aldia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129358
+    m_Key: frescura.podria
+    m_Metadata:
+      m_Items: []
+  - m_Id: 440245379129359
+    m_Key: frescura.antiguo
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

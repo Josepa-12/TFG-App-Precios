@@ -118,6 +118,32 @@ namespace PriceMap.UI
             return ma.Indice.CompareTo(mb.Indice);
         }
 
+        /// <summary>Distancia máxima (dp) entre el toque y un marcador para que lo abra (historia 1.8).</summary>
+        public const float RadioToqueDp = 24f;
+
+        /// <summary>
+        /// Marcador visible más cercano a un punto del panel (dp), si está a menos de radioDp; si no, null.
+        /// La distancia se mide al cuerpo y la punta dibujados; a igual distancia (p. ej. encima de dos que se
+        /// solapan) gana el que se pinta encima, el más cercano a la cámara.
+        /// </summary>
+        public MarcadorLugar MasCercano(Vector2 puntoDp, float radioDp = RadioToqueDp)
+        {
+            MarcadorLugar mejor = null;
+            float mejorDistancia = float.PositiveInfinity;
+            foreach (var m in marcadores)
+            {
+                if (!m.Visible) continue;
+                float d = m.DistanciaDp(puntoDp);
+                if (!(d < radioDp)) continue;
+                bool gana = mejor == null || d < mejorDistancia - 0.001f
+                            || (d <= mejorDistancia + 0.001f && m.Profundidad < mejor.Profundidad);
+                if (!gana) continue;
+                mejor = m;
+                mejorDistancia = d;
+            }
+            return mejor;
+        }
+
         /// <summary>Vuelve a dibujar los vectores (al cambiar de tema cambia el color del €).</summary>
         public void Repintar()
         {

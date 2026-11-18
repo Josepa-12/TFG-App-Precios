@@ -559,3 +559,211 @@
 
 .poi--culto .poi__icono { background-color: var(--color-poi-culto); }
 .poi--culto .poi__nombre { color: var(--color-poi-culto-texto); }
+
+/* Ficha del lugar (historia 1.8; DESIGN components.sheet; mockups/key-ficha-lugar.html). El hueco y la ficha
+   cubren la pantalla sin capturar toques; el velo (transparente) los captura con la ficha abierta y la hoja
+   opaca va anclada abajo, con como mucho el 72 % del alto y desplazamiento interno. */
+.hueco-ficha,
+.ficha,
+.ficha__velo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.ficha__hoja {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: var(--ficha-alto-max);
+    padding-top: var(--espacio-4);
+    background-color: var(--color-surface);
+    border-top-left-radius: var(--radio-sheet);
+    border-top-right-radius: var(--radio-sheet);
+    border-top-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-color: var(--color-border);
+}
+
+.ficha__cabecera {
+    flex-direction: row;
+    align-items: flex-start;
+    flex-shrink: 0;
+    padding: 0 var(--espacio-4);
+}
+
+.ficha__cabecera-textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: var(--espacio-3);
+}
+
+.ficha__titulo {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}
+
+.ficha__linea-tipo {
+    flex-direction: row;
+    align-items: center;
+    margin-top: var(--espacio-1);
+}
+
+.ficha__muestra {
+    width: var(--muestra-plantilla);
+    height: var(--muestra-plantilla);
+    flex-shrink: 0;
+    margin-right: var(--espacio-2);
+    border-radius: 3px;
+    background-color: var(--color-pin-servicio);
+}
+
+.ficha__muestra--hosteleria { background-color: var(--color-pin-hosteleria); }
+.ficha__muestra--ocio { background-color: var(--color-pin-ocio); }
+
+.ficha__tipo {
+    flex-shrink: 1;
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}
+
+.ficha__direccion {
+    margin: 2px 0 0 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+.ficha__cerrar {
+    flex-shrink: 0;
+    background-color: var(--color-surface-2);
+}
+
+/* Fila de acciones: vacía y sin alto hasta que otras épicas la rellenen (FR-10) */
+.ficha__acciones {
+    flex-direction: row;
+    flex-shrink: 0;
+}
+
+.ficha__contenido {
+    flex-shrink: 1;
+    margin-top: var(--espacio-2);
+}
+
+/* Sin el tema por defecto de Unity, lo que necesita el ScrollView para recortar y desplazarse */
+.ficha__contenido .unity-scroll-view__content-and-vertical-scroll-container {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.ficha__contenido .unity-scroll-view__content-viewport {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.ficha__contenido .unity-scroll-view__content-container {
+    padding: 0 var(--espacio-4) var(--espacio-4) var(--espacio-4);
+}
+
+.ficha__area {
+    margin: var(--espacio-4) 0 var(--espacio-1) 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+.ficha__concepto {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: var(--espacio-3) 0;
+    border-top-width: 1px;
+    border-color: var(--color-border);
+}
+
+.ficha__concepto-izquierda {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: var(--espacio-3);
+}
+
+.ficha__concepto-derecha {
+    flex-shrink: 0;
+    max-width: 50%;
+    align-items: flex-end;
+}
+
+.ficha__concepto-nombre {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}
+
+.ficha__origen {
+    margin: 2px 0 0 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+.ficha__frescura {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.ficha__frescura-punto {
+    width: var(--frescura-punto);
+    height: var(--frescura-punto);
+    flex-shrink: 0;
+    margin-right: 5px;
+    border-radius: var(--radio-pill);
+}
+
+.ficha__frescura-punto--al-dia { background-color: var(--color-fresh-al-dia); }
+.ficha__frescura-punto--podria { background-color: var(--color-fresh-podria); }
+.ficha__frescura-punto--antiguo { background-color: var(--color-fresh-antiguo); }
+
+.ficha__frescura-texto {
+    margin: 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+.ficha__precio {
+    margin: 0;
+    padding: 0;
+    color: var(--color-accent);
+    white-space: normal;
+    -unity-text-align: upper-right;
+}
+
+.ficha__precio--consultar {
+    color: var(--color-muted);
+}
+
+.ficha__unidad {
+    margin: 0;
+    padding: 0;
+    color: var(--color-muted);
+    -unity-text-align: upper-right;
+}
+
+.ficha__sin-precio {
+    margin: var(--espacio-4) 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}

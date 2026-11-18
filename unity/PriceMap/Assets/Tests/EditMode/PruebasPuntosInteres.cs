@@ -40,6 +40,7 @@ namespace PriceMap.Tests.EditMode
             public float Giro => 0f;
             public Coordenada Centro => default;
             public void OrientarNorte() { }
+            public event System.Action<PuntoPantalla> Toque { add { } remove { } }
             public void Cambiar() => PuntosInteresCambiados?.Invoke();
         }
 

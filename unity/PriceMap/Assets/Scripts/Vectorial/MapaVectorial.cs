@@ -254,6 +254,11 @@ namespace PriceMap.Vectorial
         /// <summary>Gira el mapa al norte (giro 0) sin tocar zoom ni inclinación.</summary>
         public void OrientarNorte() { var c = Camara(); if (c != null) c.OrientarNorte(); }
 
+        /// <summary>Toque de la cámara pasado a px con origen arriba a la izquierda (como Proyectar).</summary>
+        public event System.Action<PuntoPantalla> Toque;
+
+        void AlTocarCamara(Vector2 pantalla) => Toque?.Invoke(new PuntoPantalla(pantalla.x, Screen.height - pantalla.y, 1f));
+
         void RecomponerPuntos()
         {
             puntosInteres.Clear();
@@ -292,7 +297,11 @@ namespace PriceMap.Vectorial
         // Se busca al usarla: Centrar puede llamarse antes que Start
         CamaraMapa Camara()
         {
-            if (camara == null) camara = FindFirstObjectByType<CamaraMapa>();
+            if (camara == null)
+            {
+                camara = FindFirstObjectByType<CamaraMapa>();
+                if (camara != null) camara.Tocado += AlTocarCamara; // una sola vez, al encontrarla
+            }
             if (camara != null && entradaBloqueada != null) camara.entradaBloqueada = entradaBloqueada;
             return camara;
         }

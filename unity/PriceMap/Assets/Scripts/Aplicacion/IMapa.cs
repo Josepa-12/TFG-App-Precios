@@ -51,5 +51,11 @@ namespace PriceMap.Aplicacion
 
         /// <summary>Pone el giro a 0 (norte arriba) sin cambiar el zoom ni la inclinación, al instante como Centrar.</summary>
         void OrientarNorte();
+
+        /// <summary>
+        /// Toque sobre el mapa (el dedo se suelta tras moverse menos de 6 dp), en px con origen arriba a la
+        /// izquierda, como Proyectar. No llega si el gesto empezó sobre un control de la interfaz.
+        /// </summary>
+        event Action<PuntoPantalla> Toque;
     }
 }

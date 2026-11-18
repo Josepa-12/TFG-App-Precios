@@ -79,8 +79,39 @@ namespace PriceMap.UI
         public const string UbicacionAbrirAjustes = "ubicacion.abrirajustes";
         public const string UbicacionCerrar = "ubicacion.cerrar";
 
+        /// <summary>Ficha del lugar (historia 1.8): botón de cerrar para TalkBack.</summary>
+        public const string FichaCerrar = "ficha.cerrar";
+        /// <summary>Tipo y plantilla: {0} tipo ("Clínica privada"), {1} plantilla ("Servicio local").</summary>
+        public const string FichaTipo = "ficha.tipo";
+        public const string PlantillaServicio = "plantilla.servicio";
+        public const string PlantillaHosteleria = "plantilla.hosteleria";
+        public const string PlantillaOcio = "plantilla.ocio";
+        /// <summary>Lugar sin ningún precio (UX-DR16).</summary>
+        public const string FichaSinPrecio = "ficha.sinprecio";
+        /// <summary>La web nombra el servicio pero no da el importe.</summary>
+        public const string FichaConsultar = "ficha.consultar";
+        /// <summary>Precio "desde": {0} importe ("40 €").</summary>
+        public const string FichaPrecioDesde = "ficha.precio.desde";
+        /// <summary>Rango por persona: {0} mínimo sin € ("10"), {1} máximo con € ("20 €").</summary>
+        public const string FichaPrecioRango = "ficha.precio.rango";
+        /// <summary>Rango abierto por persona: {0} mínimo con € ("50 €").</summary>
+        public const string FichaPrecioRangoAbierto = "ficha.precio.rangoabierto";
+        /// <summary>Unidad en la que se cobra: {0} unidad ("sesión").</summary>
+        public const string FichaUnidad = "ficha.unidad";
+        /// <summary>Origen: web oficial ({0} fecha dd/MM/aaaa), declarado por el negocio, según {0} clientes.</summary>
+        public const string FichaOrigenWeb = "ficha.origen.web";
+        public const string FichaOrigenDeclarado = "ficha.origen.declarado";
+        public const string FichaOrigenClientes = "ficha.origen.clientes";
+        /// <summary>Texto de cada punto de frescura.</summary>
+        public const string FrescuraAlDia = "frescura.aldia";
+        public const string FrescuraPodria = "frescura.podria";
+        public const string FrescuraAntiguo = "frescura.antiguo";
+
         public static readonly string[] Todas =
         {
+            FichaCerrar, FichaTipo, PlantillaServicio, PlantillaHosteleria, PlantillaOcio, FichaSinPrecio, FichaConsultar,
+            FichaPrecioDesde, FichaPrecioRango, FichaPrecioRangoAbierto, FichaUnidad,
+            FichaOrigenWeb, FichaOrigenDeclarado, FichaOrigenClientes, FrescuraAlDia, FrescuraPodria, FrescuraAntiguo,
             UbicacionCentrar, UbicacionExplicacion, UbicacionPermitir, UbicacionAhoraNo,
             UbicacionNorte, UbicacionBuscando, UbicacionDesactivada,
             UbicacionAvisoDenegado, UbicacionAvisoApagada, UbicacionAbrirAjustes, UbicacionCerrar,

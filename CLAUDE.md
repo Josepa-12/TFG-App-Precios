@@ -4,21 +4,21 @@ App Android (Unity 6000.3.28f1, UI Toolkit, Localization) que muestra precios de
 
 ## Reglas de ahorro de tokens
 - No releer specs/planning enteros: usar Grep con rango. Specs cerrados (1.1–1.6) no hace falta abrirlos.
-- Archivos grandes, leer solo la parte necesaria: `MapaVectorial.cs` (681 l.), `PantallaMapa.cs` (582), `IconosLugar.cs` (405), `CapturaPruebas.cs` (432), `AccesibilidadPantalla.cs` (361).
+- Archivos grandes, leer solo la parte necesaria: `MapaVectorial.cs` (681 l.), `PantallaMapa.cs` (649), `IconosLugar.cs` (405), `CapturaPruebas.cs` (491), `AccesibilidadPantalla.cs` (361).
 - Nunca leer `.meta`, `.unity`, `.asset` salvo que la tarea los toque.
 
 ## Capas (Assets/Scripts, un asmdef por carpeta)
 - **Dominio** (sin dependencias): `Lugar`, `Concepto`, `Variante`/`CondicionVariante`/`TipoCondicion`, `Declaracion`, `PrecioWeb`, `FuentesPrecio`, `ValorPrecio`, `FormaPrecio`, `Origen`/`TipoOrigen`, `Frescura`/`EstadoFrescura`, `PrecioMostrado`, `ResumenLugar`, `Coordenada`, `Tema`, `Plantilla`, `FiltroPrecios`, `CategoriaPoi`, `ParametrosNegocio`. Lógica pura: `CalculadoraPrecio`, `ReglaVariantes`, `ReglaResumen`, `ReglaFiltro`, `ReglaTema`, `ReglaPuntosInteres`.
 - **Aplicacion** (→Dominio): puertos `IMapa`, `IUbicacion`, `IRepositorioLugares`, `ITemaSistema`, `IPreferencias`; servicios `ServicioLugares`, `ServicioFiltro`, `ServicioTema`, `ServicioUbicacion` (+`EstadoUbicacion`, `AccionUbicacion`); `Resultado<T>`, `PuntoPantalla`, `PuntoInteres`.
 - **Adaptadores**: `Datos/RepositorioLugaresJson` (datos en `Assets/Datos/Resources`), `Sistema/TemaSistemaAndroid`, `Sistema/PreferenciasLocales`, `Gps/UbicacionUnity` (componente fino → `UbicacionGps` sobre `IFuenteUbicacion`; real: `FuenteUbicacionUnity`).
-- **Vectorial** (→Aplicacion, Dominio): `MapaVectorial` (implementa IMapa), `CamaraMapa`, `GestoDosDedos`, `PlanTeselas`, `LectorMVT`, `Triangulador`, `Geo`, `PaletaMapa`, `TemaMapa`.
-- **UI** (→Aplicacion, Dominio, Localization): `PantallaMapa` (MonoBehaviour raíz), `AccesibilidadPantalla` (TalkBack), `CapaMarcadores`+`MarcadorLugar`, `CapaPuntosInteres`+`PuntoInteresVista`, `PildoraPrecios`/`MenuPrecios`/`OpcionPrecios`/`PuntoPrecios` (filtro), `BotonRedondo` (iconos Sol/Luna/Mas/Menos/Diana), `MarcadorPosicion`, `ExplicacionUbicacion`+`AvisoUbicacion` (modal reutilizada), `IconosLugar`, `FormatoPrecio`, `EscalaFuente`, textos: `Textos`, `ClavesTexto`, `TextosFiltro`, `TextosPuntos`. UXML/USS en `Assets/UI` (`PantallaMapa.uxml/.uss`, `Estilos/Tokens.uss`).
+- **Vectorial** (→Aplicacion, Dominio): `MapaVectorial` (implementa IMapa), `CamaraMapa` (+`DetectorToque`: toque < 6 dp → `IMapa.Toque`), `GestoDosDedos`, `PlanTeselas`, `LectorMVT`, `Triangulador`, `Geo`, `PaletaMapa`, `TemaMapa`.
+- **UI** (→Aplicacion, Dominio, Localization): `PantallaMapa` (MonoBehaviour raíz), `AccesibilidadPantalla` (TalkBack), `CapaMarcadores`+`MarcadorLugar`, `CapaPuntosInteres`+`PuntoInteresVista`, `PildoraPrecios`/`MenuPrecios`/`OpcionPrecios`/`PuntoPrecios` (filtro), `BotonRedondo` (iconos Sol/Luna/Mas/Menos/Diana/Cerrar), `FichaLugar`+`FilaConcepto` (ficha del lugar, 1.8), `MarcadorPosicion`, `ExplicacionUbicacion`+`AvisoUbicacion` (modal reutilizada), `IconosLugar`, `FormatoPrecio`, `EscalaFuente`, textos: `Textos`, `ClavesTexto`, `TextosFiltro`, `TextosPuntos`. UXML/USS en `Assets/UI` (`PantallaMapa.uxml/.uss`, `Estilos/Tokens.uss`).
 - **Arranque** (→todo): `Arranque` (composición), `CapturaPruebas` (modo `-captura` de PC).
 - **Editor** (`PriceMap.EditorTools.*`): `ConfigurarAndroid` (`CompilarApk`, `CompilarPcPruebas`), `PermisosUbicacionAndroid`, `PrepararEscenaPrincipal`, `PrepararInterfaz`.
 - Textos traducibles: `Assets/Localizacion/Textos_es-ES.asset` + `Textos Shared Data.asset`.
 
 ## Pruebas (Assets/Tests/EditMode, `Pruebas<Tema>.cs`)
-Arranque, Capas, Contraste, Coordenada, EscenaPrincipal, Filtro, GestosYTeselas, Lugares, MapaVectorial, Marcadores, PantallaMapa, PermisosUbicacionAndroid, Precio, PuntosInteres, Tema, Textos, Ubicacion.
+Arranque, Capas, Contraste, Coordenada, EscenaPrincipal, Filtro, GestosYTeselas, Lugares, MapaVectorial, Ficha, Marcadores, PantallaMapa, PermisosUbicacionAndroid, Precio, PuntosInteres, Tema, Textos, Ubicacion.
 
 ## Comandos (con el editor de Unity CERRADO)
 ```

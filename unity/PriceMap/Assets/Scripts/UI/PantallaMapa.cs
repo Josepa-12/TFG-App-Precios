@@ -30,6 +30,8 @@ namespace PriceMap.UI
         MarcadorPosicion marcadorPosicion;
         ExplicacionUbicacion explicacion;
         AvisoUbicacion aviso;
+        FichaLugar ficha;
+        DateTime ahora;              // "ahora" del Arranque (AD-12): con él se calculan los precios de la ficha
         float ultimaEscala;          // última escala px → dp con disposición (para medir si el usuario está centrado)
         string claveBotonUbicacion;  // etiqueta de TalkBack del botón de ubicación en el último fotograma
         Label atribucion;
@@ -62,6 +64,7 @@ namespace PriceMap.UI
             this.tema = tema;
             this.filtro = filtro;
             this.ubicacion = ubicacion;
+            this.ahora = ahora;
             this.mapa.Centrar(VistaInicial);
 
             raiz = raizDocumento?.Q("raiz");
@@ -113,6 +116,13 @@ namespace PriceMap.UI
                 var marcador = m;
                 accesibilidad.Marcador(marcador.Cuerpo, () => marcador.Anuncio, () => marcador.Visible, () => marcador.Posicion);
             }
+
+            // Ficha del lugar (historia 1.8): se abre al tocar un marcador, encima de los controles del mapa
+            ficha = new FichaLugar(CerrarFicha);
+            (raiz.Q("hueco-ficha") ?? raiz).Add(ficha);
+            // Con la fuente grande: la ficha se dispone al abrirla, entonces se le aplica la escala
+            ficha.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            this.mapa.Toque += AlTocarMapa;
 
             // Posición del usuario, encima de lugares y puntos, y la explicación del permiso (modal)
             if (this.ubicacion != null) CrearUbicacion();
@@ -278,6 +288,45 @@ namespace PriceMap.UI
             if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
         }
 
+        /// <summary>True con la ficha de un lugar a la vista.</summary>
+        public bool FichaAbierta => ficha != null && ficha.Abierta;
+
+        // El mapa avisa de un toque (CamaraMapa: menos de 6 dp de movimiento y fuera de la interfaz)
+        void AlTocarMapa(PuntoPantalla punto) => TocarMapa(punto, EscalaDp > 0f ? EscalaDp : ultimaEscala);
+
+        /// <summary>
+        /// Toque en el mapa (px de pantalla, origen arriba a la izquierda) con la escala px → dp dada. Con el menú
+        /// "Precios" abierto solo lo cierra y con una ventana de ubicación no hace nada; con la ficha abierta la
+        /// cierra. Si no, abre la ficha del marcador visible más cercano a menos de 24 dp (los puntos de interés no
+        /// abren nada: su ficha es de la épica 2). Devuelve true si ha abierto una ficha.
+        /// </summary>
+        public bool TocarMapa(PuntoPantalla punto, float escala)
+        {
+            if (ModalUbicacionAbierta) return false;
+            if (MenuAbierto) { CerrarMenu(); return false; }
+            if (FichaAbierta) { CerrarFicha(); return false; }
+            if (capa == null || escala <= 0f || float.IsNaN(punto.X) || float.IsNaN(punto.Y)) return false;
+            var marcador = capa.MasCercano(new Vector2(punto.X * escala, punto.Y * escala));
+            if (marcador == null) return false;
+            AbrirFicha(marcador.Lugar);
+            return true;
+        }
+
+        /// <summary>Abre la ficha del lugar con sus precios calculados con el "ahora" del Arranque.</summary>
+        public void AbrirFicha(Lugar lugar)
+        {
+            if (ficha == null || lugar == null || ModalUbicacionAbierta) return;
+            if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            ficha.Abrir(lugar, ahora);
+        }
+
+        /// <summary>Cierra la ficha (botón atrás, su botón de cerrar o un toque en el mapa fuera de ella).</summary>
+        public void CerrarFicha()
+        {
+            if (!FichaAbierta) return;
+            ficha.Mostrar(false);
+        }
+
         /// <summary>Píldora "Precios", su menú y el velo que lo cierra al tocar fuera (FR-2, UX-DR6).</summary>
         void CrearFiltro()
         {
@@ -356,6 +405,8 @@ namespace PriceMap.UI
             if (menu.Abierto) Cerrar(enfocar: true, porNavegacion);
             else
             {
+                // Con la ficha abierta (píldora activada por teclado o TalkBack) el menú no puede quedar debajo
+                CerrarFicha();
                 menu.Marcar(filtro.Actual);
                 menu.Mostrar(true);
                 velo.EnableInClassList("abierto", true);
@@ -379,14 +430,15 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con el
-        /// menú abierto lo cierra sin cambiar el filtro. Si no, no hace nada (la app no sale:
+        /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con la
+        /// ficha del lugar abierta la cierra; con el menú abierto lo cierra sin cambiar el filtro. Si no, no hace nada (la app no sale:
         /// Input.backButtonLeavesApp sigue en false). Devuelve true si lo ha gestionado.
         /// </summary>
         public bool Atras()
         {
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (AvisoAbierto) { CerrarAviso(); return true; }
+            if (FichaAbierta) { CerrarFicha(); return true; }
             if (!MenuAbierto) return false;
             ConsumirNavegacion();
             Cerrar(enfocar: true, porNavegacion: true); // atrás es una tecla: el foco de teclado vuelve a la píldora
@@ -409,6 +461,7 @@ namespace PriceMap.UI
             if (tema != null) tema.Cambiado -= AlCambiarTema;
             if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
+            if (ficha != null && mapa != null) mapa.Toque -= AlTocarMapa;
             AssistiveSupport.screenReaderStatusChanged -= AlCambiarLector;
             AccessibilitySettings.fontScaleChanged -= AlCambiarEscalaFuente;
             if (raiz != null) EscalaFuente.Olvidar(raiz);
@@ -418,11 +471,12 @@ namespace PriceMap.UI
         /// <summary>
         /// True si el punto de pantalla (origen abajo a la izquierda, como Input) cae sobre un control:
         /// así el mapa no se mueve al pulsar un botón. Con el menú "Precios" abierto, todo el mapa
-        /// cuenta como tapado: ese toque solo cierra el menú. Con la explicación de la ubicación, también.
+        /// cuenta como tapado: ese toque solo cierra el menú. Con la explicación de la ubicación, también. Con la
+        /// ficha del lugar abierta, igual: un toque fuera de la hoja la cierra (su velo) y no mueve el mapa.
         /// </summary>
         public bool TapaPunto(Vector2 pantalla)
         {
-            if (MenuAbierto || ModalUbicacionAbierta) return true;
+            if (MenuAbierto || ModalUbicacionAbierta || FichaAbierta) return true;
             if (raiz?.panel == null) return false;
             var p = RuntimePanelUtils.ScreenToPanel(raiz.panel, new Vector2(pantalla.x, Screen.height - pantalla.y));
             return EsControl(raiz, raiz.panel.Pick(p));
@@ -440,6 +494,8 @@ namespace PriceMap.UI
         public MarcadorPosicion MarcadorPosicion => marcadorPosicion;
         public ExplicacionUbicacion Explicacion => explicacion;
         public AvisoUbicacion Aviso => aviso;
+        /// <summary>Ficha del lugar; null sin interfaz.</summary>
+        public FichaLugar Ficha => ficha;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;
@@ -510,6 +566,7 @@ namespace PriceMap.UI
             {
                 botonTema.MarkDirtyRepaint(); botonUbicacion?.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint();
                 capa?.Repintar(); pildora?.Repintar(); menu?.Repintar(); marcadorPosicion?.Repintar();
+                ficha?.BotonCerrar.MarkDirtyRepaint();
             });
         }
 
@@ -534,6 +591,8 @@ namespace PriceMap.UI
                 zona.style.top = (Screen.height - segura.yMax) * escala;
                 zona.style.bottom = segura.yMin * escala;
             }
+            // La hoja de la ficha llega al borde inferior; su contenido termina encima de la barra de gestos
+            ficha?.PonerMargenInferior(segura.yMin * escala);
         }
 
         readonly List<Lugar> lugaresVisibles = new List<Lugar>();

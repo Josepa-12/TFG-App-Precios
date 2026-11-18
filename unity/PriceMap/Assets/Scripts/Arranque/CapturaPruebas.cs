@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
 using PriceMap.UI;
@@ -95,6 +96,7 @@ namespace PriceMap.Arranque
             yield return FiltroAbierto();
             yield return Puntos();
             yield return Posicion();
+            yield return Ficha();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -362,6 +364,63 @@ namespace PriceMap.Arranque
             yield return null;
             Debug.Log($"PriceMap: segundo toque: giro del mapa {mapa.Giro:F1}°; botón: {pantalla.AccionUbicacionActual()} (\"{Textos.T(pantalla.ClaveBotonUbicacion())}\")");
             if (!ServicioUbicacion.AlNorte(mapa.Giro)) Debug.LogError("PriceMap: el segundo toque no ha orientado el mapa al norte.");
+        }
+
+        /// <summary>
+        /// Historia 1.8 (parte 1), captura "ficha": con Todos, el mapa centrado en Clínica Areas y un toque (simulado
+        /// en la punta de su marcador llamando directamente a PantallaMapa.TocarMapa, sin pasar por CamaraMapa) abre su ficha. Registra áreas y filas
+        /// y comprueba "desde 40 €", "Consultar", el origen y la frescura; después el botón atrás la cierra. Deja el
+        /// filtro y la preferencia como estaban.
+        /// </summary>
+        IEnumerator Ficha()
+        {
+            var capa = pantalla != null ? pantalla.Capa : null;
+            if (capa == null || pantalla.Ficha == null) { Debug.LogError("PriceMap: no hay ficha que capturar."); yield break; }
+            MarcadorLugar areas = null;
+            foreach (var m in capa.Marcadores) if (m.Lugar.Id == "clinica-areas") areas = m;
+            if (areas == null) { Debug.LogError("PriceMap: falta el marcador de Clínica Areas."); yield break; }
+            var filtroGuardado = preferencias.Leer(ServicioFiltro.ClavePreferencia);
+            var filtroAntes = filtro.Actual;
+            filtro.Elegir(FiltroPrecios.Todos);
+            try
+            {
+                mapa.Centrar(areas.Lugar.Posicion);
+                yield return new WaitForSeconds(2f);
+                yield return new WaitForEndOfFrame();
+                var punta = mapa.Proyectar(areas.Lugar.Posicion);
+                bool abierta = pantalla.TocarMapa(punta, pantalla.EscalaDp);
+                var ficha = pantalla.Ficha;
+                Debug.Log($"PriceMap: toque en Clínica Areas ({punta}): ficha abierta {abierta} ({ficha.Lugar?.Nombre ?? "-"}); " +
+                          $"tipo \"{ficha.Tipo.text}\"; dirección \"{ficha.Direccion.text}\"; áreas: {string.Join(", ", ficha.Areas.Select(a => a.text))}");
+                foreach (var f in ficha.Filas)
+                    Debug.Log($"PriceMap:   {f.Concepto.Area} | {f.Nombre.text} | {f.Precio.text}{(f.Unidad != null ? " " + f.Unidad.text : "")} | {f.Origen.text} | {f.Frescura?.text ?? "-"}");
+                if (!abierta || ficha.Lugar?.Id != "clinica-areas") Debug.LogError("PriceMap: el toque en Clínica Areas no ha abierto su ficha.");
+                else
+                {
+                    var sesion = ficha.Fila("fisioterapia/sesion-de-fisioterapia");
+                    var infiltraciones = ficha.Fila("traumatologia/infiltraciones");
+                    if (sesion == null || sesion.Precio.text != "desde " + FormatoPrecio.Euros(4000)) Debug.LogError("PriceMap: falta \"Sesión de fisioterapia · desde 40 €\".");
+                    else if (sesion.Frescura == null) Debug.LogError("PriceMap: la sesión de fisioterapia no tiene punto de frescura.");
+                    if (infiltraciones == null || infiltraciones.Precio.text != Textos.T(ClavesTexto.FichaConsultar)) Debug.LogError("PriceMap: falta \"Infiltraciones · Consultar\".");
+                    if (sesion != null && !sesion.Origen.text.Contains("13/11/2026")) Debug.LogError("PriceMap: el origen no lleva la fecha de la web.");
+                }
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                Debug.Log($"PriceMap: hoja de la ficha {ficha.Hoja.worldBound} (panel {ficha.worldBound}); contenido {ficha.Contenido.worldBound}");
+                yield return Capturar("ficha");
+                yield return new WaitForSeconds(1f);
+                pantalla.Atras();
+                yield return null;
+                Debug.Log($"PriceMap: tras el botón atrás, ficha abierta {pantalla.FichaAbierta}");
+                if (pantalla.FichaAbierta) Debug.LogError("PriceMap: el botón atrás no ha cerrado la ficha.");
+            }
+            finally
+            {
+                pantalla.CerrarFicha();
+                filtro.Elegir(filtroAntes);
+                if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
+                else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
+            }
         }
 
         int Visibles()

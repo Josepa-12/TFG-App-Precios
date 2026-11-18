@@ -68,3 +68,20 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-7-ver-mi-posicion-en-el-mapa.md`
   summary: Separar `UbicacionUnity` de `Input.location`, `Input.compass` y `Permission` detrás de una interfaz pequeña, para probar en EditMode sus transiciones (denegado, permiso retirado, orden de las respuestas, umbral de 1° del rumbo).
   evidence: Revisión de la 1.7 (parte 1), hallazgos 10 (Blind Hunter y Verification Gap). El adaptador real no se ejecuta en ninguna prueba ni en la captura, que usa una ubicación falsa. Hoy sus errores solo aparecerían probando en un móvil.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-ficha-del-lugar-con-sus-precios.md`
+  summary: |
+    Historia 1.8 (parte 2):
+    - **Variantes (FR-60):** debajo de su concepto, con su condición y su precio; la vigente (`ReglaVariantes.Vigente`, hora local) se destaca. Se prueban con datos sintéticos (no hay precios con bono en los datos: decisión del 17/11, mantenida el 18/11).
+    - **Centrado:** al abrir la ficha, el lugar queda centrado en la zona del mapa que no tapa la ficha.
+    - **TalkBack:** al abrir, el foco va al título; la ficha es modal (el recorrido solo incluye la ficha, como el menú "Precios"); al cerrar (atrás, X o tocar el mapa), el foco vuelve al nodo del marcador.
+    - Prueba con TalkBack forzado: el foco va al título y vuelve al marcador.
+  evidence: El usuario pidió el 18/11/2026 partir la 1.8 (unos 2.600 tokens). La parte 1 deja el toque en los marcadores, la ficha con cabecera, conceptos, precios, origen, frescura, "sin precio", fila de acciones y cerrar.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-ficha-del-lugar-con-sus-precios.md`
+  summary: Probar las ramas de `Input` de `CamaraMapa` (`ToqueTactil`/`ToqueRaton`: empezar sobre la interfaz cancela, segundo dedo anula, solo dedos en el móvil) sacando su lógica de `Input` detrás de algo que se pueda simular en EditMode.
+  evidence: Revisión de la 1.8 (parte 1), hallazgo 4 (Verification Gap). `DetectorToque` está probado, pero cómo lo alimenta `CamaraMapa` no; invertir el `if (gestoSobreInterfaz)` no rompería ninguna prueba.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-ficha-del-lugar-con-sus-precios.md`
+  summary: Comparar en `PruebasTextos` el valor de cada clave de `Textos_es-ES.asset` con `PrepararInterfaz.TextosEs`, no solo que exista.
+  evidence: Revisión de la 1.8 (parte 1), hallazgo 10 (Verification Gap). Las pruebas de la ficha usan `TextosEs`; un `{1}` perdido en `ficha.precio.rango` del asset pasaría todas las pruebas.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8-ficha-del-lugar-con-sus-precios.md`
+  summary: Ver funcionando el desplazamiento interno de la ficha cuando no cabe (sin barras, ScrollView sin tema por defecto). Sin verificar; si falla, sería medium.
+  evidence: Revisión de la 1.8 (parte 1), hallazgo 11 (Blind Hunter). En la captura Clínica Areas cabe en el 68 % de la pantalla; lo resolvería un lugar sintético con muchos conceptos en la captura o probarlo en un móvil.

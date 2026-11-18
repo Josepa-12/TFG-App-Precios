@@ -41,6 +41,7 @@ namespace PriceMap.Tests.EditMode
             public float Giro => 0f;
             public Coordenada Centro => default;
             public void OrientarNorte() { }
+            public event System.Action<PuntoPantalla> Toque { add { } remove { } }
         }
 
         class PreferenciasFalsas : IPreferencias
@@ -280,7 +281,12 @@ namespace PriceMap.Tests.EditMode
             // Solo la explicación del permiso de ubicación (historia 1.7, modal) va encima: tiene que tapar también la píldora
             var explicacion = arbol.Q("hueco-explicacion");
             Assert.AreEqual(raiz.childCount - 1, raiz.IndexOf(explicacion), "La explicación de la ubicación es lo último.");
-            Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
+            // La ficha del lugar (historia 1.8) va encima de la píldora: con ella abierta, su velo tapa también el filtro;
+            // cerrada no se ve (display: none) y no tapa nada
+            var ficha = arbol.Q("hueco-ficha");
+            Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(ficha), "La ficha va justo debajo de la explicación.");
+            Assert.AreEqual(DisplayStyle.None, p.Ficha.style.display.value, "Cerrada, la ficha no tapa la píldora.");
+            Assert.AreEqual(raiz.childCount - 3, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
         }
 
         static readonly Dictionary<FiltroPrecios, string> ClaveEsperada = new Dictionary<FiltroPrecios, string>

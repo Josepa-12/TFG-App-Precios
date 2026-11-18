@@ -41,6 +41,7 @@ namespace PriceMap.Tests.EditMode
             public float Giro => 0f;
             public Coordenada Centro => default;
             public void OrientarNorte() { }
+            public event System.Action<PuntoPantalla> Toque { add { } remove { } }
         }
 
         /// <summary>Textos es-ES del generador (en EditMode Localization no carga la locale).</summary>
@@ -200,6 +201,33 @@ namespace PriceMap.Tests.EditMode
             Assert.IsNotEmpty(hex, $"Falta {token} en Tokens.uss.");
             float contraste = PruebasContraste.Contraste(PruebasContraste.Leer("#FFFFFF"), PruebasContraste.Leer(hex));
             Assert.GreaterOrEqual(contraste, 3f, $"Blanco sobre {token} ({hex}): {contraste:F3}:1");
+        }
+
+        /// <summary>La zona del toque (historia 1.8) usa los mismos lados y puntas que dibujan los USS.</summary>
+        [Test]
+        public void LaZonaDelToqueMideLoQueDibujanLosUss()
+        {
+            var tokens = File.ReadAllText(Path.Combine(Application.dataPath, "UI/Estilos/Tokens.uss"));
+            var claro = Regex.Match(tokens, @"\.pm-raiz\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            var uss = File.ReadAllText(Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            float Px(string texto, string patron)
+            {
+                var m = Regex.Match(texto, patron);
+                Assert.IsTrue(m.Success, $"No se encuentra {patron}");
+                return float.Parse(m.Groups["v"].Value, System.Globalization.CultureInfo.InvariantCulture);
+            }
+            float lado = Px(claro, @"--marcador:\s*(?<v>[\d.]+)px");
+            float ladoSinPrecio = Px(claro, @"--marcador-sin-precio:\s*(?<v>[\d.]+)px");
+            float punta = Px(uss, @"(?m)^\.marcador__punta\s*\{[^}]*?height:\s*(?<v>[\d.]+)px");
+            float puntaSinPrecio = Px(uss, @"\.marcador--sin-precio\s+\.marcador__punta\s*\{[^}]*?height:\s*(?<v>[\d.]+)px");
+
+            var conPrecio = Marcador(Real("clinica-areas"));
+            var sinPrecio = Marcador(Real("bar-cachon"));
+            Assert.IsTrue(conPrecio.TienePrecio);
+            Assert.AreEqual(lado, conPrecio.LadoDp);
+            Assert.AreEqual(punta, conPrecio.PuntaDp);
+            Assert.AreEqual(ladoSinPrecio, sinPrecio.LadoDp);
+            Assert.AreEqual(puntaSinPrecio, sinPrecio.PuntaDp);
         }
 
         static string Token(string bloque, string nombre) =>

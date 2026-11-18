@@ -72,6 +72,7 @@ namespace PriceMap.Tests.EditMode
             public float Giro => giro;
             public Coordenada Centro => centro;
             public void OrientarNorte() { nortes++; giro = 0f; }
+            public event System.Action<PuntoPantalla> Toque { add { } remove { } }
         }
 
         class PreferenciasFalsas : IPreferencias

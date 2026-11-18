@@ -122,6 +122,10 @@
     --posicion-punto: 18px;
     --posicion-cono: 80px;
     --modal-ancho-max: 360px;
+    /* Ficha del lugar (historia 1.8; DESIGN components.sheet) */
+    --ficha-alto-max: 72%;
+    --muestra-plantilla: 10px;
+    --frescura-punto: 9px;
 
     -unity-font: url("../Fuentes/NunitoSans-Regular.ttf");
     color: var(--color-text);
