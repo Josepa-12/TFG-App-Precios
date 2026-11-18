@@ -97,6 +97,7 @@ namespace PriceMap.Arranque
             yield return Puntos();
             yield return Posicion();
             yield return Ficha();
+            yield return Variantes();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -407,6 +408,7 @@ namespace PriceMap.Arranque
                 yield return new WaitForSeconds(1f);
                 yield return new WaitForEndOfFrame();
                 Debug.Log($"PriceMap: hoja de la ficha {ficha.Hoja.worldBound} (panel {ficha.worldBound}); contenido {ficha.Contenido.worldBound}");
+                ComprobarCentrado(areas.Lugar);
                 yield return Capturar("ficha");
                 yield return new WaitForSeconds(1f);
                 pantalla.Atras();
@@ -420,6 +422,68 @@ namespace PriceMap.Arranque
                 filtro.Elegir(filtroAntes);
                 if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
                 else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
+            }
+        }
+
+        /// <summary>
+        /// Historia 1.8 (parte 2): con la ficha abierta, el lugar debe caer en el centro horizontal y a media altura de
+        /// la zona del mapa sobre la hoja (±2 px).
+        /// </summary>
+        void ComprobarCentrado(Lugar lugar)
+        {
+            float escala = pantalla.EscalaDp;
+            var hoja = pantalla.Ficha.Hoja.worldBound;
+            if (escala <= 0f || float.IsNaN(hoja.yMin)) { Debug.LogError("PriceMap: la hoja de la ficha no tiene medida."); return; }
+            var esperado = PantallaMapa.PuntoCentradoFicha(Screen.width, Screen.height, hoja.yMin / escala);
+            var p = mapa.Proyectar(lugar.Posicion);
+            float desvio = Vector2.Distance(new Vector2(p.X, p.Y), new Vector2(esperado.X, esperado.Y));
+            Debug.Log($"PriceMap: {lugar.Nombre} con la ficha abierta en {p}; esperado {esperado} (borde de la hoja {hoja.yMin / escala:F0} px); desvío {desvio:F1} px");
+            if (!p.Delante || desvio > 2f) Debug.LogError($"PriceMap: {lugar.Nombre} no queda centrado sobre la hoja (desvío {desvio:F1} px).");
+        }
+
+        /// <summary>
+        /// Historia 1.8 (parte 2), captura "variantes": un lugar sintético (los datos reales no tienen variantes) con
+        /// una franja que incluye la hora actual, días laborables y "con bono", abierto con PantallaMapa.AbrirFicha.
+        /// Comprueba que la franja va destacada con "Ahora" y el centrado sobre la hoja.
+        /// </summary>
+        IEnumerator Variantes()
+        {
+            if (pantalla == null || pantalla.Ficha == null) { Debug.LogError("PriceMap: no hay ficha para las variantes."); yield break; }
+            // La franja empieza una hora antes: el "ahora" del Arranque es de hace unos segundos
+            int hora = DateTime.Now.Hour;
+            var franja = CondicionVariante.Horario(TimeSpan.FromHours((hora + 23) % 24), TimeSpan.FromHours((hora + 2) % 24));
+            var web = new Func<ValorPrecio, FuentesPrecio>(v =>
+                new FuentesPrecio(Plantilla.Ocio, new PrecioWeb(v, "https://ejemplo.es/tarifas", DateTime.UtcNow.Date)));
+            var variantes = new[]
+            {
+                new Variante("pista@franja", franja, web(ValorPrecio.Fijo(2400))),
+                new Variante("pista@laborables", CondicionVariante.EnDias(DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday,
+                    DayOfWeek.Thursday, DayOfWeek.Friday), web(ValorPrecio.Fijo(1800))),
+                new Variante("pista@con-bono", CondicionVariante.DeCliente("con-bono"), web(ValorPrecio.Desde(1500))),
+            };
+            var lugar = new Lugar("padel-captura", "Pádel de prueba", "Club de pádel", Plantilla.Ocio, PantallaMapa.VistaInicial,
+                "Lugar sintético de la captura",
+                conceptos: new[] { new Concepto("pista", "Pistas", "Pista de pádel", "hora", web(ValorPrecio.Fijo(2000)), variantes) });
+            try
+            {
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                var fila = pantalla.Ficha.Filas.FirstOrDefault();
+                if (fila == null) { Debug.LogError("PriceMap: la ficha sintética no tiene el concepto."); yield break; }
+                foreach (var v in fila.Variantes)
+                    Debug.Log($"PriceMap:   variante {v.Variante.Id}: {(v.Vigente ? "[" + v.Chip.text + "] " : "")}{v.Texto}");
+                if (fila.Variantes.Count != 3) Debug.LogError($"PriceMap: se esperaban 3 variantes y hay {fila.Variantes.Count}.");
+                var vigente = fila.Variantes.Where(v => v.Vigente).ToList();
+                if (vigente.Count != 1 || vigente[0].Variante.Id != "pista@franja" || vigente[0].Chip == null)
+                    Debug.LogError("PriceMap: la franja de la hora actual no va destacada con \"Ahora\".");
+                ComprobarCentrado(lugar);
+                yield return Capturar("variantes");
+                yield return new WaitForSeconds(1f);
+            }
+            finally
+            {
+                pantalla.CerrarFicha();
             }
         }
 

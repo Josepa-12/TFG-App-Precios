@@ -105,7 +105,10 @@ namespace PriceMap.UI
             Mostrar(false);
         }
 
-        /// <summary>Rellena la ficha con el lugar, calculando cada precio con "ahora" (AD-12), y la muestra.</summary>
+        /// <summary>
+        /// Rellena la ficha con el lugar, calculando cada precio con "ahora" (AD-12, en UTC), y la muestra. La
+        /// variante vigente de cada concepto se elige con "ahora" pasado a la hora local del móvil.
+        /// </summary>
         public void Abrir(Lugar lugar, DateTime ahora)
         {
             Lugar = lugar ?? throw new ArgumentNullException(nameof(lugar));
@@ -123,6 +126,9 @@ namespace PriceMap.UI
             filas.Clear();
             SinPrecio = null;
 
+            // La vigente depende de la hora del móvil: "ahora" llega en UTC desde el Arranque (AD-12)
+            var horaLocal = ahora.ToLocalTime();
+
             // Solo los conceptos con importe o "Consultar"; sin nada que mostrar, no se inventa nada (UX-DR16)
             var porArea = new List<(string area, List<FilaConcepto> filas)>();
             foreach (var c in lugar.Conceptos)
@@ -132,7 +138,7 @@ namespace PriceMap.UI
                 if (!precio.TienePrecio && !precio.EsConsultar) continue;
                 var grupo = porArea.Find(g => g.area == c.Area);
                 if (grupo.filas == null) { grupo = (c.Area, new List<FilaConcepto>()); porArea.Add(grupo); }
-                grupo.filas.Add(new FilaConcepto(c, precio, textos));
+                grupo.filas.Add(new FilaConcepto(c, precio, textos, ahora, horaLocal));
             }
 
             // Agrupados por área, en el orden en que aparece cada área en los datos

@@ -72,6 +72,7 @@ namespace PriceMap.Tests.EditMode
             Assert.GreaterOrEqual(Contraste(c["accent-ink"], c["accent"]), 4.5f, "texto sobre el acento");
             Assert.GreaterOrEqual(Contraste(c["text"], c["surface-2"]), 4.5f, "icono del botón pulsado (surface-2)");
             Assert.GreaterOrEqual(Contraste(c["focus"], cristal), 3f, "borde de foco sobre el cristal");
+            Assert.GreaterOrEqual(Contraste(c["ahora-texto"], c["surface-2"]), 4.5f, "chip \"Ahora\" de la variante vigente");
         }
 
         /// <summary>El cristal no está siempre sobre el fondo: puede caer sobre calles, agua, verde o edificios.</summary>

@@ -20,6 +20,7 @@ namespace PriceMap.Tests.EditMode
             public readonly List<Coordenada> centrados = new List<Coordenada>();
             public readonly List<Tema> temas = new List<Tema>();
             public void Centrar(Coordenada destino) => centrados.Add(destino);
+            public void Centrar(Coordenada destino, PuntoPantalla enPantalla) { }
             public void AplicarTema(Tema tema) => temas.Add(tema);
             public void Acercar() { }
             public void Alejar() { }

@@ -98,6 +98,18 @@ namespace PriceMap.EditorTools
             [ClavesTexto.FrescuraAlDia] = "Al día",
             [ClavesTexto.FrescuraPodria] = "Podría haber cambiado",
             [ClavesTexto.FrescuraAntiguo] = "Antiguo",
+            [ClavesTexto.FichaAhora] = "Ahora",
+            [ClavesTexto.VarianteHorario] = "De {0} a {1}",
+            [ClavesTexto.VarianteDiasSeguidos] = "{0} a {1}",
+            [ClavesTexto.VarianteDiasLista] = "{0} y {1}",
+            [ClavesTexto.VarianteConBono] = "Con bono",
+            [ClavesTexto.DiaLunes] = "lun",
+            [ClavesTexto.DiaMartes] = "mar",
+            [ClavesTexto.DiaMiercoles] = "mié",
+            [ClavesTexto.DiaJueves] = "jue",
+            [ClavesTexto.DiaViernes] = "vie",
+            [ClavesTexto.DiaSabado] = "sáb",
+            [ClavesTexto.DiaDomingo] = "dom",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

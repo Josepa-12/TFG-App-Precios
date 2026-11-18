@@ -122,6 +122,8 @@ namespace PriceMap.UI
             (raiz.Q("hueco-ficha") ?? raiz).Add(ficha);
             // Con la fuente grande: la ficha se dispone al abrirla, entonces se le aplica la escala
             ficha.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            // Abierta sin medida (primer fotograma), el lugar se centró con el 72 %: al disponerse, con su borde real
+            ficha.Hoja.RegisterCallback<GeometryChangedEvent>(_ => RecentrarFichaPendiente());
             this.mapa.Toque += AlTocarMapa;
 
             // Posición del usuario, encima de lugares y puntos, y la explicación del permiso (modal)
@@ -317,12 +319,61 @@ namespace PriceMap.UI
         {
             if (ficha == null || lugar == null || ModalUbicacionAbierta) return;
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            bool yaAbierta = FichaAbierta;
             ficha.Abrir(lugar, ahora);
+            CentrarEnFicha(lugar);
+            // De una ficha a otra la hoja tiene medida, pero la del lugar anterior: al disponerse, se recentra
+            if (yaAbierta) centrarPendiente = lugar;
+        }
+
+        /// <summary>Alto máximo de la hoja (--ficha-alto-max): con él se centra mientras la hoja no tiene medida.</summary>
+        public const float AltoMaximoFicha = 0.72f;
+
+        Lugar centrarPendiente; // lugar centrado con el 72 %, a recentrar con la medida real de la hoja
+
+        /// <summary>
+        /// Deja el lugar en el centro horizontal y a media altura de la zona del mapa que la ficha no tapa (de arriba
+        /// al borde superior de la hoja), al instante y sin tocar zoom, giro ni inclinación (historia 1.8, parte 2).
+        /// </summary>
+        void CentrarEnFicha(Lugar lugar)
+        {
+            float? borde = BordeHojaPx();
+            mapa.Centrar(lugar.Posicion, PuntoCentradoFicha(Screen.width, Screen.height, borde));
+            centrarPendiente = borde.HasValue ? null : lugar;
+        }
+
+        void RecentrarFichaPendiente()
+        {
+            var lugar = centrarPendiente;
+            if (lugar == null || !FichaAbierta || ficha.Lugar != lugar) return;
+            if (!BordeHojaPx().HasValue) return; // aún sin medida: se espera al siguiente cambio
+            CentrarEnFicha(lugar);
+        }
+
+        /// <summary>Borde superior de la hoja en px de pantalla (origen arriba); null si aún no tiene medida.</summary>
+        float? BordeHojaPx()
+        {
+            float escala = EscalaDp;
+            if (ficha == null || escala <= 0f) return null;
+            var hoja = ficha.Hoja.worldBound;
+            if (float.IsNaN(hoja.yMin) || float.IsNaN(hoja.height) || hoja.height <= 0f) return null;
+            return hoja.yMin / escala;
+        }
+
+        /// <summary>
+        /// Punto de pantalla (px, origen arriba a la izquierda) donde queda el lugar con la ficha abierta: el centro
+        /// horizontal y la mitad de la zona libre sobre la hoja. Sin medida de la hoja, se supone el 72 % del alto.
+        /// </summary>
+        public static PuntoPantalla PuntoCentradoFicha(float anchoPx, float altoPx, float? bordeHojaPx)
+        {
+            float borde = bordeHojaPx ?? altoPx * (1f - AltoMaximoFicha);
+            return new PuntoPantalla(anchoPx / 2f, borde / 2f, 1f);
         }
 
         /// <summary>Cierra la ficha (botón atrás, su botón de cerrar o un toque en el mapa fuera de ella).</summary>
         public void CerrarFicha()
         {
+            centrarPendiente = null;
             if (!FichaAbierta) return;
             ficha.Mostrar(false);
         }

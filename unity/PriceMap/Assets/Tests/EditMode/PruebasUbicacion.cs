@@ -62,6 +62,7 @@ namespace PriceMap.Tests.EditMode
             public Coordenada centro;
             public int nortes;
             public void Centrar(Coordenada destino) { centrados.Add(destino); centro = destino; }
+            public void Centrar(Coordenada destino, PuntoPantalla enPantalla) { }
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }

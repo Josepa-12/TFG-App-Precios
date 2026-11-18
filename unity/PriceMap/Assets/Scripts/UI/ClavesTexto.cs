@@ -107,8 +107,29 @@ namespace PriceMap.UI
         public const string FrescuraPodria = "frescura.podria";
         public const string FrescuraAntiguo = "frescura.antiguo";
 
+        /// <summary>Chip de la variante vigente (historia 1.8, parte 2).</summary>
+        public const string FichaAhora = "ficha.ahora";
+        /// <summary>Variante por horario: {0} desde, {1} hasta ("De 20:00 a 24:00").</summary>
+        public const string VarianteHorario = "variante.horario";
+        /// <summary>Días seguidos: {0} primero, {1} último ("lun a vie").</summary>
+        public const string VarianteDiasSeguidos = "variante.dias.seguidos";
+        /// <summary>Último elemento de una lista de días: {0} los anteriores, {1} el último ("lun, mar y vie").</summary>
+        public const string VarianteDiasLista = "variante.dias.lista";
+        /// <summary>Cliente con bono ("con-bono").</summary>
+        public const string VarianteConBono = "variante.conbono";
+        /// <summary>Días abreviados en minúsculas, de lunes a domingo.</summary>
+        public const string DiaLunes = "dia.lun";
+        public const string DiaMartes = "dia.mar";
+        public const string DiaMiercoles = "dia.mie";
+        public const string DiaJueves = "dia.jue";
+        public const string DiaViernes = "dia.vie";
+        public const string DiaSabado = "dia.sab";
+        public const string DiaDomingo = "dia.dom";
+
         public static readonly string[] Todas =
         {
+            FichaAhora, VarianteHorario, VarianteDiasSeguidos, VarianteDiasLista, VarianteConBono,
+            DiaLunes, DiaMartes, DiaMiercoles, DiaJueves, DiaViernes, DiaSabado, DiaDomingo,
             FichaCerrar, FichaTipo, PlantillaServicio, PlantillaHosteleria, PlantillaOcio, FichaSinPrecio, FichaConsultar,
             FichaPrecioDesde, FichaPrecioRango, FichaPrecioRangoAbierto, FichaUnidad,
             FichaOrigenWeb, FichaOrigenDeclarado, FichaOrigenClientes, FrescuraAlDia, FrescuraPodria, FrescuraAntiguo,

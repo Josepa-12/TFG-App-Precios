@@ -153,6 +153,56 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void CentrarEnUnPuntoDePantallaDejaAhiLaCoordenadaSinTocarLaCamara()
+        {
+            IMapa mapa = objMapa.AddComponent<MapaVectorial>();
+            var camara = objCamara.GetComponent<CamaraMapa>();
+            var cam = objCamara.GetComponent<Camera>();
+            var clinicaAreas = new Coordenada(36.7779, -6.3528);
+            // Inclinado y girado, como queda tras unos gestos
+            camara.giro = 35f; camara.inclinacion = 50f; camara.distancia = 900f;
+            float giro = camara.giro, inclinacion = camara.inclinacion, distancia = camara.distancia;
+
+            // Centro horizontal y mitad de la zona libre sobre una hoja del 72 % (px, Y desde arriba)
+            float ancho = cam.pixelWidth, arriba = Screen.height - cam.pixelHeight;
+            var objetivo = new PuntoPantalla(ancho / 2f, arriba + cam.pixelHeight * (1f - 0.72f) / 2f, 1f);
+            mapa.Centrar(clinicaAreas, objetivo);
+
+            var p = mapa.Proyectar(clinicaAreas);
+            Assert.IsTrue(p.Delante);
+            Assert.AreEqual(objetivo.X, p.X, 2f, $"proyección {p}, objetivo {objetivo}");
+            Assert.AreEqual(objetivo.Y, p.Y, 2f, $"proyección {p}, objetivo {objetivo}");
+            Assert.AreEqual(giro, camara.giro);
+            Assert.AreEqual(inclinacion, camara.inclinacion);
+            Assert.AreEqual(distancia, camara.distancia);
+        }
+
+        [Test]
+        public void ConLaInclinacionMinimaElLugarQuedaPorEncimaDelCentro()
+        {
+            IMapa mapa = objMapa.AddComponent<MapaVectorial>();
+            var camara = objCamara.GetComponent<CamaraMapa>();
+            var cam = objCamara.GetComponent<Camera>();
+            var c = new Coordenada(36.7779, -6.3528);
+            camara.giro = 35f; camara.inclinacion = 20f; camara.distancia = 900f;
+            float giro = camara.giro, inclinacion = camara.inclinacion, distancia = camara.distancia;
+
+            // El 14 % desde arriba cae por encima del horizonte: se usa el punto más alto que toca el suelo
+            float arriba = Screen.height - cam.pixelHeight;
+            var objetivo = new PuntoPantalla(cam.pixelWidth / 2f, arriba + cam.pixelHeight * (1f - 0.72f) / 2f, 1f);
+            mapa.Centrar(c, objetivo);
+
+            var p = mapa.Proyectar(c);
+            float centroY = arriba + cam.pixelHeight / 2f;
+            Assert.IsTrue(p.Delante);
+            Assert.Less(p.Y, centroY - 1f, $"proyección {p}: debe quedar por encima del centro ({centroY}).");
+            Assert.AreEqual(objetivo.X, p.X, 2f);
+            Assert.AreEqual(giro, camara.giro);
+            Assert.AreEqual(inclinacion, camara.inclinacion);
+            Assert.AreEqual(distancia, camara.distancia);
+        }
+
+        [Test]
         public void ElToqueDeLaCamaraLlegaPorElPuertoUnaVezYConLaYDesdeArriba()
         {
             IMapa mapa = objMapa.AddComponent<MapaVectorial>();

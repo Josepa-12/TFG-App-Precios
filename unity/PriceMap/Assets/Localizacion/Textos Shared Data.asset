@@ -295,6 +295,54 @@ MonoBehaviour:
     m_Key: frescura.antiguo
     m_Metadata:
       m_Items: []
+  - m_Id: 446300377047040
+    m_Key: ficha.ahora
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407168
+    m_Key: variante.horario
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407169
+    m_Key: variante.dias.seguidos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407170
+    m_Key: variante.dias.lista
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407171
+    m_Key: variante.conbono
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407172
+    m_Key: dia.lun
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407173
+    m_Key: dia.mar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407174
+    m_Key: dia.mie
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407175
+    m_Key: dia.jue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407176
+    m_Key: dia.vie
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407177
+    m_Key: dia.sab
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407178
+    m_Key: dia.dom
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

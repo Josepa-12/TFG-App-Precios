@@ -302,6 +302,54 @@ MonoBehaviour:
     m_Localized: Antiguo
     m_Metadata:
       m_Items: []
+  - m_Id: 446300377047040
+    m_Localized: Ahora
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407168
+    m_Localized: De {0} a {1}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407169
+    m_Localized: '{0} a {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407170
+    m_Localized: '{0} y {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407171
+    m_Localized: Con bono
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407172
+    m_Localized: lun
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407173
+    m_Localized: mar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407174
+    m_Localized: "mi\xE9"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407175
+    m_Localized: jue
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407176
+    m_Localized: vie
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407177
+    m_Localized: "s\xE1b"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 446300406407178
+    m_Localized: dom
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

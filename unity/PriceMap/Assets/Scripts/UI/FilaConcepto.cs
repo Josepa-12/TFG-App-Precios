@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using PriceMap.Dominio;
 using UnityEngine.UIElements;
@@ -24,9 +25,15 @@ namespace PriceMap.UI
         /// <summary>Punto y texto de frescura; null en "Consultar" (sin importe no hay frescura).</summary>
         public VisualElement PuntoFrescura { get; }
         public Label Frescura { get; }
+        /// <summary>Variantes con importe o "Consultar", en el orden de los datos (historia 1.8, parte 2).</summary>
+        public IReadOnlyList<FilaVariante> Variantes => variantes;
+        readonly List<FilaVariante> variantes = new List<FilaVariante>();
 
         /// <param name="textos">Textos de la UI (por defecto Localization); las pruebas pasan los de es-ES.</param>
-        public FilaConcepto(Concepto concepto, PrecioMostrado precio, Func<string, string> textos = null)
+        /// <param name="ahora">"Ahora" del Arranque (UTC) con el que se calcula el precio de cada variante; sin él no se muestran.</param>
+        /// <param name="horaLocal">"Ahora" en la hora local del móvil: con él se elige la vigente entre las variantes que se muestran.</param>
+        public FilaConcepto(Concepto concepto, PrecioMostrado precio, Func<string, string> textos = null,
+            DateTime? ahora = null, DateTime? horaLocal = null)
         {
             Concepto = concepto ?? throw new ArgumentNullException(nameof(concepto));
             PrecioMostrado = precio ?? throw new ArgumentNullException(nameof(precio));
@@ -39,6 +46,26 @@ namespace PriceMap.UI
             Add(izquierda);
             Nombre = Texto(concepto.Nombre, "ficha__concepto-nombre", "t-label");
             izquierda.Add(Nombre);
+            // Las variantes, debajo del nombre (como la maqueta), cada una con su condición y su precio
+            if (ahora.HasValue)
+            {
+                var mostradas = new List<(Variante v, PrecioMostrado p)>();
+                foreach (var v in concepto.Variantes)
+                {
+                    if (v?.Condicion == null || v.Fuentes == null) continue;
+                    var pv = CalculadoraPrecio.Calcular(v.Fuentes, ahora.Value);
+                    if (!pv.TienePrecio && !pv.EsConsultar) continue; // sin nada que mostrar no se inventa nada
+                    mostradas.Add((v, pv));
+                }
+                // La vigente, solo entre las que se ven: una oculta no puede quitarle el chip a otra
+                var vigente = horaLocal.HasValue ? ReglaVariantes.Vigente(mostradas.ConvertAll(m => m.v), horaLocal.Value) : null;
+                foreach (var (v, pv) in mostradas)
+                {
+                    var fila = new FilaVariante(v, pv, ReferenceEquals(v, vigente), textos);
+                    variantes.Add(fila);
+                    izquierda.Add(fila);
+                }
+            }
             Origen = Texto(TextoOrigen(precio.Origen, textos), "ficha__origen", "t-caption");
             izquierda.Add(Origen);
             if (precio.Frescura.HasValue)
@@ -84,6 +111,67 @@ namespace PriceMap.UI
                 default: return "";
             }
         }
+
+        /// <summary>
+        /// Condición de una variante: "De 20:00 a 24:00"; "Lun a vie" si los días son seguidos o "Lun, mar y vie";
+        /// "Con bono" para con-bono y, para otro tipo de cliente, su texto con la primera letra en mayúscula.
+        /// </summary>
+        public static string TextoCondicion(CondicionVariante condicion, Func<string, string> textos)
+        {
+            if (condicion == null) return "";
+            switch (condicion.Tipo)
+            {
+                case TipoCondicion.Horario:
+                    return Textos.Formatear(textos(ClavesTexto.VarianteHorario), Hora(condicion.Desde, false), Hora(condicion.Hasta, true));
+                case TipoCondicion.Dia:
+                    return Mayuscula(TextoDias(condicion.Dias, textos));
+                default:
+                    var tipo = condicion.TipoCliente.Trim();
+                    return string.Equals(tipo, "con-bono", StringComparison.OrdinalIgnoreCase)
+                        ? textos(ClavesTexto.VarianteConBono)
+                        : Mayuscula(tipo);
+            }
+        }
+
+        // 00:00 al final de una franja es la medianoche del día: "De 20:00 a 24:00"
+        static string Hora(TimeSpan t, bool esFinal) =>
+            esFinal && t == TimeSpan.Zero ? "24:00" : $"{t.Hours:00}:{t.Minutes:00}";
+
+        // Lunes primero, como en España
+        static readonly DayOfWeek[] Semana =
+        {
+            DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday,
+            DayOfWeek.Friday, DayOfWeek.Saturday, DayOfWeek.Sunday,
+        };
+
+        static string ClaveDia(DayOfWeek d) => d switch
+        {
+            DayOfWeek.Monday => ClavesTexto.DiaLunes,
+            DayOfWeek.Tuesday => ClavesTexto.DiaMartes,
+            DayOfWeek.Wednesday => ClavesTexto.DiaMiercoles,
+            DayOfWeek.Thursday => ClavesTexto.DiaJueves,
+            DayOfWeek.Friday => ClavesTexto.DiaViernes,
+            DayOfWeek.Saturday => ClavesTexto.DiaSabado,
+            _ => ClavesTexto.DiaDomingo,
+        };
+
+        /// <summary>"lun a vie" con tres o más días seguidos; si no, "lun, mar y vie" (en minúsculas).</summary>
+        static string TextoDias(IReadOnlyCollection<DayOfWeek> dias, Func<string, string> textos)
+        {
+            var indices = new List<int>();
+            for (int i = 0; i < Semana.Length; i++)
+                foreach (var d in dias) if (d == Semana[i]) { indices.Add(i); break; }
+            if (indices.Count == 0) return "";
+            var nombres = indices.ConvertAll(i => textos(ClaveDia(Semana[i])));
+            bool seguidos = indices.Count >= 3 && indices[indices.Count - 1] - indices[0] == indices.Count - 1;
+            if (seguidos) return Textos.Formatear(textos(ClavesTexto.VarianteDiasSeguidos), nombres[0], nombres[nombres.Count - 1]);
+            if (nombres.Count == 1) return nombres[0];
+            string anteriores = string.Join(", ", nombres.GetRange(0, nombres.Count - 1));
+            return Textos.Formatear(textos(ClavesTexto.VarianteDiasLista), anteriores, nombres[nombres.Count - 1]);
+        }
+
+        static string Mayuscula(string texto) =>
+            string.IsNullOrEmpty(texto) ? texto : char.ToUpperInvariant(texto[0]) + texto.Substring(1);
 
         public static string ClaveFrescura(EstadoFrescura estado) => estado switch
         {

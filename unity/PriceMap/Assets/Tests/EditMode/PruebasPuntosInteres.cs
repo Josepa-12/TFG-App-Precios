@@ -30,6 +30,7 @@ namespace PriceMap.Tests.EditMode
             public PuntoPantalla porDefecto = new PuntoPantalla(500f, 900f, 300f);
             public float distancia = 900f;
             public void Centrar(Coordenada destino) { }
+            public void Centrar(Coordenada destino, PuntoPantalla enPantalla) { }
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }

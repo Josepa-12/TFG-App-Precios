@@ -31,6 +31,7 @@ namespace PriceMap.Tests.EditMode
         {
             public readonly Dictionary<Coordenada, PuntoPantalla> puntos = new Dictionary<Coordenada, PuntoPantalla>();
             public void Centrar(Coordenada destino) { }
+            public void Centrar(Coordenada destino, PuntoPantalla enPantalla) { }
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }

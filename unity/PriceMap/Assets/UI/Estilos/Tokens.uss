@@ -21,6 +21,7 @@
     --color-danger: #D6334A;
     --color-control-edge: #6E7A99;
     --color-focus: #2F5BEA;
+    --color-ahora-texto: #2F5BEA; /* chip "Ahora" de la variante vigente sobre surface-2 */
     --color-glass: rgba(255, 255, 255, 0.74);
     --color-tpl-servicio: #2F5BEA;
     --color-tpl-hosteleria: #E07B12;
@@ -149,6 +150,7 @@
     --color-danger: #FF6B81;
     --color-control-edge: #7F8BAA;
     --color-focus: #8FB0FF;
+    --color-ahora-texto: #8FB0FF; /* el acento oscuro no llega a 4,5:1 sobre surface-2 */
     --color-glass: rgba(26, 34, 56, 0.74);
     --color-tpl-servicio: #4C7DFF;
     --color-tpl-hosteleria: #F59A3C;
@@ -188,5 +190,6 @@
 .t-body { -unity-font: url("../Fuentes/NunitoSans-Regular.ttf"); font-size: 16px; }
 .t-label { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 14px; }
 .t-meta { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 13px; }
+.t-meta-fuerte { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 13px; }
 .t-caption { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 12px; }
 .t-price { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 22px; }

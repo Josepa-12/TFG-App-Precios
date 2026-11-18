@@ -85,3 +85,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-8-ficha-del-lugar-con-sus-precios.md`
   summary: Ver funcionando el desplazamiento interno de la ficha cuando no cabe (sin barras, ScrollView sin tema por defecto). Sin verificar; si falla, sería medium.
   evidence: Revisión de la 1.8 (parte 1), hallazgo 11 (Blind Hunter). En la captura Clínica Areas cabe en el 68 % de la pantalla; lo resolvería un lugar sintético con muchos conceptos en la captura o probarlo en un móvil.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8b-variantes-y-centrado-de-la-ficha.md`
+  summary: |
+    Historia 1.8 (parte 3), TalkBack de la ficha:
+    - Tocar dos veces el nodo de un marcador abre su ficha. Hoy `AccesibilidadPantalla.Marcador` no tiene acción.
+    - Con la ficha abierta, `Modal`: el recorrido solo tiene título, tipo, dirección, un nodo por concepto (con sus variantes) y la X ("Cerrar ficha", clave `FichaCerrar` ya creada).
+    - Al abrir, el foco va al título. Al cerrar (atrás, X o tocar fuera), vuelve al nodo del marcador. `Enfocar` hoy solo busca en `nodosControles`, no en `nodosMarcas`.
+    - La ficha se desplaza hasta el nodo con el foco.
+    - Pruebas con TalkBack forzado (patrón de `PruebasFiltro.cs:68-75, 519`).
+  evidence: El usuario pidió el 18/11/2026 partir la parte 2 de la 1.8, que medía unos 2.600 tokens. La parte 2 se queda con las variantes y el centrado.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8b-variantes-y-centrado-de-la-ficha.md`
+  summary: Probar el recentrado de la ficha cuando la hoja recibe su medida real (`RecentrarFichaPendiente`) y al pasar de una ficha a otra. Hoy solo lo comprueba la captura de PC; se podría añadir un caso A→B a la captura o montar un arnés de PlayMode con panel.
+  evidence: Revisión de la 1.8 (parte 2), hallazgo 5 (Verification Gap). En EditMode no hay layout de UI Toolkit; quitar el `RegisterCallback` o la línea `if (yaAbierta)` no rompe ninguna prueba EditMode.

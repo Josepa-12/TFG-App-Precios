@@ -194,6 +194,31 @@ namespace PriceMap.Vectorial
         /// <summary>Centra la cámara en una coordenada geográfica.</summary>
         public void CentrarEn(double lat, double lon) { pivote = Geo.ALocal(lat, lon); Aplicar(); }
 
+        /// <summary>
+        /// Deja la coordenada en ese punto de la pantalla (px de la cámara, Y desde abajo, como Input) sin cambiar
+        /// zoom, giro ni inclinación. Primero la centra y después desplaza el pivote lo que separa, en el suelo, el
+        /// punto objetivo del centro de la vista: como la cámara se mueve con el pivote sin girar, el desplazamiento
+        /// es exacto también con el mapa inclinado.
+        /// </summary>
+        public void CentrarEn(double lat, double lon, Vector2 objetivo)
+        {
+            CentrarEn(lat, lon);
+            if (cam == null) cam = GetComponent<Camera>(); // en EditMode no se ejecuta Awake
+            if (cam == null) return;
+            var centro = new Vector2(cam.pixelWidth / 2f, cam.pixelHeight / 2f);
+            if (!PuntoSuelo(centro, out var enCentro)) return;
+            // Muy poco inclinado, el objetivo puede caer por encima del horizonte: se acerca por pasos al centro (en
+            // vertical) hasta el primer punto que toque el suelo
+            const int Pasos = 20;
+            Vector3 enObjetivo = default;
+            bool toca = false;
+            for (int i = 0; i < Pasos && !toca; i++)
+                toca = PuntoSuelo(new Vector2(objetivo.x, Mathf.Lerp(objetivo.y, centro.y, i / (float)Pasos)), out enObjetivo);
+            if (!toca) return;
+            pivote += enCentro - enObjetivo;
+            Aplicar();
+        }
+
         /// <summary>Norte arriba (giro 0) sin cambiar el zoom ni la inclinación; al instante, como CentrarEn.</summary>
         public void OrientarNorte() { giro = 0f; Aplicar(); }
     }

@@ -192,6 +192,14 @@ namespace PriceMap.Vectorial
             if (c != null) c.CentrarEn(destino.Latitud, destino.Longitud);
         }
 
+        /// <summary>Deja la coordenada en ese punto de pantalla (px, origen arriba a la izquierda, como Proyectar).</summary>
+        public void Centrar(Coordenada destino, PuntoPantalla enPantalla)
+        {
+            var c = Camara();
+            // Unity cuenta Y desde abajo: la inversa exacta de Proyectar
+            if (c != null) c.CentrarEn(destino.Latitud, destino.Longitud, new Vector2(enPantalla.X, Screen.height - enPantalla.Y));
+        }
+
         /// <summary>Pinta el mapa con la paleta del tema; se aplica en el siguiente fotograma.</summary>
         public void AplicarTema(Tema nuevo) => tema = nuevo == Tema.Oscuro ? TemaMapa.Oscuro : TemaMapa.Claro;
 

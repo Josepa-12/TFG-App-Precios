@@ -15,8 +15,9 @@ using UnityEngine.UIElements;
 namespace PriceMap.Tests.EditMode
 {
     /// <summary>
-    /// Ficha del lugar (historia 1.8, parte 1): una prueba por fila de la matriz de la especificación, con la
-    /// pantalla real (PantallaMapa.uxml), los lugares reales y un mapa falso que solo proyecta los lugares dados.
+    /// Ficha del lugar (historia 1.8, partes 1 y 2): una prueba por fila de la matriz de cada especificación, con la
+    /// pantalla real (PantallaMapa.uxml), los lugares reales (las variantes, con lugares sintéticos) y un mapa falso
+    /// que solo proyecta los lugares dados y apunta dónde se le pide centrar.
     /// </summary>
     public class PruebasFicha
     {
@@ -31,6 +32,8 @@ namespace PriceMap.Tests.EditMode
             public readonly Dictionary<Coordenada, PuntoPantalla> puntos = new Dictionary<Coordenada, PuntoPantalla>();
             public Action<PuntoPantalla> toque;
             public void Centrar(Coordenada destino) { }
+            public readonly List<(Coordenada destino, PuntoPantalla enPantalla)> centradosEn = new List<(Coordenada, PuntoPantalla)>();
+            public void Centrar(Coordenada destino, PuntoPantalla enPantalla) => centradosEn.Add((destino, enPantalla));
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }
@@ -371,6 +374,154 @@ namespace PriceMap.Tests.EditMode
             pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx);
             Assert.IsTrue(Tocar(Punta), "En la punta, la distancia a los dos es 0.");
             Assert.AreEqual("fisiosanlucar", pantalla.Ficha.Lugar.Id, "Gana el que se pinta encima (menor profundidad).");
+        }
+
+        // ── Variantes y centrado (historia 1.8, parte 2) ──
+
+        /// <summary>"Ahora" del Arranque (UTC) que en el móvil son esas horas locales del 18/11/2026.</summary>
+        static DateTime UtcDeLocal(int hora) => new DateTime(2026, 11, 18, hora, 0, 0, DateTimeKind.Local).ToUniversalTime();
+
+        static readonly DateTime FechaWeb = new DateTime(2026, 11, 13);
+
+        static FuentesPrecio Web(ValorPrecio valor) =>
+            new FuentesPrecio(Plantilla.Ocio, new PrecioWeb(valor, "https://ejemplo.es/tarifas", FechaWeb));
+
+        /// <summary>Lugar sintético con un concepto de 20 € y sus variantes (no se tocan los datos reales).</summary>
+        static Lugar Padel(params Variante[] variantes) =>
+            new Lugar("padel-prueba", "Pádel de prueba", "Club de pádel", Plantilla.Ocio, new Coordenada(36.78, -6.35),
+                conceptos: new[] { new Concepto("pista", "", "Pista de pádel", "hora", Web(ValorPrecio.Fijo(2000)), variantes) });
+
+        static Variante Noche(TimeSpan desde, TimeSpan hasta, int cent = 2400) =>
+            new Variante("pista@noche", CondicionVariante.Horario(desde, hasta), Web(ValorPrecio.Fijo(cent)));
+
+        FilaConcepto AbrirPadel(int horaLocal, params Variante[] variantes)
+        {
+            pantalla.Ficha.Abrir(Padel(variantes), UtcDeLocal(horaLocal));
+            return pantalla.Ficha.Filas.Single();
+        }
+
+        [Test]
+        public void LaVarianteVigenteVaBajoSuConceptoConElChipAhora()
+        {
+            var fila = AbrirPadel(21, Noche(new TimeSpan(20, 0, 0), TimeSpan.Zero));
+            Assert.AreEqual("Pista de pádel", fila.Nombre.text);
+            Assert.AreEqual(FormatoPrecio.Euros(2000), fila.Precio.text);
+            var variante = fila.Variantes.Single();
+            Assert.IsTrue(fila.Contains(variante), "La variante va dentro de la fila de su concepto.");
+            Assert.AreEqual("De 20:00 a 24:00 · " + FormatoPrecio.Euros(2400), variante.Texto);
+            Assert.IsTrue(variante.Vigente);
+            Assert.IsNotNull(variante.Chip);
+            Assert.AreEqual("Ahora", variante.Chip.text);
+            Assert.AreEqual(0, variante.IndexOf(variante.Chip), "El chip va delante de la condición.");
+            Assert.IsTrue(variante.ClassListContains("ficha__variante--vigente"));
+        }
+
+        [Test]
+        public void LaVarianteNoVigenteNoLlevaElChip()
+        {
+            var variante = AbrirPadel(10, Noche(new TimeSpan(20, 0, 0), TimeSpan.Zero)).Variantes.Single();
+            Assert.AreEqual("De 20:00 a 24:00 · " + FormatoPrecio.Euros(2400), variante.Texto);
+            Assert.IsFalse(variante.Vigente);
+            Assert.IsNull(variante.Chip);
+        }
+
+        [Test]
+        public void UnaFranjaQueCruzaLaMedianocheEstaVigenteALaUna()
+        {
+            var variante = AbrirPadel(1, Noche(new TimeSpan(22, 0, 0), new TimeSpan(2, 0, 0))).Variantes.Single();
+            Assert.AreEqual("De 22:00 a 02:00 · " + FormatoPrecio.Euros(2400), variante.Texto);
+            Assert.IsTrue(variante.Vigente);
+            Assert.IsNotNull(variante.Chip);
+        }
+
+        [Test]
+        public void LosDiasSeguidosSeJuntan()
+        {
+            var c = CondicionVariante.EnDias(DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Wednesday, DayOfWeek.Thursday, DayOfWeek.Friday);
+            Assert.AreEqual("Lun a vie", FilaConcepto.TextoCondicion(c, T));
+            // El orden de los datos no importa: la semana empieza en lunes
+            var desordenados = CondicionVariante.EnDias(DayOfWeek.Sunday, DayOfWeek.Friday, DayOfWeek.Saturday);
+            Assert.AreEqual("Vie a dom", FilaConcepto.TextoCondicion(desordenados, T));
+        }
+
+        [Test]
+        public void LosDiasSueltosVanEnLista()
+        {
+            var c = CondicionVariante.EnDias(DayOfWeek.Monday, DayOfWeek.Tuesday, DayOfWeek.Friday);
+            Assert.AreEqual("Lun, mar y vie", FilaConcepto.TextoCondicion(c, T));
+            Assert.AreEqual("Sáb y dom", FilaConcepto.TextoCondicion(CondicionVariante.EnDias(DayOfWeek.Saturday, DayOfWeek.Sunday), T));
+            Assert.AreEqual("Mié", FilaConcepto.TextoCondicion(CondicionVariante.EnDias(DayOfWeek.Wednesday), T));
+        }
+
+        [Test]
+        public void LaVarianteDeClienteNuncaSeDestaca()
+        {
+            var bono = new Variante("pista@con-bono", CondicionVariante.DeCliente("con-bono"), Web(ValorPrecio.Desde(1500)));
+            foreach (var hora in new[] { 1, 10, 21 })
+            {
+                var variante = AbrirPadel(hora, bono).Variantes.Single();
+                Assert.AreEqual("Con bono · desde " + FormatoPrecio.Euros(1500), variante.Texto);
+                Assert.IsFalse(variante.Vigente, $"A las {hora}:00 tampoco.");
+                Assert.IsNull(variante.Chip);
+            }
+            Assert.AreEqual("Estudiante", FilaConcepto.TextoCondicion(CondicionVariante.DeCliente("estudiante"), T));
+        }
+
+        [Test]
+        public void ComoMuchoUnaVarianteVaDestacada()
+        {
+            // A las 21:00 se cumplen las dos franjas: solo la primera lleva el chip
+            var tarde = new Variante("pista@tarde", CondicionVariante.Horario(new TimeSpan(18, 0, 0), new TimeSpan(22, 0, 0)), Web(ValorPrecio.Fijo(2200)));
+            var fila = AbrirPadel(21, tarde, Noche(new TimeSpan(20, 0, 0), TimeSpan.Zero));
+            Assert.AreEqual(2, fila.Variantes.Count);
+            Assert.AreEqual(1, fila.Variantes.Count(v => v.Vigente));
+            Assert.IsTrue(fila.Variantes[0].Vigente);
+        }
+
+        [Test]
+        public void LaVigenteSeEligeSoloEntreLasVariantesQueSeVen()
+        {
+            // Las dos se cumplen a las 21:00, pero la primera no tiene nada que mostrar: el chip va en la segunda
+            var oculta = new Variante("pista@sin-precio", CondicionVariante.Horario(new TimeSpan(18, 0, 0), new TimeSpan(23, 0, 0)),
+                new FuentesPrecio(Plantilla.Ocio));
+            var fila = AbrirPadel(21, oculta, Noche(new TimeSpan(20, 0, 0), TimeSpan.Zero));
+            Assert.AreEqual(1, fila.Variantes.Count);
+            Assert.AreEqual("pista@noche", fila.Variantes[0].Variante.Id);
+            Assert.IsTrue(fila.Variantes[0].Vigente);
+            Assert.IsNotNull(fila.Variantes[0].Chip);
+        }
+
+        [Test]
+        public void LaVigenteUsaLaHoraLocalDelMovil()
+        {
+            var utc = new DateTime(2026, 11, 18, 12, 0, 0, DateTimeKind.Utc);
+            var desfase = TimeZoneInfo.Local.GetUtcOffset(utc);
+            Assume.That(desfase != TimeSpan.Zero, "Con la máquina en UTC la conversión no cambia nada.");
+            // Franja [hora local, hora local + |desfase|): contiene la hora local, nunca la hora UTC
+            var local = (utc + desfase).TimeOfDay;
+            var hasta = TimeSpan.FromTicks((local + desfase.Duration()).Ticks % TimeSpan.TicksPerDay);
+            var franja = new Variante("pista@franja", CondicionVariante.Horario(local, hasta), Web(ValorPrecio.Fijo(2400)));
+            pantalla.Ficha.Abrir(Padel(franja), utc);
+            var variante = pantalla.Ficha.Filas.Single().Variantes.Single();
+            Assert.IsTrue(variante.Vigente, $"A las {utc:HH:mm} UTC son las {local} en el móvil: dentro de la franja.");
+            Assert.IsNotNull(variante.Chip);
+        }
+
+        [Test]
+        public void AlAbrirLaFichaElLugarSeCentraEncimaDeLaHoja()
+        {
+            var areas = LugarId("clinica-areas");
+            pantalla.AbrirFicha(areas);
+            var (destino, enPantalla) = mapa.centradosEn.Single();
+            Assert.AreEqual(areas.Posicion, destino);
+            // En EditMode la hoja aún no tiene medida: se supone el 72 % del alto
+            Assert.AreEqual(Screen.width / 2f, enPantalla.X, 1e-3f);
+            Assert.AreEqual(Screen.height * (1f - 0.72f) / 2f, enPantalla.Y, 1e-3f);
+
+            // Con la hoja medida: centro horizontal y mitad de la zona que no tapa
+            var p = PantallaMapa.PuntoCentradoFicha(1080f, 1920f, 1200f);
+            Assert.AreEqual(540f, p.X, 1e-3f);
+            Assert.AreEqual(600f, p.Y, 1e-3f);
         }
 
         [Test]

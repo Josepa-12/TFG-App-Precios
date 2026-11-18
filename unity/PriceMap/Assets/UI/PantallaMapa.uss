@@ -761,6 +761,41 @@
     -unity-text-align: upper-right;
 }
 
+/* Variantes (historia 1.8, parte 2; maqueta .variant y .now): debajo del nombre, condición en muted y precio en
+   color de texto; la vigente lleva delante el chip "Ahora" (surface-2, accent, peso 800). */
+.ficha__variante {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: var(--espacio-1);
+}
+
+.ficha__variante-ahora {
+    margin: 0 6px 0 0;
+    padding: 2px 6px;
+    border-radius: var(--radio-xs);
+    background-color: var(--color-surface-2);
+    color: var(--color-ahora-texto);
+}
+
+.ficha__variante-condicion,
+.ficha__variante-separador {
+    margin: 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+.ficha__variante-separador {
+    margin: 0 4px;
+}
+
+.ficha__variante-precio {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+}
+
 .ficha__sin-precio {
     margin: var(--espacio-4) 0;
     padding: 0;

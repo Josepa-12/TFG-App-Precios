@@ -13,6 +13,13 @@ namespace PriceMap.Aplicacion
         /// <summary>Centra la vista en una coordenada real.</summary>
         void Centrar(Coordenada destino);
 
+        /// <summary>
+        /// Mueve la vista para que la coordenada quede en ese punto de la pantalla (px, origen arriba a la
+        /// izquierda, como Proyectar), al instante y sin cambiar el zoom, el giro ni la inclinación. Lo usa la
+        /// ficha para dejar el lugar en la zona del mapa que no tapa (historia 1.8, parte 2).
+        /// </summary>
+        void Centrar(Coordenada destino, PuntoPantalla enPantalla);
+
         /// <summary>Pinta el mapa con la paleta del tema (B claro, D oscuro).</summary>
         void AplicarTema(Tema tema);
 

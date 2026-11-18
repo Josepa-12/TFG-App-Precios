@@ -19,6 +19,7 @@ namespace PriceMap.Tests.EditMode
         {
             public int acercar, alejar;
             public void Centrar(Coordenada destino) { }
+            public void Centrar(Coordenada destino, PuntoPantalla enPantalla) { }
             public void AplicarTema(Tema tema) { }
             public void Acercar() => acercar++;
             public void Alejar() => alejar++;
