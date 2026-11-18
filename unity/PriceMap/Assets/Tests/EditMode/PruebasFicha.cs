@@ -10,6 +10,7 @@ using PriceMap.UI;
 using PriceMap.Vectorial;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Accessibility;
 using UnityEngine.UIElements;
 
 namespace PriceMap.Tests.EditMode
@@ -79,6 +80,13 @@ namespace PriceMap.Tests.EditMode
         public void Preparar()
         {
             Textos.Forzados = T; // en EditMode Localization no tiene locale: textos es-ES reales
+            Crear(Ahora);
+        }
+
+        /// <summary>Crea la pantalla (sustituye a la anterior) con ese "ahora" y, si se da, la ubicación.</summary>
+        void Crear(DateTime ahora, Func<IPreferencias, ServicioUbicacion> ubicacion = null)
+        {
+            if (objeto != null) UnityEngine.Object.DestroyImmediate(objeto);
             objeto = new GameObject("Pantalla de prueba");
             pantalla = objeto.AddComponent<PantallaMapa>();
             var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
@@ -86,10 +94,23 @@ namespace PriceMap.Tests.EditMode
             var tema = new ServicioTema(prefs, new SistemaClaro());
             filtro = new ServicioFiltro(prefs);
             mapa = new MapaFalso();
-            pantalla.Inicializar(mapa, tema, Lugares(), Ahora, arbol, filtro);
+            pantalla.Inicializar(mapa, tema, Lugares(), ahora, arbol, filtro, ubicacion?.Invoke(prefs));
             tema.Iniciar();
             filtro.Iniciar();
             filtro.Elegir(FiltroPrecios.Todos); // con Ninguno (por defecto) no se ve ningún marcador
+        }
+
+        /// <summary>Ubicación fija en un estado (sin GPS): solo para abrir el aviso o la explicación.</summary>
+        class UbicacionFalsa : IUbicacion
+        {
+            public EstadoUbicacion Estado { get; set; }
+            public Coordenada? Posicion => null;
+            public float? Rumbo => null;
+            public event Action Cambiado { add { } remove { } }
+            public void PedirPermiso() { }
+            public void Iniciar() { }
+            public void Detener() { }
+            public void AbrirAjustes() { }
         }
 
         [TearDown]
@@ -97,6 +118,8 @@ namespace PriceMap.Tests.EditMode
         {
             UnityEngine.Object.DestroyImmediate(objeto);
             Textos.Forzados = null;
+            AccesibilidadPantalla.LectorForzado = null;
+            AssistiveSupport.activeHierarchy = null;
         }
 
         /// <summary>Pone el lugar con la punta en ese punto (dp) y recoloca los marcadores. Devuelve su marcador.</summary>
@@ -531,6 +554,276 @@ namespace PriceMap.Tests.EditMode
             pantalla.AlternarMenu(); // la píldora activada por teclado o TalkBack
             Assert.IsTrue(pantalla.MenuAbierto);
             Assert.IsFalse(pantalla.FichaAbierta, "El menú no queda debajo de la ficha.");
+        }
+
+        // ── TalkBack de la ficha (historia 1.8, parte 3) ──
+
+        AccesibilidadPantalla Acc => pantalla.Accesibilidad;
+
+        /// <summary>Enciende el lector forzado y rehace la jerarquía; si el editor no la activa, la prueba se ignora.</summary>
+        void ConLector()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            Acc.Reconstruir();
+            if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+        }
+
+        static List<AccessibilityNode> Nodos() => AssistiveSupport.activeHierarchy.rootNodes.ToList();
+        static List<string> Etiquetas() => Nodos().Select(n => n.label).ToList();
+        static AccessibilityNode Nodo(string etiqueta) => Nodos().Single(n => n.label == etiqueta);
+
+        /// <summary>
+        /// Lo que hace el doble toque de TalkBack: lanza el evento invoked del nodo. El evento no se puede lanzar
+        /// desde fuera, así que se lee su delegado por reflexión.
+        /// </summary>
+        static void Activar(AccessibilityNode nodo)
+        {
+            var accion = Delegado<Func<bool>>(nodo, "invoked");
+            Assert.IsNotNull(accion, $"El nodo \"{nodo.label}\" no tiene acción.");
+            Assert.IsTrue(accion());
+        }
+
+        /// <summary>Lo que hace TalkBack al poner el foco en el nodo: lanza su evento focusChanged (por reflexión).</summary>
+        static void LanzarFoco(AccessibilityNode nodo) =>
+            Delegado<Action<AccessibilityNode, bool>>(nodo, "focusChanged")?.Invoke(nodo, true);
+
+        /// <summary>Delegado del evento de ese nombre en el nodo (null sin suscriptores).</summary>
+        static T Delegado<T>(AccessibilityNode nodo, string evento) where T : Delegate
+        {
+            const System.Reflection.BindingFlags Campos = System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+            var campo = typeof(AccessibilityNode).GetFields(Campos)
+                .FirstOrDefault(f => typeof(T).IsAssignableFrom(f.FieldType) && f.Name.IndexOf(evento, StringComparison.OrdinalIgnoreCase) >= 0);
+            if (campo == null) Assert.Inconclusive($"Esta versión de Unity no deja leer el evento {evento} del nodo.");
+            return campo.GetValue(nodo) as T;
+        }
+
+        /// <summary>Recorrido esperado de la ficha abierta: sus textos en orden y "Cerrar ficha" al final.</summary>
+        List<string> RecorridoDeLaFicha() =>
+            pantalla.Ficha.TextosTalkBack().Select(t => t.texto).Append(T(ClavesTexto.FichaCerrar)).ToList();
+
+        [Test]
+        public void ConTalkBackElDobleToqueEnUnMarcadorAbreSuFicha()
+        {
+            var m = Colocar("clinica-areas", Punta);
+            ConLector();
+            var nodo = Nodo(m.Anuncio);
+            Assert.AreEqual(AccessibilityRole.Button, nodo.role, "El marcador de un lugar tiene acción.");
+            Activar(nodo);
+            Assert.IsTrue(pantalla.FichaAbierta);
+            Assert.AreEqual("clinica-areas", pantalla.Ficha.Lugar.Id);
+            Assert.IsTrue(Acc.Modal);
+            Assert.AreSame(pantalla.Ficha.Titulo, Acc.Enfocado, "El foco va al título.");
+            Assert.AreSame(Nodo("Clínica Areas"), Acc.UltimoNodoEnfocado, "TalkBack recibe el nodo del título.");
+        }
+
+        [Test]
+        public void ElFocoDeTalkBackEnUnConceptoDesplazaLaFicha()
+        {
+            ConLector();
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            var ficha = pantalla.Ficha;
+            LanzarFoco(Nodo("Clínica Areas"));
+            Assert.AreEqual(0, ficha.Desplazamientos, "El título está fuera del contenido: no se desplaza.");
+
+            var fila = ficha.Fila("readaptacion-y-entrenamiento/sesion-alterg");
+            LanzarFoco(Nodo(fila.Anuncio));
+            Assert.AreEqual(1, ficha.Desplazamientos);
+            Assert.AreSame(fila, ficha.UltimoDesplazado, "Se desplaza hasta el concepto enfocado.");
+        }
+
+        [Test]
+        public void ConLaFichaAbiertaElAvisoDeUbicacionLaCierraYEsElRecorrido()
+        {
+            Crear(Ahora, prefs => new ServicioUbicacion(new UbicacionFalsa { Estado = EstadoUbicacion.Denegado }, prefs));
+            ConLector();
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            pantalla.TocarUbicacion(); // denegado: abre el aviso
+            Assert.IsTrue(pantalla.AvisoAbierto);
+            Assert.IsFalse(pantalla.FichaAbierta, "El aviso cierra la ficha.");
+            Assert.IsTrue(Acc.Modal);
+            var aviso = pantalla.Aviso;
+            var esperado = new[] { aviso.Texto.text, aviso.Cerrar.text, aviso.AbrirAjustes.text };
+            CollectionAssert.AreEqual(esperado, Etiquetas(), "El recorrido es el del aviso.");
+            CollectionAssert.AreEqual(esperado, Acc.Recorrido());
+            Assert.AreSame(aviso.Texto, Acc.Enfocado);
+
+            pantalla.CerrarAviso();
+            Assert.IsFalse(Acc.Modal);
+            Assert.IsFalse(pantalla.FichaAbierta);
+            CollectionAssert.DoesNotContain(Etiquetas(), "Clínica Areas");
+        }
+
+        [Test]
+        public void ConLaFichaAbiertaLaExplicacionDeUbicacionLaCierra()
+        {
+            Crear(Ahora, prefs =>
+            {
+                prefs.Guardar(ServicioUbicacion.ClaveExplicacion, "1"); // ya salió al abrir: no sale sola
+                return new ServicioUbicacion(new UbicacionFalsa { Estado = EstadoUbicacion.SinPermiso }, prefs);
+            });
+            ConLector();
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            pantalla.TocarUbicacion(); // sin permiso: vuelve a salir la explicación
+            Assert.IsTrue(pantalla.ExplicacionAbierta);
+            Assert.IsFalse(pantalla.FichaAbierta);
+            var e = pantalla.Explicacion;
+            CollectionAssert.AreEqual(new[] { e.Texto.text, e.AhoraNo.text, e.Permitir.text }, Etiquetas());
+        }
+
+        [Test]
+        public void ConLaFichaAbiertaElRecorridoSoloTieneLaFicha()
+        {
+            var m = Colocar("clinica-areas", Punta);
+            ConLector();
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            var ficha = pantalla.Ficha;
+
+            var esperado = new List<string> { "Clínica Areas", "Clínica privada · Servicio local", "C/ Santo Domingo, 21-23" };
+            string area = null;
+            foreach (var f in ficha.Filas)
+            {
+                if (f.Concepto.Area != area) { area = f.Concepto.Area; esperado.Add(area); }
+                esperado.Add(f.Anuncio);
+                esperado.AddRange(f.Variantes.Select(v => v.Anuncio));
+            }
+            esperado.Add("Cerrar ficha");
+            CollectionAssert.AreEqual(esperado, Etiquetas(), "Título, tipo, dirección, áreas y conceptos en orden; \"Cerrar ficha\" al final.");
+            CollectionAssert.AreEqual(esperado, Acc.Recorrido());
+            Assert.AreEqual(AccessibilityRole.Button, Nodo("Cerrar ficha").role);
+            Assert.AreEqual(AccessibilityRole.StaticText, Nodo("Clínica Areas").role);
+
+            var etiquetas = Etiquetas();
+            CollectionAssert.DoesNotContain(etiquetas, m.Anuncio, "Ningún marcador.");
+            foreach (var clave in new[] { ClavesTexto.TemaCambiar, ClavesTexto.PreciosControl, ClavesTexto.MapaAcercar, ClavesTexto.MapaAlejar })
+                CollectionAssert.DoesNotContain(etiquetas, T(clave), "Ningún control del mapa.");
+            Assert.IsEmpty(Acc.RecorridoDeMarcas());
+        }
+
+        [Test]
+        public void LaFraseDeUnConceptoDiceNombrePrecioUnidadOrigenYFrescura()
+        {
+            ConLector();
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            var frase = "Sesión de fisioterapia, desde 40" + Nbsp + "€ por sesión. Publicado en su web el 13/11/2026. Al día";
+            Assert.AreEqual(frase, pantalla.Ficha.Fila("fisioterapia/sesion-de-fisioterapia").Anuncio);
+            Assert.AreEqual(AccessibilityRole.StaticText, Nodo(frase).role);
+        }
+
+        [Test]
+        public void LaFraseDeConsultarNoTieneUnidadNiFrescura()
+        {
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            var fila = pantalla.Ficha.Fila("traumatologia/infiltraciones");
+            Assert.AreEqual("Infiltraciones", fila.Nombre.text);
+            Assert.AreEqual("Infiltraciones, Consultar. Publicado en su web el 13/11/2026", fila.Anuncio);
+        }
+
+        [Test]
+        public void LaVarianteVigenteSeLeeTrasSuConceptoConAhora()
+        {
+            Crear(UtcDeLocal(21)); // la pantalla calcula la ficha con este "ahora": las 21:00 en el móvil
+            ConLector();
+            pantalla.AbrirFicha(Padel(Noche(new TimeSpan(20, 0, 0), TimeSpan.Zero)));
+            var fila = pantalla.Ficha.Filas.Single();
+            var frase = "Ahora: de 20:00 a 24:00, " + FormatoPrecio.Euros(2400);
+            Assert.AreEqual(frase, fila.Variantes.Single().Anuncio);
+            var etiquetas = Etiquetas();
+            int i = etiquetas.IndexOf(fila.Anuncio);
+            Assert.GreaterOrEqual(i, 0, "El concepto tiene su nodo.");
+            Assert.AreEqual(frase, etiquetas[i + 1], "El nodo de la variante va justo después del de su concepto.");
+
+            var noVigente = AbrirPadel(10, Noche(new TimeSpan(20, 0, 0), TimeSpan.Zero)).Variantes.Single();
+            Assert.AreEqual("De 20:00 a 24:00, " + FormatoPrecio.Euros(2400), noVigente.Anuncio);
+        }
+
+        [Test]
+        public void SinPrecioSeLeeAunNoTienePrecioYCerrarFicha()
+        {
+            ConLector();
+            pantalla.AbrirFicha(LugarId("chemabarber"));
+            var etiquetas = Etiquetas();
+            Assert.AreEqual("ChemaBarber", etiquetas.First());
+            CollectionAssert.AreEqual(new[] { "Aún no tiene precio", "Cerrar ficha" }, etiquetas.Skip(etiquetas.Count - 2));
+            CollectionAssert.AreEqual(RecorridoDeLaFicha(), etiquetas);
+        }
+
+        [Test]
+        public void CerrarFichaConTalkBackDevuelveElFocoAlMarcador()
+        {
+            var m = Colocar("clinica-areas", Punta);
+            ConLector();
+            Activar(Nodo(m.Anuncio));
+            Activar(Nodo("Cerrar ficha"));
+            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.IsFalse(Acc.Modal);
+            Assert.AreSame(m.Cuerpo, Acc.Enfocado, "El foco vuelve al marcador.");
+            Assert.AreSame(Nodo(m.Anuncio), Acc.UltimoNodoEnfocado, "TalkBack recibe el nodo del marcador.");
+            Assert.AreSame(Acc.NodoDe(m.Cuerpo), Nodo(m.Anuncio), "El marcador vuelve al recorrido con su nodo.");
+            CollectionAssert.DoesNotContain(Etiquetas(), "Clínica Areas");
+        }
+
+        [Test]
+        public void AtrasCierraLaFichaYDevuelveElFocoAlMarcador()
+        {
+            var m = Colocar("clinica-areas", Punta);
+            ConLector();
+            Activar(Nodo(m.Anuncio));
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.IsFalse(Acc.Modal);
+            Assert.AreSame(m.Cuerpo, Acc.Enfocado);
+            Assert.AreSame(Nodo(m.Anuncio), Acc.UltimoNodoEnfocado, "TalkBack recibe el nodo del marcador.");
+            CollectionAssert.Contains(Etiquetas(), T(ClavesTexto.TemaCambiar), "Vuelven los controles del mapa.");
+        }
+
+        [Test]
+        public void SiElMarcadorYaNoSeVeNoSeFuerzaElFoco()
+        {
+            ConLector();
+            pantalla.AbrirFicha(LugarId("clinica-areas")); // sin colocar: su marcador no se ve
+            Assert.AreSame(pantalla.Ficha.Titulo, Acc.Enfocado);
+            pantalla.CerrarFicha();
+            Assert.IsNull(Acc.Enfocado);
+        }
+
+        [Test]
+        public void AbrirOtraFichaSoloDejaLosNodosDeLaNueva()
+        {
+            Colocar("clinica-areas", Punta);
+            var chema = Colocar("chemabarber", Punta + new Vector2(0f, 150f));
+            ConLector();
+            int controles = Acc.Controles;
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            pantalla.AbrirFicha(LugarId("chemabarber"));
+            Assert.IsTrue(Acc.Modal);
+            Assert.AreSame(pantalla.Ficha.Titulo, Acc.Enfocado);
+            CollectionAssert.AreEqual(RecorridoDeLaFicha(), Etiquetas(), "Solo los nodos de ChemaBarber.");
+            CollectionAssert.DoesNotContain(Etiquetas(), "Clínica Areas");
+            Assert.AreEqual(controles + RecorridoDeLaFicha().Count, Acc.Controles, "Sin controles de la ficha anterior.");
+
+            pantalla.CerrarFicha();
+            Assert.AreSame(chema.Cuerpo, Acc.Enfocado, "El foco va al marcador de la nueva.");
+            Assert.AreEqual(controles, Acc.Controles, "Al cerrar no queda ningún control de la ficha.");
+        }
+
+        [Test]
+        public void SinLectorAbrirYCerrarFuncionanSinJerarquia()
+        {
+            AccesibilidadPantalla.LectorForzado = () => false;
+            var m = Colocar("clinica-areas", Punta);
+            pantalla.AbrirFicha(LugarId("clinica-areas"));
+            Assert.IsTrue(pantalla.FichaAbierta);
+            Assert.IsTrue(Acc.Modal);
+            Assert.AreSame(pantalla.Ficha.Titulo, Acc.Enfocado);
+            CollectionAssert.AreEqual(RecorridoDeLaFicha(), Acc.Recorrido());
+            Assert.IsNull(AssistiveSupport.activeHierarchy, "No se activa ninguna jerarquía.");
+
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.IsFalse(Acc.Modal);
+            Assert.AreSame(m.Cuerpo, Acc.Enfocado);
+            Assert.IsNull(AssistiveSupport.activeHierarchy);
         }
     }
 }

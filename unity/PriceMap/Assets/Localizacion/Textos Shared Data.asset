@@ -343,6 +343,30 @@ MonoBehaviour:
     m_Key: dia.dom
     m_Metadata:
       m_Items: []
+  - m_Id: 457462510510080
+    m_Key: ficha.anuncio.concepto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064512
+    m_Key: ficha.anuncio.unidad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064513
+    m_Key: ficha.anuncio.origen.web
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064514
+    m_Key: ficha.anuncio.frase
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064515
+    m_Key: ficha.anuncio.variante
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064516
+    m_Key: ficha.anuncio.variante.ahora
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

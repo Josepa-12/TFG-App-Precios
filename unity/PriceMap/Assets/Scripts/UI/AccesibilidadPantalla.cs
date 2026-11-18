@@ -27,6 +27,8 @@ namespace PriceMap.UI
             public Action accion;
             public bool enModal;
             public bool esTexto; // texto sin acción (rol StaticText), p. ej. el de una ventana modal
+            public object grupo; // controles dinámicos que se dan de baja juntos (QuitarControles), p. ej. los de la ficha
+            public Action alEnfocar; // cuando TalkBack pone el foco en su nodo (p. ej. desplazar la ficha hasta él)
         }
 
         class Marca
@@ -37,6 +39,7 @@ namespace PriceMap.UI
             public Func<Vector2> posicion;
             public int grupo;
             public Func<Rect> marco; // zona de TalkBack (dp del panel); null: el worldBound del elemento
+            public Action accion;    // doble toque de TalkBack (rol Button); null: texto sin acción
         }
 
         /// <summary>
@@ -104,30 +107,64 @@ namespace PriceMap.UI
         /// </summary>
         /// <param name="seleccionado">Si devuelve true, el nodo lleva el estado Selected (la opción elegida de un menú).</param>
         /// <param name="enModal">Si el control sigue en el recorrido con el modo modal activo.</param>
+        /// <param name="grupo">Si no es null, QuitarControles(grupo) lo da de baja junto con los demás de su grupo.</param>
+        /// <param name="alEnfocar">Lo que se hace cuando TalkBack pone el foco en su nodo.</param>
         public void Boton(VisualElement elemento, Func<string> etiqueta, Action accion, Func<string> valor = null, Func<bool> visible = null,
-            Func<bool> seleccionado = null, bool enModal = false) =>
+            Func<bool> seleccionado = null, bool enModal = false, object grupo = null, Action alEnfocar = null) =>
             controles.Add(new Control
             {
                 elemento = elemento, etiqueta = etiqueta, valor = valor, accion = accion, visible = visible,
-                seleccionado = seleccionado, enModal = enModal,
+                seleccionado = seleccionado, enModal = enModal, grupo = grupo, alEnfocar = alEnfocar,
             });
 
         /// <summary>
         /// Declara un texto entre los controles (rol StaticText, sin acción), en su orden de declaración:
         /// p. ej. el texto de una ventana modal, antes de sus botones.
         /// </summary>
-        public void Texto(VisualElement elemento, Func<string> etiqueta, Func<bool> visible = null, bool enModal = false) =>
-            controles.Add(new Control { elemento = elemento, etiqueta = etiqueta, visible = visible, enModal = enModal, esTexto = true });
+        /// <param name="grupo">Si no es null, QuitarControles(grupo) lo da de baja junto con los demás de su grupo.</param>
+        /// <param name="alEnfocar">Lo que se hace cuando TalkBack pone el foco en su nodo (p. ej. desplazar hasta él).</param>
+        public void Texto(VisualElement elemento, Func<string> etiqueta, Func<bool> visible = null, bool enModal = false,
+            object grupo = null, Action alEnfocar = null) =>
+            controles.Add(new Control
+            {
+                elemento = elemento, etiqueta = etiqueta, visible = visible, enModal = enModal, esTexto = true,
+                grupo = grupo, alEnfocar = alEnfocar,
+            });
 
         /// <summary>
-        /// Declara un marcador del mapa: texto sin acción (rol StaticText). Solo tiene nodo mientras es visible.
+        /// Da de baja los controles de ese grupo (p. ej. los nodos de la ficha del lugar anterior). Los que tenían
+        /// nodo en la jerarquía activa se quitan ya, para que ninguna entrada de TalkBack apunte a un elemento que
+        /// ya no existe. No reconstruye: quien llama decide cuándo (Modal o Reconstruir).
+        /// </summary>
+        public void QuitarControles(object grupo)
+        {
+            if (grupo == null) return;
+            foreach (var c in controles)
+            {
+                if (c.grupo != grupo || !nodosControles.TryGetValue(c.elemento, out var nodo)) continue;
+                if (jerarquia != null && jerarquia.ContainsNode(nodo)) jerarquia.RemoveNode(nodo, true);
+                nodosControles.Remove(c.elemento);
+            }
+            controles.RemoveAll(c => c.grupo == grupo);
+        }
+
+        /// <summary>Número de controles declarados (visibles o no), para las pruebas.</summary>
+        internal int Controles => controles.Count;
+
+        /// <summary>
+        /// Declara un marcador del mapa. Solo tiene nodo mientras es visible. Sin acción es un texto (rol
+        /// StaticText); con ella, un botón que el doble toque de TalkBack activa (p. ej. abrir la ficha del lugar).
         /// El grupo ordena primero (GrupoLugares antes que GrupoPuntos) y, dentro de él, la posición (dp del panel);
         /// si no se da la posición, se usa la del elemento. marco (dp del panel) sustituye al worldBound del elemento
         /// como zona de TalkBack (p. ej. para llegar a 48 dp).
         /// </summary>
         public void Marcador(VisualElement elemento, Func<string> etiqueta, Func<bool> visible, Func<Vector2> posicion = null,
-            int grupo = GrupoLugares, Func<Rect> marco = null) =>
-            marcas.Add(new Marca { elemento = elemento, etiqueta = etiqueta, visible = visible, posicion = posicion, grupo = grupo, marco = marco });
+            int grupo = GrupoLugares, Func<Rect> marco = null, Action alActivar = null) =>
+            marcas.Add(new Marca
+            {
+                elemento = elemento, etiqueta = etiqueta, visible = visible, posicion = posicion, grupo = grupo, marco = marco,
+                accion = alActivar,
+            });
 
         /// <summary>
         /// Da de baja las marcas de ese elemento (su vista se ha destruido). Si tenía nodo en la jerarquía activa,
@@ -210,10 +247,28 @@ namespace PriceMap.UI
         void Enfocar(VisualElement elemento, bool teclado, string anuncio)
         {
             if (teclado) elemento.Focus();
-            if (LectorActivo && jerarquia != null && AssistiveSupport.activeHierarchy == jerarquia
-                && nodosControles.TryGetValue(elemento, out var nodo) && jerarquia.ContainsNode(nodo))
-                AssistiveSupport.notificationDispatcher?.SendLayoutChanged(nodo);
+            if (LectorActivo && jerarquia != null && AssistiveSupport.activeHierarchy == jerarquia)
+            {
+                var nodo = NodoDe(elemento);
+                if (nodo != null && jerarquia.ContainsNode(nodo))
+                {
+                    UltimoNodoEnfocado = nodo;
+                    AssistiveSupport.notificationDispatcher?.SendLayoutChanged(nodo);
+                }
+            }
             if (anuncio != null) Anunciar(anuncio);
+        }
+
+        /// <summary>Último nodo al que Enfocar llevó el foco de TalkBack (SendLayoutChanged), para las pruebas.</summary>
+        internal AccessibilityNode UltimoNodoEnfocado { get; private set; }
+
+        /// <summary>Nodo del elemento en la jerarquía activa: un control o un marcador (p. ej. al cerrar la ficha).</summary>
+        internal AccessibilityNode NodoDe(VisualElement elemento)
+        {
+            if (elemento == null) return null;
+            if (nodosControles.TryGetValue(elemento, out var nodo)) return nodo;
+            foreach (var (marca, n) in nodosMarcas) if (marca.elemento == elemento) return n;
+            return null;
         }
 
         List<Marca> MarcasVisibles()
@@ -272,6 +327,8 @@ namespace PriceMap.UI
                 nodo.frameGetter = () => MarcoEnPantalla(elemento);
                 var accion = c.accion;
                 if (accion != null) nodo.invoked += () => { accion(); return true; };
+                var alEnfocar = c.alEnfocar;
+                if (alEnfocar != null) nodo.focusChanged += (_, enfocado) => { if (enfocado) alEnfocar(); };
             }
             if (!Modal) AnadirMarcas(MarcasVisibles()); // con un menú abierto, el mapa no está en el recorrido
             AssistiveSupport.activeHierarchy = jerarquia;
@@ -331,7 +388,9 @@ namespace PriceMap.UI
             foreach (var m in visibles)
             {
                 var nodo = jerarquia.AddNode(m.etiqueta());
-                nodo.role = AccessibilityRole.StaticText;
+                var accion = m.accion;
+                nodo.role = accion != null ? AccessibilityRole.Button : AccessibilityRole.StaticText;
+                if (accion != null) nodo.invoked += () => { accion(); return true; };
                 var elemento = m.elemento;
                 var marco = m.marco;
                 nodo.frameGetter = marco != null ? () => MarcoEnPantalla(marco()) : (Func<Rect>)(() => MarcoEnPantalla(elemento));

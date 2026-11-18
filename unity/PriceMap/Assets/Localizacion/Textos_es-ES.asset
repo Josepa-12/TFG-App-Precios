@@ -235,7 +235,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 440245349769216
-    m_Localized: Cerrar
+    m_Localized: Cerrar ficha
     m_Metadata:
       m_Items: []
   - m_Id: 440245379129344
@@ -348,6 +348,30 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 446300406407178
     m_Localized: dom
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462510510080
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064512
+    m_Localized: '{0} por {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064513
+    m_Localized: Publicado en su web el {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064514
+    m_Localized: '{0}. {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064515
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 457462544064516
+    m_Localized: '{0}: {1}, {2}'
     m_Metadata:
       m_Items: []
   references:

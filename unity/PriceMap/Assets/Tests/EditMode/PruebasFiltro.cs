@@ -524,21 +524,24 @@ namespace PriceMap.Tests.EditMode
             p.Accesibilidad.ActualizarMarcadores();
             var antes = AssistiveSupport.activeHierarchy;
             if (antes == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
-            Assert.IsTrue(antes.rootNodes.Any(n => n.role == AccessibilityRole.StaticText), "Con el menú cerrado hay marcadores.");
+            // Los marcadores de lugar son botones desde la historia 1.8 (parte 3): se reconocen por su etiqueta
+            var anuncios = new HashSet<string>(p.Capa.Marcadores.Where(m => m.Visible).Select(m => m.Anuncio));
+            Assert.IsTrue(antes.rootNodes.Any(n => anuncios.Contains(n.label)), "Con el menú cerrado hay marcadores.");
 
             p.AlternarMenu();
             p.Accesibilidad.Reconstruir();
             p.Accesibilidad.ActualizarMarcadores();
             var nodos = AssistiveSupport.activeHierarchy.rootNodes;
             CollectionAssert.AreEqual(RecorridoDelMenu(FiltroPrecios.Hosteleria).Select(e => e.Item1), nodos.Select(n => n.label));
-            Assert.IsTrue(nodos.All(n => n.role == AccessibilityRole.Button), "Sin nodos StaticText de marcadores.");
+            Assert.IsTrue(nodos.All(n => n.role == AccessibilityRole.Button), "Sin nodos StaticText.");
+            Assert.IsFalse(nodos.Any(n => anuncios.Contains(n.label)), "Sin marcadores.");
             foreach (var n in nodos)
                 Assert.AreEqual(n.label == Textos.T(ClavesTexto.PreciosOpcionHosteleria), (n.state & AccessibilityState.Selected) != 0, n.label);
 
             p.CerrarMenu();
             p.Accesibilidad.ActualizarMarcadores();
             var despues = AssistiveSupport.activeHierarchy.rootNodes;
-            Assert.IsTrue(despues.Any(n => n.role == AccessibilityRole.StaticText), "Al cerrar vuelven los marcadores.");
+            Assert.IsTrue(despues.Any(n => anuncios.Contains(n.label)), "Al cerrar vuelven los marcadores.");
             Assert.IsTrue(despues.Any(n => n.label == Textos.T(ClavesTexto.TemaCambiar)), "Y el botón de tema.");
             Assert.IsFalse(despues.Any(n => (n.state & AccessibilityState.Selected) != 0));
         }

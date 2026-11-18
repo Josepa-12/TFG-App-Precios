@@ -81,7 +81,7 @@ namespace PriceMap.EditorTools
             [ClavesTexto.UbicacionAvisoApagada] = "La ubicación del móvil está apagada. Actívala en los ajustes rápidos del móvil.",
             [ClavesTexto.UbicacionAbrirAjustes] = "Abrir Ajustes",
             [ClavesTexto.UbicacionCerrar] = "Cerrar",
-            [ClavesTexto.FichaCerrar] = "Cerrar",
+            [ClavesTexto.FichaCerrar] = "Cerrar ficha",
             [ClavesTexto.FichaTipo] = "{0} · {1}",
             [ClavesTexto.PlantillaServicio] = "Servicio local",
             [ClavesTexto.PlantillaHosteleria] = "Hostelería",
@@ -110,6 +110,12 @@ namespace PriceMap.EditorTools
             [ClavesTexto.DiaViernes] = "vie",
             [ClavesTexto.DiaSabado] = "sáb",
             [ClavesTexto.DiaDomingo] = "dom",
+            [ClavesTexto.FichaAnuncioConcepto] = "{0}, {1}",
+            [ClavesTexto.FichaAnuncioUnidad] = "{0} por {1}",
+            [ClavesTexto.FichaAnuncioOrigenWeb] = "Publicado en su web el {0}",
+            [ClavesTexto.FichaAnuncioFrase] = "{0}. {1}",
+            [ClavesTexto.FichaAnuncioVariante] = "{0}, {1}",
+            [ClavesTexto.FichaAnuncioVarianteAhora] = "{0}: {1}, {2}",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

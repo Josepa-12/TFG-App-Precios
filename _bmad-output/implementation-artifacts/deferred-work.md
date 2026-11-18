@@ -97,3 +97,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-8b-variantes-y-centrado-de-la-ficha.md`
   summary: Probar el recentrado de la ficha cuando la hoja recibe su medida real (`RecentrarFichaPendiente`) y al pasar de una ficha a otra. Hoy solo lo comprueba la captura de PC; se podría añadir un caso A→B a la captura o montar un arnés de PlayMode con panel.
   evidence: Revisión de la 1.8 (parte 2), hallazgo 5 (Verification Gap). En EditMode no hay layout de UI Toolkit; quitar el `RegisterCallback` o la línea `if (yaAbierta)` no rompe ninguna prueba EditMode.
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-8c-talkback-de-la-ficha.md`
+  summary: Probar en un móvil con TalkBack la ficha. Tocar dos veces un marcador tiene que abrirla y deslizar tiene que recorrer solo la ficha y desplazarla hasta el nodo con el foco. Hay que ver si TalkBack llega a los nodos que quedan fuera de la parte visible o dibuja su marco sobre el mapa, y comprobar que atrás devuelve el foco al marcador. Sin verificar; si falla, sería medium.
+  evidence: Revisión de la 1.8 (parte 3), hallazgo 6 (Blind Hunter). `frameGetter` da el marco sin recortar al `ScrollView`; en EditMode no hay disposición ni TalkBack real.

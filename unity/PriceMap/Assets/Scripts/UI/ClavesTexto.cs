@@ -126,8 +126,23 @@ namespace PriceMap.UI
         public const string DiaSabado = "dia.sab";
         public const string DiaDomingo = "dia.dom";
 
+        /// <summary>TalkBack de un concepto (historia 1.8, parte 3): {0} nombre, {1} precio ("desde 40 €" o "Consultar").</summary>
+        public const string FichaAnuncioConcepto = "ficha.anuncio.concepto";
+        /// <summary>Precio con su unidad: {0} precio, {1} unidad ("desde 40 € por sesión").</summary>
+        public const string FichaAnuncioUnidad = "ficha.anuncio.unidad";
+        /// <summary>Origen web para TalkBack: {0} fecha dd/MM/aaaa ("Publicado en su web el 13/11/2026").</summary>
+        public const string FichaAnuncioOrigenWeb = "ficha.anuncio.origen.web";
+        /// <summary>Une dos frases: {0} la anterior, {1} la siguiente ("…. Al día").</summary>
+        public const string FichaAnuncioFrase = "ficha.anuncio.frase";
+        /// <summary>Variante: {0} condición, {1} precio ("De 20:00 a 24:00, 24 €").</summary>
+        public const string FichaAnuncioVariante = "ficha.anuncio.variante";
+        /// <summary>Variante vigente: {0} texto de FichaAhora, {1} condición en minúscula, {2} precio ("Ahora: de 20:00 a 24:00, 24 €").</summary>
+        public const string FichaAnuncioVarianteAhora = "ficha.anuncio.variante.ahora";
+
         public static readonly string[] Todas =
         {
+            FichaAnuncioConcepto, FichaAnuncioUnidad, FichaAnuncioOrigenWeb, FichaAnuncioFrase,
+            FichaAnuncioVariante, FichaAnuncioVarianteAhora,
             FichaAhora, VarianteHorario, VarianteDiasSeguidos, VarianteDiasLista, VarianteConBono,
             DiaLunes, DiaMartes, DiaMiercoles, DiaJueves, DiaViernes, DiaSabado, DiaDomingo,
             FichaCerrar, FichaTipo, PlantillaServicio, PlantillaHosteleria, PlantillaOcio, FichaSinPrecio, FichaConsultar,

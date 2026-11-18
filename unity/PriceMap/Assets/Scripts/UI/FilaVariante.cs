@@ -46,7 +46,18 @@ namespace PriceMap.UI
             Add(Etiqueta("·", "ficha__variante-separador", "t-meta"));
             Precio = Etiqueta(FilaConcepto.TextoPrecio(precio, textos), "ficha__variante-precio", "t-meta-fuerte");
             Add(Precio);
+
+            // TalkBack: "Ahora: de 20:00 a 24:00, 24 €" la vigente; "De 20:00 a 24:00, 24 €" las demás
+            Anuncio = vigente
+                ? Textos.Formatear(textos(ClavesTexto.FichaAnuncioVarianteAhora), textos(ClavesTexto.FichaAhora), Minuscula(Condicion.text), Precio.text)
+                : Textos.Formatear(textos(ClavesTexto.FichaAnuncioVariante), Condicion.text, Precio.text);
         }
+
+        /// <summary>Frase de TalkBack de la variante (historia 1.8, parte 3).</summary>
+        public string Anuncio { get; }
+
+        static string Minuscula(string texto) =>
+            string.IsNullOrEmpty(texto) ? texto : char.ToLowerInvariant(texto[0]) + texto.Substring(1);
 
         static Label Etiqueta(string texto, string clase, string tipografia)
         {

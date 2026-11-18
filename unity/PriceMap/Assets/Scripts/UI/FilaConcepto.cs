@@ -92,6 +92,36 @@ namespace PriceMap.UI
                 Unidad = Texto(Textos.Formatear(textos(ClavesTexto.FichaUnidad), concepto.Unidad), "ficha__unidad", "t-caption");
                 derecha.Add(Unidad);
             }
+
+            Anuncio = TextoAnuncio(concepto.Nombre, precio, Unidad != null ? concepto.Unidad.Trim() : null, textos);
+        }
+
+        /// <summary>
+        /// Frase de TalkBack del concepto (historia 1.8, parte 3), sin sus variantes: "Sesión de fisioterapia, desde
+        /// 40 € por sesión. Publicado en su web el 13/11/2026. Al día". En "Consultar", sin unidad ni frescura.
+        /// </summary>
+        public string Anuncio { get; }
+
+        /// <param name="unidad">Unidad que se lee ("sesión"); null si la fila no la muestra.</param>
+        public static string TextoAnuncio(string nombre, PrecioMostrado precio, string unidad, Func<string, string> textos)
+        {
+            string importe = TextoPrecio(precio, textos);
+            if (precio.TienePrecio && !string.IsNullOrWhiteSpace(unidad))
+                importe = Textos.Formatear(textos(ClavesTexto.FichaAnuncioUnidad), importe, unidad);
+            string frase = Textos.Formatear(textos(ClavesTexto.FichaAnuncioConcepto), nombre, importe);
+            string origen = TextoOrigenAnuncio(precio.Origen, textos);
+            if (!string.IsNullOrEmpty(origen)) frase = Textos.Formatear(textos(ClavesTexto.FichaAnuncioFrase), frase, origen);
+            if (precio.Frescura.HasValue)
+                frase = Textos.Formatear(textos(ClavesTexto.FichaAnuncioFrase), frase, textos(ClaveFrescura(precio.Frescura.Value.Estado)));
+            return frase;
+        }
+
+        /// <summary>Origen para TalkBack: "Publicado en su web el 13/11/2026" (sin el "·" de la ficha); los demás, igual.</summary>
+        public static string TextoOrigenAnuncio(Origen origen, Func<string, string> textos)
+        {
+            if (origen.Tipo != TipoOrigen.Web) return TextoOrigen(origen, textos);
+            string fecha = origen.FechaWeb?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? "";
+            return Textos.Formatear(textos(ClavesTexto.FichaAnuncioOrigenWeb), fecha);
         }
 
         /// <summary>"desde 40 €", "90 €", "10–20 € por persona" o "Consultar".</summary>

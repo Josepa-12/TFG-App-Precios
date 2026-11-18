@@ -114,7 +114,9 @@ namespace PriceMap.UI
             foreach (var m in capa.Marcadores)
             {
                 var marcador = m;
-                accesibilidad.Marcador(marcador.Cuerpo, () => marcador.Anuncio, () => marcador.Visible, () => marcador.Posicion);
+                // TalkBack: el doble toque en el marcador abre su ficha (historia 1.8, parte 3)
+                accesibilidad.Marcador(marcador.Cuerpo, () => marcador.Anuncio, () => marcador.Visible, () => marcador.Posicion,
+                    alActivar: () => AbrirFicha(marcador.Lugar));
             }
 
             // Ficha del lugar (historia 1.8): se abre al tocar un marcador, encima de los controles del mapa
@@ -240,6 +242,7 @@ namespace PriceMap.UI
         {
             if (aviso == null || aviso.Abierta) return;
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            CerrarFicha(); // la ventana no queda encima de la ficha ni la ficha debajo al cerrarla (recorrido modal)
             aviso.Abrir(ubicacion.Estado);
             accesibilidad.Modal = true; // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
             accesibilidad.PedirFoco(aviso.Texto);
@@ -266,6 +269,7 @@ namespace PriceMap.UI
         {
             if (explicacion == null || explicacion.Abierta) return;
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            CerrarFicha(); // la ventana no queda encima de la ficha ni la ficha debajo al cerrarla (recorrido modal)
             explicacion.Mostrar(true);
             ubicacion.MarcarExplicacionMostrada();
             accesibilidad.Modal = true; // reconstruye: solo el texto y los dos botones
@@ -324,6 +328,38 @@ namespace PriceMap.UI
             CentrarEnFicha(lugar);
             // De una ficha a otra la hoja tiene medida, pero la del lugar anterior: al disponerse, se recentra
             if (yaAbierta) centrarPendiente = lugar;
+
+            // TalkBack: la ficha es modal (solo sus nodos) y el foco va al título; al cerrarla vuelve a este marcador
+            marcadorFicha = MarcadorDe(lugar);
+            DeclararFichaEnTalkBack();
+            if (accesibilidad.Modal) accesibilidad.Reconstruir(); // de una ficha a otra: los nodos de la nueva
+            else accesibilidad.Modal = true;
+            accesibilidad.PedirFoco(ficha.Titulo);
+        }
+
+        MarcadorLugar marcadorFicha; // marcador del lugar de la ficha abierta: al cerrarla, el foco vuelve a él
+
+        MarcadorLugar MarcadorDe(Lugar lugar)
+        {
+            if (capa != null) foreach (var m in capa.Marcadores) if (m.Lugar == lugar) return m;
+            return null;
+        }
+
+        /// <summary>
+        /// Da de baja los nodos de la ficha anterior y declara los de esta, en el orden de lectura (FichaLugar.TextosTalkBack),
+        /// con "Cerrar ficha" al final. Los del contenido desplazan la ficha hasta ellos al recibir el foco de TalkBack.
+        /// </summary>
+        void DeclararFichaEnTalkBack()
+        {
+            accesibilidad.QuitarControles(ficha);
+            foreach (var (elemento, texto) in ficha.TextosTalkBack())
+            {
+                var e = elemento;
+                accesibilidad.Texto(e, () => texto, () => FichaAbierta, enModal: true, grupo: ficha,
+                    alEnfocar: () => ficha.DesplazarHasta(e));
+            }
+            accesibilidad.Boton(ficha.BotonCerrar, () => Textos.T(ClavesTexto.FichaCerrar), CerrarFicha,
+                visible: () => FichaAbierta, enModal: true, grupo: ficha);
         }
 
         /// <summary>Alto máximo de la hoja (--ficha-alto-max): con él se centra mientras la hoja no tiene medida.</summary>
@@ -376,6 +412,12 @@ namespace PriceMap.UI
             centrarPendiente = null;
             if (!FichaAbierta) return;
             ficha.Mostrar(false);
+            // TalkBack: fuera los nodos de la ficha, vuelve el mapa y el foco al marcador que la abrió, si se ve
+            var marcador = marcadorFicha;
+            marcadorFicha = null;
+            accesibilidad.QuitarControles(ficha);
+            accesibilidad.Modal = false;
+            accesibilidad.PedirFoco(marcador != null && marcador.Visible ? marcador.Cuerpo : null);
         }
 
         /// <summary>Píldora "Precios", su menú y el velo que lo cierra al tocar fuera (FR-2, UX-DR6).</summary>
@@ -399,9 +441,9 @@ namespace PriceMap.UI
 
             // TalkBack: la píldora es un botón con la opción actual como valor; con el menú abierto el recorrido
             // es modal (píldora, que lo cierra, y las 5 opciones), igual que el velo a la vista
-            // (con la explicación de la ubicación abierta, la píldora sale del recorrido modal)
+            // (con la explicación de la ubicación o la ficha abiertas, la píldora sale del recorrido modal)
             accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro,
-                visible: () => !ModalUbicacionAbierta, enModal: true);
+                visible: () => !ModalUbicacionAbierta && !FichaAbierta, enModal: true);
             foreach (var o in menu.Opciones)
             {
                 var opcion = o;

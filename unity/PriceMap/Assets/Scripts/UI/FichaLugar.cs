@@ -171,6 +171,44 @@ namespace PriceMap.UI
             Mostrar(true);
         }
 
+        /// <summary>
+        /// Textos del recorrido de TalkBack en orden (historia 1.8, parte 3), sin el botón de cerrar: título, tipo,
+        /// dirección si la hay y, en el orden en que se ven, encabezados de área, la frase de cada concepto seguida
+        /// de sus variantes y "Aún no tiene precio". Cambian con cada apertura.
+        /// </summary>
+        public List<(VisualElement elemento, string texto)> TextosTalkBack()
+        {
+            var r = new List<(VisualElement, string)> { (Titulo, Titulo.text), (Tipo, Tipo.text) };
+            if (!string.IsNullOrWhiteSpace(Direccion.text)) // sin dirección, la línea está oculta (Abrir)
+                r.Add((Direccion, Direccion.text));
+            foreach (var hijo in Contenido.Children())
+            {
+                if (hijo is FilaConcepto fila)
+                {
+                    r.Add((fila, fila.Anuncio));
+                    foreach (var v in fila.Variantes) r.Add((v, v.Anuncio));
+                }
+                else if (hijo is Label texto) r.Add((texto, texto.text));
+            }
+            return r;
+        }
+
+        /// <summary>
+        /// Desplaza el contenido hasta el elemento si está dentro de él (TalkBack ha puesto el foco en su nodo y
+        /// puede quedar fuera de la parte visible). Los de la cabecera no se desplazan.
+        /// </summary>
+        public void DesplazarHasta(VisualElement elemento)
+        {
+            if (elemento == null || !Abierta || !Contenido.contentContainer.Contains(elemento)) return;
+            Desplazamientos++;
+            UltimoDesplazado = elemento;
+            if (Contenido.panel != null) Contenido.ScrollTo(elemento); // sin panel (pruebas), ScrollTo falla
+        }
+
+        /// <summary>Veces que DesplazarHasta ha desplazado el contenido y último elemento pedido (para las pruebas).</summary>
+        internal int Desplazamientos { get; private set; }
+        internal VisualElement UltimoDesplazado { get; private set; }
+
         /// <summary>Fila del concepto con ese id; null si no se muestra.</summary>
         public FilaConcepto Fila(string idConcepto) => filas.Find(f => f.Concepto.Id == idConcepto);
 

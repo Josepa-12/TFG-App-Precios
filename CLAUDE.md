@@ -4,7 +4,7 @@ App Android (Unity 6000.3.28f1, UI Toolkit, Localization) que muestra precios de
 
 ## Reglas de ahorro de tokens
 - No releer specs/planning enteros: usar Grep con rango. Specs cerrados (1.1–1.6) no hace falta abrirlos.
-- Archivos grandes, leer solo la parte necesaria: `MapaVectorial.cs` (698 l.), `PantallaMapa.cs` (702), `IconosLugar.cs` (405), `CapturaPruebas.cs` (555), `AccesibilidadPantalla.cs` (372).
+- Archivos grandes, leer solo la parte necesaria: `MapaVectorial.cs` (698 l.), `PantallaMapa.cs` (744), `IconosLugar.cs` (405), `CapturaPruebas.cs` (555), `AccesibilidadPantalla.cs` (431).
 - Nunca leer `.meta`, `.unity`, `.asset` salvo que la tarea los toque.
 
 ## Capas (Assets/Scripts, un asmdef por carpeta)
@@ -12,7 +12,7 @@ App Android (Unity 6000.3.28f1, UI Toolkit, Localization) que muestra precios de
 - **Aplicacion** (→Dominio): puertos `IMapa`, `IUbicacion`, `IRepositorioLugares`, `ITemaSistema`, `IPreferencias`; servicios `ServicioLugares`, `ServicioFiltro`, `ServicioTema`, `ServicioUbicacion` (+`EstadoUbicacion`, `AccionUbicacion`); `Resultado<T>`, `PuntoPantalla`, `PuntoInteres`.
 - **Adaptadores**: `Datos/RepositorioLugaresJson` (datos en `Assets/Datos/Resources`), `Sistema/TemaSistemaAndroid`, `Sistema/PreferenciasLocales`, `Gps/UbicacionUnity` (componente fino → `UbicacionGps` sobre `IFuenteUbicacion`; real: `FuenteUbicacionUnity`).
 - **Vectorial** (→Aplicacion, Dominio): `MapaVectorial` (implementa IMapa), `CamaraMapa` (+`DetectorToque`: toque < 6 dp → `IMapa.Toque`), `GestoDosDedos`, `PlanTeselas`, `LectorMVT`, `Triangulador`, `Geo`, `PaletaMapa`, `TemaMapa`.
-- **UI** (→Aplicacion, Dominio, Localization): `PantallaMapa` (MonoBehaviour raíz), `AccesibilidadPantalla` (TalkBack), `CapaMarcadores`+`MarcadorLugar`, `CapaPuntosInteres`+`PuntoInteresVista`, `PildoraPrecios`/`MenuPrecios`/`OpcionPrecios`/`PuntoPrecios` (filtro), `BotonRedondo` (iconos Sol/Luna/Mas/Menos/Diana/Cerrar), `FichaLugar`+`FilaConcepto`+`FilaVariante` (ficha del lugar, 1.8), `MarcadorPosicion`, `ExplicacionUbicacion`+`AvisoUbicacion` (modal reutilizada), `IconosLugar`, `FormatoPrecio`, `EscalaFuente`, textos: `Textos`, `ClavesTexto`, `TextosFiltro`, `TextosPuntos`. UXML/USS en `Assets/UI` (`PantallaMapa.uxml/.uss`, `Estilos/Tokens.uss`).
+- **UI** (→Aplicacion, Dominio, Localization): `PantallaMapa` (MonoBehaviour raíz), `AccesibilidadPantalla` (TalkBack), `CapaMarcadores`+`MarcadorLugar`, `CapaPuntosInteres`+`PuntoInteresVista`, `PildoraPrecios`/`MenuPrecios`/`OpcionPrecios`/`PuntoPrecios` (filtro), `BotonRedondo` (iconos Sol/Luna/Mas/Menos/Diana/Cerrar), `FichaLugar`+`FilaConcepto`+`FilaVariante` (ficha del lugar, 1.8; modal en TalkBack), `MarcadorPosicion`, `ExplicacionUbicacion`+`AvisoUbicacion` (modal reutilizada), `IconosLugar`, `FormatoPrecio`, `EscalaFuente`, textos: `Textos`, `ClavesTexto`, `TextosFiltro`, `TextosPuntos`. UXML/USS en `Assets/UI` (`PantallaMapa.uxml/.uss`, `Estilos/Tokens.uss`).
 - **Arranque** (→todo): `Arranque` (composición), `CapturaPruebas` (modo `-captura` de PC).
 - **Editor** (`PriceMap.EditorTools.*`): `ConfigurarAndroid` (`CompilarApk`, `CompilarPcPruebas`), `PermisosUbicacionAndroid`, `PrepararEscenaPrincipal`, `PrepararInterfaz`.
 - Textos traducibles: `Assets/Localizacion/Textos_es-ES.asset` + `Textos Shared Data.asset`.
