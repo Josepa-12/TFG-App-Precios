@@ -53,6 +53,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6b-repetidos-solapes-y-talkback-de-los-puntos.md`
   summary: Probar con un panel de UI Toolkit dispuesto, o en el móvil, que la caja de solape de un punto usa la medida real de su nombre (y no la estimada), y que los puntos no parpadean al moverse el mapa.
   evidence: Revisión de la 1.6 (parte 2), Verification Gap. Las pruebas EditMode no tienen disposición y siempre usan la estimación. La medida real solo se comprueba en la captura de PC (0 pares solapados).
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-6c-talkback-de-los-puntos-de-interes.md`
+  summary: Prueba EditMode que compare cada valor de la tabla es-ES de Localization con `PrepararInterfaz.TextosEs[clave]`, para todas las claves de `ClavesTexto.Todas` (por ejemplo, `LaTablaTieneLosTextosDelGenerador` en `PruebasTextos`).
+  evidence: Revisión de la 1.6 (parte 3), Verification Gap. Las pruebas usan `TextosEs` (`Textos.Forzados`) y `PruebasTextos` solo comprueba que el valor existe y no está vacío. Si la tabla se desvía del generador, ninguna prueba falla. Afecta a los textos de las historias 1.4 a 1.6.
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-lugares-reales-de-sanlucar-con-su-logo-en-el-mapa.md`
   summary: Ignorar en git `unity/PriceMap/Assets/AddressableAssetsData/link.xml`, que cada build regenera.
   evidence: Se borró en `58e4bbb` y volvió a aparecer tras la build de PC de la verificación de la 1.4 (parte 1).

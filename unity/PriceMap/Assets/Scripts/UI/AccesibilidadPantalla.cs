@@ -9,10 +9,16 @@ namespace PriceMap.UI
     /// <summary>
     /// El módulo de accesibilidad de Unity 6 no se rellena solo desde UI Toolkit: cada pantalla
     /// declara sus controles con nombre, rol y estado para TalkBack (Accessibility Floor de EXPERIENCE.md).
-    /// Recorrido: primero los botones y después los marcadores visibles, de arriba abajo y de izquierda a derecha.
+    /// Recorrido: primero los botones y después las marcas visibles por grupos (los lugares de la app y luego los
+    /// puntos de interés), cada grupo de arriba abajo y de izquierda a derecha.
     /// </summary>
     public class AccesibilidadPantalla
     {
+        /// <summary>Grupo de los marcadores de los lugares de la app: van primero.</summary>
+        public const int GrupoLugares = 0;
+        /// <summary>Grupo de los puntos de interés de OpenStreetMap: siempre después de los lugares.</summary>
+        public const int GrupoPuntos = 1;
+
         class Control
         {
             public VisualElement elemento;
@@ -28,7 +34,24 @@ namespace PriceMap.UI
             public Func<string> etiqueta;
             public Func<bool> visible;
             public Func<Vector2> posicion;
+            public int grupo;
+            public Func<Rect> marco; // zona de TalkBack (dp del panel); null: el worldBound del elemento
         }
+
+        /// <summary>
+        /// Con los mismos marcadores visibles y solo otro orden (al mover el mapa), los nodos se rehacen como mucho
+        /// una vez cada este tiempo (s): rehacerlos resitúa el foco de TalkBack.
+        /// </summary>
+        public const float IntervaloReordenar = 1f;
+
+        /// <summary>Reloj en segundos con el que se espacian las reordenaciones; las pruebas lo sustituyen.</summary>
+        internal Func<float> Reloj = () => Time.realtimeSinceStartup;
+
+        /// <summary>Veces que se han rehecho los nodos de los marcadores en ActualizarMarcadores (para las pruebas).</summary>
+        internal int ReconstruccionesMarcas { get; private set; }
+
+        float ultimaReordenacion = float.NegativeInfinity;
+        bool avisoPendiente; // se quitaron nodos (QuitarMarcador): un solo SendLayoutChanged por tanda
 
         readonly List<Control> controles = new List<Control>();
         readonly List<Marca> marcas = new List<Marca>();
@@ -90,10 +113,35 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Declara un marcador del mapa: texto sin acción (rol StaticText). Solo tiene nodo mientras es visible.
-        /// La posición (dp del panel) ordena el recorrido; si no se da, se usa la del elemento.
+        /// El grupo ordena primero (GrupoLugares antes que GrupoPuntos) y, dentro de él, la posición (dp del panel);
+        /// si no se da la posición, se usa la del elemento. marco (dp del panel) sustituye al worldBound del elemento
+        /// como zona de TalkBack (p. ej. para llegar a 48 dp).
         /// </summary>
-        public void Marcador(VisualElement elemento, Func<string> etiqueta, Func<bool> visible, Func<Vector2> posicion = null) =>
-            marcas.Add(new Marca { elemento = elemento, etiqueta = etiqueta, visible = visible, posicion = posicion });
+        public void Marcador(VisualElement elemento, Func<string> etiqueta, Func<bool> visible, Func<Vector2> posicion = null,
+            int grupo = GrupoLugares, Func<Rect> marco = null) =>
+            marcas.Add(new Marca { elemento = elemento, etiqueta = etiqueta, visible = visible, posicion = posicion, grupo = grupo, marco = marco });
+
+        /// <summary>
+        /// Da de baja las marcas de ese elemento (su vista se ha destruido). Si tenía nodo en la jerarquía activa,
+        /// se quita ya, para que ninguna entrada de TalkBack apunte a una vista que ya no existe. El aviso a TalkBack
+        /// se manda una sola vez para toda la tanda, en el siguiente ActualizarMarcadores.
+        /// </summary>
+        public void QuitarMarcador(VisualElement elemento)
+        {
+            if (elemento == null) return;
+            marcas.RemoveAll(m => m.elemento == elemento);
+            for (int i = nodosMarcas.Count - 1; i >= 0; i--)
+            {
+                if (nodosMarcas[i].marca.elemento != elemento) continue;
+                var nodo = nodosMarcas[i].nodo;
+                if (jerarquia != null && jerarquia.ContainsNode(nodo)) jerarquia.RemoveNode(nodo, true);
+                nodosMarcas.RemoveAt(i);
+                avisoPendiente = true;
+            }
+        }
+
+        /// <summary>Número de marcas declaradas (visibles o no), para las pruebas.</summary>
+        internal int Marcas => marcas.Count;
 
         /// <summary>Etiquetas en el orden en que las recorre TalkBack (también sin lector, para las pruebas).</summary>
         public List<string> Recorrido()
@@ -109,6 +157,17 @@ namespace PriceMap.UI
             var r = new List<(string, bool)>();
             foreach (var c in ControlesEnRecorrido()) r.Add((c.etiqueta(), Seleccionado(c)));
             if (!Modal) foreach (var m in MarcasVisibles()) r.Add((m.etiqueta(), false));
+            return r;
+        }
+
+        /// <summary>
+        /// Solo las marcas del recorrido (sin los botones), en orden, con su grupo (GrupoLugares o GrupoPuntos).
+        /// Vacío en modo modal.
+        /// </summary>
+        public List<(string etiqueta, int grupo)> RecorridoDeMarcas()
+        {
+            var r = new List<(string, int)>();
+            if (!Modal) foreach (var m in MarcasVisibles()) r.Add((m.etiqueta(), m.grupo));
             return r;
         }
 
@@ -153,13 +212,16 @@ namespace PriceMap.UI
         {
             var visibles = new List<Marca>();
             foreach (var m in marcas) if (m.visible == null || m.visible()) visibles.Add(m);
-            // De arriba abajo y, en la misma altura, de izquierda a derecha (orden estable)
+            // Primero los lugares y después los puntos; en cada grupo, de arriba abajo y, en la misma altura,
+            // de izquierda a derecha (orden estable)
             var orden = new Dictionary<Marca, int>();
             for (int i = 0; i < visibles.Count; i++) orden[visibles[i]] = i;
             visibles.Sort((a, b) =>
             {
+                int c = a.grupo.CompareTo(b.grupo);
+                if (c != 0) return c;
                 Vector2 pa = Posicion(a), pb = Posicion(b);
-                int c = pa.y.CompareTo(pb.y);
+                c = pa.y.CompareTo(pb.y);
                 if (c == 0) c = pa.x.CompareTo(pb.x);
                 return c != 0 ? c : orden[a].CompareTo(orden[b]);
             });
@@ -194,21 +256,47 @@ namespace PriceMap.UI
             }
             if (!Modal) AnadirMarcas(MarcasVisibles()); // con un menú abierto, el mapa no está en el recorrido
             AssistiveSupport.activeHierarchy = jerarquia;
+            avisoPendiente = false; // jerarquía nueva: TalkBack ya la recibe entera
         }
 
         /// <summary>
-        /// Si han cambiado los marcadores visibles o su orden de recorrido (al mover o girar el mapa),
-        /// quita sus nodos y añade los nuevos detrás de los botones, sin rehacer los de los botones.
+        /// Si han cambiado los marcadores visibles, quita sus nodos y añade los nuevos detrás de los botones, sin
+        /// rehacer los de los botones. Si solo ha cambiado el orden (al mover o girar el mapa), lo mismo, pero como
+        /// mucho una vez cada IntervaloReordenar. Manda un solo aviso a TalkBack, también por las bajas de QuitarMarcador.
         /// </summary>
         public void ActualizarMarcadores()
         {
             if (!LectorActivo || Modal || jerarquia == null || AssistiveSupport.activeHierarchy != jerarquia) return;
             var visibles = MarcasVisibles();
-            if (MismoOrden(visibles)) return;
-            foreach (var (_, nodo) in nodosMarcas) if (jerarquia.ContainsNode(nodo)) jerarquia.RemoveNode(nodo, true);
-            nodosMarcas.Clear();
-            AnadirMarcas(visibles);
-            AssistiveSupport.notificationDispatcher?.SendLayoutChanged(null);
+            bool rehacer = false;
+            if (!MismoOrden(visibles))
+            {
+                float ahora = Reloj();
+                if (!MismoConjunto(visibles)) rehacer = true;
+                else if (ahora - ultimaReordenacion >= IntervaloReordenar) { rehacer = true; ultimaReordenacion = ahora; }
+            }
+            if (rehacer)
+            {
+                foreach (var (_, nodo) in nodosMarcas) if (jerarquia.ContainsNode(nodo)) jerarquia.RemoveNode(nodo, true);
+                nodosMarcas.Clear();
+                AnadirMarcas(visibles);
+                ReconstruccionesMarcas++;
+            }
+            if (rehacer || avisoPendiente)
+            {
+                avisoPendiente = false;
+                AssistiveSupport.notificationDispatcher?.SendLayoutChanged(null);
+            }
+        }
+
+        // Los mismos marcadores, en cualquier orden
+        bool MismoConjunto(List<Marca> visibles)
+        {
+            if (visibles.Count != nodosMarcas.Count) return false;
+            var actuales = new HashSet<Marca>();
+            foreach (var (m, _) in nodosMarcas) actuales.Add(m);
+            foreach (var m in visibles) if (!actuales.Contains(m)) return false;
+            return true;
         }
 
         // Los mismos marcadores y en el mismo orden (de arriba abajo y de izquierda a derecha)
@@ -226,7 +314,8 @@ namespace PriceMap.UI
                 var nodo = jerarquia.AddNode(m.etiqueta());
                 nodo.role = AccessibilityRole.StaticText;
                 var elemento = m.elemento;
-                nodo.frameGetter = () => MarcoEnPantalla(elemento);
+                var marco = m.marco;
+                nodo.frameGetter = marco != null ? () => MarcoEnPantalla(marco()) : (Func<Rect>)(() => MarcoEnPantalla(elemento));
                 nodosMarcas.Add((m, nodo));
             }
         }
@@ -238,6 +327,7 @@ namespace PriceMap.UI
             jerarquia = null;
             nodosMarcas.Clear();
             nodosControles.Clear();
+            avisoPendiente = false;
         }
 
         /// <summary>Lee en voz alta un aviso (por ejemplo, el nuevo tema).</summary>
@@ -250,11 +340,13 @@ namespace PriceMap.UI
         }
 
         /// <summary>Rectángulo del elemento en píxeles de pantalla, con el origen arriba a la izquierda.</summary>
-        Rect MarcoEnPantalla(VisualElement e)
+        Rect MarcoEnPantalla(VisualElement e) => MarcoEnPantalla(e.worldBound);
+
+        /// <summary>Rectángulo en dp del panel pasado a píxeles de pantalla.</summary>
+        Rect MarcoEnPantalla(Rect b)
         {
-            float anchoPanel = raiz.panel?.visualTree.layout.width ?? 0f;
+            float anchoPanel = raiz?.panel?.visualTree.layout.width ?? 0f;
             float escala = anchoPanel > 0f ? Screen.width / anchoPanel : 1f;
-            var b = e.worldBound;
             return new Rect(b.x * escala, b.y * escala, b.width * escala, b.height * escala);
         }
     }

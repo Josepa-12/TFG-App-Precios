@@ -105,6 +105,25 @@ namespace PriceMap.UI
 
         /// <summary>Diámetro del círculo (dp), como --poi-icono de Tokens.uss.</summary>
         public const float IconoDp = 24f;
+        /// <summary>Lado mínimo (dp) de la zona de TalkBack del punto (Accessibility Floor: 48 dp).</summary>
+        public const float ZonaTactilDp = 48f;
+
+        /// <summary>
+        /// Zona de TalkBack (dp del panel): un cuadrado de al menos ZonaTactilDp centrado en el círculo. Sin
+        /// disposición, se centra en Posicion (la coordenada, que es el centro del círculo).
+        /// </summary>
+        public Rect ZonaTactil
+        {
+            get
+            {
+                var b = Icono.worldBound;
+                bool valido = !float.IsNaN(b.x) && !float.IsNaN(b.y) && b.width > 0f && b.height > 0f;
+                var centro = valido ? b.center : Posicion;
+                float ancho = Mathf.Max(ZonaTactilDp, valido ? b.width : 0f);
+                float alto = Mathf.Max(ZonaTactilDp, valido ? b.height : 0f);
+                return new Rect(centro.x - ancho / 2f, centro.y - alto / 2f, ancho, alto);
+            }
+        }
         /// <summary>Distancia del centro del círculo al borde izquierdo del nombre (dp), como left de .poi__nombre.</summary>
         public const float NombreIzquierdaDp = 14f;
         /// <summary>Ancho máximo del nombre (dp), como --poi-nombre-ancho: más largo, pasa a otra línea.</summary>

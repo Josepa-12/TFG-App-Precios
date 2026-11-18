@@ -34,6 +34,14 @@ namespace PriceMap.UI
         /// <summary>Vistas de los puntos con categoría, en el orden en que se pintan.</summary>
         public IReadOnlyList<PuntoInteresVista> Vistas => orden;
 
+        /// <summary>
+        /// Se lanza al crear la vista de un punto (en Sincronizar). Las que crea el constructor ya están en Vistas
+        /// antes de que nadie pueda suscribirse: quien escuche debe dar de alta también esas.
+        /// </summary>
+        public event Action<PuntoInteresVista> VistaCreada;
+        /// <summary>Se lanza al quitar la vista de un punto (su tesela se ha liberado), ya fuera del árbol.</summary>
+        public event Action<PuntoInteresVista> VistaQuitada;
+
         /// <param name="contenedor">Elemento de la capa (antes de capa-marcadores, sin capturar toques).</param>
         public CapaPuntosInteres(VisualElement contenedor, IMapa mapa)
         {
@@ -63,6 +71,7 @@ namespace PriceMap.UI
                 orden.Add(v);
                 contenedor.Add(v);
                 cambio = true;
+                VistaCreada?.Invoke(v);
             }
             for (int i = orden.Count - 1; i >= 0; i--)
             {
@@ -74,6 +83,7 @@ namespace PriceMap.UI
                 EscalaFuente.Olvidar(v);
                 v.RemoveFromHierarchy();
                 cambio = true;
+                VistaQuitada?.Invoke(v);
             }
             return cambio;
         }

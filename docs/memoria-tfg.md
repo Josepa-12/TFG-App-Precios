@@ -646,6 +646,12 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Rendimiento:** los nombres normalizados se calculan una sola vez, para no generar basura en memoria en cada fotograma en el móvil.
     - **Comprobación:** en la build de PC se ven 46 puntos y se ocultan 29 por repetidos y 25 por solapes, con 0 pares solapados. Pasan 237 pruebas EditMode.
     - **Pendiente (parte 3):** que TalkBack lea los puntos visibles después de los lugares.
+  - *Historia 1.6, parte 3 (18/11/2026): TalkBack lee los puntos de interés.*
+    - **Qué dice:** cada punto visible es un texto para el lector, del tipo "Mercadona, supermercado". Si no tiene nombre, solo la categoría. Si es un centro sanitario público, "…, centro sanitario público". Las 22 categorías salen del prototipo y se traducen con Localization.
+    - **Orden:** primero los botones, luego los lugares de la app y al final los puntos, cada grupo de arriba abajo. Los puntos ocultos (lejos, repetidos o pisados) no se leen. Con el menú "Precios" abierto, tampoco.
+    - **Cuidado con el lector:** al mover el mapa, el orden de los puntos cambia casi en cada fotograma. Para que el foco de TalkBack no salte sin parar, la lista solo se rehace al momento si cambia qué puntos se ven; si solo cambia el orden, como mucho una vez por segundo. Al descargar una zona se avisa al lector una sola vez. La zona táctil de cada punto mide 48 dp, el mínimo de accesibilidad, aunque el círculo mida 24.
+    - **Comprobación:** pasan 255 pruebas EditMode. En la captura de PC, TalkBack lee 53 entradas: los botones, 23 lugares y 28 puntos, en ese orden.
+    - **Incidencia:** el ejecutable de pruebas se detiene si pierde el foco, porque el proyecto no permite seguir en segundo plano (`runInBackground` desactivado). Las capturas deben lanzarse sin tocar otras ventanas.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

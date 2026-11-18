@@ -638,6 +638,345 @@ namespace PriceMap.Tests.EditMode
             public Resultado<IReadOnlyList<Lugar>> Cargar() => Resultado<IReadOnlyList<Lugar>>.Exito(new[] { lugar });
         }
 
+        // ───────────────────────── Parte 3: TalkBack (matriz) ─────────────────────────
+
+        /// <summary>Textos es-ES del generador (en EditMode Localization no carga la locale).</summary>
+        static string TextosEs(string clave) => PriceMap.EditorTools.PrepararInterfaz.TextosEs[clave];
+
+        readonly List<GameObject> objetos = new List<GameObject>();
+
+        [TearDown]
+        public void Limpiar()
+        {
+            foreach (var o in objetos) UnityEngine.Object.DestroyImmediate(o);
+            objetos.Clear();
+            AccesibilidadPantalla.LectorForzado = null;
+            Textos.Forzados = null;
+            UnityEngine.Accessibility.AssistiveSupport.activeHierarchy = null;
+        }
+
+        /// <summary>
+        /// Pantalla real con un lugar de la app y los puntos dados (ya en el mapa al inicializar: los crea el
+        /// constructor de la capa), con el filtro en Todos para que el lugar se vea.
+        /// </summary>
+        PantallaMapa PantallaConPuntos(MapaFalso mapa, Lugar lugar, bool lector = false)
+        {
+            Textos.Forzados = TextosEs;
+            if (lector) AccesibilidadPantalla.LectorForzado = () => true;
+            var objeto = new GameObject("Pantalla de prueba");
+            objetos.Add(objeto);
+            var pantalla = objeto.AddComponent<PantallaMapa>();
+            var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
+            var lugares = new ServicioLugares(new UnLugar(lugar));
+            lugares.Cargar();
+            var prefs = new PreferenciasEnMemoria();
+            var filtro = new ServicioFiltro(prefs);
+            pantalla.Inicializar(mapa, new ServicioTema(prefs, new SistemaClaro()), lugares, DateTime.UtcNow, arbol, filtro);
+            filtro.Iniciar();
+            filtro.Elegir(FiltroPrecios.Todos);
+            return pantalla;
+        }
+
+        /// <summary>Un fotograma con pantalla de 1080×1920 px a 1 dp/px: marcadores, puntos y TalkBack, en ese orden.</summary>
+        static void FotogramaPantalla(PantallaMapa p)
+        {
+            p.Capa.Actualizar(1f, Ancho, Alto);
+            p.CapaPuntos.Actualizar(1f, Ancho, Alto, p.Capa.Marcadores.Where(m => m.Visible).Select(m => m.Lugar).ToList());
+            p.Accesibilidad.ActualizarMarcadores();
+        }
+
+        static List<UnityEngine.Accessibility.AccessibilityNode> NodosActivos()
+        {
+            var j = UnityEngine.Accessibility.AssistiveSupport.activeHierarchy;
+            if (j == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            return j.rootNodes.ToList();
+        }
+
+        static Lugar LugarAbajo(MapaFalso mapa)
+        {
+            var lugar = LugarApp("bar-cachon", "Bar Cachón", SitioCachon);
+            mapa.proyecciones[lugar.Posicion] = new PuntoPantalla(500f, 1500f, 300f);
+            return lugar;
+        }
+
+        static PuntoInteres En(MapaFalso mapa, PuntoInteres p, float x, float y)
+        {
+            mapa.proyecciones[p.Posicion] = new PuntoPantalla(x, y, 300f);
+            mapa.puntos.Add(p);
+            return p;
+        }
+
+        [Test]
+        public void PuntoConNombreSeLeeNombreYCategoria()
+        {
+            Assert.AreEqual("Mercadona, supermercado", TextosPuntos.TextoAnuncio("Mercadona", CategoriaPoi.Super, false, TextosEs));
+            var v = Capa(Punto("grocery", "supermarket", "Mercadona")).capa.Vistas.Single();
+            Assert.AreEqual("Mercadona, supermercado", TextosPuntos.Anuncio(v, TextosEs));
+        }
+
+        [Test]
+        public void SinNombreSoloLaCategoria()
+        {
+            var v = Capa(Punto("pharmacy", null, "")).capa.Vistas.Single();
+            Assert.AreEqual("farmacia", TextosPuntos.Anuncio(v, TextosEs));
+            Assert.AreEqual("farmacia", TextosPuntos.TextoAnuncio("  ", CategoriaPoi.Farmacia, false, TextosEs));
+        }
+
+        [Test]
+        public void SanidadPublicaSeLeeCentroSanitarioPublico()
+        {
+            var v = Capa(Punto("hospital", null, "Centro de Salud Barrio Bajo")).capa.Vistas.Single();
+            Assert.IsTrue(v.SanidadPublica);
+            Assert.AreEqual("Centro de Salud Barrio Bajo, centro sanitario público", TextosPuntos.Anuncio(v, TextosEs));
+            // Un centro de salud privado se lee con su categoría
+            var privado = Capa(Punto("doctors", null, "Clínica Dental Sonrisa")).capa.Vistas.Single();
+            Assert.AreEqual("Clínica Dental Sonrisa, salud", TextosPuntos.Anuncio(privado, TextosEs));
+        }
+
+        [TestCase("Nombre", CategoriaPoi.Ninguna, false, "Nombre")]          // sin texto de categoría: sin ", " colgando
+        [TestCase("  Nombre  ", CategoriaPoi.Ninguna, false, "Nombre")]
+        [TestCase("", CategoriaPoi.Farmacia, false, "farmacia")]
+        [TestCase(" Mercadona ", CategoriaPoi.Super, false, "Mercadona, supermercado")]
+        [TestCase("Centro de Salud", CategoriaPoi.Ninguna, true, "Centro de Salud, centro sanitario público")]
+        public void ElTextoNuncaDejaElSeparadorColgando(string nombre, CategoriaPoi categoria, bool sanidad, string esperado) =>
+            Assert.AreEqual(esperado, TextosPuntos.TextoAnuncio(nombre, categoria, sanidad, TextosEs));
+
+        [Test]
+        public void SoloReordenarRehaceLosNodosComoMuchoUnaVezPorSegundo()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            float ahora = 10f;
+            var acc = new AccesibilidadPantalla(new VisualElement()) { Reloj = () => ahora };
+            var pos = new Dictionary<string, Vector2> { ["a"] = new Vector2(0f, 100f), ["b"] = new Vector2(0f, 200f), ["c"] = new Vector2(0f, 300f) };
+            bool cVisible = false;
+            foreach (var n in new[] { "a", "b", "c" })
+            {
+                var nombre = n;
+                acc.Marcador(new VisualElement(), () => nombre, () => nombre != "c" || cVisible, () => pos[nombre], AccesibilidadPantalla.GrupoPuntos);
+            }
+            acc.Reconstruir();
+            NodosActivos();
+            int Rehechas() => acc.ReconstruccionesMarcas;
+
+            pos["a"] = new Vector2(0f, 250f); // b, a: solo cambia el orden
+            acc.ActualizarMarcadores();
+            Assert.AreEqual(1, Rehechas(), "La primera reordenación se aplica.");
+            CollectionAssert.AreEqual(new[] { "b", "a" }, NodosActivos().Select(x => x.label));
+
+            ahora = 10.5f;
+            pos["a"] = new Vector2(0f, 100f); // a, b otra vez, en el mismo segundo
+            acc.ActualizarMarcadores();
+            Assert.AreEqual(1, Rehechas(), "Dos reordenaciones en el mismo segundo rehacen una sola vez.");
+
+            ahora = 10.6f;
+            cVisible = true; // cambia el conjunto: se rehace ya
+            acc.ActualizarMarcadores();
+            Assert.AreEqual(2, Rehechas(), "Un cambio en los visibles se aplica enseguida.");
+            CollectionAssert.AreEqual(new[] { "a", "b", "c" }, NodosActivos().Select(x => x.label));
+
+            ahora = 11.0f;
+            pos["c"] = new Vector2(0f, 0f); // solo orden, 1 s después de la última reordenación aplicada (a los 10 s)
+            acc.ActualizarMarcadores();
+            Assert.AreEqual(3, Rehechas());
+            CollectionAssert.AreEqual(new[] { "c", "a", "b" }, NodosActivos().Select(x => x.label));
+        }
+
+        [Test]
+        public void LaZonaDeTalkBackDelPuntoMideAlMenos48Dp()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarAbajo(mapa);
+            En(mapa, Punto("grocery", "supermarket", "Mercadona", 36.70, 1), 500f, 100f);
+            var p = PantallaConPuntos(mapa, lugar, lector: true);
+            FotogramaPantalla(p);
+
+            var v = p.CapaPuntos.Vistas.Single();
+            var zona = v.ZonaTactil;
+            Assert.GreaterOrEqual(zona.width, PuntoInteresVista.ZonaTactilDp);
+            Assert.GreaterOrEqual(zona.height, PuntoInteresVista.ZonaTactilDp);
+            Assert.AreEqual(48f, PuntoInteresVista.ZonaTactilDp);
+            Assert.AreEqual(v.Posicion, zona.center, "Centrada en el círculo (sin disposición, en la coordenada).");
+
+            var nodo = NodosActivos().Single(n => n.label == "Mercadona, supermercado");
+            var marco = nodo.frameGetter(); // sin panel, 1 dp = 1 px
+            Assert.GreaterOrEqual(marco.width, 48f);
+            Assert.GreaterOrEqual(marco.height, 48f);
+            Assert.AreEqual(zona, marco);
+        }
+
+        [Test]
+        public void CadaCategoriaTieneSuNombreEnMinusculas()
+        {
+            var esperados = new Dictionary<CategoriaPoi, string>
+            {
+                [CategoriaPoi.Comer] = "restaurante", [CategoriaPoi.Rapida] = "comida rápida", [CategoriaPoi.Cafe] = "cafetería",
+                [CategoriaPoi.Bares] = "bar", [CategoriaPoi.Super] = "supermercado", [CategoriaPoi.Tiendas] = "tienda",
+                [CategoriaPoi.Gasolina] = "gasolinera", [CategoriaPoi.Carga] = "punto de carga", [CategoriaPoi.Parking] = "aparcamiento",
+                [CategoriaPoi.Hoteles] = "alojamiento", [CategoriaPoi.Farmacia] = "farmacia", [CategoriaPoi.Salud] = "salud",
+                [CategoriaPoi.Deporte] = "deporte", [CategoriaPoi.Parques] = "parque", [CategoriaPoi.Cultura] = "cultura",
+                [CategoriaPoi.Bancos] = "banco", [CategoriaPoi.Belleza] = "peluquería", [CategoriaPoi.Talleres] = "taller",
+                [CategoriaPoi.Transporte] = "transporte", [CategoriaPoi.Educacion] = "centro educativo",
+                [CategoriaPoi.Publico] = "servicio público", [CategoriaPoi.Culto] = "lugar de culto",
+            };
+            Assert.IsNull(TextosPuntos.ClaveCategoria(CategoriaPoi.Ninguna));
+            var claves = new HashSet<string>();
+            foreach (CategoriaPoi c in Enum.GetValues(typeof(CategoriaPoi)))
+            {
+                if (c == CategoriaPoi.Ninguna) continue;
+                var clave = TextosPuntos.ClaveCategoria(c);
+                Assert.IsNotNull(clave, c.ToString());
+                Assert.IsTrue(claves.Add(clave), $"Clave repetida: {clave}");
+                CollectionAssert.Contains(ClavesTexto.Todas, clave, c.ToString());
+                Assert.AreEqual(esperados[c], TextosEs(clave), c.ToString());
+            }
+            Assert.AreEqual(22, claves.Count);
+        }
+
+        [Test]
+        public void LosPuntosVanDespuesDeLosLugaresAunqueEstenMasArriba()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarAbajo(mapa);
+            En(mapa, Punto("grocery", "supermarket", "Mercadona", 36.70, 1), 500f, 100f);
+            var p = PantallaConPuntos(mapa, lugar);
+            FotogramaPantalla(p);
+
+            var anuncioLugar = p.Capa.Marcadores.Single().Anuncio;
+            Assert.IsTrue(p.Capa.Marcadores.Single().Visible);
+            CollectionAssert.AreEqual(new[] { TextosEs(ClavesTexto.PreciosControl), TextosEs(ClavesTexto.TemaCambiar), anuncioLugar, "Mercadona, supermercado" },
+                p.Accesibilidad.Recorrido(), "Botones, el lugar (abajo) y después el punto (arriba).");
+            CollectionAssert.AreEqual(new[] { (anuncioLugar, AccesibilidadPantalla.GrupoLugares), ("Mercadona, supermercado", AccesibilidadPantalla.GrupoPuntos) },
+                p.Accesibilidad.RecorridoDeMarcas());
+        }
+
+        [Test]
+        public void CadaGrupoDeArribaAbajoYDeIzquierdaADerecha()
+        {
+            var acc = new AccesibilidadPantalla(new VisualElement());
+            acc.Marcador(new VisualElement(), () => "punto-abajo", () => true, () => new Vector2(0f, 900f), AccesibilidadPantalla.GrupoPuntos);
+            acc.Marcador(new VisualElement(), () => "lugar-abajo", () => true, () => new Vector2(0f, 800f));
+            acc.Marcador(new VisualElement(), () => "punto-derecha", () => true, () => new Vector2(50f, 10f), AccesibilidadPantalla.GrupoPuntos);
+            acc.Marcador(new VisualElement(), () => "punto-izquierda", () => true, () => new Vector2(10f, 10f), AccesibilidadPantalla.GrupoPuntos);
+            acc.Marcador(new VisualElement(), () => "lugar-arriba", () => true, () => new Vector2(0f, 500f));
+            CollectionAssert.AreEqual(new[] { "lugar-arriba", "lugar-abajo", "punto-izquierda", "punto-derecha", "punto-abajo" }, acc.Recorrido());
+        }
+
+        [Test]
+        public void ConElLectorLaJerarquiaTieneLosPuntosDetrasYComoTexto()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarAbajo(mapa);
+            En(mapa, Punto("grocery", "supermarket", "Mercadona", 36.70, 1), 500f, 100f);
+            var p = PantallaConPuntos(mapa, lugar, lector: true);
+            FotogramaPantalla(p);
+
+            var nodos = NodosActivos();
+            var etiquetas = nodos.Select(n => n.label).ToList();
+            CollectionAssert.AreEqual(p.Accesibilidad.Recorrido(), etiquetas, "La jerarquía real sigue el recorrido.");
+            int iLugar = etiquetas.IndexOf(p.Capa.Marcadores.Single().Anuncio);
+            int iPunto = etiquetas.IndexOf("Mercadona, supermercado");
+            Assert.GreaterOrEqual(iLugar, 0);
+            Assert.Greater(iPunto, iLugar, "El punto va después del lugar.");
+            Assert.AreEqual(etiquetas.Count - 1, iPunto);
+            Assert.AreEqual(UnityEngine.Accessibility.AccessibilityRole.StaticText, nodos[iPunto].role, "Texto, sin acción.");
+        }
+
+        [Test]
+        public void UnSoloFotogramaDeLaPantallaDaElNodoDelPunto()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarApp("bar-cachon", "Bar Cachón", SitioCachon);
+            mapa.proyecciones[lugar.Posicion] = new PuntoPantalla(0f, 0f, -5f); // detrás de la cámara: no se ve
+            var mercadona = Punto("grocery", "supermarket", "Mercadona", 36.70, 1);
+            mapa.puntos.Add(mercadona);
+            mapa.proyecciones[mercadona.Posicion] = new PuntoPantalla(5f, 6f, 100f); // cerca de la esquina: dentro con cualquier pantalla
+            var p = PantallaConPuntos(mapa, lugar, lector: true);
+            p.ActualizarCapas(2f);
+            Assert.IsTrue(p.CapaPuntos.Vistas.Single().Visible);
+            Assert.That(NodosActivos().Any(n => n.label == "Mercadona, supermercado"),
+                "TalkBack se actualiza después de colocar los puntos, en el mismo fotograma.");
+
+            mapa.distancia = 2000f; // lejos: ningún punto
+            p.ActualizarCapas(2f);
+            Assert.IsFalse(NodosActivos().Any(n => n.label == "Mercadona, supermercado"));
+        }
+
+        [Test]
+        public void LosPuntosOcultosNoTienenEntrada()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarAbajo(mapa);
+            En(mapa, PuntoEn("Bar Cachón", AlNorte(SitioCachon, 20), id: 1), 100f, 300f);           // repite el lugar visible
+            En(mapa, PuntoEn("Fuera", new Coordenada(36.60, -6.35), id: 2), -500f, 500f);             // fuera de pantalla
+            En(mapa, PuntoEn("Grande", new Coordenada(36.61, -6.35), rank: 1, id: 3), 600f, 700f);
+            En(mapa, PuntoEn("Pisado", new Coordenada(36.62, -6.35), rank: 9, id: 4), 605f, 702f);   // pisa a Grande
+            En(mapa, Punto("pharmacy", null, "", 36.63, 5), 300f, 1200f);                              // sin nombre
+            var p = PantallaConPuntos(mapa, lugar);
+            FotogramaPantalla(p);
+
+            var anuncioLugar = p.Capa.Marcadores.Single().Anuncio;
+            CollectionAssert.AreEqual(new[] { anuncioLugar, "Grande, bar", "farmacia" },
+                p.Accesibilidad.RecorridoDeMarcas().Select(m => m.etiqueta), "Sin repetidos, pisados ni fuera de pantalla.");
+            Assert.AreEqual(1, p.CapaPuntos.OcultosPorRepetido);
+            Assert.AreEqual(1, p.CapaPuntos.OcultosPorSolape);
+
+            mapa.distancia = 2000f; // lejos: ningún punto
+            FotogramaPantalla(p);
+            CollectionAssert.AreEqual(new[] { anuncioLugar }, p.Accesibilidad.RecorridoDeMarcas().Select(m => m.etiqueta));
+        }
+
+        [Test]
+        public void AlLiberarseLaTeselaSuEntradaDesaparece()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarAbajo(mapa);
+            var a = En(mapa, PuntoEn("Uno", new Coordenada(36.60, -6.35), id: 1), 100f, 200f);
+            En(mapa, PuntoEn("Dos", new Coordenada(36.61, -6.35), id: 2), 100f, 600f);
+            var p = PantallaConPuntos(mapa, lugar, lector: true);
+            FotogramaPantalla(p);
+            Assert.AreEqual(3, p.Accesibilidad.Marcas, "El lugar y los dos puntos.");
+            Assert.That(NodosActivos().Any(n => n.label == "Uno, bar"));
+
+            mapa.puntos.Remove(a);
+            mapa.Cambiar(); // la tesela de "Uno" se libera: su vista se destruye
+            Assert.AreEqual(2, p.Accesibilidad.Marcas, "La marca se da de baja con la vista.");
+            Assert.IsFalse(NodosActivos().Any(n => n.label == "Uno, bar"), "Su nodo se quita ya, sin esperar al siguiente fotograma.");
+            CollectionAssert.DoesNotContain(p.Accesibilidad.Recorrido(), "Uno, bar");
+            FotogramaPantalla(p);
+            CollectionAssert.AreEqual(p.Accesibilidad.Recorrido(), NodosActivos().Select(n => n.label));
+
+            // Una tesela nueva: su punto se da de alta (aviso de vista creada)
+            En(mapa, PuntoEn("Tres", new Coordenada(36.62, -6.35), id: 3), 100f, 900f);
+            mapa.Cambiar();
+            Assert.AreEqual(3, p.Accesibilidad.Marcas);
+            FotogramaPantalla(p);
+            CollectionAssert.AreEqual(new[] { p.Capa.Marcadores.Single().Anuncio, "Dos, bar", "Tres, bar" },
+                p.Accesibilidad.RecorridoDeMarcas().Select(m => m.etiqueta));
+            Assert.That(NodosActivos().Any(n => n.label == "Tres, bar"));
+        }
+
+        [Test]
+        public void ConElMenuAbiertoNingunPuntoEnElRecorrido()
+        {
+            var mapa = new MapaFalso();
+            var lugar = LugarAbajo(mapa);
+            En(mapa, Punto("grocery", "supermarket", "Mercadona", 36.70, 1), 500f, 100f);
+            var p = PantallaConPuntos(mapa, lugar, lector: true);
+            FotogramaPantalla(p);
+            Assert.Contains("Mercadona, supermercado", p.Accesibilidad.Recorrido());
+
+            p.AlternarMenu();
+            FotogramaPantalla(p);
+            Assert.IsTrue(p.Accesibilidad.Modal);
+            CollectionAssert.DoesNotContain(p.Accesibilidad.Recorrido(), "Mercadona, supermercado");
+            Assert.IsEmpty(p.Accesibilidad.RecorridoDeMarcas());
+            Assert.IsFalse(NodosActivos().Any(n => n.role == UnityEngine.Accessibility.AccessibilityRole.StaticText), "Ni lugares ni puntos.");
+
+            p.CerrarMenu();
+            FotogramaPantalla(p);
+            Assert.That(NodosActivos().Any(n => n.label == "Mercadona, supermercado"), "Al cerrar el menú vuelve el punto.");
+        }
+
         // ───────────────────────── Lectura de la tesela ─────────────────────────
 
         static void Varint(List<byte> b, ulong v)

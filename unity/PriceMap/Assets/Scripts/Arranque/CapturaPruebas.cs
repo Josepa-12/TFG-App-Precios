@@ -218,6 +218,7 @@ namespace PriceMap.Arranque
                 if (pares > 0) Debug.LogError($"PriceMap: {pares} pares de puntos de interés visibles se solapan.");
                 if (repetidosVisibles > 0) Debug.LogError($"PriceMap: {repetidosVisibles} puntos salen a la vez como lugar y como punto.");
                 if (capaPuntos.OcultosPorSolape == 0) Debug.LogError("PriceMap: ningún punto oculto por solape en el centro de Sanlúcar.");
+                RecorridoDePuntos(capaPuntos);
                 yield return Capturar("puntos");
                 yield return new WaitForSeconds(1f);
             }
@@ -227,6 +228,54 @@ namespace PriceMap.Arranque
                 if (filtroGuardado == null) preferencias.Borrar(ServicioFiltro.ClavePreferencia);
                 else preferencias.Guardar(ServicioFiltro.ClavePreferencia, filtroGuardado);
             }
+        }
+
+        /// <summary>
+        /// Historia 1.6 (parte 3): registra el recorrido de TalkBack de la captura "puntos" (cuántos lugares y
+        /// cuántos puntos, y los tres primeros puntos) y comprueba que ningún punto va antes que un lugar, que hay
+        /// uno por cada vista visible y que los que tienen nombre se leen "nombre, categoría".
+        /// </summary>
+        void RecorridoDePuntos(CapaPuntosInteres capaPuntos)
+        {
+            var marcas = pantalla.Accesibilidad.RecorridoDeMarcas();
+            int lugares = 0, puntos = 0, desordenados = 0;
+            bool hayPunto = false;
+            var primeros = new List<string>();
+            var etiquetas = new HashSet<string>();
+            foreach (var (etiqueta, grupo) in marcas)
+            {
+                if (grupo == AccesibilidadPantalla.GrupoPuntos)
+                {
+                    puntos++;
+                    hayPunto = true;
+                    etiquetas.Add(etiqueta);
+                    if (primeros.Count < 3) primeros.Add("\"" + etiqueta + "\"");
+                }
+                else
+                {
+                    lugares++;
+                    if (hayPunto) desordenados++;
+                }
+            }
+            Debug.Log($"PriceMap: recorrido de TalkBack en la captura de puntos: {pantalla.Accesibilidad.Recorrido().Count} entradas, " +
+                      $"{lugares} lugares y {puntos} puntos; primeros puntos: {(primeros.Count > 0 ? string.Join(", ", primeros) : "-")}");
+            if (desordenados > 0) Debug.LogError($"PriceMap: {desordenados} lugares van después de algún punto en el recorrido de TalkBack.");
+            if (lugares != Visibles()) Debug.LogError($"PriceMap: {lugares} lugares en el recorrido y {Visibles()} marcadores visibles.");
+            if (puntos != capaPuntos.Visibles) Debug.LogError($"PriceMap: {puntos} puntos en el recorrido y {capaPuntos.Visibles} visibles.");
+            if (puntos == 0) Debug.LogError("PriceMap: ningún punto de interés en el recorrido de TalkBack.");
+
+            // Cada punto visible está en el recorrido con su texto, y la categoría no es una clave sin traducir
+            int malLeidos = 0; string ejemplo = "-";
+            foreach (var v in capaPuntos.Vistas)
+            {
+                if (!v.Visible) continue;
+                var categoria = Textos.T(v.SanidadPublica ? ClavesTexto.PoiSanidadPublica : TextosPuntos.ClaveCategoria(v.Categoria));
+                var esperado = TextosPuntos.Anuncio(v);
+                if (etiquetas.Contains(esperado) && !categoria.StartsWith("poi.")) continue;
+                malLeidos++;
+                if (malLeidos == 1) ejemplo = $"\"{v.Punto.Nombre}\" ({v.Categoria}) se esperaba \"{esperado}\" con la categoría \"{categoria}\"";
+            }
+            if (malLeidos > 0) Debug.LogError($"PriceMap: {malLeidos} puntos no se leen como \"nombre, categoría\" o solo la categoría; primero: {ejemplo}");
         }
 
         int Visibles()

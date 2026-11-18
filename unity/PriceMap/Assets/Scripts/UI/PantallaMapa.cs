@@ -82,6 +82,10 @@ namespace PriceMap.UI
             if (contenedorPuntos != null)
             {
                 capaPuntos = new CapaPuntosInteres(contenedorPuntos, this.mapa);
+                // TalkBack: cada punto es una entrada de texto que se da de alta y de baja con su vista
+                capaPuntos.VistaCreada += RegistrarPunto;
+                capaPuntos.VistaQuitada += QuitarPunto;
+                foreach (var v in capaPuntos.Vistas) RegistrarPunto(v); // las creadas por el constructor
                 this.mapa.PuntosInteresCambiados += AlCambiarPuntos;
             }
 
@@ -272,6 +276,18 @@ namespace PriceMap.UI
 
         // El mapa ha cargado o liberado una tesela: se crean o quitan las vistas de sus puntos
         void AlCambiarPuntos() => capaPuntos?.Sincronizar();
+
+        /// <summary>
+        /// Da de alta un punto en TalkBack: texto "Mercadona, supermercado" (sin acción), en el grupo de los puntos,
+        /// que va detrás de los lugares. Solo tiene nodo mientras se ve; su marco es un cuadrado de 48 dp centrado
+        /// en el círculo (PuntoInteresVista.ZonaTactil), para que se pueda encontrar al explorar tocando.
+        /// </summary>
+        void RegistrarPunto(PuntoInteresVista v) =>
+            accesibilidad?.Marcador(v.Icono, () => TextosPuntos.Anuncio(v), () => v.Visible, () => v.Posicion,
+                AccesibilidadPantalla.GrupoPuntos, () => v.ZonaTactil);
+
+        // La vista se ha destruido (tesela liberada): su entrada de TalkBack desaparece con ella
+        void QuitarPunto(PuntoInteresVista v) => accesibilidad?.QuitarMarcador(v.Icono);
         public AccesibilidadPantalla Accesibilidad => accesibilidad;
 
         /// <summary>Píxeles de pantalla → dp del panel; 0 mientras no hay disposición.</summary>
@@ -361,13 +377,11 @@ namespace PriceMap.UI
         internal void ActualizarCapas(float escala)
         {
             // Primero los marcadores: los puntos que repiten un lugar visible ahora se ocultan (FR-4)
-            if (capa != null)
-            {
-                if (escala > 0f) capa.Actualizar(escala);
-                // Con TalkBack: rehace los nodos de los marcadores si cambian los visibles o su orden
-                accesibilidad.ActualizarMarcadores();
-            }
+            if (capa != null && escala > 0f) capa.Actualizar(escala);
             if (capaPuntos != null && escala > 0f) capaPuntos.Actualizar(escala, LugaresVisibles());
+            // Con TalkBack: rehace los nodos de marcadores y puntos si cambian los visibles o su orden
+            // (después de las dos capas, para que los puntos ocultos en este fotograma no tengan nodo)
+            accesibilidad?.ActualizarMarcadores();
             // Botones y marcadores se mueven (zona segura, escala de fuente, mapa): TalkBack necesita sus marcos al día
             if (accesibilidad != null && AccesibilidadPantalla.LectorActivo) AssistiveSupport.activeHierarchy?.RefreshNodeFrames();
         }

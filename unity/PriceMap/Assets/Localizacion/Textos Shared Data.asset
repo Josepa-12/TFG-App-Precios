@@ -87,6 +87,102 @@ MonoBehaviour:
     m_Key: precios.anuncio
     m_Metadata:
       m_Items: []
+  - m_Id: 180473295790080
+    m_Key: poi.anuncio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955904
+    m_Key: poi.sanidadpublica
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955905
+    m_Key: poi.categoria.comer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955906
+    m_Key: poi.categoria.rapida
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955907
+    m_Key: poi.categoria.cafe
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955908
+    m_Key: poi.categoria.bares
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955909
+    m_Key: poi.categoria.super
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955910
+    m_Key: poi.categoria.tiendas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955911
+    m_Key: poi.categoria.gasolina
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955912
+    m_Key: poi.categoria.carga
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955913
+    m_Key: poi.categoria.parking
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955914
+    m_Key: poi.categoria.hoteles
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955915
+    m_Key: poi.categoria.farmacia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955916
+    m_Key: poi.categoria.salud
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955917
+    m_Key: poi.categoria.deporte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955918
+    m_Key: poi.categoria.parques
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955919
+    m_Key: poi.categoria.cultura
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955920
+    m_Key: poi.categoria.bancos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955921
+    m_Key: poi.categoria.belleza
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955922
+    m_Key: poi.categoria.talleres
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955923
+    m_Key: poi.categoria.transporte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955924
+    m_Key: poi.categoria.educacion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955925
+    m_Key: poi.categoria.publico
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955926
+    m_Key: poi.categoria.culto
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

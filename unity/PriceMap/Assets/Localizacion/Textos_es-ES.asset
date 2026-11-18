@@ -91,6 +91,102 @@ MonoBehaviour:
     m_Localized: 'Precios en el mapa: {0}'
     m_Metadata:
       m_Items: []
+  - m_Id: 180473295790080
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955904
+    m_Localized: "centro sanitario p\xFAblico"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955905
+    m_Localized: restaurante
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955906
+    m_Localized: "comida r\xE1pida"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955907
+    m_Localized: "cafeter\xEDa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955908
+    m_Localized: bar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955909
+    m_Localized: supermercado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955910
+    m_Localized: tienda
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955911
+    m_Localized: gasolinera
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955912
+    m_Localized: punto de carga
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955913
+    m_Localized: aparcamiento
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955914
+    m_Localized: alojamiento
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955915
+    m_Localized: farmacia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955916
+    m_Localized: salud
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955917
+    m_Localized: deporte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955918
+    m_Localized: parque
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955919
+    m_Localized: cultura
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955920
+    m_Localized: banco
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955921
+    m_Localized: "peluquer\xEDa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955922
+    m_Localized: taller
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955923
+    m_Localized: transporte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955924
+    m_Localized: centro educativo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955925
+    m_Localized: "servicio p\xFAblico"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 180473320955926
+    m_Localized: lugar de culto
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

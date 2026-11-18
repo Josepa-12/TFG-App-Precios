@@ -35,6 +35,34 @@ namespace PriceMap.UI
         /// <summary>TalkBack al elegir una opción: {0} nombre de la opción.</summary>
         public const string PreciosAnuncio = "precios.anuncio";
 
+        /// <summary>TalkBack de un punto de interés con nombre: {0} nombre, {1} categoría en minúsculas.</summary>
+        public const string PoiAnuncio = "poi.anuncio";
+        /// <summary>Categoría de un centro sanitario público ("centro sanitario público").</summary>
+        public const string PoiSanidadPublica = "poi.sanidadpublica";
+        // Nombre de cada categoría de punto de interés en minúsculas (POI_CATS.one del prototipo)
+        public const string PoiComer = "poi.categoria.comer";
+        public const string PoiRapida = "poi.categoria.rapida";
+        public const string PoiCafe = "poi.categoria.cafe";
+        public const string PoiBares = "poi.categoria.bares";
+        public const string PoiSuper = "poi.categoria.super";
+        public const string PoiTiendas = "poi.categoria.tiendas";
+        public const string PoiGasolina = "poi.categoria.gasolina";
+        public const string PoiCarga = "poi.categoria.carga";
+        public const string PoiParking = "poi.categoria.parking";
+        public const string PoiHoteles = "poi.categoria.hoteles";
+        public const string PoiFarmacia = "poi.categoria.farmacia";
+        public const string PoiSalud = "poi.categoria.salud";
+        public const string PoiDeporte = "poi.categoria.deporte";
+        public const string PoiParques = "poi.categoria.parques";
+        public const string PoiCultura = "poi.categoria.cultura";
+        public const string PoiBancos = "poi.categoria.bancos";
+        public const string PoiBelleza = "poi.categoria.belleza";
+        public const string PoiTalleres = "poi.categoria.talleres";
+        public const string PoiTransporte = "poi.categoria.transporte";
+        public const string PoiEducacion = "poi.categoria.educacion";
+        public const string PoiPublico = "poi.categoria.publico";
+        public const string PoiCulto = "poi.categoria.culto";
+
         public static readonly string[] Todas =
         {
             TemaCambiar, TemaClaro, TemaOscuro, MapaAcercar, MapaAlejar, MapaAtribucion,
@@ -42,6 +70,10 @@ namespace PriceMap.UI
             PreciosControl, PreciosVer, PreciosTodos, PreciosTitulo,
             PreciosOpcionNinguno, PreciosOpcionTodos, PreciosOpcionServicios, PreciosOpcionHosteleria, PreciosOpcionOcio,
             PreciosAnuncio,
+            PoiAnuncio, PoiSanidadPublica,
+            PoiComer, PoiRapida, PoiCafe, PoiBares, PoiSuper, PoiTiendas, PoiGasolina, PoiCarga,
+            PoiParking, PoiHoteles, PoiFarmacia, PoiSalud, PoiDeporte, PoiParques, PoiCultura, PoiBancos,
+            PoiBelleza, PoiTalleres, PoiTransporte, PoiEducacion, PoiPublico, PoiCulto,
         };
     }
 }
