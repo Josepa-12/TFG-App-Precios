@@ -45,5 +45,11 @@ namespace PriceMap.Aplicacion
         /// Un rumbo real se ve en pantalla girado (rumbo − Giro).
         /// </summary>
         float Giro { get; }
+
+        /// <summary>Coordenada real del centro de la vista (el punto al que mira la cámara).</summary>
+        Coordenada Centro { get; }
+
+        /// <summary>Pone el giro a 0 (norte arriba) sin cambiar el zoom ni la inclinación, al instante como Centrar.</summary>
+        void OrientarNorte();
     }
 }

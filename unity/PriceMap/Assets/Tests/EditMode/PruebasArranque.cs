@@ -28,6 +28,8 @@ namespace PriceMap.Tests.EditMode
             public event System.Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
             public float Giro => 0f;
+            public Coordenada Centro => default;
+            public void OrientarNorte() { }
         }
 
         class PreferenciasFalsas : IPreferencias

@@ -204,6 +204,36 @@ MonoBehaviour:
     m_Localized: Ahora no
     m_Metadata:
       m_Items: []
+  - m_Id: 380673377427456
+    m_Localized: Orientar al norte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593280
+    m_Localized: "Buscando tu posici\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593281
+    m_Localized: "Ubicaci\xF3n desactivada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593282
+    m_Localized: "La ubicaci\xF3n est\xE1 desactivada. Puedes activarla en Ajustes
+      > Aplicaciones > PriceMap > Permisos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593283
+    m_Localized: "La ubicaci\xF3n del m\xF3vil est\xE1 apagada. Act\xEDvala en los
+      ajustes r\xE1pidos del m\xF3vil."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593284
+    m_Localized: Abrir Ajustes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593285
+    m_Localized: Cerrar
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

@@ -11,5 +11,10 @@ namespace PriceMap.Aplicacion
         Buscando,
         /// <summary>Hay posición.</summary>
         Activa,
+        /// <summary>
+        /// Permiso concedido, pero la ubicación del móvil está apagada (o el servicio ha fallado). Al volver a la
+        /// app con la ubicación encendida pasa a Buscando.
+        /// </summary>
+        Apagada,
     }
 }

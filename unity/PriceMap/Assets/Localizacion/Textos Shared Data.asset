@@ -199,6 +199,34 @@ MonoBehaviour:
     m_Key: ubicacion.ahorano
     m_Metadata:
       m_Items: []
+  - m_Id: 380673377427456
+    m_Key: ubicacion.norte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593280
+    m_Key: ubicacion.buscando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593281
+    m_Key: ubicacion.desactivada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593282
+    m_Key: ubicacion.aviso.denegado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593283
+    m_Key: ubicacion.aviso.apagada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593284
+    m_Key: ubicacion.abrirajustes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 380673402593285
+    m_Key: ubicacion.cerrar
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

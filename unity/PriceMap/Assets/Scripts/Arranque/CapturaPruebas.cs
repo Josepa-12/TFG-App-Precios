@@ -40,19 +40,20 @@ namespace PriceMap.Arranque
         /// <summary>True si se ha lanzado con "-captura &lt;carpeta&gt;" (el Arranque usa entonces la ubicación falsa).</summary>
         public static bool SePide() => CarpetaPedida() != null;
 
-        /// <summary>Posición en la Plaza del Cabildo con el móvil mirando al este: la captura no pide permisos ni usa el GPS.</summary>
+        /// <summary>Posición en la Plaza del Cabildo con el móvil mirando al noreste (45°): la captura no pide permisos ni usa el GPS.</summary>
         public static IUbicacion UbicacionFalsa() => new UbicacionCaptura();
 
-        /// <summary>Ubicación fija para la captura: Activa desde el principio; Iniciar y Detener no hacen nada.</summary>
+        /// <summary>Ubicación fija para la captura: Activa desde el principio; Iniciar, Detener y AbrirAjustes no hacen nada.</summary>
         class UbicacionCaptura : IUbicacion
         {
             public EstadoUbicacion Estado => EstadoUbicacion.Activa;
             public Coordenada? Posicion => PantallaMapa.VistaInicial;
-            public float? Rumbo => 90f;
+            public float? Rumbo => 45f;
             public event Action Cambiado { add { } remove { } }
             public void PedirPermiso() { }
             public void Iniciar() { }
             public void Detener() { }
+            public void AbrirAjustes() { }
         }
 
         public static void SiSePide(GameObject anfitrion, ServicioTema tema, ServicioFiltro filtro, IPreferencias preferencias, MapaVectorial mapa, PantallaMapa pantalla)
@@ -93,6 +94,7 @@ namespace PriceMap.Arranque
             yield return Marcadores();
             yield return FiltroAbierto();
             yield return Puntos();
+            yield return Posicion();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -306,7 +308,7 @@ namespace PriceMap.Arranque
 
         /// <summary>
         /// Historia 1.7: el botón de ubicación está en la pila derecha, debajo del de tema; con la ubicación falsa
-        /// (Plaza del Cabildo, rumbo 90°) se ve el círculo con el cono y no sale la explicación del permiso.
+        /// (Plaza del Cabildo, rumbo 45°) se ve el círculo con el cono y no sale la explicación del permiso.
         /// </summary>
         void Ubicacion()
         {
@@ -323,6 +325,43 @@ namespace PriceMap.Arranque
             else if (!debajo) Debug.LogError("PriceMap: el botón de ubicación no está debajo del de tema.");
             if (marcador == null || !marcador.Visible || !marcador.ConoVisible) Debug.LogError("PriceMap: no se ve el círculo de la posición con su cono.");
             if (pantalla != null && pantalla.ExplicacionAbierta) Debug.LogError("PriceMap: con la ubicación falsa no debería salir la explicación del permiso.");
+        }
+
+        /// <summary>
+        /// Historia 1.7 (parte 2), captura "posicion": con el mapa lejos, el botón centra en el usuario (Plaza del
+        /// Cabildo, rumbo 45°) y se ven el círculo y el cono en el centro. Después, el segundo toque orienta al norte.
+        /// Registra la etiqueta de TalkBack del botón en cada paso.
+        /// </summary>
+        IEnumerator Posicion()
+        {
+            if (pantalla == null || pantalla.BotonUbicacion == null) { Debug.LogError("PriceMap: no hay botón de ubicación que capturar."); yield break; }
+            mapa.Centrar(new Coordenada(36.7830, -6.3528)); // unos 570 m al norte: el usuario no está centrado
+            yield return new WaitForSeconds(1f);
+            var antes = pantalla.AccionUbicacionActual();
+            Debug.Log($"PriceMap: botón de ubicación lejos del usuario: {antes} (\"{Textos.T(pantalla.ClaveBotonUbicacion())}\")");
+            if (antes != AccionUbicacion.Centrar) Debug.LogError("PriceMap: lejos del usuario, el botón de ubicación debería centrar.");
+            pantalla.TocarUbicacion();
+            yield return new WaitForSeconds(3f);
+            yield return new WaitForEndOfFrame();
+
+            var marcador = pantalla.MarcadorPosicion;
+            float escala = pantalla.EscalaDp;
+            var centroPantalla = new Vector2(Screen.width / 2f, Screen.height / 2f) * escala;
+            float desvio = marcador != null ? Vector2.Distance(marcador.Posicion, centroPantalla) : float.PositiveInfinity;
+            var despues = pantalla.AccionUbicacionActual();
+            Debug.Log($"PriceMap: captura de posición: círculo visible {marcador?.Visible ?? false} a {desvio:F1} dp del centro, " +
+                      $"cono {marcador?.ConoVisible ?? false} a {marcador?.AnguloCono ?? 0f:F1}° (giro del mapa {mapa.Giro:F1}°); " +
+                      $"distancia al centro {pantalla.DistanciaAlCentroDp():F1} dp; botón: {despues} (\"{Textos.T(pantalla.ClaveBotonUbicacion())}\")");
+            if (marcador == null || !marcador.Visible || !marcador.ConoVisible) Debug.LogError("PriceMap: no se ve el círculo de la posición con su cono.");
+            else if (desvio >= ServicioUbicacion.UmbralCentradoDp) Debug.LogError($"PriceMap: el círculo no está centrado ({desvio:F1} dp).");
+            if (despues != AccionUbicacion.OrientarNorte) Debug.LogError("PriceMap: centrado y con el mapa girado, el botón debería orientar al norte.");
+            yield return Capturar("posicion");
+            yield return new WaitForSeconds(1f);
+
+            pantalla.TocarUbicacion(); // segundo toque: norte arriba
+            yield return null;
+            Debug.Log($"PriceMap: segundo toque: giro del mapa {mapa.Giro:F1}°; botón: {pantalla.AccionUbicacionActual()} (\"{Textos.T(pantalla.ClaveBotonUbicacion())}\")");
+            if (!ServicioUbicacion.AlNorte(mapa.Giro)) Debug.LogError("PriceMap: el segundo toque no ha orientado el mapa al norte.");
         }
 
         int Visibles()

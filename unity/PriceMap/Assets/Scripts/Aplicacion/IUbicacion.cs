@@ -28,5 +28,11 @@ namespace PriceMap.Aplicacion
 
         /// <summary>Apaga ubicación y brújula (la app pasa a segundo plano: NFR-3).</summary>
         void Detener();
+
+        /// <summary>
+        /// Abre los ajustes del sistema donde se arregla el estado actual: con el permiso denegado, los de la app
+        /// (Aplicaciones &gt; PriceMap &gt; Permisos); con la ubicación del móvil apagada, los de ubicación.
+        /// </summary>
+        void AbrirAjustes();
     }
 }

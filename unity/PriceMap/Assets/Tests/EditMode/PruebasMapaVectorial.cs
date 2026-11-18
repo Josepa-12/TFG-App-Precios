@@ -45,6 +45,36 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void ElCentroEsLaCoordenadaCentrada()
+        {
+            IMapa mapa = objMapa.AddComponent<MapaVectorial>();
+            var c = new Coordenada(36.7601585, -6.3624415);
+            mapa.Centrar(c);
+            Assert.That(mapa.Centro.DistanciaMetros(c), Is.LessThan(0.05), $"centro {mapa.Centro.Latitud}, {mapa.Centro.Longitud}");
+
+            var antes = mapa.Centro;
+            objCamara.GetComponent<CamaraMapa>().pivote += new Vector3(100f, 0f, 0f); // arrastre de 100 m al este
+            Assert.That(mapa.Centro.DistanciaMetros(antes), Is.GreaterThan(90.0), "Mover el pivote mueve el centro.");
+            Assert.Greater(mapa.Centro.Longitud, antes.Longitud);
+        }
+
+        [Test]
+        public void OrientarNortePoneElGiroACeroSinTocarZoomNiInclinacion()
+        {
+            IMapa mapa = objMapa.AddComponent<MapaVectorial>();
+            var camara = objCamara.GetComponent<CamaraMapa>();
+            camara.giro = 40f;
+            float distancia = camara.distancia, inclinacion = camara.inclinacion;
+
+            mapa.OrientarNorte();
+
+            Assert.AreEqual(0f, camara.giro);
+            Assert.AreEqual(0f, mapa.Giro);
+            Assert.AreEqual(distancia, camara.distancia);
+            Assert.AreEqual(inclinacion, camara.inclinacion);
+        }
+
+        [Test]
         public void ElTemaDeLaAppEligeLaPaletaDelMapa()
         {
             var mapa = objMapa.AddComponent<MapaVectorial>();

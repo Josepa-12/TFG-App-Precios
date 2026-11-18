@@ -239,6 +239,21 @@ namespace PriceMap.Vectorial
             get { var c = Camara(); return c != null ? c.giro : 0f; }
         }
 
+        /// <summary>Coordenada del pivote de la cámara (centro de la vista); sin cámara, la vista inicial del mapa.</summary>
+        public Coordenada Centro
+        {
+            get
+            {
+                var c = Camara();
+                if (c == null) return new Coordenada(latitud, longitud);
+                var g = Geo.AGeo(c.pivote);
+                return new Coordenada(g.lat, g.lon);
+            }
+        }
+
+        /// <summary>Gira el mapa al norte (giro 0) sin tocar zoom ni inclinación.</summary>
+        public void OrientarNorte() { var c = Camara(); if (c != null) c.OrientarNorte(); }
+
         void RecomponerPuntos()
         {
             puntosInteres.Clear();

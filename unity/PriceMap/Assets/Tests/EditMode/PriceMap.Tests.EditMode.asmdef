@@ -7,6 +7,7 @@
         "PriceMap.Dominio",
         "PriceMap.Aplicacion",
         "PriceMap.Adaptadores.Datos",
+        "PriceMap.Adaptadores.Gps",
         "PriceMap.UI",
         "PriceMap.Arranque",
         "PriceMap.Vectorial",

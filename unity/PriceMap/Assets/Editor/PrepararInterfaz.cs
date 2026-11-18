@@ -74,6 +74,13 @@ namespace PriceMap.EditorTools
             [ClavesTexto.UbicacionExplicacion] = "PriceMap usa tu ubicación solo mientras tienes la app abierta, para mostrarte dónde estás en el mapa. No la guarda ni la comparte.",
             [ClavesTexto.UbicacionPermitir] = "Permitir",
             [ClavesTexto.UbicacionAhoraNo] = "Ahora no",
+            [ClavesTexto.UbicacionNorte] = "Orientar al norte",
+            [ClavesTexto.UbicacionBuscando] = "Buscando tu posición",
+            [ClavesTexto.UbicacionDesactivada] = "Ubicación desactivada",
+            [ClavesTexto.UbicacionAvisoDenegado] = "La ubicación está desactivada. Puedes activarla en Ajustes > Aplicaciones > PriceMap > Permisos.",
+            [ClavesTexto.UbicacionAvisoApagada] = "La ubicación del móvil está apagada. Actívala en los ajustes rápidos del móvil.",
+            [ClavesTexto.UbicacionAbrirAjustes] = "Abrir Ajustes",
+            [ClavesTexto.UbicacionCerrar] = "Cerrar",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

@@ -154,5 +154,8 @@ namespace PriceMap.Vectorial
 
         /// <summary>Centra la cámara en una coordenada geográfica.</summary>
         public void CentrarEn(double lat, double lon) { pivote = Geo.ALocal(lat, lon); Aplicar(); }
+
+        /// <summary>Norte arriba (giro 0) sin cambiar el zoom ni la inclinación; al instante, como CentrarEn.</summary>
+        public void OrientarNorte() { giro = 0f; Aplicar(); }
     }
 }

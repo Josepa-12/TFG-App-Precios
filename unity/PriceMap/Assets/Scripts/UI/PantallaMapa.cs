@@ -29,6 +29,9 @@ namespace PriceMap.UI
         BotonRedondo botonTema, botonUbicacion, botonAcercar, botonAlejar;
         MarcadorPosicion marcadorPosicion;
         ExplicacionUbicacion explicacion;
+        AvisoUbicacion aviso;
+        float ultimaEscala;          // última escala px → dp con disposición (para medir si el usuario está centrado)
+        string claveBotonUbicacion;  // etiqueta de TalkBack del botón de ubicación en el último fotograma
         Label atribucion;
         AccesibilidadPantalla accesibilidad;
         CapaMarcadores capa;
@@ -87,7 +90,7 @@ namespace PriceMap.UI
             if (this.filtro != null) CrearFiltro(); // la píldora va arriba a la izquierda: primera en TalkBack
             accesibilidad.Boton(botonTema, () => Textos.T(ClavesTexto.TemaCambiar), () => this.tema.Alternar(), ValorTema);
             if (botonUbicacion != null)
-                accesibilidad.Boton(botonUbicacion, () => Textos.T(ClavesTexto.UbicacionCentrar), TocarUbicacion);
+                accesibilidad.Boton(botonUbicacion, () => Textos.T(ClaveBotonUbicacion()), TocarUbicacion);
             accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), () => this.mapa.Acercar(), visible: () => AccesibilidadPantalla.LectorActivo);
             accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), () => this.mapa.Alejar(), visible: () => AccesibilidadPantalla.LectorActivo);
 
@@ -150,23 +153,100 @@ namespace PriceMap.UI
             accesibilidad.Texto(explicacion.Texto, () => explicacion.Texto.text, () => ExplicacionAbierta, enModal: true);
             accesibilidad.Boton(explicacion.AhoraNo, () => explicacion.AhoraNo.text, AhoraNoUbicacion, visible: () => ExplicacionAbierta, enModal: true);
             accesibilidad.Boton(explicacion.Permitir, () => explicacion.Permitir.text, PermitirUbicacion, visible: () => ExplicacionAbierta, enModal: true);
+
+            // Aviso de ubicación desactivada (denegado o apagada): misma ventana, mismo hueco y mismo recorrido modal
+            aviso = new AvisoUbicacion(AbrirAjustesUbicacion, CerrarAviso);
+            (raiz.Q("hueco-explicacion") ?? raiz).Add(aviso);
+            aviso.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(raiz, AccessibilitySettings.fontScale));
+            accesibilidad.Texto(aviso.Texto, () => aviso.Texto.text, () => AvisoAbierto, enModal: true);
+            accesibilidad.Boton(aviso.Cerrar, () => aviso.Cerrar.text, CerrarAviso, visible: () => AvisoAbierto, enModal: true);
+            accesibilidad.Boton(aviso.AbrirAjustes, () => aviso.AbrirAjustes.text, AbrirAjustesUbicacion, visible: () => AvisoAbierto, enModal: true);
         }
 
         /// <summary>True con la explicación del permiso de ubicación a la vista.</summary>
         public bool ExplicacionAbierta => explicacion != null && explicacion.Abierta;
 
+        /// <summary>True con el aviso de ubicación desactivada a la vista.</summary>
+        public bool AvisoAbierto => aviso != null && aviso.Abierta;
+
+        /// <summary>True con alguna ventana modal de la ubicación (explicación o aviso) a la vista.</summary>
+        public bool ModalUbicacionAbierta => ExplicacionAbierta || AvisoAbierto;
+
         /// <summary>
-        /// Lo que hace el botón de ubicación: sin permiso vuelve a salir la explicación; con posición, el mapa se
-        /// centra en el usuario; buscando o denegado, nada (el aviso de denegado es de la parte 2).
+        /// Lo que hace el botón de ubicación (ServicioUbicacion.AlTocarBoton): sin permiso vuelve a salir la
+        /// explicación; denegado o apagada, el aviso; buscando, nada; con posición, centra el mapa en el usuario o,
+        /// si ya está centrado y el mapa girado, lo orienta al norte.
         /// </summary>
         public void TocarUbicacion()
         {
-            if (ubicacion == null || ExplicacionAbierta) return;
-            switch (ubicacion.AlTocarBoton())
+            if (ubicacion == null || ModalUbicacionAbierta) return;
+            switch (AccionUbicacionActual())
             {
                 case AccionUbicacion.Explicar: AbrirExplicacion(); break;
+                case AccionUbicacion.Avisar: AbrirAviso(); break;
                 case AccionUbicacion.Centrar: mapa.Centrar(ubicacion.Posicion.Value); break;
+                case AccionUbicacion.OrientarNorte: mapa.OrientarNorte(); break;
             }
+        }
+
+        /// <summary>Lo que haría ahora el botón de ubicación, con la distancia en pantalla al centro y el giro del mapa.</summary>
+        public AccionUbicacion AccionUbicacionActual() =>
+            ubicacion == null ? AccionUbicacion.Nada : ubicacion.AlTocarBoton(DistanciaAlCentroDp(), mapa.Giro);
+
+        /// <summary>
+        /// Distancia (dp) en pantalla entre la posición del usuario y el centro de la vista (IMapa.Centro), con la
+        /// escala de este fotograma; infinito sin posición o si alguno de los dos queda detrás de la cámara.
+        /// </summary>
+        public float DistanciaAlCentroDp()
+        {
+            var posicion = ubicacion?.Posicion;
+            if (!posicion.HasValue) return float.PositiveInfinity;
+            var usuario = mapa.Proyectar(posicion.Value);
+            var centro = mapa.Proyectar(mapa.Centro);
+            if (!usuario.Delante || !centro.Delante) return float.PositiveInfinity;
+            float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala > 0f ? ultimaEscala : 1f;
+            return Vector2.Distance(new Vector2(usuario.X, usuario.Y), new Vector2(centro.X, centro.Y)) * escala;
+        }
+
+        /// <summary>Clave de la etiqueta de TalkBack del botón de ubicación según lo que hará al tocarlo.</summary>
+        public string ClaveBotonUbicacion() => ClaveBotonUbicacion(AccionUbicacionActual());
+
+        /// <summary>"Orientar al norte", "Buscando tu posición", "Ubicación desactivada" o "Centrar en mi posición".</summary>
+        public static string ClaveBotonUbicacion(AccionUbicacion accion)
+        {
+            switch (accion)
+            {
+                case AccionUbicacion.OrientarNorte: return ClavesTexto.UbicacionNorte;
+                case AccionUbicacion.Nada: return ClavesTexto.UbicacionBuscando;
+                case AccionUbicacion.Avisar: return ClavesTexto.UbicacionDesactivada;
+                default: return ClavesTexto.UbicacionCentrar; // centrar, y sin permiso (la explicación)
+            }
+        }
+
+        /// <summary>Muestra el aviso de ubicación desactivada con el texto del estado (denegado o apagada).</summary>
+        void AbrirAviso()
+        {
+            if (aviso == null || aviso.Abierta) return;
+            if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            aviso.Abrir(ubicacion.Estado);
+            accesibilidad.Modal = true; // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
+            accesibilidad.PedirFoco(aviso.Texto);
+        }
+
+        /// <summary>"Abrir Ajustes": cierra el aviso y abre los ajustes del sistema (por el puerto, nunca con JNI desde la UI).</summary>
+        public void AbrirAjustesUbicacion()
+        {
+            CerrarAviso();
+            ubicacion?.AbrirAjustes();
+        }
+
+        /// <summary>"Cerrar" (o el botón atrás): cierra el aviso y el foco vuelve al botón de ubicación.</summary>
+        public void CerrarAviso()
+        {
+            if (!AvisoAbierto) return;
+            aviso.Mostrar(false);
+            accesibilidad.Modal = false; // reconstruye: vuelven los botones y los marcadores
+            if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
         }
 
         /// <summary>Muestra la explicación (modal) y guarda que ya salió.</summary>
@@ -221,7 +301,7 @@ namespace PriceMap.UI
             // es modal (píldora, que lo cierra, y las 5 opciones), igual que el velo a la vista
             // (con la explicación de la ubicación abierta, la píldora sale del recorrido modal)
             accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro,
-                visible: () => !ExplicacionAbierta, enModal: true);
+                visible: () => !ModalUbicacionAbierta, enModal: true);
             foreach (var o in menu.Opciones)
             {
                 var opcion = o;
@@ -306,6 +386,7 @@ namespace PriceMap.UI
         public bool Atras()
         {
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
+            if (AvisoAbierto) { CerrarAviso(); return true; }
             if (!MenuAbierto) return false;
             ConsumirNavegacion();
             Cerrar(enfocar: true, porNavegacion: true); // atrás es una tecla: el foco de teclado vuelve a la píldora
@@ -341,7 +422,7 @@ namespace PriceMap.UI
         /// </summary>
         public bool TapaPunto(Vector2 pantalla)
         {
-            if (MenuAbierto || ExplicacionAbierta) return true;
+            if (MenuAbierto || ModalUbicacionAbierta) return true;
             if (raiz?.panel == null) return false;
             var p = RuntimePanelUtils.ScreenToPanel(raiz.panel, new Vector2(pantalla.x, Screen.height - pantalla.y));
             return EsControl(raiz, raiz.panel.Pick(p));
@@ -358,6 +439,7 @@ namespace PriceMap.UI
         public BotonRedondo BotonUbicacion => botonUbicacion;
         public MarcadorPosicion MarcadorPosicion => marcadorPosicion;
         public ExplicacionUbicacion Explicacion => explicacion;
+        public AvisoUbicacion Aviso => aviso;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;
@@ -478,6 +560,28 @@ namespace PriceMap.UI
             if (capaPuntos != null && escala > 0f) capaPuntos.Actualizar(escala, LugaresVisibles());
             // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
             if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, ubicacion.Posicion, ubicacion.Rumbo, escala);
+            if (escala > 0f) ultimaEscala = escala;
+            // La etiqueta del botón de ubicación sigue a lo que hará al tocarlo: si cambia, se actualiza en su nodo,
+            // sin rehacer la jerarquía (TalkBack no pierde el foco aunque la distancia oscile alrededor de 8 dp)
+            if (botonUbicacion != null)
+            {
+                var clave = ClaveBotonUbicacion();
+                if (clave != claveBotonUbicacion)
+                {
+                    claveBotonUbicacion = clave;
+                    accesibilidad?.RefrescarEtiqueta(botonUbicacion);
+                }
+            }
+            // El aviso abierto sigue al estado: si ya no toca avisar se cierra; si cambia el motivo, cambia el texto
+            if (AvisoAbierto)
+            {
+                if (AccionUbicacionActual() != AccionUbicacion.Avisar) CerrarAviso();
+                else if (aviso.Motivo != ubicacion.Estado)
+                {
+                    aviso.Abrir(ubicacion.Estado);
+                    accesibilidad?.RefrescarEtiqueta(aviso.Texto);
+                }
+            }
             // Con TalkBack: rehace los nodos de marcadores y puntos si cambian los visibles o su orden
             // (después de las dos capas, para que los puntos ocultos en este fotograma no tengan nodo)
             accesibilidad?.ActualizarMarcadores();

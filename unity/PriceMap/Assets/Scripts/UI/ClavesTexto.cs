@@ -69,10 +69,21 @@ namespace PriceMap.UI
         public const string UbicacionExplicacion = "ubicacion.explicacion";
         public const string UbicacionPermitir = "ubicacion.permitir";
         public const string UbicacionAhoraNo = "ubicacion.ahorano";
+        /// <summary>Botón de ubicación para TalkBack según lo que hará al tocarlo (historia 1.7, parte 2).</summary>
+        public const string UbicacionNorte = "ubicacion.norte";
+        public const string UbicacionBuscando = "ubicacion.buscando";
+        public const string UbicacionDesactivada = "ubicacion.desactivada";
+        /// <summary>Aviso de ubicación desactivada: permiso denegado o ubicación del móvil apagada.</summary>
+        public const string UbicacionAvisoDenegado = "ubicacion.aviso.denegado";
+        public const string UbicacionAvisoApagada = "ubicacion.aviso.apagada";
+        public const string UbicacionAbrirAjustes = "ubicacion.abrirajustes";
+        public const string UbicacionCerrar = "ubicacion.cerrar";
 
         public static readonly string[] Todas =
         {
             UbicacionCentrar, UbicacionExplicacion, UbicacionPermitir, UbicacionAhoraNo,
+            UbicacionNorte, UbicacionBuscando, UbicacionDesactivada,
+            UbicacionAvisoDenegado, UbicacionAvisoApagada, UbicacionAbrirAjustes, UbicacionCerrar,
             TemaCambiar, TemaClaro, TemaOscuro, MapaAcercar, MapaAlejar, MapaAtribucion,
             MarcadorConPrecio, MarcadorSinPrecio,
             PreciosControl, PreciosVer, PreciosTodos, PreciosTitulo,

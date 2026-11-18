@@ -70,11 +70,40 @@ namespace PriceMap.Aplicacion
             if (iniciada) ubicacion.Iniciar();
         }
 
-        /// <summary>Lo que hace el botón de ubicación en el estado actual.</summary>
-        public AccionUbicacion AlTocarBoton()
+        /// <summary>Distancia (dp) entre el usuario y el centro de la pantalla por debajo de la cual está "centrado".</summary>
+        public const float UmbralCentradoDp = 8f;
+
+        /// <summary>Giro (grados) por debajo del cual el mapa ya mira al norte (360° cuenta como 0°).</summary>
+        public const float UmbralGiroGrados = 0.5f;
+
+        /// <summary>
+        /// Lo que hace el botón de ubicación en el estado actual. Sin permiso: la explicación; denegado o apagada:
+        /// el aviso; buscando: nada. Con posición: si el usuario no está centrado, centrar; si lo está y el mapa
+        /// está girado, orientar al norte; centrado y al norte, volver a centrar (no se ve nada: sin modo brújula).
+        /// </summary>
+        /// <param name="distanciaCentroDp">Distancia en pantalla (dp) entre el usuario y el centro de la vista; infinito si no se sabe.</param>
+        /// <param name="giro">Giro del mapa en grados (IMapa.Giro).</param>
+        public AccionUbicacion AlTocarBoton(float distanciaCentroDp = float.PositiveInfinity, float giro = 0f)
         {
-            if (Estado == EstadoUbicacion.SinPermiso) return AccionUbicacion.Explicar;
-            return Posicion.HasValue ? AccionUbicacion.Centrar : AccionUbicacion.Nada;
+            switch (Estado)
+            {
+                case EstadoUbicacion.SinPermiso: return AccionUbicacion.Explicar;
+                case EstadoUbicacion.Denegado:
+                case EstadoUbicacion.Apagada: return AccionUbicacion.Avisar;
+            }
+            if (!Posicion.HasValue) return AccionUbicacion.Nada;
+            bool centrado = distanciaCentroDp < UmbralCentradoDp;
+            return centrado && !AlNorte(giro) ? AccionUbicacion.OrientarNorte : AccionUbicacion.Centrar;
         }
+
+        /// <summary>True si el giro (en grados, cualquier vuelta) es 0 con la tolerancia UmbralGiroGrados.</summary>
+        public static bool AlNorte(float giro)
+        {
+            double resto = ((giro % 360.0) + 360.0) % 360.0; // [0, 360)
+            return Math.Min(resto, 360.0 - resto) < UmbralGiroGrados;
+        }
+
+        /// <summary>"Abrir Ajustes" en el aviso: los de la app (denegado) o los de ubicación (apagada).</summary>
+        public void AbrirAjustes() => ubicacion.AbrirAjustes();
     }
 }

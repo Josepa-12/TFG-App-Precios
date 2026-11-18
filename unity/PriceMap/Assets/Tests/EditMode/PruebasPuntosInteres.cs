@@ -38,6 +38,8 @@ namespace PriceMap.Tests.EditMode
             public event Action PuntosInteresCambiados;
             public float DistanciaCamara => distancia;
             public float Giro => 0f;
+            public Coordenada Centro => default;
+            public void OrientarNorte() { }
             public void Cambiar() => PuntosInteresCambiados?.Invoke();
         }
 

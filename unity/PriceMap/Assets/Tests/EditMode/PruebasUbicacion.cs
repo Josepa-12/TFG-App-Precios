@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using PriceMap.Adaptadores.Gps;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
 using PriceMap.EditorTools;
@@ -14,9 +15,10 @@ using UnityEngine.UIElements;
 namespace PriceMap.Tests.EditMode
 {
     /// <summary>
-    /// Historia 1.7 (parte 1): la posición del usuario en el mapa, el botón de ubicación y la explicación del
-    /// permiso. Cada fila de la matriz de la spec, siempre con una IUbicacion falsa: ninguna prueba lee el
-    /// GPS ni la brújula reales (Input.location, Input.compass).
+    /// Historia 1.7: la posición del usuario en el mapa, el botón de ubicación (centrar, orientar al norte y sus
+    /// etiquetas de TalkBack), la explicación del permiso y el aviso de ubicación desactivada. Cada fila de la matriz
+    /// de las dos specs, siempre con una IUbicacion o una IFuenteUbicacion falsas: ninguna prueba lee el GPS ni la
+    /// brújula reales (Input.location, Input.compass).
     /// </summary>
     public class PruebasUbicacion
     {
@@ -32,10 +34,11 @@ namespace PriceMap.Tests.EditMode
             public Coordenada? Posicion { get; set; }
             public float? Rumbo { get; set; }
             public event Action Cambiado;
-            public int permisos, inicios, detenciones;
+            public int permisos, inicios, detenciones, ajustes;
             public void PedirPermiso() => permisos++;
             public void Iniciar() => inicios++;
             public void Detener() => detenciones++;
+            public void AbrirAjustes() => ajustes++;
 
             public void Poner(EstadoUbicacion estado, Coordenada? posicion = null, float? rumbo = null)
             {
@@ -46,21 +49,29 @@ namespace PriceMap.Tests.EditMode
             }
         }
 
-        /// <summary>Proyecta cualquier coordenada en el mismo punto, salvo que se diga otra cosa.</summary>
+        /// <summary>
+        /// Proyecta cualquier coordenada en el mismo punto, salvo las de "proyecciones". Centrar mueve el centro de la
+        /// vista; cambiar "centro" a mano es arrastrar el mapa. OrientarNorte pone el giro a 0.
+        /// </summary>
         class MapaFalso : IMapa
         {
             public readonly List<Coordenada> centrados = new List<Coordenada>();
+            public readonly Dictionary<Coordenada, PuntoPantalla> proyecciones = new Dictionary<Coordenada, PuntoPantalla>();
             public PuntoPantalla proyeccion = new PuntoPantalla(500f, 900f, 300f);
             public float giro;
-            public void Centrar(Coordenada destino) => centrados.Add(destino);
+            public Coordenada centro;
+            public int nortes;
+            public void Centrar(Coordenada destino) { centrados.Add(destino); centro = destino; }
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }
-            public PuntoPantalla Proyectar(Coordenada punto) => proyeccion;
+            public PuntoPantalla Proyectar(Coordenada punto) => proyecciones.TryGetValue(punto, out var p) ? p : proyeccion;
             public IReadOnlyList<PuntoInteres> PuntosInteres { get; } = new PuntoInteres[0];
             public event Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
             public float Giro => giro;
+            public Coordenada Centro => centro;
+            public void OrientarNorte() { nortes++; giro = 0f; }
         }
 
         class PreferenciasFalsas : IPreferencias
@@ -378,17 +389,19 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void DenegadoElMapaSigueEnLaVistaInicialSinCirculoYTocarNoHaceNada()
+        public void DenegadoElMapaSigueEnLaVistaInicialSinCirculoYTocarSacaElAviso()
         {
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Denegado);
             var m = Pantalla(gps);
             Assert.IsFalse(m.pantalla.ExplicacionAbierta, "Denegado no es SinPermiso: la explicación no sale al abrir.");
+            Assert.IsFalse(m.pantalla.AvisoAbierto, "El aviso solo sale al tocar el botón.");
             Actualizar(m);
             Assert.IsFalse(m.pantalla.MarcadorPosicion.Visible);
             m.pantalla.TocarUbicacion();
             CollectionAssert.AreEqual(new[] { PantallaMapa.VistaInicial }, m.mapa.centrados);
-            Assert.IsFalse(m.pantalla.ExplicacionAbierta, "El aviso de denegado es de la parte 2.");
+            Assert.IsFalse(m.pantalla.ExplicacionAbierta);
+            Assert.IsTrue(m.pantalla.AvisoAbierto, "Ahora sale el aviso de ubicación desactivada.");
             Assert.AreEqual(0, gps.permisos);
         }
 
@@ -484,6 +497,511 @@ namespace PriceMap.Tests.EditMode
             Assert.IsTrue(Arranque.Arranque.Componer(new MapaFalso(), pantalla, new ServicioTema(prefs, new SistemaClaro()), Lugares(),
                 new ServicioFiltro(prefs), Ahora, servicio));
             Assert.AreEqual(1, gps.inicios);
+        }
+
+        // ───────────────────────── Parte 2: centrar, norte y etiquetas ─────────────────────────
+
+        static readonly Coordenada Lejos = new Coordenada(36.80, -6.35);
+        static readonly Coordenada Arrastrado = new Coordenada(36.781, -6.35);
+
+        /// <summary>Usuario Activo con el mapa girado 40°, lejos del usuario (400 px = 200 dp del centro) y la escala aplicada.</summary>
+        Montaje ActivaLejos(float giro = 40f)
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Activa, Usuario, 90f);
+            var m = Pantalla(gps, YaExplicado());
+            m.mapa.giro = giro;
+            m.mapa.proyecciones[Lejos] = new PuntoPantalla(900f, 900f, 300f);
+            m.mapa.proyecciones[Arrastrado] = new PuntoPantalla(600f, 900f, 300f); // 100 px = 50 dp
+            m.mapa.centro = Lejos;
+            m.pantalla.ActualizarCapas(Escala);
+            return m;
+        }
+
+        string EtiquetaBoton(Montaje m) => TextoEs(m.pantalla.ClaveBotonUbicacion());
+
+        [Test]
+        public void PrimerToqueLejosCentraYLaEtiquetaPasaAOrientarAlNorte()
+        {
+            var m = ActivaLejos();
+            Assert.AreEqual(200f, m.pantalla.DistanciaAlCentroDp(), 0.001f);
+            Assert.AreEqual(AccionUbicacion.Centrar, m.pantalla.AccionUbicacionActual());
+            Assert.AreEqual("Centrar en mi posición", EtiquetaBoton(m));
+            CollectionAssert.Contains(m.pantalla.Accesibilidad.Recorrido(), "Centrar en mi posición");
+
+            m.pantalla.TocarUbicacion();
+            Assert.AreEqual(Usuario, m.mapa.centrados.Last(), "El primer toque centra en el usuario.");
+            Assert.AreEqual(0, m.mapa.nortes);
+            Assert.AreEqual(40f, m.mapa.giro, "Centrar no cambia el giro.");
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreEqual("Orientar al norte", EtiquetaBoton(m));
+            CollectionAssert.Contains(m.pantalla.Accesibilidad.Recorrido(), "Orientar al norte");
+        }
+
+        [Test]
+        public void PrimerToqueLejosConElMapaAlNorteLaEtiquetaSigueEnCentrar()
+        {
+            var m = ActivaLejos(giro: 0f);
+            m.pantalla.TocarUbicacion();
+            Assert.AreEqual(Usuario, m.mapa.centrados.Last());
+            Assert.AreEqual("Centrar en mi posición", EtiquetaBoton(m), "Sin giro no hay nada que orientar.");
+        }
+
+        [Test]
+        public void SegundoToqueCentradoYGiradoOrientaAlNorte()
+        {
+            var m = ActivaLejos();
+            m.pantalla.TocarUbicacion(); // centra
+            int centrados = m.mapa.centrados.Count;
+            m.pantalla.TocarUbicacion(); // ya centrado y con giro 40°
+            Assert.AreEqual(1, m.mapa.nortes);
+            Assert.AreEqual(0f, m.mapa.giro);
+            Assert.AreEqual(centrados, m.mapa.centrados.Count, "Orientar al norte no vuelve a centrar.");
+            Assert.AreEqual("Centrar en mi posición", EtiquetaBoton(m));
+        }
+
+        [Test]
+        public void CentradoYAlNorteVuelveACentrarSinEfectoVisible()
+        {
+            var m = ActivaLejos(giro: 0f);
+            m.mapa.centro = Usuario;
+            Assert.AreEqual(AccionUbicacion.Centrar, m.pantalla.AccionUbicacionActual());
+            m.pantalla.TocarUbicacion();
+            Assert.AreEqual(Usuario, m.mapa.centrados.Last());
+            Assert.AreEqual(0, m.mapa.nortes, "Sin modo brújula: nada más.");
+        }
+
+        [Test]
+        public void TrasArrastrar50DpElSiguienteToqueCentraDeNuevo()
+        {
+            var m = ActivaLejos();
+            m.pantalla.TocarUbicacion(); // centra
+            m.mapa.centro = Arrastrado;  // el usuario mueve el mapa 50 dp
+            Assert.AreEqual(50f, m.pantalla.DistanciaAlCentroDp(), 0.001f);
+            Assert.AreEqual("Centrar en mi posición", EtiquetaBoton(m));
+            int centrados = m.mapa.centrados.Count;
+            m.pantalla.TocarUbicacion();
+            Assert.AreEqual(centrados + 1, m.mapa.centrados.Count);
+            Assert.AreEqual(Usuario, m.mapa.centrados.Last());
+            Assert.AreEqual(0, m.mapa.nortes, "Tras el arrastre no orienta al norte: centra.");
+        }
+
+        [Test]
+        public void CentradoEsMenosDe8DpDelCentro()
+        {
+            var servicio = new ServicioUbicacion(new UbicacionFalsa { Estado = EstadoUbicacion.Activa, Posicion = Usuario }, new PreferenciasFalsas());
+            Assert.AreEqual(AccionUbicacion.OrientarNorte, servicio.AlTocarBoton(7.9f, 40f));
+            Assert.AreEqual(AccionUbicacion.Centrar, servicio.AlTocarBoton(8f, 40f));
+            Assert.AreEqual(AccionUbicacion.Centrar, servicio.AlTocarBoton(), "Sin distancia conocida, centra.");
+            Assert.AreEqual(AccionUbicacion.Centrar, servicio.AlTocarBoton(0f, 360f), "360° es el norte.");
+            Assert.AreEqual(AccionUbicacion.OrientarNorte, servicio.AlTocarBoton(0f, -15f));
+            Assert.IsTrue(ServicioUbicacion.AlNorte(0f));
+            Assert.IsTrue(ServicioUbicacion.AlNorte(-720f));
+            Assert.IsFalse(ServicioUbicacion.AlNorte(1f));
+            Assert.IsFalse(ServicioUbicacion.AlNorte(359f));
+            Assert.IsTrue(ServicioUbicacion.AlNorte(359.6f), "Bordes del giro alrededor de 0 (umbral 0,5°).");
+            Assert.IsTrue(ServicioUbicacion.AlNorte(-0.4f));
+            Assert.IsFalse(ServicioUbicacion.AlNorte(0.6f));
+        }
+
+        [Test]
+        public void AccionDelBotonEnCadaEstado()
+        {
+            var gps = new UbicacionFalsa();
+            var servicio = new ServicioUbicacion(gps, new PreferenciasFalsas());
+            gps.Poner(EstadoUbicacion.SinPermiso);
+            Assert.AreEqual(AccionUbicacion.Explicar, servicio.AlTocarBoton(0f, 40f));
+            gps.Poner(EstadoUbicacion.Denegado);
+            Assert.AreEqual(AccionUbicacion.Avisar, servicio.AlTocarBoton(0f, 40f));
+            gps.Poner(EstadoUbicacion.Apagada);
+            Assert.AreEqual(AccionUbicacion.Avisar, servicio.AlTocarBoton(0f, 40f));
+            gps.Poner(EstadoUbicacion.Buscando);
+            Assert.AreEqual(AccionUbicacion.Nada, servicio.AlTocarBoton(0f, 40f));
+            gps.Poner(EstadoUbicacion.Activa, Usuario);
+            Assert.AreEqual(AccionUbicacion.OrientarNorte, servicio.AlTocarBoton(0f, 40f));
+            Assert.AreEqual(AccionUbicacion.Centrar, servicio.AlTocarBoton(50f, 40f));
+        }
+
+        [Test]
+        public void EtiquetasDelBotonParaTalkBack()
+        {
+            Assert.AreEqual("Centrar en mi posición", TextoEs(PantallaMapa.ClaveBotonUbicacion(AccionUbicacion.Centrar)));
+            Assert.AreEqual("Centrar en mi posición", TextoEs(PantallaMapa.ClaveBotonUbicacion(AccionUbicacion.Explicar)));
+            Assert.AreEqual("Orientar al norte", TextoEs(PantallaMapa.ClaveBotonUbicacion(AccionUbicacion.OrientarNorte)));
+            Assert.AreEqual("Buscando tu posición", TextoEs(PantallaMapa.ClaveBotonUbicacion(AccionUbicacion.Nada)));
+            Assert.AreEqual("Ubicación desactivada", TextoEs(PantallaMapa.ClaveBotonUbicacion(AccionUbicacion.Avisar)));
+        }
+
+        [Test]
+        public void BuscandoTalkBackDiceBuscandoTuPosicionYTocarNoHaceNada()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Buscando);
+            var m = Pantalla(gps, YaExplicado());
+            Assert.AreEqual("Buscando tu posición", EtiquetaBoton(m));
+            CollectionAssert.Contains(m.pantalla.Accesibilidad.Recorrido(), "Buscando tu posición");
+            m.pantalla.TocarUbicacion();
+            CollectionAssert.AreEqual(new[] { PantallaMapa.VistaInicial }, m.mapa.centrados);
+            Assert.AreEqual(0, m.mapa.nortes);
+            Assert.IsFalse(m.pantalla.AvisoAbierto);
+            Assert.IsFalse(m.pantalla.ExplicacionAbierta);
+        }
+
+        /// <summary>Con el lector, al cambiar lo que hará el botón se rehace la jerarquía con la etiqueta nueva.</summary>
+        [Test]
+        public void ConElLectorLaEtiquetaNuevaLlegaATalkBack()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Buscando);
+            var m = Pantalla(gps, YaExplicado());
+            m.pantalla.ActualizarCapas(Escala);
+            if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            CollectionAssert.Contains(AssistiveSupport.activeHierarchy.rootNodes.Select(n => n.label).ToList(), "Buscando tu posición");
+
+            var jerarquia = AssistiveSupport.activeHierarchy;
+            gps.Poner(EstadoUbicacion.Activa, Usuario, 90f); // centrado (misma proyección) y con giro
+            m.mapa.giro = 40f;
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreSame(jerarquia, AssistiveSupport.activeHierarchy, "La etiqueta cambia en su nodo: la jerarquía no se rehace.");
+            var etiquetas = AssistiveSupport.activeHierarchy.rootNodes.Select(n => n.label).ToList();
+            CollectionAssert.Contains(etiquetas, "Orientar al norte");
+            CollectionAssert.DoesNotContain(etiquetas, "Buscando tu posición");
+        }
+
+        [Test]
+        public void ConElAvisoAbiertoSiSeEnciendeLaUbicacionElAvisoSeCierra()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Apagada);
+            var m = Pantalla(gps);
+            m.pantalla.TocarUbicacion();
+            Assert.IsTrue(m.pantalla.AvisoAbierto);
+            gps.Poner(EstadoUbicacion.Buscando); // vuelve a la app con la ubicación encendida
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.IsFalse(m.pantalla.AvisoAbierto);
+            Assert.IsFalse(m.pantalla.Accesibilidad.Modal);
+        }
+
+        [Test]
+        public void ConElAvisoAbiertoSiCambiaElMotivoCambiaElTexto()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Denegado);
+            var m = Pantalla(gps);
+            m.pantalla.TocarUbicacion();
+            Assert.AreEqual(TextoEs(ClavesTexto.UbicacionAvisoDenegado), m.pantalla.Aviso.Texto.text);
+            gps.Poner(EstadoUbicacion.Apagada);
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.IsTrue(m.pantalla.AvisoAbierto);
+            Assert.AreEqual(EstadoUbicacion.Apagada, m.pantalla.Aviso.Motivo);
+            Assert.AreEqual(TextoEs(ClavesTexto.UbicacionAvisoApagada), m.pantalla.Aviso.Texto.text);
+            CollectionAssert.AreEqual(RecorridoAviso(ClavesTexto.UbicacionAvisoApagada), m.pantalla.Accesibilidad.Recorrido());
+        }
+
+        // ───────────────────────── Parte 2: aviso de ubicación desactivada ─────────────────────────
+
+        static List<string> RecorridoAviso(string claveTexto) => new List<string>
+        {
+            TextoEs(claveTexto), TextoEs(ClavesTexto.UbicacionCerrar), TextoEs(ClavesTexto.UbicacionAbrirAjustes),
+        };
+
+        [Test]
+        public void DenegadoYTocarSacaElAvisoDePermisoConAbrirAjustes()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Denegado);
+            var m = Pantalla(gps);
+            Assert.AreEqual("Ubicación desactivada", EtiquetaBoton(m));
+            m.pantalla.TocarUbicacion();
+
+            var aviso = m.pantalla.Aviso;
+            Assert.IsTrue(m.pantalla.AvisoAbierto);
+            Assert.AreEqual(DisplayStyle.Flex, aviso.style.display.value);
+            Assert.AreEqual("La ubicación está desactivada. Puedes activarla en Ajustes > Aplicaciones > PriceMap > Permisos.", aviso.Texto.text);
+            Assert.AreEqual("Abrir Ajustes", aviso.AbrirAjustes.text);
+            Assert.AreEqual("Cerrar", aviso.Cerrar.text);
+            Assert.AreSame(m.arbol.Q("hueco-explicacion"), aviso.parent, "Mismo hueco que la explicación, encima de todo.");
+            Assert.IsTrue(aviso.ClassListContains("explicacion-ubicacion"), "Comparte los estilos de la explicación.");
+            Assert.IsTrue(m.pantalla.Accesibilidad.Modal);
+            CollectionAssert.AreEqual(RecorridoAviso(ClavesTexto.UbicacionAvisoDenegado), m.pantalla.Accesibilidad.Recorrido());
+            Assert.AreSame(aviso.Texto, m.pantalla.Accesibilidad.Enfocado);
+            Assert.IsTrue(m.pantalla.TapaPunto(new Vector2(10f, 10f)), "Con el aviso abierto, ningún toque mueve el mapa.");
+
+            m.pantalla.TocarUbicacion(); // con el aviso abierto no hace nada más
+            m.pantalla.AbrirAjustesUbicacion();
+            Assert.AreEqual(1, gps.ajustes, "\"Abrir Ajustes\" va por el puerto IUbicacion.");
+            Assert.IsFalse(m.pantalla.AvisoAbierto);
+            Assert.IsFalse(m.pantalla.Accesibilidad.Modal);
+        }
+
+        [Test]
+        public void ApagadaYTocarSacaElAvisoDeUbicacionApagada()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Apagada);
+            var m = Pantalla(gps);
+            Assert.IsFalse(m.pantalla.ExplicacionAbierta, "Con permiso no sale la explicación.");
+            Actualizar(m);
+            Assert.IsFalse(m.pantalla.MarcadorPosicion.Visible);
+            Assert.AreEqual("Ubicación desactivada", EtiquetaBoton(m));
+            m.pantalla.TocarUbicacion();
+            Assert.IsTrue(m.pantalla.AvisoAbierto);
+            Assert.AreEqual(EstadoUbicacion.Apagada, m.pantalla.Aviso.Motivo);
+            Assert.AreEqual("La ubicación del móvil está apagada. Actívala en los ajustes rápidos del móvil.", m.pantalla.Aviso.Texto.text);
+            CollectionAssert.AreEqual(RecorridoAviso(ClavesTexto.UbicacionAvisoApagada), m.pantalla.Accesibilidad.Recorrido());
+            m.pantalla.CerrarAviso();
+            Assert.IsFalse(m.pantalla.AvisoAbierto);
+            Assert.AreEqual(0, gps.ajustes, "\"Cerrar\" no abre los ajustes.");
+        }
+
+        [Test]
+        public void AtrasConElAvisoAbiertoLoCierraYElFocoVuelveAlBoton()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Denegado);
+            var m = Pantalla(gps);
+            m.pantalla.TocarUbicacion();
+            Assert.IsTrue(m.pantalla.Atras());
+            Assert.IsFalse(m.pantalla.AvisoAbierto);
+            Assert.IsFalse(m.pantalla.Accesibilidad.Modal);
+            Assert.AreSame(m.pantalla.BotonUbicacion, m.pantalla.Accesibilidad.Enfocado);
+            Assert.AreEqual(0, gps.ajustes);
+            Assert.IsFalse(m.pantalla.Atras(), "Sin ventana ni menú abiertos, atrás no hace nada.");
+        }
+
+        [Test]
+        public void ElAvisoCierraElMenuPreciosYLaPildoraSaleDelRecorrido()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Denegado);
+            var m = Pantalla(gps);
+            m.pantalla.AlternarMenu();
+            Assert.IsTrue(m.pantalla.MenuAbierto);
+            m.pantalla.TocarUbicacion(); // (el velo lo impide en la app; por TalkBack o código, el menú se cierra)
+            Assert.IsFalse(m.pantalla.MenuAbierto);
+            Assert.IsTrue(m.pantalla.AvisoAbierto);
+            CollectionAssert.DoesNotContain(m.pantalla.Accesibilidad.Recorrido(), TextoEs(ClavesTexto.PreciosControl));
+        }
+
+        // ───────────────────────── Parte 2: adaptador del GPS con una fuente falsa ─────────────────────────
+
+        class FuenteFalsa : IFuenteUbicacion
+        {
+            public bool TienePermiso { get; set; }
+            public bool UbicacionEncendida { get; set; } = true;
+            public LocationServiceStatus EstadoServicio { get; set; } = LocationServiceStatus.Stopped;
+            public (Coordenada posicion, double marca) UltimaLectura { get; set; }
+            public float? Rumbo { get; set; }
+            public Action<bool> respuesta;
+            public int peticiones, encendidos, apagados;
+            public readonly List<string> ajustes = new List<string>();
+            public void PedirPermiso(Action<bool> r) { peticiones++; respuesta = r; }
+            public void Encender() { encendidos++; EstadoServicio = LocationServiceStatus.Initializing; }
+            public void Apagar() { apagados++; EstadoServicio = LocationServiceStatus.Stopped; }
+            public void AbrirAjustes(string accion) => ajustes.Add(accion);
+
+            /// <summary>El GPS da una lectura nueva.</summary>
+            public void Leer(Coordenada c, double marca)
+            {
+                EstadoServicio = LocationServiceStatus.Running;
+                UltimaLectura = (c, marca);
+            }
+        }
+
+        [Test]
+        public void GpsSinPermisoYDenegadoAbreLosAjustesDeLaApp()
+        {
+            var fuente = new FuenteFalsa();
+            var gps = new UbicacionGps(fuente);
+            Assert.AreEqual(EstadoUbicacion.SinPermiso, gps.Estado);
+            gps.Iniciar();
+            Assert.AreEqual(0, fuente.encendidos, "Sin permiso no se enciende el GPS.");
+
+            gps.PedirPermiso();
+            Assert.AreEqual(1, fuente.peticiones);
+            fuente.respuesta(false); // desde el hilo de Java
+            Assert.AreEqual(EstadoUbicacion.SinPermiso, gps.Estado, "La respuesta se aplica en el siguiente fotograma.");
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Denegado, gps.Estado);
+            Assert.AreEqual(0, fuente.encendidos);
+
+            gps.AbrirAjustes();
+            CollectionAssert.AreEqual(new[] { UbicacionGps.AjustesApp }, fuente.ajustes);
+            Assert.AreEqual("android.settings.APPLICATION_DETAILS_SETTINGS", UbicacionGps.AjustesApp);
+        }
+
+        [Test]
+        public void GpsConcedidoBuscaYConLaPrimeraLecturaPasaAActiva()
+        {
+            var fuente = new FuenteFalsa();
+            var gps = new UbicacionGps(fuente);
+            int avisos = 0;
+            gps.Cambiado += () => avisos++;
+            gps.Iniciar();
+            gps.PedirPermiso();
+            fuente.TienePermiso = true;
+            fuente.respuesta(false); // la precisa denegada...
+            fuente.respuesta(true);  // ...y la aproximada concedida: gana el "concedido"
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Buscando, gps.Estado);
+            Assert.IsTrue(gps.Encendido);
+            Assert.AreEqual(1, fuente.encendidos);
+
+            gps.Actualizar(); // sin lectura todavía
+            Assert.AreEqual(EstadoUbicacion.Buscando, gps.Estado);
+            fuente.Leer(Usuario, 10.0);
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Activa, gps.Estado);
+            Assert.AreEqual(Usuario, gps.Posicion);
+            Assert.AreEqual(2, avisos);
+        }
+
+        [Test]
+        public void GpsUnConcedidoNoLoPisaUnDenegadoPosterior()
+        {
+            var fuente = new FuenteFalsa();
+            var gps = new UbicacionGps(fuente);
+            gps.Iniciar();
+            gps.PedirPermiso();
+            fuente.respuesta(true);
+            fuente.respuesta(false);
+            fuente.TienePermiso = true;
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Buscando, gps.Estado);
+        }
+
+        [Test]
+        public void GpsPermisoRetiradoAlVolverPasaASinPermiso()
+        {
+            var fuente = new FuenteFalsa { TienePermiso = true };
+            var gps = new UbicacionGps(fuente);
+            Assert.AreEqual(EstadoUbicacion.Buscando, gps.Estado, "Con permiso ya concedido, empieza buscando.");
+            gps.Iniciar();
+            fuente.Leer(Usuario, 1.0);
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Activa, gps.Estado);
+
+            gps.Detener(); // segundo plano
+            Assert.IsFalse(gps.Encendido);
+            Assert.AreEqual(1, fuente.apagados);
+            fuente.TienePermiso = false; // se quita desde Ajustes
+            gps.Iniciar();
+            Assert.AreEqual(EstadoUbicacion.SinPermiso, gps.Estado);
+            Assert.IsNull(gps.Posicion);
+            Assert.IsFalse(gps.Encendido);
+        }
+
+        [Test]
+        public void GpsConLaUbicacionDelMovilApagadaEstaApagadaYAbreLosAjustesDeUbicacion()
+        {
+            var fuente = new FuenteFalsa { TienePermiso = true, UbicacionEncendida = false };
+            var gps = new UbicacionGps(fuente);
+            gps.Iniciar();
+            Assert.AreEqual(EstadoUbicacion.Apagada, gps.Estado);
+            Assert.IsFalse(gps.Encendido, "Con la ubicación apagada no se enciende el GPS.");
+            gps.AbrirAjustes();
+            CollectionAssert.AreEqual(new[] { UbicacionGps.AjustesUbicacion }, fuente.ajustes);
+            Assert.AreEqual("android.settings.LOCATION_SOURCE_SETTINGS", UbicacionGps.AjustesUbicacion);
+        }
+
+        [Test]
+        public void GpsSeApagaLaUbicacionConLaAppAbierta()
+        {
+            var fuente = new FuenteFalsa { TienePermiso = true };
+            var gps = new UbicacionGps(fuente);
+            gps.Iniciar();
+            fuente.Leer(Usuario, 1.0);
+            fuente.Rumbo = 90f;
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Activa, gps.Estado);
+
+            fuente.UbicacionEncendida = false;
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Apagada, gps.Estado);
+            Assert.IsNull(gps.Posicion);
+            Assert.IsNull(gps.Rumbo);
+            Assert.IsFalse(gps.Encendido);
+        }
+
+        [Test]
+        public void GpsServicioFailedEsApagada()
+        {
+            var fuente = new FuenteFalsa { TienePermiso = true };
+            var gps = new UbicacionGps(fuente);
+            gps.Iniciar();
+            fuente.EstadoServicio = LocationServiceStatus.Failed;
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Apagada, gps.Estado);
+            Assert.IsFalse(gps.Encendido);
+        }
+
+        [Test]
+        public void GpsApagadaAlVolverConLaUbicacionEncendidaBuscaYLuegoActiva()
+        {
+            var fuente = new FuenteFalsa { TienePermiso = true, UbicacionEncendida = false };
+            var gps = new UbicacionGps(fuente);
+            gps.Iniciar();
+            Assert.AreEqual(EstadoUbicacion.Apagada, gps.Estado);
+
+            gps.Detener();            // sale a encenderla
+            fuente.UbicacionEncendida = true;
+            gps.Iniciar();            // vuelve a la app
+            Assert.AreEqual(EstadoUbicacion.Buscando, gps.Estado);
+            Assert.IsTrue(gps.Encendido);
+            fuente.Leer(Usuario, 5.0);
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Activa, gps.Estado);
+        }
+
+        [Test]
+        public void GpsDenegadoYConcedidoEnAjustesAlVolverBuscaYLuegoActiva()
+        {
+            var fuente = new FuenteFalsa();
+            var gps = new UbicacionGps(fuente);
+            gps.Iniciar();
+            gps.PedirPermiso();
+            fuente.respuesta(false);
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Denegado, gps.Estado);
+
+            gps.Detener();               // sale a Ajustes
+            fuente.TienePermiso = true;  // concede el permiso allí
+            gps.Iniciar();               // vuelve a la app
+            Assert.AreEqual(EstadoUbicacion.Buscando, gps.Estado);
+            Assert.IsTrue(gps.Encendido);
+            fuente.Leer(Usuario, 3.0);
+            gps.Actualizar();
+            Assert.AreEqual(EstadoUbicacion.Activa, gps.Estado);
+        }
+
+        [Test]
+        public void GpsRumboConUmbralDe1Grado()
+        {
+            var fuente = new FuenteFalsa { TienePermiso = true };
+            var gps = new UbicacionGps(fuente);
+            gps.Iniciar();
+            fuente.Leer(Usuario, 1.0);
+            fuente.Rumbo = 90f;
+            gps.Actualizar();
+            Assert.AreEqual(90f, gps.Rumbo);
+
+            int avisos = 0;
+            gps.Cambiado += () => avisos++;
+            fuente.Rumbo = 90.6f; // tiembla menos de 1°: no se avisa
+            gps.Actualizar();
+            Assert.AreEqual(90f, gps.Rumbo);
+            Assert.AreEqual(0, avisos);
+            fuente.Rumbo = 92f;
+            gps.Actualizar();
+            Assert.AreEqual(92f, gps.Rumbo);
+            Assert.AreEqual(1, avisos);
+            fuente.Rumbo = -10f; // se normaliza a [0, 360)
+            gps.Actualizar();
+            Assert.AreEqual(350f, gps.Rumbo.Value, 0.001f);
+            fuente.Rumbo = null; // sin brújula: solo el círculo
+            gps.Actualizar();
+            Assert.IsNull(gps.Rumbo);
         }
     }
 }
