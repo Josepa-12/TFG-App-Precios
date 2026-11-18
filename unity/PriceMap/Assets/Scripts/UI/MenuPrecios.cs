@@ -6,8 +6,9 @@ using UnityEngine.UIElements;
 namespace PriceMap.UI
 {
     /// <summary>
-    /// Menú desplegable del filtro "Precios", debajo de la píldora: título y las 5 opciones con su punto
-    /// de color; la elegida, con fondo surface-2 y check. Sin animación. Lo abre y cierra PantallaMapa.
+    /// Menú desplegable del filtro "Precios", debajo de la píldora (prototipo .cat-menu): título en mayúsculas y
+    /// las 5 opciones con su punto de color; la elegida, solo con fondo surface-2 (sin check). Sin borde y con la
+    /// sombra suave de los controles. Sin animación. Lo abre y cierra PantallaMapa.
     /// </summary>
     public class MenuPrecios : VisualElement
     {
@@ -26,10 +27,12 @@ namespace PriceMap.UI
             AddToClassList("menu-precios");
             // El fondo del menú tapa el mapa: tocar entre opciones no lo mueve ni cierra el menú
             pickingMode = PickingMode.Position;
+            SombraSuave.Poner(this);
 
-            Titulo = new Label(textos(ClavesTexto.PreciosTitulo)) { pickingMode = PickingMode.Ignore };
+            // El texto de Localization no cambia ("Mostrar precios en el mapa"): se pasa a mayúsculas al mostrarlo
+            Titulo = new Label(EnMayusculas(textos(ClavesTexto.PreciosTitulo))) { pickingMode = PickingMode.Ignore };
             Titulo.AddToClassList("menu-precios__titulo");
-            Titulo.AddToClassList("t-meta");
+            Titulo.AddToClassList("t-titulo-menu");
             Add(Titulo);
             foreach (var f in ReglaFiltro.Opciones)
             {
@@ -39,6 +42,9 @@ namespace PriceMap.UI
             }
             Mostrar(false);
         }
+
+        /// <summary>El título como se muestra (prototipo text-transform: uppercase); también con tildes y eñes.</summary>
+        public static string EnMayusculas(string texto) => texto?.ToUpperInvariant();
 
         public void Mostrar(bool abierto)
         {

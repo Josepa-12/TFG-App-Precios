@@ -76,18 +76,23 @@ namespace PriceMap.UI
             atribucion = raiz.Q<Label>("atribucion");
             atribucion.text = Textos.T(ClavesTexto.MapaAtribucion);
 
-            botonTema = new BotonRedondo(Icono.Luna, () => this.tema.Alternar()) { name = "boton-tema" };
+            // Columna de cristal arriba a la derecha (prototipo .ctrl-stack): tema y, debajo, ubicación, separados por
+            // una línea; el cristal, el borde y la sombra los pone la columna, no cada botón
+            botonTema = new BotonRedondo(Icono.Luna, () => this.tema.Alternar(), enColumna: true) { name = "boton-tema" };
             raiz.Q("hueco-tema").Add(botonTema);
             var huecoUbicacion = raiz.Q("hueco-ubicacion");
             if (this.ubicacion != null && huecoUbicacion != null)
             {
-                botonUbicacion = new BotonRedondo(Icono.Diana, TocarUbicacion) { name = "boton-ubicacion" };
+                botonUbicacion = new BotonRedondo(Icono.Navegar, TocarUbicacion, enColumna: true) { name = "boton-ubicacion" };
                 huecoUbicacion.Add(botonUbicacion);
             }
-            botonAcercar = new BotonRedondo(Icono.Mas, () => this.mapa.Acercar()) { name = "boton-acercar" };
-            botonAlejar = new BotonRedondo(Icono.Menos, () => this.mapa.Alejar()) { name = "boton-alejar" };
+            Columna(botonTema, botonUbicacion);
+            botonAcercar = new BotonRedondo(Icono.Mas, () => this.mapa.Acercar(), enColumna: true) { name = "boton-acercar" };
+            botonAlejar = new BotonRedondo(Icono.Menos, () => this.mapa.Alejar(), enColumna: true) { name = "boton-alejar" };
             zoom.Add(botonAcercar);
             zoom.Add(botonAlejar);
+            Columna(botonAcercar, botonAlejar);
+            foreach (var columna in raiz.Query(className: "columna-controles").ToList()) SombraSuave.Poner(columna, conBorde: true);
 
             accesibilidad = new AccesibilidadPantalla(raiz);
             if (this.filtro != null) CrearFiltro(); // la píldora va arriba a la izquierda: primera en TalkBack
@@ -147,6 +152,18 @@ namespace PriceMap.UI
 
             // Primera apertura sin permiso: la explicación sale antes de pedirlo, una sola vez
             if (this.ubicacion != null && this.ubicacion.DebeExplicarAlAbrir) AbrirExplicacion();
+        }
+
+        /// <summary>
+        /// Esquinas y separador de los huecos de una columna de controles: el de arriba lleva las esquinas superiores
+        /// de la columna, el de abajo (si lo hay) las inferiores y una línea encima; así el fondo al pulsar y el
+        /// borde de foco siguen la forma de la columna.
+        /// </summary>
+        static void Columna(BotonRedondo arriba, BotonRedondo abajo)
+        {
+            arriba.AddToClassList("boton-redondo--arriba");
+            (abajo ?? arriba).AddToClassList("boton-redondo--abajo");
+            abajo?.AddToClassList(BotonRedondo.ClaseSeparado);
         }
 
         /// <summary>Círculo de la posición y ventana de la explicación del permiso, con su recorrido de TalkBack.</summary>

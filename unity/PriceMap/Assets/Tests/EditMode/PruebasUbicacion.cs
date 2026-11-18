@@ -335,22 +335,61 @@ namespace PriceMap.Tests.EditMode
         // ───────────────────────── Botón de ubicación ─────────────────────────
 
         [Test]
-        public void ElBotonVaEnLaPilaDerechaDebajoDelDeTemaConSuTextoParaTalkBack()
+        public void ElBotonVaEnLaColumnaDebajoDelDeTemaConSuTextoParaTalkBack()
         {
             var m = Pantalla(new UbicacionFalsa(), YaExplicado());
             var boton = m.pantalla.BotonUbicacion;
             Assert.IsNotNull(boton);
-            Assert.AreEqual(Icono.Diana, boton.Icono);
+            Assert.AreEqual(Icono.Navegar, boton.Icono, "La flecha de navegación del prototipo, no la diana.");
             Assert.AreEqual("hueco-ubicacion", boton.parent.name);
-            var pila = m.arbol.Q("pila-derecha");
-            Assert.AreSame(pila, boton.parent.parent);
-            Assert.AreEqual(pila.IndexOf(m.arbol.Q("hueco-tema")) + 1, pila.IndexOf(boton.parent), "Justo debajo del botón de tema.");
+            var columna = m.arbol.Q("columna-controles");
+            Assert.AreSame(columna, boton.parent.parent);
+            Assert.AreEqual(columna.IndexOf(m.arbol.Q("hueco-tema")) + 1, columna.IndexOf(boton.parent), "Justo debajo del botón de tema.");
             Assert.IsTrue(PantallaMapa.EsControl(m.arbol.Q("raiz"), boton), "El botón tapa el mapa al pulsarlo.");
+
+            // Esquinas y separador de la columna en los botones reales
+            var tema = m.pantalla.BotonTema;
+            Assert.IsTrue(tema.ClassListContains("boton-redondo--arriba"));
+            Assert.IsFalse(tema.ClassListContains("boton-redondo--abajo"));
+            Assert.IsFalse(tema.ClassListContains(BotonRedondo.ClaseSeparado));
+            Assert.IsTrue(boton.ClassListContains(BotonRedondo.ClaseSeparado), "Línea entre tema y ubicación.");
+            Assert.IsTrue(boton.ClassListContains("boton-redondo--abajo"));
+            var alejar = m.arbol.Q<BotonRedondo>("boton-alejar");
+            Assert.IsTrue(alejar.ClassListContains(BotonRedondo.ClaseSeparado));
+            Assert.IsTrue(alejar.ClassListContains("boton-redondo--abajo"));
+            Assert.IsTrue(m.arbol.Q<BotonRedondo>("boton-acercar").ClassListContains("boton-redondo--arriba"));
 
             var recorrido = m.pantalla.Accesibilidad.Recorrido();
             Assert.AreEqual("Centrar en mi posición", TextoEs(ClavesTexto.UbicacionCentrar));
             Assert.AreEqual(recorrido.IndexOf(TextoEs(ClavesTexto.TemaCambiar)) + 1, recorrido.IndexOf(TextoEs(ClavesTexto.UbicacionCentrar)),
                 "TalkBack lo lee después del botón de tema.");
+        }
+
+        /// <summary>Ajuste visual de los controles: la flecha se queda en todos los estados y la etiqueta los sigue marcando.</summary>
+        [TestCase(EstadoUbicacion.Buscando, false, ClavesTexto.UbicacionBuscando)]
+        [TestCase(EstadoUbicacion.Denegado, false, ClavesTexto.UbicacionDesactivada)]
+        [TestCase(EstadoUbicacion.Activa, false, ClavesTexto.UbicacionCentrar)]
+        [TestCase(EstadoUbicacion.Activa, true, ClavesTexto.UbicacionNorte)]
+        public void LaFlechaSeQuedaYLosEstadosSeSiguenMarcando(EstadoUbicacion estado, bool centradoYGirado, string clave)
+        {
+            Montaje m;
+            if (centradoYGirado)
+            {
+                m = ActivaLejos(); // mapa girado 40°
+                m.pantalla.TocarUbicacion(); // centra en el usuario: el siguiente toque orientaría al norte
+            }
+            else
+            {
+                var gps = new UbicacionFalsa();
+                gps.Poner(estado, estado == EstadoUbicacion.Activa ? Usuario : (Coordenada?)null);
+                m = Pantalla(gps, YaExplicado());
+            }
+            m.pantalla.ActualizarCapas(Escala);
+            var etiqueta = TextoEs(clave);
+            Assert.AreEqual(Icono.Navegar, m.pantalla.BotonUbicacion.Icono);
+            Assert.IsTrue(m.pantalla.BotonUbicacion.EnColumna);
+            Assert.AreEqual(etiqueta, EtiquetaBoton(m));
+            CollectionAssert.Contains(m.pantalla.Accesibilidad.Recorrido(), etiqueta);
         }
 
         [Test]
@@ -364,6 +403,10 @@ namespace PriceMap.Tests.EditMode
             Assert.IsNull(pantalla.BotonUbicacion);
             Assert.IsNull(pantalla.MarcadorPosicion);
             Assert.IsFalse(pantalla.ExplicacionAbierta);
+            // Sin ubicación, el de tema es el único hueco de la columna: las cuatro esquinas y sin separador
+            Assert.IsTrue(pantalla.BotonTema.ClassListContains("boton-redondo--arriba"));
+            Assert.IsTrue(pantalla.BotonTema.ClassListContains("boton-redondo--abajo"));
+            Assert.IsFalse(pantalla.BotonTema.ClassListContains(BotonRedondo.ClaseSeparado));
         }
 
         [Test]

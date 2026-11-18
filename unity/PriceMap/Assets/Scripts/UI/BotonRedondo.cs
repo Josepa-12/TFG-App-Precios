@@ -4,11 +4,14 @@ using UnityEngine.UIElements;
 
 namespace PriceMap.UI
 {
-    public enum Icono { Sol, Luna, Mas, Menos, Diana, Cerrar }
+    public enum Icono { Sol, Luna, Mas, Menos, Navegar, Cerrar }
 
     /// <summary>
     /// Botón redondo de 48 dp con fondo de cristal (DESIGN.md · round-button) y un icono dibujado
-    /// con vectores, nunca emojis (UX-DR23). El icono usa el color de texto del tema.
+    /// con vectores, nunca emojis (UX-DR23). El icono usa el color (USS color) del botón.
+    /// En columna (tema, ubicación y zoom; prototipo .ctrl-stack) es un hueco de 48 × 48 dp sin fondo ni borde
+    /// propios: el cristal, el borde y la sombra los pone la columna, y el icono va en --color-accent-text.
+    /// Sol, Luna y Navegar son los iconos del prototipo (viewBox de 24 con trazo 2) dibujados a 22 dp.
     /// </summary>
     public class BotonRedondo : VisualElement
     {
@@ -21,11 +24,19 @@ namespace PriceMap.UI
             set { icono = value; MarkDirtyRepaint(); }
         }
 
-        public BotonRedondo(Icono icono, Action alPulsar)
+        /// <summary>Lado de los iconos del prototipo (Sol, Luna, Navegar), en dp.</summary>
+        public const float TamanoIcono = 22f;
+        public const string ClaseColumna = "boton-redondo--columna";
+        /// <summary>Segundo hueco de una columna: línea de 1 dp en --color-border encima.</summary>
+        public const string ClaseSeparado = "boton-redondo--separado";
+
+        /// <param name="enColumna">Hueco de la columna de controles, sin fondo ni borde propios.</param>
+        public BotonRedondo(Icono icono, Action alPulsar, bool enColumna = false)
         {
             this.icono = icono;
             this.alPulsar = alPulsar;
             AddToClassList("boton-redondo");
+            if (enColumna) AddToClassList(ClaseColumna);
             focusable = true;
             pickingMode = PickingMode.Position;
             this.AddManipulator(new Clickable(alPulsar));
@@ -37,6 +48,9 @@ namespace PriceMap.UI
 
         /// <summary>Lo que hace el botón al tocarlo (también lo usan las pruebas y TalkBack).</summary>
         public void Pulsar() => alPulsar?.Invoke();
+
+        /// <summary>True si es un hueco de la columna de controles.</summary>
+        public bool EnColumna => ClassListContains(ClaseColumna);
 
         void Dibujar(MeshGenerationContext mgc)
         {
@@ -54,27 +68,12 @@ namespace PriceMap.UI
             {
                 case Icono.Sol: Sol(p, c); break;
                 case Icono.Luna: Luna(p, c); break;
+                case Icono.Navegar: Navegar(p, c); break;
                 case Icono.Mas: Linea(p, c + new Vector2(-7, 0), c + new Vector2(7, 0)); Linea(p, c + new Vector2(0, -7), c + new Vector2(0, 7)); break;
                 case Icono.Menos: Linea(p, c + new Vector2(-7, 0), c + new Vector2(7, 0)); break;
-                case Icono.Diana: Diana(p, c); break;
                 // Aspa de cerrar (ficha del lugar, historia 1.8)
                 case Icono.Cerrar: Linea(p, c + new Vector2(-6, -6), c + new Vector2(6, 6)); Linea(p, c + new Vector2(-6, 6), c + new Vector2(6, -6)); break;
             }
-        }
-
-        // Diana de ubicación: aro, punto central y cuatro marcas hacia los puntos cardinales
-        static void Diana(Painter2D p, Vector2 c)
-        {
-            p.BeginPath();
-            p.Arc(c, 6.5f, 0f, 360f);
-            p.Stroke();
-            p.BeginPath();
-            p.Arc(c, 2.5f, 0f, 360f);
-            p.Fill();
-            Linea(p, c + new Vector2(0, -6.5f), c + new Vector2(0, -10f));
-            Linea(p, c + new Vector2(0, 6.5f), c + new Vector2(0, 10f));
-            Linea(p, c + new Vector2(-6.5f, 0), c + new Vector2(-10f, 0));
-            Linea(p, c + new Vector2(6.5f, 0), c + new Vector2(10f, 0));
         }
 
         static void Linea(Painter2D p, Vector2 a, Vector2 b)
@@ -85,46 +84,54 @@ namespace PriceMap.UI
             p.Stroke();
         }
 
+        // Punto del viewBox de 24 del prototipo (centro en 12, 12) llevado a un icono de 22 dp centrado en c
+        static Vector2 V(Vector2 c, float x, float y) => c + new Vector2(x - 12f, y - 12f) * (TamanoIcono / 24f);
+
+        static void Trazo(Painter2D p) => p.lineWidth = 2f * TamanoIcono / 24f;
+
+        // Sol del prototipo: círculo de radio 4 y ocho rayos de 8 a 10
         static void Sol(Painter2D p, Vector2 c)
         {
+            Trazo(p);
+            float s = TamanoIcono / 24f;
             p.BeginPath();
-            p.Arc(c, 4.5f, 0f, 360f);
-            p.Fill();
+            p.Arc(c, 4f * s, 0f, 360f);
+            p.ClosePath();
+            p.Stroke();
             for (int i = 0; i < 8; i++)
             {
                 float a = i * Mathf.PI / 4f;
                 var d = new Vector2(Mathf.Cos(a), Mathf.Sin(a));
-                Linea(p, c + d * 7.5f, c + d * 10f);
+                Linea(p, c + d * 8f * s, c + d * 10f * s);
             }
         }
 
-        // Luna creciente: arco exterior por la izquierda y arco interior desplazado a la derecha
+        // Luna del prototipo ("M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"): el primer arco no llega entre sus dos puntos
+        // (distan 12,73), así que SVG lo agranda a una semicircunferencia de centro (16,5; 7,5) que pasa por (12, 12);
+        // el segundo es el círculo de radio 9 centrado en el icono, de (21, 12) a (12, 3) por abajo y la izquierda.
         static void Luna(Painter2D p, Vector2 c)
         {
-            const float rExt = 8f, rInt = 6.5f;
-            var cInt = c + new Vector2(4.5f, -2.5f);
-            // Puntos donde se cortan los dos círculos
-            var (a, b) = Cortes(c, rExt, cInt, rInt);
-            float angA = Grados(a - c), angB = Grados(b - c);
-            float angAi = Grados(a - cInt), angBi = Grados(b - cInt);
+            Trazo(p);
+            float s = TamanoIcono / 24f;
             p.BeginPath();
-            p.Arc(c, rExt, angA, angB, ArcDirection.CounterClockwise);
-            p.Arc(cInt, rInt, angBi, angAi, ArcDirection.Clockwise);
+            p.MoveTo(V(c, 12f, 3f));
+            p.Arc(V(c, 16.5f, 7.5f), 4.5f * Mathf.Sqrt(2f) * s, -135f, 45f, ArcDirection.CounterClockwise);
+            p.Arc(c, 9f * s, 0f, 270f, ArcDirection.Clockwise);
             p.ClosePath();
-            p.Fill();
+            p.Stroke();
         }
 
-        static float Grados(Vector2 v) => Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg;
-
-        static (Vector2, Vector2) Cortes(Vector2 c0, float r0, Vector2 c1, float r1)
+        // Flecha de navegación del prototipo (polygon 3,11 22,2 13,21 11,13)
+        static void Navegar(Painter2D p, Vector2 c)
         {
-            var d = c1 - c0;
-            float dist = d.magnitude;
-            float a = (r0 * r0 - r1 * r1 + dist * dist) / (2f * dist);
-            float h = Mathf.Sqrt(Mathf.Max(0f, r0 * r0 - a * a));
-            var m = c0 + d * (a / dist);
-            var n = new Vector2(-d.y, d.x) / dist * h;
-            return (m + n, m - n);
+            Trazo(p);
+            p.BeginPath();
+            p.MoveTo(V(c, 3f, 11f));
+            p.LineTo(V(c, 22f, 2f));
+            p.LineTo(V(c, 13f, 21f));
+            p.LineTo(V(c, 11f, 13f));
+            p.ClosePath();
+            p.Stroke();
         }
     }
 }

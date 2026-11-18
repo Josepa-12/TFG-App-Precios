@@ -15,6 +15,7 @@ namespace PriceMap.Arranque
     /// <summary>
     /// Solo para comprobar la interfaz sin móvil: al lanzar el ejecutable con
     /// "-captura &lt;carpeta&gt;", espera a que cargue el mapa, guarda una captura en cada tema y sale.
+    /// En ese modo el panel mide 412 dp de ancho, como un móvil, para comparar con el prototipo.
     /// Sin ese argumento no hace nada.
     /// </summary>
     public class CapturaPruebas : MonoBehaviour
@@ -57,10 +58,14 @@ namespace PriceMap.Arranque
             public void AbrirAjustes() { }
         }
 
+        /// <summary>Ancho del panel en la captura: el de referencia de EXPERIENCE.md (un móvil de 412 dp).</summary>
+        public const float AnchoMovilDp = 412f;
+
         public static void SiSePide(GameObject anfitrion, ServicioTema tema, ServicioFiltro filtro, IPreferencias preferencias, MapaVectorial mapa, PantallaMapa pantalla)
         {
             var carpetaPedida = CarpetaPedida();
             if (carpetaPedida == null) return;
+            AnchoDeMovil(pantalla);
             var c = anfitrion.AddComponent<CapturaPruebas>();
             c.carpeta = carpetaPedida;
             c.tema = tema;
@@ -70,11 +75,55 @@ namespace PriceMap.Arranque
             c.pantalla = pantalla;
         }
 
+        /// <summary>
+        /// Solo en la captura: el panel pasa a medir 412 dp de ancho, sea cual sea la ventana o el dpi del PC (escala
+        /// con el ancho de la pantalla). Cambia el PanelSettings del documento y lo restaura al acabar (OnDestroy), así
+        /// que el asset no queda tocado; este modo no existe en la APK. PantallaMapa.EscalaDp (ancho del panel / ancho de la pantalla) se adapta sola.
+        /// </summary>
+        static void AnchoDeMovil(PantallaMapa pantalla)
+        {
+            var documento = pantalla != null ? pantalla.GetComponent<UIDocument>() : null;
+            var ajustes = documento != null ? documento.panelSettings : null;
+            if (ajustes == null) { Debug.LogError("PriceMap: sin PanelSettings, la captura no puede simular el ancho de un móvil."); return; }
+            // Asignar una copia al documento con la app ya compuesta cuelga el reproductor (probado): se cambia el
+            // compartido y se deja como estaba al acabar (OnDestroy), para que en el editor el asset no quede tocado
+            ajustesCambiados = ajustes;
+            escalaAntes = (ajustes.scaleMode, ajustes.screenMatchMode, ajustes.match, ajustes.referenceResolution);
+            AnchoDeMovil(ajustes, Screen.width, Screen.height);
+        }
+
+        static PanelSettings ajustesCambiados;
+        static (PanelScaleMode modo, PanelScreenMatchMode ajuste, float match, Vector2Int referencia) escalaAntes;
+
+        /// <summary>Devuelve el PanelSettings compartido a su escala de antes de la captura.</summary>
+        void OnDestroy()
+        {
+            if (ajustesCambiados == null) return;
+            ajustesCambiados.scaleMode = escalaAntes.modo;
+            ajustesCambiados.screenMatchMode = escalaAntes.ajuste;
+            ajustesCambiados.match = escalaAntes.match;
+            ajustesCambiados.referenceResolution = escalaAntes.referencia;
+            ajustesCambiados = null;
+        }
+
+        /// <summary>Escala el panel con el ancho de la pantalla para que mida 412 dp, sea cual sea su dpi.</summary>
+        internal static void AnchoDeMovil(PanelSettings ajustes, int anchoPx, int altoPx)
+        {
+            ajustes.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            ajustes.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            ajustes.match = 0f; // solo cuenta el ancho
+            int alto = anchoPx > 0 ? Mathf.RoundToInt(AnchoMovilDp * altoPx / anchoPx) : 915;
+            ajustes.referenceResolution = new Vector2Int((int)AnchoMovilDp, alto);
+        }
+
         IEnumerator Start()
         {
             Directory.CreateDirectory(carpeta);
             var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
             yield return new WaitForSeconds(8f); // teselas descargadas y construidas
+            float anchoPanel = Screen.width * (pantalla != null ? pantalla.EscalaDp : 0f);
+            Debug.Log($"PriceMap: panel de la captura de {anchoPanel:F1} dp de ancho (pantalla {Screen.width}x{Screen.height} px, escala {pantalla?.EscalaDp ?? 0f:F4} dp/px)");
+            if (Mathf.Abs(anchoPanel - AnchoMovilDp) > 0.5f) Debug.LogError($"PriceMap: el panel de la captura mide {anchoPanel:F1} dp y no {AnchoMovilDp} dp.");
             Diagnostico();
             Ubicacion();
             var pildora = pantalla != null ? pantalla.Pildora : null;
@@ -82,9 +131,11 @@ namespace PriceMap.Arranque
                       $"marcadores visibles {Visibles()}");
             if (filtro.Actual == FiltroPrecios.Ninguno && Visibles() > 0)
                 Debug.LogError("PriceMap: con el filtro Ninguno no debería verse ningún marcador.");
+            ComprobarSombras();
             yield return Capturar(tema.Actual.ToString().ToLowerInvariant());
             tema.Alternar();
             yield return new WaitForSeconds(1.5f);
+            ComprobarSombras();
             yield return Capturar(tema.Actual.ToString().ToLowerInvariant());
             tema.Alternar();
             // Deja la preferencia como estaba: si no había ninguna, la app debe seguir al sistema
@@ -310,21 +361,50 @@ namespace PriceMap.Arranque
         }
 
         /// <summary>
-        /// Historia 1.7: el botón de ubicación está en la pila derecha, debajo del de tema; con la ubicación falsa
-        /// (Plaza del Cabildo, rumbo 45°) se ve el círculo con el cono y no sale la explicación del permiso.
+        /// Ajuste visual de los controles: en EditMode no se resuelven estilos, así que aquí, ya dispuesta la interfaz y
+        /// en el tema actual, se comprueba que la sombra de la píldora, del menú y de la columna, y el borde de cristal
+        /// de la columna, tienen color (--sombra y --borde-cristal resueltos, alfa mayor que 0).
+        /// </summary>
+        void ComprobarSombras()
+        {
+            var columna = pantalla?.BotonTema?.parent?.parent;
+            var controles = new (string nombre, VisualElement elemento, bool borde)[]
+            {
+                ("la píldora", pantalla?.Pildora, false), ("el menú", pantalla?.Menu, false), ("la columna", columna, true),
+            };
+            foreach (var (nombre, elemento, borde) in controles)
+            {
+                var sombra = SombraSuave.De(elemento);
+                if (sombra == null) { Debug.LogError($"PriceMap: {nombre} no lleva sombra suave."); continue; }
+                Debug.Log($"PriceMap: sombra de {nombre} en tema {tema.Actual}: {sombra.Color}" + (borde ? $"; borde de cristal {sombra.Borde}" : ""));
+                if (sombra.Color.a <= 0f) Debug.LogError($"PriceMap: la sombra de {nombre} no tiene color en tema {tema.Actual} (--sombra sin resolver).");
+                if (borde && (!sombra.ConBorde || sombra.Borde.a <= 0f)) Debug.LogError($"PriceMap: el borde de cristal de {nombre} no tiene color en tema {tema.Actual} (--borde-cristal sin resolver).");
+            }
+        }
+
+        /// <summary>
+        /// Historia 1.7: el botón de ubicación está en la columna de controles, debajo del de tema; con la ubicación
+        /// falsa (Plaza del Cabildo, rumbo 45°) se ve el círculo con el cono y no sale la explicación del permiso.
+        /// La columna mide 48 × 96 dp.
         /// </summary>
         void Ubicacion()
         {
             var boton = pantalla != null ? pantalla.BotonUbicacion : null;
-            var pila = boton?.parent?.parent;
+            var columna = boton?.parent?.parent;
             var tema = pantalla != null ? pantalla.BotonTema : null;
-            bool enPila = pila != null && pila.name == "pila-derecha";
-            bool debajo = enPila && tema != null && boton.worldBound.yMin >= tema.worldBound.yMax;
+            bool enPila = columna != null && columna.name == "columna-controles" && tema != null && tema.parent?.parent == columna;
+            bool debajo = enPila && boton.worldBound.yMin >= tema.worldBound.yMax - 0.5f;
             var marcador = pantalla != null ? pantalla.MarcadorPosicion : null;
-            Debug.Log($"PriceMap: botón de ubicación {(boton != null ? boton.worldBound.ToString() : "-")} en la pila derecha {enPila}, debajo del de tema {debajo}; " +
+            if (columna != null)
+            {
+                var medida = columna.layout.size;
+                Debug.Log($"PriceMap: columna de controles de {medida.x:F1} × {medida.y:F1} dp en {columna.worldBound} (panel)");
+                if (Mathf.Abs(medida.x - 48f) > 0.5f || Mathf.Abs(medida.y - 96f) > 0.5f) Debug.LogError("PriceMap: la columna de controles no mide 48 × 96 dp.");
+            }
+            Debug.Log($"PriceMap: botón de ubicación {(boton != null ? boton.worldBound.ToString() : "-")} en la columna de controles {enPila}, debajo del de tema {debajo}; " +
                       $"círculo visible {marcador?.Visible ?? false}, cono {marcador?.ConoVisible ?? false} a {marcador?.AnguloCono ?? 0f:F1}° (giro del mapa {mapa.Giro:F1}°); " +
                       $"explicación abierta {pantalla?.ExplicacionAbierta ?? false}");
-            if (!enPila) Debug.LogError("PriceMap: el botón de ubicación no está en la pila derecha.");
+            if (!enPila) Debug.LogError("PriceMap: el botón de ubicación no está en la columna de controles con el de tema.");
             else if (!debajo) Debug.LogError("PriceMap: el botón de ubicación no está debajo del de tema.");
             if (marcador == null || !marcador.Visible || !marcador.ConoVisible) Debug.LogError("PriceMap: no se ve el círculo de la posición con su cono.");
             if (pantalla != null && pantalla.ExplicacionAbierta) Debug.LogError("PriceMap: con la ubicación falsa no debería salir la explicación del permiso.");

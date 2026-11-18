@@ -73,6 +73,8 @@ namespace PriceMap.Tests.EditMode
             Assert.GreaterOrEqual(Contraste(c["text"], c["surface-2"]), 4.5f, "icono del botón pulsado (surface-2)");
             Assert.GreaterOrEqual(Contraste(c["focus"], cristal), 3f, "borde de foco sobre el cristal");
             Assert.GreaterOrEqual(Contraste(c["ahora-texto"], c["surface-2"]), 4.5f, "chip \"Ahora\" de la variante vigente");
+            Assert.GreaterOrEqual(Contraste(c["accent-text"], cristal), 4.5f, "icono de la columna de controles sobre el cristal");
+            Assert.GreaterOrEqual(Contraste(c["accent-text"], c["surface-2"]), 4.5f, "icono de la columna pulsado (surface-2)");
         }
 
         /// <summary>El cristal no está siempre sobre el fondo: puede caer sobre calles, agua, verde o edificios.</summary>
@@ -88,6 +90,7 @@ namespace PriceMap.Tests.EditMode
                 var cristal = Sobre(c["glass"], fondo);
                 Assert.GreaterOrEqual(Contraste(c["text"], cristal), 4.5f, $"icono sobre el cristal encima de {nombre}");
                 Assert.GreaterOrEqual(Contraste(c["muted"], cristal), 4.5f, $"atribución sobre el cristal encima de {nombre}");
+                Assert.GreaterOrEqual(Contraste(c["accent-text"], cristal), 4.5f, $"icono de la columna de controles sobre el cristal encima de {nombre}");
             }
         }
 

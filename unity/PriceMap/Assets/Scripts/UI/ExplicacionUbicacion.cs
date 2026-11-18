@@ -73,6 +73,7 @@ namespace PriceMap.UI
             b.AddToClassList("explicacion-ubicacion__boton");
             b.AddToClassList(clase);
             b.AddToClassList("t-label");
+            Semicirculo.Mantener(b); // píldora, no óvalo, también con dos líneas de texto
             return b;
         }
 

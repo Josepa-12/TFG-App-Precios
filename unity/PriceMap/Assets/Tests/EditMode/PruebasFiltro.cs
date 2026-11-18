@@ -55,6 +55,19 @@ namespace PriceMap.Tests.EditMode
 
         class SistemaClaro : ITemaSistema { public bool EsOscuro => false; }
 
+        /// <summary>Ubicación activa y quieta (para el recorrido de TalkBack con el botón de ubicación).</summary>
+        class UbicacionQuieta : IUbicacion
+        {
+            public EstadoUbicacion Estado => EstadoUbicacion.Activa;
+            public Coordenada? Posicion => PantallaMapa.VistaInicial;
+            public float? Rumbo => null;
+            public event Action Cambiado { add { } remove { } }
+            public void PedirPermiso() { }
+            public void Iniciar() { }
+            public void Detener() { }
+            public void AbrirAjustes() { }
+        }
+
         static ServicioLugares lugares;
         static ServicioLugares Lugares()
         {
@@ -77,7 +90,7 @@ namespace PriceMap.Tests.EditMode
         }
 
         /// <summary>Pantalla con la interfaz real, compuesta como en el Arranque (Inicializar y luego Iniciar).</summary>
-        (PantallaMapa pantalla, VisualElement arbol, ServicioFiltro filtro, MapaFalso mapa) Pantalla(PreferenciasFalsas prefs)
+        (PantallaMapa pantalla, VisualElement arbol, ServicioFiltro filtro, MapaFalso mapa) Pantalla(PreferenciasFalsas prefs, ServicioUbicacion ubicacion = null)
         {
             var objeto = new GameObject("Pantalla de prueba");
             objetos.Add(objeto);
@@ -86,7 +99,7 @@ namespace PriceMap.Tests.EditMode
             var tema = new ServicioTema(prefs, new SistemaClaro());
             var filtro = new ServicioFiltro(prefs);
             var mapa = new MapaFalso();
-            pantalla.Inicializar(mapa, tema, Lugares(), Ahora, arbol, filtro);
+            pantalla.Inicializar(mapa, tema, Lugares(), Ahora, arbol, filtro, ubicacion);
             tema.Iniciar();
             filtro.Iniciar();
             pantalla.Capa.Actualizar(Escala, AnchoPx, AltoPx);
@@ -300,7 +313,7 @@ namespace PriceMap.Tests.EditMode
         };
 
         [Test]
-        public void LaOpcionElegidaLlevaCheckYFondo()
+        public void LaOpcionElegidaLlevaSoloFondoSinCheckYElTituloVaEnMayusculas()
         {
             var (p, _, filtro, _) = Pantalla(new PreferenciasFalsas());
             Assert.AreEqual(Textos.T(ClavesTexto.PreciosOpcionNinguno), p.ValorFiltro(), "Valor de TalkBack de la píldora.");
@@ -314,8 +327,138 @@ namespace PriceMap.Tests.EditMode
                 Assert.AreEqual(es, o.Elegida, o.name);
                 Assert.AreEqual(es, o.ClassListContains("opcion-precios--elegida"), o.name);
                 Assert.AreEqual(Textos.T(ClaveEsperada[o.Filtro]), o.Texto.text, "Solo el nombre, sin contador.");
+                // Ajuste visual (prototipo .cat-menu button.on): solo punto y nombre, ningún check ni en la elegida
+                Assert.AreEqual(2, o.childCount, $"{o.name}: punto y nombre, sin check.");
+                Assert.IsNull(o.Q(className: "opcion-precios__check"), o.name);
+                Assert.IsTrue(o.Texto.ClassListContains("t-label"), "Opciones de 14 px.");
             }
-            Assert.AreEqual(Textos.T(ClavesTexto.PreciosTitulo), p.Menu.Titulo.text);
+            // El título se muestra en mayúsculas, pero el texto de Localization no cambia
+            Assert.AreEqual(Textos.T(ClavesTexto.PreciosTitulo).ToUpperInvariant(), p.Menu.Titulo.text);
+            Assert.AreEqual("Mostrar precios en el mapa", PrepararInterfaz.TextosEs[ClavesTexto.PreciosTitulo]);
+            Assert.AreEqual("MOSTRAR PRECIOS EN EL MAPA", MenuPrecios.EnMayusculas(PrepararInterfaz.TextosEs[ClavesTexto.PreciosTitulo]));
+            Assert.IsTrue(p.Menu.Titulo.ClassListContains("t-titulo-menu"));
+        }
+
+        // ── Ajuste visual de los controles (spec-ajuste-visual-controles-del-mapa) ──
+
+        static string UssPantalla => System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+        static string UssTokens => System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "UI/Estilos/Tokens.uss"));
+
+        /// <summary>Cuerpo de la regla con ese selector exacto en el USS.</summary>
+        static string Regla(string uss, string selector) =>
+            System.Text.RegularExpressions.Regex.Match(uss, @"(^|\n)" + System.Text.RegularExpressions.Regex.Escape(selector) + @"\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+
+        /// <summary>Valor de una propiedad en una regla, con las variables --x sustituidas por su valor del tema claro.</summary>
+        static string Valor(string regla, string propiedad)
+        {
+            var v = System.Text.RegularExpressions.Regex.Match(regla, @"(^|[\s;])" + System.Text.RegularExpressions.Regex.Escape(propiedad) + @":\s*(?<v>[^;]+);").Groups["v"].Value.Trim();
+            var variable = System.Text.RegularExpressions.Regex.Match(v, @"^var\((?<n>--[\w-]+)\)$");
+            return variable.Success ? Valor(Regla(UssTokens, ".pm-raiz"), variable.Groups["n"].Value) : v;
+        }
+
+        [Test]
+        public void ElMenuNoTieneBordeMide220DpConEsquinasDe18YLlevaSombra()
+        {
+            var menu = Regla(UssPantalla, ".menu-precios");
+            Assert.AreEqual("220px", Valor(menu, "width"));
+            Assert.AreEqual("6px", Valor(menu, "padding"));
+            Assert.AreEqual("18px", Valor(menu, "border-radius"));
+            Assert.AreEqual("0", Valor(menu, "border-width"), "Sin borde.");
+            StringAssert.Contains("var(--color-surface)", menu);
+            var titulo = Regla(UssPantalla, ".menu-precios__titulo");
+            StringAssert.Contains("var(--color-muted)", titulo);
+            var tipo = Regla(UssTokens, ".t-titulo-menu");
+            StringAssert.Contains("font-size: 11px", tipo);
+            StringAssert.Contains("NunitoSans-ExtraBold", tipo);
+            var opcion = Regla(UssPantalla, ".opcion-precios");
+            Assert.AreEqual("48px", Valor(opcion, "min-height"), "Las opciones no bajan de 48 dp.");
+            Assert.AreEqual("12px", Valor(opcion, "border-radius"));
+            Assert.AreEqual("0", Valor(opcion, "border-width"), "Ninguna opción con borde.");
+            StringAssert.Contains("var(--color-surface-2)", Regla(UssPantalla, ".opcion-precios--elegida"));
+            StringAssert.DoesNotContain("opcion-precios__check", UssPantalla);
+
+            var (p, _, _, _) = Pantalla(new PreferenciasFalsas());
+            Assert.IsTrue(SombraSuave.Tiene(p.Menu), "El menú lleva la sombra suave.");
+            Assert.IsTrue(SombraSuave.Tiene(p.Pildora), "La píldora lleva la misma sombra.");
+            // Píldora de cristal con borde glass-edge (casi invisible), no control-edge
+            var pildora = Regla(UssPantalla, ".pildora-precios");
+            StringAssert.Contains("var(--color-glass)", pildora);
+            StringAssert.Contains("border-color: var(--color-glass-edge)", pildora);
+            StringAssert.Contains("--sombra: var(--color-sombra)", Regla(UssPantalla, ".sombra-suave"));
+        }
+
+        [Test]
+        public void TemaYUbicacionVanEnUnaColumnaDeCristalDe48Por96ConSeparador()
+        {
+            var (p, arbol, _, _) = Pantalla(new PreferenciasFalsas());
+            var columna = arbol.Q("columna-controles");
+            Assert.IsNotNull(columna);
+            Assert.AreSame(columna, p.BotonTema.parent.parent);
+            Assert.IsTrue(p.BotonTema.EnColumna);
+            Assert.IsTrue(SombraSuave.Tiene(columna), "Sombra suave de la columna.");
+            Assert.AreEqual(PickingMode.Ignore, columna.pickingMode, "La columna no tapa el mapa; sus botones sí.");
+            Assert.IsTrue(PantallaMapa.EsControl(arbol.Q("raiz"), p.BotonTema));
+            // Zoom (solo con TalkBack): la misma columna, debajo
+            var zoom = arbol.Q("zoom");
+            Assert.IsTrue(zoom.ClassListContains("columna-controles"));
+            Assert.AreSame(arbol.Q("pila-derecha"), zoom.parent);
+            Assert.Greater(zoom.parent.IndexOf(zoom), zoom.parent.IndexOf(columna));
+
+            // Estilos: 16 dp arriba, 12 a la derecha, esquinas 16, cristal; huecos de 48 × 48 sin fondo ni borde propios
+            var pila = Regla(UssPantalla, ".pila-derecha");
+            Assert.AreEqual("16px", Valor(pila, "top"));
+            Assert.AreEqual("12px", Valor(pila, "right"));
+            var col = Regla(UssPantalla, ".columna-controles");
+            Assert.AreEqual("16px", Valor(col, "border-radius"));
+            StringAssert.Contains("background-color: var(--color-glass)", col);
+            StringAssert.Contains("--borde-cristal: var(--color-glass-edge)", col);
+            StringAssert.DoesNotContain("border-width", col, "El borde lo dibuja SombraSuave por dentro: la columna mide 48 × 96.");
+            StringAssert.DoesNotContain("padding", col);
+            var boton = Regla(UssPantalla, ".boton-redondo");
+            Assert.AreEqual("48px", Valor(boton, "width"));
+            Assert.AreEqual("48px", Valor(boton, "height"));
+            var enColumna = Regla(UssPantalla, ".boton-redondo--columna");
+            Assert.AreEqual("0", Valor(enColumna, "border-width"));
+            StringAssert.Contains("rgba(0, 0, 0, 0)", enColumna);
+            StringAssert.Contains("var(--color-accent-text)", enColumna);
+            var separado = Regla(UssPantalla, ".boton-redondo--separado");
+            Assert.AreEqual("1px", Valor(separado, "border-top-width"));
+            StringAssert.Contains("var(--color-border)", separado);
+            StringAssert.Contains("var(--color-focus)", Regla(UssPantalla, ".boton-redondo--columna:focus"), "Foco visible en cada hueco.");
+            Assert.AreEqual(22f, BotonRedondo.TamanoIcono, "Iconos de 22 dp.");
+            Assert.AreEqual("#2F5BEA", Valor(Regla(UssTokens, ".pm-raiz"), "--color-accent-text"));
+            StringAssert.Contains("--color-accent-text: #8FB0FF", Regla(UssTokens, ".pm-raiz.tema-oscuro"));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConTalkBackElRecorridoSigueIgualYLaElegidaSeLeeSeleccionada(bool conUbicacion)
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            var prefs = new PreferenciasFalsas();
+            prefs.Guardar(ServicioUbicacion.ClaveExplicacion, "1"); // sin la explicación del permiso (modal) al abrir
+            var ubicacion = conUbicacion ? new ServicioUbicacion(new UbicacionQuieta(), prefs) : null;
+            var (p, _, filtro, _) = Pantalla(prefs, ubicacion);
+            var recorrido = p.Accesibilidad.Recorrido();
+            int pildora = recorrido.IndexOf(Textos.T(ClavesTexto.PreciosControl));
+            int tema = recorrido.IndexOf(Textos.T(ClavesTexto.TemaCambiar));
+            int acercar = recorrido.IndexOf(Textos.T(ClavesTexto.MapaAcercar));
+            int alejar = recorrido.IndexOf(Textos.T(ClavesTexto.MapaAlejar));
+            Assert.AreEqual(0, pildora, "La píldora sigue siendo la primera.");
+            Assert.AreEqual(1, tema, "Luego el botón de tema.");
+            if (conUbicacion)
+            {
+                int boton = recorrido.IndexOf(Textos.T(p.ClaveBotonUbicacion()));
+                Assert.AreEqual(tema + 1, boton, "Luego el de ubicación, en la misma columna.");
+                Assert.AreEqual(boton + 1, acercar, "Y los de zoom, debajo, en su columna.");
+            }
+            else Assert.AreEqual(tema + 1, acercar, "Y los de zoom, debajo, en su columna.");
+            Assert.AreEqual(acercar + 1, alejar);
+
+            filtro.Elegir(FiltroPrecios.Hosteleria);
+            p.AlternarMenu();
+            CollectionAssert.AreEqual(RecorridoDelMenu(FiltroPrecios.Hosteleria), p.Accesibilidad.RecorridoConEstado(),
+                "Sin check, la opción elegida se sigue leyendo como seleccionada.");
         }
 
         [Test]

@@ -22,7 +22,12 @@
     --color-control-edge: #6E7A99;
     --color-focus: #2F5BEA;
     --color-ahora-texto: #2F5BEA; /* chip "Ahora" de la variante vigente sobre surface-2 */
-    --color-glass: rgba(255, 255, 255, 0.74);
+    /* Cristal de los controles flotantes: 0,76 y no 0,74 como el prototipo, para que el icono en
+       --color-accent-text llegue a 4,5:1 sobre la fachada de los edificios (con 0,74 da 4,498:1) */
+    --color-glass: rgba(255, 255, 255, 0.76);
+    --color-glass-edge: rgba(255, 255, 255, 0.9);   /* borde casi invisible del cristal (prototipo --glass-edge) */
+    --color-accent-text: #2F5BEA;                    /* iconos de la columna de controles (prototipo --accent-text) */
+    --color-sombra: rgba(19, 35, 91, 0.16);          /* sombra suave de los controles (prototipo --shadow) */
     --color-tpl-servicio: #2F5BEA;
     --color-tpl-hosteleria: #E07B12;
     --color-tpl-ocio: #1F9D6B;
@@ -107,10 +112,22 @@
     --radio-md: 14px;
     --radio-lg: 18px;
     --radio-sheet: 24px;
-    --radio-pill: 999px;
+    /* Píldoras y círculos: la mitad del alto (UI Toolkit no reduce un radio enorme como CSS: daría un óvalo).
+       Fijos para los círculos; la píldora y los botones de la ventana de ubicación lo ajustan con Semicirculo al
+       alto real (24 = mitad de los 48 dp mínimos, hasta que se disponen) */
+    --radio-pill: 24px;
+    --radio-boton-redondo: 24px;   /* 48 / 2 */
+    --radio-insignia: 9px;         /* 18 / 2 */
+    --radio-posicion-punto: 9px;   /* 18 / 2 */
+    --radio-poi-icono: 12px;       /* 24 / 2 */
+    --radio-frescura-punto: 4.5px; /* 9 / 2 */
+    --radio-columna: 16px;   /* columna de controles (prototipo .ctrl-stack) */
+    --radio-opcion: 12px;    /* opciones del menú "Precios" (prototipo .cat-menu button) */
 
     /* Tamaños de componentes (mínimos) */
     --boton-redondo: 48px;
+    --menu-precios-ancho: 220px;
+    --menu-precios-relleno: 6px;
     --zona-tactil-min: 48px;
     --marcador: 42px;
     --marcador-sin-precio: 32px;
@@ -152,6 +169,9 @@
     --color-focus: #8FB0FF;
     --color-ahora-texto: #8FB0FF; /* el acento oscuro no llega a 4,5:1 sobre surface-2 */
     --color-glass: rgba(26, 34, 56, 0.74);
+    --color-glass-edge: rgba(76, 125, 255, 0.28);
+    --color-accent-text: #8FB0FF;   /* el acento oscuro no llega a 4,5:1 sobre el cristal */
+    --color-sombra: rgba(0, 0, 0, 0.45);
     --color-tpl-servicio: #4C7DFF;
     --color-tpl-hosteleria: #F59A3C;
     --color-tpl-ocio: #3DD69B;
@@ -191,5 +211,7 @@
 .t-label { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 14px; }
 .t-meta { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 13px; }
 .t-meta-fuerte { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 13px; }
+/* Título del menú "Precios" (prototipo .menu-title): 11 px, 800, espaciado 0,05 em = 0,55 px; mayúsculas desde el código */
+.t-titulo-menu { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 11px; letter-spacing: 0.55px; }
 .t-caption { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 12px; }
 .t-price { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 22px; }

@@ -29,6 +29,8 @@ namespace PriceMap.UI
             pickingMode = PickingMode.Position;
             this.AddManipulator(new Clickable(alPulsar));
             RegisterCallback<NavigationSubmitEvent>(_ => alPulsar()); // teclado, mando o navegación
+            SombraSuave.Poner(this); // cristal con borde glass-edge (USS) y la sombra suave de los controles
+            Semicirculo.Mantener(this); // extremos semicirculares también si crece con la fuente grande
 
             Punto = new PuntoPrecios(FiltroPrecios.Ninguno);
             Add(Punto);
