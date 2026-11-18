@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-17-2026 10:00
-last_updated: 11-18-2026 00:10
+last_updated: 11-18-2026 18:00
 project: TFG-App-Precios
 project_key: NOKEY
 tracking_system: file-system
@@ -42,75 +42,75 @@ development_status:
   1-4-lugares-reales-de-sanlúcar-con-su-logo-en-el-mapa: done
   1-5-filtro-precios-en-el-mapa: done
   1-6-puntos-de-interés-de-referencia-en-el-mapa: done
-  1-7-ver-mi-posición-en-el-mapa: backlog
-  1-8-ficha-del-lugar-con-sus-precios: backlog
+  1-7-ver-mi-posición-en-el-mapa: review
+  1-8-ficha-del-lugar-con-sus-precios: ready-for-dev
   epic-1-retrospective: optional
 
   epic-2: backlog
-  2-1-gps-activo-con-la-pantalla-apagada-durante-una-ruta: backlog
-  2-2-hoja-del-buscador-desplegable: backlog
-  2-3-buscar-lugares-puntos-de-interés-y-direcciones: backlog
-  2-4-encuentra-cerca-por-categorías: backlog
-  2-5-ir-a-un-punto-libre-o-a-una-ubicación-compartida: backlog
-  2-6-ver-los-tiempos-y-calcular-la-ruta-más-corta: backlog
-  2-7-navegar-giro-a-giro: backlog
-  2-8-indicaciones-por-voz: backlog
-  2-9-llegar-y-terminar-la-ruta: backlog
+  2-1-gps-activo-con-la-pantalla-apagada-durante-una-ruta: ready-for-dev
+  2-2-hoja-del-buscador-desplegable: ready-for-dev
+  2-3-buscar-lugares-puntos-de-interés-y-direcciones: ready-for-dev
+  2-4-encuentra-cerca-por-categorías: ready-for-dev
+  2-5-ir-a-un-punto-libre-o-a-una-ubicación-compartida: ready-for-dev
+  2-6-ver-los-tiempos-y-calcular-la-ruta-más-corta: ready-for-dev
+  2-7-navegar-giro-a-giro: ready-for-dev
+  2-8-indicaciones-por-voz: ready-for-dev
+  2-9-llegar-y-terminar-la-ruta: ready-for-dev
   epic-2-retrospective: optional
 
   epic-3: backlog
-  3-1-bienvenida-privacidad-y-consentimientos: backlog
-  3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexión: backlog
-  3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta: backlog
-  3-4-elegir-cuenta-de-cliente-o-de-negocio: backlog
-  3-5-perfil-y-ajustes: backlog
-  3-6-favoritos-y-progreso-en-la-nube: backlog
+  3-1-bienvenida-privacidad-y-consentimientos: ready-for-dev
+  3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexión: ready-for-dev
+  3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta: ready-for-dev
+  3-4-elegir-cuenta-de-cliente-o-de-negocio: ready-for-dev
+  3-5-perfil-y-ajustes: ready-for-dev
+  3-6-favoritos-y-progreso-en-la-nube: ready-for-dev
   epic-3-retrospective: optional
 
   epic-4: backlog
-  4-1-reglas-que-protegen-los-aportes-y-el-anonimato: backlog
-  4-2-la-visita-queda-verificada-al-acercarme: backlog
-  4-3-la-pregunta-llega-una-hora-después-o-la-retomo-con-el-botón: backlog
-  4-4-confirmar-lo-que-pagué: backlog
-  4-5-decir-otro-precio-con-la-regla: backlog
-  4-6-tramos-de-gasto-en-hostelería: backlog
-  4-7-ser-el-primero-en-dar-un-precio: backlog
-  4-8-valorar-si-quiero: backlog
-  4-9-mi-aporte-llega-aunque-no-tenga-conexión-y-lo-ven-todos: backlog
-  4-10-mandan-los-clientes: backlog
-  4-11-ganar-monedas-xp-y-subir-de-nivel: backlog
+  4-1-reglas-que-protegen-los-aportes-y-el-anonimato: ready-for-dev
+  4-2-la-visita-queda-verificada-al-acercarme: ready-for-dev
+  4-3-la-pregunta-llega-una-hora-después-o-la-retomo-con-el-botón: ready-for-dev
+  4-4-confirmar-lo-que-pagué: ready-for-dev
+  4-5-decir-otro-precio-con-la-regla: ready-for-dev
+  4-6-tramos-de-gasto-en-hostelería: ready-for-dev
+  4-7-ser-el-primero-en-dar-un-precio: ready-for-dev
+  4-8-valorar-si-quiero: ready-for-dev
+  4-9-mi-aporte-llega-aunque-no-tenga-conexión-y-lo-ven-todos: ready-for-dev
+  4-10-mandan-los-clientes: ready-for-dev
+  4-11-ganar-monedas-xp-y-subir-de-nivel: ready-for-dev
   epic-4-retrospective: optional
 
   epic-5: backlog
-  5-1-comprar-y-equipar-cosméticos-en-la-tienda: backlog
-  5-2-ver-mis-cosméticos-en-el-mapa: backlog
-  5-3-ganar-insignias: backlog
-  5-4-mi-reputación: backlog
-  5-5-sonidos-de-recompensa: backlog
+  5-1-comprar-y-equipar-cosméticos-en-la-tienda: ready-for-dev
+  5-2-ver-mis-cosméticos-en-el-mapa: ready-for-dev
+  5-3-ganar-insignias: ready-for-dev
+  5-4-mi-reputación: ready-for-dev
+  5-5-sonidos-de-recompensa: ready-for-dev
   epic-5-retrospective: optional
 
   epic-6: backlog
-  6-1-ver-mi-actividad: backlog
-  6-2-registro-anónimo-para-la-evaluación: backlog
-  6-3-exportar-los-datos-de-la-evaluación: backlog
+  6-1-ver-mi-actividad: ready-for-dev
+  6-2-registro-anónimo-para-la-evaluación: ready-for-dev
+  6-3-exportar-los-datos-de-la-evaluación: ready-for-dev
   epic-6-retrospective: optional
 
   epic-7: backlog
-  7-1-avisar-de-que-un-precio-está-mal: backlog
-  7-2-precios-en-revisión-que-se-confirman-al-llegar: backlog
-  7-3-avísame-si-cambia: backlog
+  7-1-avisar-de-que-un-precio-está-mal: ready-for-dev
+  7-2-precios-en-revisión-que-se-confirman-al-llegar: ready-for-dev
+  7-3-avísame-si-cambia: ready-for-dev
   epic-7-retrospective: optional
 
   epic-8: backlog
-  8-1-reclamar-y-verificar-mi-local: backlog
-  8-2-dar-de-alta-un-local-nuevo: backlog
-  8-3-declarar-mis-precios-y-variantes: backlog
-  8-4-publicar-ofertas: backlog
-  8-5-mi-panel-de-negocio: backlog
+  8-1-reclamar-y-verificar-mi-local: ready-for-dev
+  8-2-dar-de-alta-un-local-nuevo: ready-for-dev
+  8-3-declarar-mis-precios-y-variantes: ready-for-dev
+  8-4-publicar-ofertas: ready-for-dev
+  8-5-mi-panel-de-negocio: ready-for-dev
   epic-8-retrospective: optional
 
   epic-9: backlog
-  9-1-montar-un-plan-de-tarde: backlog
-  9-2-gasto-estimado-del-plan: backlog
-  9-3-recorrer-el-plan-parada-a-parada: backlog
+  9-1-montar-un-plan-de-tarde: ready-for-dev
+  9-2-gasto-estimado-del-plan: ready-for-dev
+  9-3-recorrer-el-plan-parada-a-parada: ready-for-dev
   epic-9-retrospective: optional
