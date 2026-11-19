@@ -126,7 +126,7 @@ namespace PriceMap.EditorTools
             [ClavesTexto.BuscadorSuper] = "Supermercados",
             [ClavesTexto.BuscadorFarmacia] = "Farmacias",
             [ClavesTexto.BuscadorGasolina] = "Gasolineras",
-            [ClavesTexto.BuscadorDeporte] = "Gimnasios",
+            [ClavesTexto.BuscadorDeporte] = "Deporte",
             [ClavesTexto.BuscadorSalud] = "Salud",
             [ClavesTexto.BuscadorCultura] = "Cultura",
             [ClavesTexto.BuscadorSinResultados] = "No hay resultados",

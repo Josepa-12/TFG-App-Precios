@@ -354,7 +354,7 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void ElContenidoInicialSonLasCategoriasYEncuentraCerca()
         {
-            var esperados = new[] { "Restaurantes", "Bares", "Supermercados", "Farmacias", "Gasolineras", "Gimnasios", "Salud", "Cultura" };
+            var esperados = new[] { "Restaurantes", "Bares", "Supermercados", "Farmacias", "Gasolineras", "Deporte", "Salud", "Cultura" };
             CollectionAssert.AreEqual(esperados, hoja.Chips.Select(c => c.Q<Label>().text).ToArray());
             for (int i = 0; i < HojaBuscador.Categorias.Length; i++)
             {
