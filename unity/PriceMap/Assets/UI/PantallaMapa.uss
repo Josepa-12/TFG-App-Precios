@@ -1142,6 +1142,54 @@
     flex-shrink: 0;
 }
 
+/* ───────── Encuentra cerca (historia 2.4) ───────── */
+
+/* Cabecera de la lista: título (y "desde el centro del mapa") a la izquierda y la X de 48 dp a la derecha */
+.buscador__cabecera-cerca {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 48px;
+    padding: 0 0 0 var(--espacio-1);
+    border-bottom-width: 1px;
+    border-color: var(--color-border);
+}
+
+.buscador__cabecera-cerca-textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.buscador__titulo-cerca {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+    -unity-font-style: bold;
+    white-space: normal;
+}
+
+.buscador__desde-centro {
+    margin: 2px 0 0 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+.buscador__quitar-categoria {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    border-radius: 24px;
+    align-items: center;
+    justify-content: center;
+}
+
+.buscador__quitar-categoria-glifo {
+    width: 20px;
+    height: 20px;
+    color: var(--color-muted);
+}
+
 /* Fila de resultado (prototipo .result): icono de 36, nombre, tipo y distancia debajo y el precio a la derecha */
 .buscador__resultado {
     flex-direction: row;

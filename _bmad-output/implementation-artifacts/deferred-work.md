@@ -157,3 +157,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3b-direcciones-con-photon.md`
   summary: Photon no encuentra "calle ancha 10" en Sanlúcar (da Barrameda y calles de otras ciudades); estudiar dar más peso a la cercanía (location_bias_scale, zoom) o un bbox suave.
   evidence: Captura de PC del 19/11/2026: los 7 resultados son de Marbella, Motril, etc. La decisión del 19/11 fue sin bbox; habría que medir con varias consultas reales.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-encuentra-cerca-por-categorias.md`
+  summary: Historia 2.4 (parte 2), el mapa por categoría. Con una categoría activa, el mapa muestra solo sus marcadores y puntos (CapaMarcadores y CapaPuntosInteres, con ReglaCerca) y se ignora el filtro «Precios». La píldora lleva un chip «Restaurantes ✕» (✕ dibujado) para quitarla, y al quitarla vuelve el filtro anterior. Matriz: elegir Salud (el mapa solo con salud) y quitar con la ✕ (vuelve el filtro). Captura «cerca» con el mapa filtrado.
+  evidence: El usuario partió la 2.4 el 19/11/2026: primero la lista y después el mapa.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-encuentra-cerca-por-categorias.md`
+  summary: Historia 2.4, TalkBack de la lista «Encuentra cerca». Los chips de categoría y «Encuentra cerca» pasan de texto a botón; cada fila es un botón («Nombre, tipo, a 350 m, desde 20 €»); la X de la cabecera es el botón «Quitar categoría»; al abrir la lista se anuncia «<Título>, N resultados» (o «No hay … cerca») y el foco va al título. Matriz: TalkBack con un toque en una fila de lugar abre la ficha con el foco en su título.
+  evidence: El usuario partió también la lista de la 2.4 el 19/11/2026 porque su spec pasaba de 1.600 tokens.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-encuentra-cerca-por-categorias.md`
+  summary: Rehacer la lista «Encuentra cerca» con la hoja abierta cuando cargan puntos nuevos o llega la primera posición del GPS (hoy solo al desplegar), sin mover el scroll ni el foco.
+  evidence: Sin verificar (maybe-false, medium si es cierto). Se ve en el móvil abriendo una categoría nada más arrancar.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-encuentra-cerca-por-categorias.md`
+  summary: El chip «Gimnasios» lista también piscinas, golf, pistas y el club náutico, y «Restaurantes» incluye cafeterías y heladerías; decidir si renombrar los chips («Deporte», «Comer»).
+  evidence: Etiquetas de la 2.2 frente a la tabla de categorías decidida el 19/11/2026.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-encuentra-cerca-por-categorias.md`
+  summary: Comprobar en el móvil que tocar chips, «Encuentra cerca» y la X funciona y que un arrastre que empieza en un chip no elige la categoría.
+  evidence: Sin verificar (maybe-false, medium si es cierto). En EditMode no se pueden enviar toques reales.

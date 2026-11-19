@@ -183,8 +183,30 @@ namespace PriceMap.UI
         /// <summary>TalkBack de una dirección con localidad (parte 3): {0} nombre, {1} "Dirección", {2} localidad, {3} distancia.</summary>
         public const string BuscadorAnuncioDireccion = "buscador.direccion.anuncio";
 
+        /// <summary>"Encuentra cerca" (historia 2.4): título de la lista de una categoría, {0} su nombre ("Restaurantes cerca").</summary>
+        public const string BuscadorCercaCategoria = "buscador.cerca.categoria";
+        /// <summary>Título de la lista de "Encuentra cerca" (todas las categorías): "Cerca".</summary>
+        public const string BuscadorCercaTitulo = "buscador.cerca.titulo";
+        /// <summary>Bajo el título, sin posición del usuario: las distancias se miden desde el centro del mapa.</summary>
+        public const string BuscadorCercaDesdeCentro = "buscador.cerca.desdecentro";
+        /// <summary>Lista vacía: {0} lo que no hay, en minúsculas y en plural ("No hay gasolineras cerca").</summary>
+        public const string BuscadorCercaVacio = "buscador.cerca.vacio";
+        /// <summary>
+        /// Lo que no hay, para "No hay {0} cerca", por categoría: no siempre es el nombre del chip ("Salud" →
+        /// "sitios de salud").
+        /// </summary>
+        public const string CercaNombreComer = "buscador.cerca.nombre.comer", CercaNombreBares = "buscador.cerca.nombre.bares",
+            CercaNombreSuper = "buscador.cerca.nombre.super", CercaNombreFarmacia = "buscador.cerca.nombre.farmacia",
+            CercaNombreGasolina = "buscador.cerca.nombre.gasolina", CercaNombreDeporte = "buscador.cerca.nombre.deporte",
+            CercaNombreSalud = "buscador.cerca.nombre.salud", CercaNombreCultura = "buscador.cerca.nombre.cultura";
+        /// <summary>La X de la cabecera de la lista: vuelve a las categorías.</summary>
+        public const string BuscadorQuitarCategoria = "buscador.cerca.quitar";
+
         public static readonly string[] Todas =
         {
+            BuscadorCercaCategoria, BuscadorCercaTitulo, BuscadorCercaDesdeCentro, BuscadorCercaVacio, BuscadorQuitarCategoria,
+            CercaNombreComer, CercaNombreBares, CercaNombreSuper, CercaNombreFarmacia, CercaNombreGasolina, CercaNombreDeporte,
+            CercaNombreSalud, CercaNombreCultura,
             BuscadorAnuncioDireccion, BuscadorDireccion, BuscadorDistanciaA, BuscadorDireccionesSinConexion, BuscadorBuscarDireccion,
             BuscadorCampo, BuscadorCerca, BuscadorExpandir, BuscadorContraer, BuscadorComer, BuscadorBares, BuscadorSuper, BuscadorFarmacia,
             BuscadorGasolina, BuscadorDeporte, BuscadorSalud, BuscadorCultura,

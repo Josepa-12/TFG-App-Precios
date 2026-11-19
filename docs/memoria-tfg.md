@@ -765,6 +765,24 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
   - *Historia 2.3 (parte 3): TalkBack de las direcciones (19/11/2026).*
     - **Solución:** cada dirección es un botón del recorrido («Calle Ancha 10, Dirección, Sanlúcar de Barrameda, a 1,2 km»), y también lo es «Buscar como dirección». El aviso de conexión es un texto al final del recorrido que se anuncia una vez, al aparecer. «N resultados» cuenta lugares, puntos y direcciones. Las direcciones llegan solas, sin que el usuario haga nada, así que no mueven el foco: solo se anuncian. Para eso la hoja conserva las filas locales y `AccesibilidadPantalla.RecuperarFoco` devuelve el foco al nodo donde estaba el usuario en la jerarquía nueva. Si ese nodo ya no existe, el foco va al campo.
     - **Revisión:** un revisor. Se corrigió que sin conexión el aviso parpadeara y se repitiera tras cada pausa al teclear, y que el foco se quedara en nada al desaparecer «No hay resultados». El foco que mueve el lector se guarda aparte del pedido por la app. Pasan 545 pruebas. Queda probarlo con TalkBack en el móvil.
+  - *Historia 2.4 (parte 1): lista «Encuentra cerca» por categorías (19/11/2026).*
+    - **Motivo:** las categorías de la hoja del buscador y «Encuentra cerca» no hacían nada (FR15). Además, la lista por distancia es la alternativa al mapa para quien usa TalkBack (UX-DR17).
+    - **Decisiones del autor:**
+      - La historia se parte en tres: lista, TalkBack de la lista y filtro del mapa con el chip de la píldora.
+      - «Encuentra cerca» enseña todo lo cercano.
+      - La tabla de cada categoría la decidió el autor; el veterinario entra en Salud.
+      - Escribir quita la categoría.
+      - La lista lleva una cabecera con título y X, y el botón atrás vuelve a las categorías.
+      - Como mucho 50 filas y lugares a 3 km o menos.
+    - **Solución:**
+      - La regla pura `ReglaCerca` (Dominio) dice qué tipos de lugar y qué categorías de punto de interés entran en cada chip.
+      - `ServicioCerca` (Aplicación) junta los lugares a 3 km o menos y los puntos de las teselas cargadas. Pone primero los que tienen precio, todo por distancia (al usuario o al centro del mapa), y quita los puntos que repiten un lugar de la misma categoría.
+      - En la hoja, los chips y «Encuentra cerca» ya se pueden tocar. La lista reutiliza las filas de la 2.3 y, si está vacía, dice «No hay gasolineras cerca» o «No hay sitios de salud cerca».
+    - **Revisión:** tres revisores. Se corrigió el texto de la lista vacía (salía «No hay salud cerca») y que un punto desapareciera por parecerse a un lugar de otra categoría. Se añadieron pruebas de los tipos de los datos reales, de la jerarquía real de TalkBack y de rehacer la lista al desplegar la hoja.
+    - **Comprobación:** pasan 620 pruebas. En la captura de PC, Salud enseña primero Clínica Areas con «desde 20 €» y después dentistas, fisioterapia y centros públicos por distancia.
+    - **Pendiente:**
+      - Probar en el móvil los toques y el arrastre.
+      - Decidir si el chip «Gimnasios» pasa a llamarse «Deporte», porque también enseña golf y piscinas.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

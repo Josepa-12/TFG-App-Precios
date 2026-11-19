@@ -12,8 +12,9 @@ namespace PriceMap.UI
     /// campo "Buscar en Sanlúcar" y un avatar genérico de 40 dp, que al tocarla o arrastrarla se despliega en una hoja
     /// que sigue al dedo (FisicaHoja). La cápsula y la hoja son el mismo elemento: con la fracción abierta k, la forma
     /// se mezcla con s = min(1, k / 0,15) (márgenes de 12/12/20 a 0, esquinas de píldora a 24 arriba y 0 abajo, fondo
-    /// de la cápsula a surface opaco). Antes de escribir muestra los chips de categorías y "Encuentra cerca", que aún
-    /// no hacen nada (historia 2.4). Con texto (historia 2.3) muestra en su lugar los resultados que le da
+    /// de la cápsula a surface opaco). Antes de escribir muestra los chips de categorías y "Encuentra cerca": al
+    /// tocarlos (historia 2.4) enseña en su lugar la lista de lo cercano de esa categoría (MostrarCerca), con una
+    /// cabecera con el título y una X que vuelve a las categorías. Con texto (historia 2.3) muestra en su lugar los resultados que le da
     /// PantallaMapa (o "No hay resultados") y una X en el campo que lo vacía. Plegarla no borra ni el texto ni los
     /// resultados: al volver a abrirla siguen ahí.
     ///
@@ -72,6 +73,12 @@ namespace PriceMap.UI
         /// <summary>Se ha tocado "Buscar como dirección" (historia 2.3, parte 2): PantallaMapa pide las direcciones ya.</summary>
         public event Action BuscarComoDireccionPedido;
 
+        /// <summary>Se ha tocado un chip (su categoría) o "Encuentra cerca" (null) (historia 2.4).</summary>
+        public event Action<CategoriaPoi?> CategoriaElegida;
+
+        /// <summary>Se ha tocado la X de la cabecera de la lista "cerca" ("Quitar categoría"): vuelven las categorías.</summary>
+        public event Action CategoriaQuitada;
+
         public VisualElement AsaZona { get; }
         public VisualElement Asa { get; }
         public VisualElement Interior { get; }
@@ -116,6 +123,18 @@ namespace PriceMap.UI
         public bool SinResultadosVisible { get; private set; }
         /// <summary>Se ven los resultados (o "No hay resultados") en lugar de los chips y "Encuentra cerca".</summary>
         public bool MostrandoResultados { get; private set; }
+        /// <summary>Se ve la lista "cerca" de una categoría (historia 2.4) en lugar de los chips y "Encuentra cerca".</summary>
+        public bool MostrandoCerca { get; private set; }
+        /// <summary>Se ven los chips y "Encuentra cerca" (ni resultados ni lista "cerca").</summary>
+        public bool MostrandoCategorias => !MostrandoResultados && !MostrandoCerca;
+        /// <summary>Cabecera de la lista "cerca": título, "desde el centro del mapa" y la X.</summary>
+        public VisualElement CabeceraCerca { get; }
+        /// <summary>Título de la lista "cerca" ("Restaurantes cerca", "Cerca").</summary>
+        public Label TituloCerca { get; }
+        /// <summary>"desde el centro del mapa" (sin posición del usuario).</summary>
+        public Label DesdeCentro { get; }
+        /// <summary>La X de la cabecera: "Quitar categoría".</summary>
+        public VisualElement QuitarCategoria { get; }
         /// <summary>
         /// "Expandir" y "Contraer" de TalkBack (historia 2.2, parte 2): no se ven ni recogen toques; solo dan el marco
         /// de su nodo (las dos mitades de la zona del tirador).
@@ -215,6 +234,8 @@ namespace PriceMap.UI
                 texto.AddToClassList("buscador__chip-texto");
                 texto.AddToClassList("t-meta-fuerte");
                 chip.Add(texto);
+                var elegida = categoria;
+                chip.AddManipulator(new Clickable(() => ElegirCategoria(elegida)));
                 filaChips.Add(chip);
                 chips.Add(chip);
             }
@@ -226,7 +247,28 @@ namespace PriceMap.UI
             textoCerca.AddToClassList("buscador__cerca-texto");
             textoCerca.AddToClassList("t-label");
             Cerca.Add(textoCerca);
+            Cerca.AddManipulator(new Clickable(() => ElegirCategoria(null)));
             Panel.Add(Cerca);
+
+            // Cabecera de la lista "cerca" (historia 2.4): título y "desde el centro del mapa" a la izquierda, la X a la derecha
+            CabeceraCerca = Nuevo("buscador-cabecera-cerca", "buscador__cabecera-cerca");
+            Panel.Add(CabeceraCerca);
+            var titulos = Nuevo("buscador-cabecera-cerca-textos", "buscador__cabecera-cerca-textos");
+            CabeceraCerca.Add(titulos);
+            TituloCerca = new Label { name = "buscador-titulo-cerca", pickingMode = PickingMode.Ignore };
+            TituloCerca.AddToClassList("buscador__titulo-cerca");
+            TituloCerca.AddToClassList("t-label");
+            titulos.Add(TituloCerca);
+            DesdeCentro = new Label(this.textos(ClavesTexto.BuscadorCercaDesdeCentro)) { name = "buscador-desde-centro", pickingMode = PickingMode.Ignore };
+            DesdeCentro.AddToClassList("buscador__desde-centro");
+            DesdeCentro.AddToClassList("t-caption");
+            titulos.Add(DesdeCentro);
+            QuitarCategoria = new VisualElement { name = "buscador-quitar-categoria", pickingMode = PickingMode.Position };
+            QuitarCategoria.AddToClassList("buscador__quitar-categoria");
+            QuitarCategoria.tooltip = this.textos(ClavesTexto.BuscadorQuitarCategoria);
+            QuitarCategoria.Add(Glifo(IconosLugar.Borrar, "buscador-quitar-categoria-glifo", "buscador__quitar-categoria-glifo"));
+            QuitarCategoria.AddManipulator(new Clickable(PulsarQuitarCategoria));
+            CabeceraCerca.Add(QuitarCategoria);
 
             // Resultados de la búsqueda (historia 2.3): en lugar de los chips y "Encuentra cerca" mientras hay texto
             Resultados = Nuevo("buscador-resultados", "buscador__resultados");
@@ -393,6 +435,18 @@ namespace PriceMap.UI
             if (BuscarDireccionVisible) BuscarComoDireccionPedido?.Invoke();
         }
 
+        /// <summary>Lo que hace tocar la X de la cabecera de la lista "cerca": avisa a PantallaMapa (si se ve la lista).</summary>
+        public void PulsarQuitarCategoria()
+        {
+            if (MostrandoCerca) CategoriaQuitada?.Invoke();
+        }
+
+        /// <summary>Lo que hace tocar un chip (su categoría) o "Encuentra cerca" (null): avisa a PantallaMapa.</summary>
+        public void ElegirCategoria(CategoriaPoi? categoria)
+        {
+            if (MostrandoCategorias) CategoriaElegida?.Invoke(categoria);
+        }
+
         /// <summary>La X: vacía el campo; vuelven las categorías.</summary>
         public void BorrarTexto() => Escribir(string.Empty);
 
@@ -437,6 +491,8 @@ namespace PriceMap.UI
                 filasLocales = 0;
             }
             DireccionesVisibles = 0;
+            MostrandoCerca = false;
+            SinResultados.text = textos(ClavesTexto.BuscadorSinResultados);
             MostrandoResultados = EnBusqueda;
             if (MostrandoResultados)
             {
@@ -453,16 +509,50 @@ namespace PriceMap.UI
             SinResultadosVisible = MostrandoResultados && filas.Count == 0;
             BuscarDireccionVisible = SinResultadosVisible && ofrecerDireccion;
             AvisoDireccionesVisible = MostrandoResultados && sinConexion;
-            var categorias = MostrandoResultados ? DisplayStyle.None : DisplayStyle.Flex;
+            PonerVisibilidad(MostrandoResultados);
+            if (arriba) Panel.scrollOffset = Vector2.zero;
+        }
+
+        /// <summary>
+        /// Pinta la lista "cerca" de una categoría (historia 2.4) en lugar de los chips y "Encuentra cerca": la cabecera
+        /// con el título (y "desde el centro del mapa" si no hay posición del usuario) y las filas, como las de la
+        /// búsqueda. Sin filas, <paramref name="vacio"/> ("No hay gasolineras cerca") sin "Buscar como dirección".
+        /// La lista vuelve arriba. La quita MostrarResultados (al escribir o al quitar la categoría).
+        /// </summary>
+        public void MostrarCerca(string titulo, bool desdeCentro, IReadOnlyList<ResultadoBusqueda> resultados, string vacio)
+        {
+            EscalaFuente.Olvidar(Resultados); // las filas viejas se van: sus tamaños guardados también
+            Resultados.Clear();
+            filas.Clear();
+            localesPintados = null;
+            filasLocales = 0;
+            DireccionesVisibles = 0;
+            MostrandoResultados = false;
+            MostrandoCerca = true;
+            if (resultados != null) foreach (var r in resultados) AnadirFila(r);
+            TituloCerca.text = titulo ?? "";
+            DesdeCentro.style.display = desdeCentro ? DisplayStyle.Flex : DisplayStyle.None;
+            SinResultados.text = vacio ?? textos(ClavesTexto.BuscadorSinResultados);
+            SinResultadosVisible = filas.Count == 0;
+            BuscarDireccionVisible = false;
+            AvisoDireccionesVisible = false;
+            PonerVisibilidad(lista: true);
+            Panel.scrollOffset = Vector2.zero;
+        }
+
+        /// <summary>Enseña la lista (resultados o "cerca") o las categorías, con el estado ya calculado.</summary>
+        void PonerVisibilidad(bool lista)
+        {
+            var categorias = lista ? DisplayStyle.None : DisplayStyle.Flex;
             FilaChips.style.display = categorias;
             Cerca.style.display = categorias;
-            Resultados.style.display = MostrandoResultados ? DisplayStyle.Flex : DisplayStyle.None;
+            CabeceraCerca.style.display = MostrandoCerca ? DisplayStyle.Flex : DisplayStyle.None;
+            Resultados.style.display = lista ? DisplayStyle.Flex : DisplayStyle.None;
             FilaSinResultados.style.display = SinResultadosVisible ? DisplayStyle.Flex : DisplayStyle.None;
             SinResultados.style.display = SinResultadosVisible ? DisplayStyle.Flex : DisplayStyle.None;
             BuscarDireccion.style.display = BuscarDireccionVisible ? DisplayStyle.Flex : DisplayStyle.None;
             AvisoDirecciones.style.display = AvisoDireccionesVisible ? DisplayStyle.Flex : DisplayStyle.None;
             Borrar.style.display = HayTexto ? DisplayStyle.Flex : DisplayStyle.None;
-            if (arriba) Panel.scrollOffset = Vector2.zero;
         }
 
         bool AnadirFila(ResultadoBusqueda r)
@@ -626,6 +716,23 @@ namespace PriceMap.UI
         }
 
         /// <summary>Clave del nombre del chip de cada categoría ("Restaurantes").</summary>
+        /// <summary>Clave de lo que no hay en "No hay {0} cerca" para esa categoría; null si no es un chip.</summary>
+        public static string ClaveNombreCerca(CategoriaPoi categoria)
+        {
+            switch (categoria)
+            {
+                case CategoriaPoi.Comer: return ClavesTexto.CercaNombreComer;
+                case CategoriaPoi.Bares: return ClavesTexto.CercaNombreBares;
+                case CategoriaPoi.Super: return ClavesTexto.CercaNombreSuper;
+                case CategoriaPoi.Farmacia: return ClavesTexto.CercaNombreFarmacia;
+                case CategoriaPoi.Gasolina: return ClavesTexto.CercaNombreGasolina;
+                case CategoriaPoi.Deporte: return ClavesTexto.CercaNombreDeporte;
+                case CategoriaPoi.Salud: return ClavesTexto.CercaNombreSalud;
+                case CategoriaPoi.Cultura: return ClavesTexto.CercaNombreCultura;
+                default: return null;
+            }
+        }
+
         public static string ClaveCategoria(CategoriaPoi categoria)
         {
             switch (categoria)

@@ -141,6 +141,19 @@ namespace PriceMap.EditorTools
             [ClavesTexto.BuscadorDireccionesSinConexion] = "Las direcciones necesitan conexión",
             [ClavesTexto.BuscadorBuscarDireccion] = "Buscar como dirección",
             [ClavesTexto.BuscadorAnuncioDireccion] = "{0}, {1}, {2}, a {3}",
+            [ClavesTexto.BuscadorCercaCategoria] = "{0} cerca",
+            [ClavesTexto.BuscadorCercaTitulo] = "Cerca",
+            [ClavesTexto.BuscadorCercaDesdeCentro] = "desde el centro del mapa",
+            [ClavesTexto.BuscadorCercaVacio] = "No hay {0} cerca",
+            [ClavesTexto.CercaNombreComer] = "restaurantes",
+            [ClavesTexto.CercaNombreBares] = "bares",
+            [ClavesTexto.CercaNombreSuper] = "supermercados",
+            [ClavesTexto.CercaNombreFarmacia] = "farmacias",
+            [ClavesTexto.CercaNombreGasolina] = "gasolineras",
+            [ClavesTexto.CercaNombreDeporte] = "sitios de deporte",
+            [ClavesTexto.CercaNombreSalud] = "sitios de salud",
+            [ClavesTexto.CercaNombreCultura] = "sitios de cultura",
+            [ClavesTexto.BuscadorQuitarCategoria] = "Quitar categoría",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

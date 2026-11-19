@@ -88,9 +88,10 @@ namespace PriceMap.Arranque
         /// <param name="accesibilidadSistema">Ajustes de accesibilidad del sistema; sin él, animaciones normales.</param>
         /// <param name="busqueda">Buscador (historia 2.3); si no se da, se crea con los lugares, el mapa y "ahora".</param>
         /// <param name="direcciones">Direcciones (historia 2.3, parte 2); sin él (null), el buscador no busca direcciones.</param>
+        /// <param name="cerca">"Encuentra cerca" (historia 2.4); si no se da, se crea con los lugares, el mapa y "ahora".</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
-            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null)
+            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -107,7 +108,9 @@ namespace PriceMap.Arranque
             tema.Cambiado += mapa.AplicarTema;   // el mapa y la interfaz cambian a la vez (FR-6)
             // Buscador de lugares y puntos de interés (historia 2.3): todo local, con el mismo "ahora" que los precios
             busqueda ??= new ServicioBusqueda(lugares, mapa, ahora);
-            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones);
+            // "Encuentra cerca" (historia 2.4): también local, con las mismas fuentes que el buscador
+            cerca ??= new ServicioCerca(lugares, mapa, ahora);
+            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

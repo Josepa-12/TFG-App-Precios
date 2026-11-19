@@ -467,6 +467,58 @@ MonoBehaviour:
     m_Key: buscador.direccion.anuncio
     m_Metadata:
       m_Items: []
+  - m_Id: 816726768869376
+    m_Key: buscador.cerca.categoria
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618112
+    m_Key: buscador.cerca.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618113
+    m_Key: buscador.cerca.desdecentro
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618114
+    m_Key: buscador.cerca.vacio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618115
+    m_Key: buscador.cerca.quitar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579367116800
+    m_Key: buscador.cerca.nombre.comer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254144
+    m_Key: buscador.cerca.nombre.bares
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254145
+    m_Key: buscador.cerca.nombre.super
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254146
+    m_Key: buscador.cerca.nombre.farmacia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254147
+    m_Key: buscador.cerca.nombre.gasolina
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254148
+    m_Key: buscador.cerca.nombre.deporte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254149
+    m_Key: buscador.cerca.nombre.salud
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254150
+    m_Key: buscador.cerca.nombre.cultura
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

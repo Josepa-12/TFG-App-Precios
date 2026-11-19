@@ -475,6 +475,58 @@ MonoBehaviour:
     m_Localized: '{0}, {1}, {2}, a {3}'
     m_Metadata:
       m_Items: []
+  - m_Id: 816726768869376
+    m_Localized: '{0} cerca'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618112
+    m_Localized: Cerca
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618113
+    m_Localized: desde el centro del mapa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618114
+    m_Localized: No hay {0} cerca
+    m_Metadata:
+      m_Items: []
+  - m_Id: 816726806618115
+    m_Localized: "Quitar categor\xEDa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579367116800
+    m_Localized: restaurantes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254144
+    m_Localized: bares
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254145
+    m_Localized: supermercados
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254146
+    m_Localized: farmacias
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254147
+    m_Localized: gasolineras
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254148
+    m_Localized: sitios de deporte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254149
+    m_Localized: sitios de salud
+    m_Metadata:
+      m_Items: []
+  - m_Id: 820579413254150
+    m_Localized: sitios de cultura
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

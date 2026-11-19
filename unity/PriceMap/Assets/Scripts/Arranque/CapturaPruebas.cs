@@ -156,6 +156,7 @@ namespace PriceMap.Arranque
             yield return Variantes();
             yield return Buscador();
             yield return Busqueda();
+            yield return Cerca();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -831,6 +832,60 @@ namespace PriceMap.Arranque
             pantalla.BorrarBusqueda();
             yield return null;
             if (pantalla.Direcciones.Pendiente) Debug.LogError("PriceMap: la X no ha cancelado la petición de direcciones.");
+        }
+
+        /// <summary>
+        /// Historia 2.4 (parte 1), captura "cerca" (tema claro): la hoja abierta del todo con la lista de Salud.
+        /// Comprueba que Clínica Areas (con precio) está entre los primeros, que los de precio van delante, que no hay
+        /// más de 50 filas y que se ven la cabecera y no los chips. Al final, atrás vuelve a las categorías.
+        /// </summary>
+        IEnumerator Cerca()
+        {
+            var buscador = pantalla != null ? pantalla.Buscador : null;
+            if (buscador == null) { Debug.LogError("PriceMap: no hay buscador para \"cerca\"."); yield break; }
+            if (pantalla.Cerca == null) { Debug.LogError("PriceMap: la pantalla no ha recibido el ServicioCerca."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var temaAntes = tema.Actual;
+            try
+            {
+                mapa.Centrar(PantallaMapa.VistaInicial);
+                yield return new WaitForSeconds(2f); // teselas de la vista inicial: sus puntos de interés
+                buscador.BorrarTexto();
+                buscador.Abrir();
+                buscador.ElegirCategoria(CategoriaPoi.Salud); // como el toque en el chip
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                var filas = buscador.Filas;
+                Debug.Log($"PriceMap: \"Salud cerca\" da {filas.Count} filas: " +
+                          string.Join("; ", filas.Take(8).Select(f => $"{f.Nombre.text} | {f.Detalle.text} | {f.Precio?.text ?? "-"}")));
+                if (!buscador.MostrandoCerca || buscador.CabeceraCerca.resolvedStyle.display == DisplayStyle.None)
+                    Debug.LogError("PriceMap: no se ve la lista \"cerca\" con su cabecera.");
+                if (buscador.FilaChips.resolvedStyle.display != DisplayStyle.None) Debug.LogError("PriceMap: con la lista \"cerca\" se siguen viendo los chips.");
+                if (filas.Count > ServicioCerca.MaximoResultados) Debug.LogError($"PriceMap: {filas.Count} filas (máximo {ServicioCerca.MaximoResultados}).");
+                int areas = filas.ToList().FindIndex(f => f.Resultado.Lugar?.Id == "clinica-areas");
+                if (areas < 0 || areas > 4) Debug.LogError($"PriceMap: Clínica Areas no está entre los primeros de Salud (posición {areas}).");
+                else if (filas[areas].Precio == null) Debug.LogError("PriceMap: Clínica Areas sale sin precio en la lista de Salud.");
+                int primeraSinPrecio = filas.ToList().FindIndex(f => f.Resultado.Precio == null);
+                if (primeraSinPrecio >= 0 && filas.Skip(primeraSinPrecio).Any(f => f.Resultado.Precio != null))
+                    Debug.LogError("PriceMap: hay lugares con precio detrás de los que no lo tienen.");
+
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                yield return Capturar("cerca");
+                yield return new WaitForSeconds(1f);
+
+                pantalla.Atras();
+                yield return null;
+                if (pantalla.CercaActiva || !buscador.MostrandoCategorias || !buscador.Abierta)
+                    Debug.LogError("PriceMap: el botón atrás no ha vuelto a las categorías con la hoja abierta.");
+            }
+            finally
+            {
+                pantalla.QuitarCategoria();
+                buscador.Plegar();
+                if (tema.Actual != temaAntes) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
         }
 
         /// <summary>Da Debug.LogError si la zona pisa alguno de los controles (medio dp de tolerancia).</summary>

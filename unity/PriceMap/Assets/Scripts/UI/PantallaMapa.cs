@@ -24,6 +24,7 @@ namespace PriceMap.UI
         ServicioFiltro filtro;
         ServicioUbicacion ubicacion;
         ServicioBusqueda busqueda;
+        ServicioCerca servicioCerca;
         BuscadorDirecciones direcciones;
         VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo, columnaControles;
         PildoraPrecios pildora;
@@ -58,26 +59,28 @@ namespace PriceMap.UI
         /// <param name="accesibilidadSistema">Ajustes de accesibilidad del sistema; sin él, animaciones normales.</param>
         /// <param name="busqueda">Buscador de lugares y puntos de interés (historia 2.3); sin él, el campo no encuentra nada.</param>
         /// <param name="direcciones">Direcciones (historia 2.3, parte 2); sin él, el buscador no busca direcciones.</param>
+        /// <param name="cerca">"Encuentra cerca" (historia 2.4); sin él, las listas de las categorías salen vacías.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
-            BuscadorDirecciones direcciones = null)
+            BuscadorDirecciones direcciones = null, ServicioCerca cerca = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
-            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null)
+            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null)
         {
             this.mapa = mapa;
             this.tema = tema;
             this.filtro = filtro;
             this.ubicacion = ubicacion;
             this.busqueda = busqueda;
+            this.servicioCerca = cerca;
             this.direcciones = direcciones;
             this.accesibilidadSistema = accesibilidadSistema;
             this.ahora = ahora;
@@ -374,6 +377,8 @@ namespace PriceMap.UI
             buscador.TextoCambiado += Buscar;
             buscador.ResultadoElegido += ElegirResultado;
             buscador.BuscarComoDireccionPedido += BuscarComoDireccion;
+            buscador.CategoriaElegida += ElegirCategoria;
+            buscador.CategoriaQuitada += QuitarCategoria;
             if (direcciones != null) direcciones.Cambiado += AlCambiarDirecciones;
             huecoBuscador.RegisterCallback<GeometryChangedEvent>(_ => MedirBuscador());
             buscador.Linea.RegisterCallback<GeometryChangedEvent>(_ => ColocarAtribucion());
@@ -403,9 +408,9 @@ namespace PriceMap.UI
             foreach (var c in buscador.Chips)
             {
                 var chip = c;
-                accesibilidad.Texto(chip, () => chip.Q<Label>().text, () => enHoja() && !buscador.MostrandoResultados, enModal: true);
+                accesibilidad.Texto(chip, () => chip.Q<Label>().text, () => enHoja() && buscador.MostrandoCategorias, enModal: true);
             }
-            accesibilidad.Texto(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, () => enHoja() && !buscador.MostrandoResultados, enModal: true);
+            accesibilidad.Texto(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, () => enHoja() && buscador.MostrandoCategorias, enModal: true);
             accesibilidad.Texto(buscador.SinResultados, () => buscador.SinResultados.text, () => enHoja() && buscador.SinResultadosVisible, enModal: true);
             accesibilidad.Boton(buscador.BuscarDireccion, () => Textos.T(ClavesTexto.BuscadorBuscarDireccion), BuscarComoDireccion,
                 visible: () => enHoja() && buscador.BuscarDireccionVisible, enModal: true);
@@ -435,6 +440,13 @@ namespace PriceMap.UI
         public void Buscar(string texto)
         {
             if (buscador == null) return;
+            if (cercaActiva)
+            {
+                // Escribir quita la categoría (historia 2.4): vuelve la búsqueda de la 2.3
+                if (string.IsNullOrEmpty(texto)) { PintarCerca(); return; }
+                cercaActiva = false;
+                categoriaActiva = null;
+            }
             IReadOnlyList<ResultadoBusqueda> resultados = null;
             if (busqueda != null && buscador.EnBusqueda) resultados = busqueda.Buscar(texto, PuntoCercania());
             localesActuales = resultados;
@@ -618,6 +630,69 @@ namespace PriceMap.UI
             PlegarBuscador();
         }
 
+        // ───────────────────────── Encuentra cerca (historia 2.4, parte 1) ─────────────────────────
+
+        bool cercaActiva;               // se ve (o se verá al desplegar) la lista "cerca" de una categoría
+        CategoriaPoi? categoriaActiva;  // su categoría; null con "Encuentra cerca" (todas)
+
+        /// <summary>Hay una categoría (o "Encuentra cerca") elegida: la hoja enseña su lista.</summary>
+        public bool CercaActiva => cercaActiva;
+        /// <summary>Categoría elegida; null con "Encuentra cerca" o sin categoría.</summary>
+        public CategoriaPoi? CategoriaActiva => categoriaActiva;
+
+        /// <summary>
+        /// Toque en un chip (su categoría) o en "Encuentra cerca" (null): la hoja enseña la lista de lo cercano de esa
+        /// categoría (ServicioCerca), con su cabecera.
+        /// </summary>
+        public void ElegirCategoria(CategoriaPoi? categoria)
+        {
+            if (buscador == null || ModalUbicacionAbierta) return;
+            direcciones?.Cancelar(); // con la categoría no se buscan direcciones
+            cercaActiva = true;
+            categoriaActiva = categoria;
+            PintarCerca();
+        }
+
+        /// <summary>La X de la cabecera (o el botón atrás): quita la categoría y vuelven las categorías (o la búsqueda).</summary>
+        public void QuitarCategoria()
+        {
+            if (buscador == null || !cercaActiva) return;
+            cercaActiva = false;
+            categoriaActiva = null;
+            Buscar(buscador.Campo.value);
+        }
+
+        /// <summary>
+        /// Calcula y pinta la lista de la categoría activa con la distancia desde el usuario o, sin posición, desde el
+        /// centro del mapa (y entonces lo dice la cabecera). TalkBack de la lista: otra parte; aquí solo se dan de baja
+        /// los nodos de las filas anteriores, que ya no existen.
+        /// </summary>
+        void PintarCerca()
+        {
+            var lista = servicioCerca?.Listar(categoriaActiva, PuntoCercania()) ?? Array.Empty<ResultadoBusqueda>();
+            string titulo, vacio;
+            if (categoriaActiva is CategoriaPoi c)
+            {
+                string nombre = Textos.T(HojaBuscador.ClaveCategoria(c));
+                titulo = Textos.T(ClavesTexto.BuscadorCercaCategoria, nombre);
+                vacio = Textos.T(ClavesTexto.BuscadorCercaVacio, Textos.T(HojaBuscador.ClaveNombreCerca(c)));
+            }
+            else
+            {
+                titulo = Textos.T(ClavesTexto.BuscadorCercaTitulo);
+                vacio = Textos.T(ClavesTexto.BuscadorSinResultados);
+            }
+            buscador.MostrarCerca(titulo, ubicacion?.Posicion == null, lista, vacio);
+            localesActuales = null;
+            ultimosResultados = null;
+
+            if (accesibilidad == null) return;
+            accesibilidad.QuitarControles(buscador.Resultados);
+            if (!BuscadorAbierto || !modalBuscador) return;
+            accesibilidad.Reconstruir(); // los chips salen del recorrido
+            if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
+        }
+
         /// <summary>La X del campo ("Borrar búsqueda" en TalkBack): lo vacía, vuelven las categorías y el foco va al campo.</summary>
         public void BorrarBusqueda()
         {
@@ -726,7 +801,8 @@ namespace PriceMap.UI
             CerrarFicha();
             SeguirModalBuscador(enfocarCapsula: false); // TalkBack: la hoja desplegada es modal
             // La búsqueda guardada al plegar se rehace: el usuario, el mapa o los puntos cargados pueden haber cambiado
-            if (buscador != null && buscador.EnBusqueda) Buscar(buscador.Campo.value);
+            if (buscador != null && cercaActiva) PintarCerca(); // la lista "cerca", igual
+            else if (buscador != null && buscador.EnBusqueda) Buscar(buscador.Campo.value);
         }
 
         /// <summary>
@@ -985,6 +1061,7 @@ namespace PriceMap.UI
         {
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (AvisoAbierto) { CerrarAviso(); return true; }
+            if (BuscadorAbierto && cercaActiva) { QuitarCategoria(); return true; } // primero vuelven las categorías
             if (BuscadorAbierto) { PlegarBuscador(); return true; }
             if (FichaAbierta) { CerrarFicha(); return true; }
             if (!MenuAbierto) return false;
@@ -1016,6 +1093,8 @@ namespace PriceMap.UI
                 buscador.TextoCambiado -= Buscar;
                 buscador.ResultadoElegido -= ElegirResultado;
                 buscador.BuscarComoDireccionPedido -= BuscarComoDireccion;
+                buscador.CategoriaElegida -= ElegirCategoria;
+                buscador.CategoriaQuitada -= QuitarCategoria;
             }
             if (direcciones != null)
             {
@@ -1064,6 +1143,8 @@ namespace PriceMap.UI
         internal IAccesibilidadSistema AccesibilidadSistema => accesibilidadSistema;
         /// <summary>Buscador que recibió al iniciarse (para las pruebas y la captura); null sin él.</summary>
         public ServicioBusqueda Busqueda => busqueda;
+        /// <summary>"Encuentra cerca" que recibió al iniciarse (historia 2.4); null sin él.</summary>
+        public ServicioCerca Cerca => servicioCerca;
         /// <summary>Buscador de direcciones que recibió al iniciarse (historia 2.3, parte 2); null sin él.</summary>
         public BuscadorDirecciones Direcciones => direcciones;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
