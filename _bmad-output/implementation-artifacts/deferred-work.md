@@ -172,3 +172,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-4-encuentra-cerca-por-categorias.md`
   summary: Comprobar en el móvil que tocar chips, «Encuentra cerca» y la X funciona y que un arrastre que empieza en un chip no elige la categoría.
   evidence: Sin verificar (maybe-false, medium si es cierto). En EditMode no se pueden enviar toques reales.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-ir-a-un-punto-libre-o-a-una-ubicacion-compartida.md`
+  summary: Historia 2.5 (parte 2), pegar un enlace o unas coordenadas en el buscador. Un analizador puro (`LectorUbicacionCompartida`, Dominio) reconoce Google Maps (`?q=`, `@lat,lng,zoom`, `!3d!4d`, `ll=`/`query=`), Apple Maps (`ll=`, `q=`), `geo:` y coordenadas sueltas con coma o punto, y valida rangos. Los enlaces cortos (`maps.app.goo.gl`, `goo.gl/maps`) se resuelven por un puerto `IResolutorEnlaces` (redirecciones, hasta 5 saltos). El primer resultado es «Ir a este punto», que abre la ficha de punto libre. Si no se reconoce: «No reconozco esta ubicación. Prueba a copiar el enlace completo.» (toast de 3 s y anuncio de TalkBack).
+  evidence: El usuario partió la 2.5 en tres el 19/11/2026: primero la pulsación larga y la ficha de punto, después pegar enlaces y por último compartir con la app.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-ir-a-un-punto-libre-o-a-una-ubicacion-compartida.md`
+  summary: Historia 2.5 (parte 3), «Compartir con» PriceMap. Intent-filters `ACTION_SEND` (text/plain) y `ACTION_VIEW` con esquema `geo` en el manifiesto (`Editor/PermisosUbicacionAndroid.cs`); Unity lee el intent al arrancar y al volver (`deepLinkActivated`/`absoluteURL` o plugin con `onNewIntent`) y lo pasa al analizador de la parte 2. Comprobación manual: compartir desde WhatsApp y Google Maps (también enlace corto).
+  evidence: El usuario partió la 2.5 en tres el 19/11/2026; esta parte depende del analizador de la parte 2 y solo se prueba en el móvil.
