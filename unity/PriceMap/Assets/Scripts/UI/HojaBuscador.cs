@@ -402,6 +402,9 @@ namespace PriceMap.UI
             TextoCambiado?.Invoke(Campo.value);
         }
 
+        IReadOnlyList<ResultadoBusqueda> localesPintados; // la lista de locales que tienen fila ahora
+        int filasLocales;                                 // cuántas de las filas son locales (van primero)
+
         /// <summary>
         /// Pinta los resultados. Sin texto que buscar (EnBusqueda falso) vuelven los chips y "Encuentra cerca"; con
         /// texto, los locales (lugares y puntos) y detrás las direcciones (historia 2.3, parte 2) o, si no hay ninguna
@@ -415,14 +418,34 @@ namespace PriceMap.UI
         public void MostrarResultados(IReadOnlyList<ResultadoBusqueda> resultados, IReadOnlyList<ResultadoBusqueda> direcciones = null,
             bool sinConexion = false, bool ofrecerDireccion = false, bool arriba = true)
         {
-            EscalaFuente.Olvidar(Resultados); // las filas viejas se van: sus tamaños guardados también
-            Resultados.Clear();
-            filas.Clear();
+            // Mismos locales (llegan solo direcciones): sus filas se quedan, para no perder el foco de TalkBack ni la
+            // pulsación; solo se cambian las de direcciones, que van detrás
+            bool mismosLocales = EnBusqueda && MostrandoResultados && resultados != null && ReferenceEquals(resultados, localesPintados);
+            if (mismosLocales)
+                for (int i = filas.Count - 1; i >= filasLocales; i--)
+                {
+                    EscalaFuente.Olvidar(filas[i]);
+                    Resultados.Remove(filas[i]);
+                    filas.RemoveAt(i);
+                }
+            else
+            {
+                EscalaFuente.Olvidar(Resultados); // las filas viejas se van: sus tamaños guardados también
+                Resultados.Clear();
+                filas.Clear();
+                localesPintados = null;
+                filasLocales = 0;
+            }
             DireccionesVisibles = 0;
             MostrandoResultados = EnBusqueda;
             if (MostrandoResultados)
             {
-                if (resultados != null) foreach (var r in resultados) AnadirFila(r);
+                if (!mismosLocales && resultados != null)
+                {
+                    foreach (var r in resultados) AnadirFila(r);
+                    localesPintados = resultados;
+                    filasLocales = filas.Count;
+                }
                 if (direcciones != null)
                     foreach (var r in direcciones)
                         if (AnadirFila(r)) DireccionesVisibles++;

@@ -180,9 +180,12 @@ namespace PriceMap.UI
         /// <summary>Botón junto a "No hay resultados": pide las direcciones ya (también sirve de reintento).</summary>
         public const string BuscadorBuscarDireccion = "buscador.direccion.buscar";
 
+        /// <summary>TalkBack de una dirección con localidad (parte 3): {0} nombre, {1} "Dirección", {2} localidad, {3} distancia.</summary>
+        public const string BuscadorAnuncioDireccion = "buscador.direccion.anuncio";
+
         public static readonly string[] Todas =
         {
-            BuscadorDireccion, BuscadorDistanciaA, BuscadorDireccionesSinConexion, BuscadorBuscarDireccion,
+            BuscadorAnuncioDireccion, BuscadorDireccion, BuscadorDistanciaA, BuscadorDireccionesSinConexion, BuscadorBuscarDireccion,
             BuscadorCampo, BuscadorCerca, BuscadorExpandir, BuscadorContraer, BuscadorComer, BuscadorBares, BuscadorSuper, BuscadorFarmacia,
             BuscadorGasolina, BuscadorDeporte, BuscadorSalud, BuscadorCultura,
             BuscadorSinResultados, BuscadorUnResultado, BuscadorResultados, BuscadorBorrar, BuscadorDetalle,

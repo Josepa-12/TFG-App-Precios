@@ -140,6 +140,7 @@ namespace PriceMap.EditorTools
             [ClavesTexto.BuscadorDistanciaA] = "a {0}",
             [ClavesTexto.BuscadorDireccionesSinConexion] = "Las direcciones necesitan conexión",
             [ClavesTexto.BuscadorBuscarDireccion] = "Buscar como dirección",
+            [ClavesTexto.BuscadorAnuncioDireccion] = "{0}, {1}, {2}, a {3}",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

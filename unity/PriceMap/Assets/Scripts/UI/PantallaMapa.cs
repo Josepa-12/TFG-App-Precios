@@ -407,6 +407,8 @@ namespace PriceMap.UI
             }
             accesibilidad.Texto(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, () => enHoja() && !buscador.MostrandoResultados, enModal: true);
             accesibilidad.Texto(buscador.SinResultados, () => buscador.SinResultados.text, () => enHoja() && buscador.SinResultadosVisible, enModal: true);
+            accesibilidad.Boton(buscador.BuscarDireccion, () => Textos.T(ClavesTexto.BuscadorBuscarDireccion), BuscarComoDireccion,
+                visible: () => enHoja() && buscador.BuscarDireccionVisible, enModal: true);
             // Las filas de los resultados se declaran al pintarlas (DeclararResultadosEnTalkBack), detrás de todo esto
         }
 
@@ -428,7 +430,7 @@ namespace PriceMap.UI
         /// <summary>
         /// Busca el texto del campo (a cada tecla: lo local, al momento) y pinta los resultados en la hoja; las
         /// direcciones se piden aparte (BuscadorDirecciones: tras la espera) y se añaden debajo al llegar. TalkBack:
-        /// cada fila local es un botón y, si los locales cambian, se anuncia "N resultados" o "No hay resultados".
+        /// cada fila es un botón y, si la lista cambia, se anuncia "N resultados" o "No hay resultados".
         /// </summary>
         public void Buscar(string texto)
         {
@@ -436,6 +438,7 @@ namespace PriceMap.UI
             IReadOnlyList<ResultadoBusqueda> resultados = null;
             if (busqueda != null && buscador.EnBusqueda) resultados = busqueda.Buscar(texto, PuntoCercania());
             localesActuales = resultados;
+            focoAlCampoPendiente = false; // al teclear, el foco ya está en el campo
             PedirDirecciones(texto);
             PintarResultados(arriba: true);
         }
@@ -464,7 +467,8 @@ namespace PriceMap.UI
             }
             consultaDirecciones = texto;
             direccionesActuales = null;
-            direccionesFallaron = false;
+            // direccionesFallaron se queda: sin conexión, el aviso no parpadea (ni se vuelve a anunciar) a cada tecla;
+            // lo quita la próxima respuesta buena
             direcciones.Pedir(texto, PuntoCercania());
         }
 
@@ -479,8 +483,10 @@ namespace PriceMap.UI
             consultaDirecciones = texto;
             direccionesActuales = null;
             direccionesFallaron = false;
+            avisoAnunciado = false;      // un reintento que vuelve a fallar se anuncia otra vez
+            focoAlCampoPendiente = true; // TalkBack: si el botón desaparece al llegar la respuesta, el foco va al campo
             direcciones.PedirYa(texto, PuntoCercania()); // con un geocodificador inmediato, la respuesta ya ha llegado
-            PintarResultados(arriba: false);
+            PintarResultados(arriba: false, moverFoco: false);
         }
 
         // Respuesta del geocodificador: solo vale si es del texto que hay ahora en el campo
@@ -492,7 +498,7 @@ namespace PriceMap.UI
                 direccionesFallaron = !r.Ok;
                 direccionesActuales = r.Ok ? r.Valor ?? Array.Empty<ResultadoBusqueda>() : null;
                 if (!r.Ok) Debug.Log("PriceMap: direcciones no disponibles (" + r.Error + ").");
-                PintarResultados(arriba: false);
+                PintarResultados(arriba: false, moverFoco: false); // llegan solas: el foco de TalkBack no se mueve
             }
             catch (Exception e)
             {
@@ -507,11 +513,17 @@ namespace PriceMap.UI
             return r.AsReadOnly();
         }
 
+        bool avisoAnunciado;        // "Las direcciones necesitan conexión" ya anunciado mientras sigue visible
+        bool focoAlCampoPendiente;  // "Buscar como dirección" pulsado: si el botón desaparece, el foco vuelve al campo
+
         /// <summary>
         /// Pinta locales + direcciones, el aviso de conexión y "Buscar como dirección" (si aún no hay direcciones
-        /// buenas). El anuncio de TalkBack cuenta solo los locales: las direcciones van en otra parte.
+        /// buenas). TalkBack (parte 3): "N resultados" cuenta locales y direcciones y se anuncia si cambia la lista; el
+        /// aviso de conexión se anuncia una vez, al aparecer.
         /// </summary>
-        void PintarResultados(bool arriba)
+        /// <param name="moverFoco">Falso cuando llegan las direcciones: no es una acción del usuario y el foco de
+        /// TalkBack no se mueve (solo se anuncia).</param>
+        void PintarResultados(bool arriba, bool moverFoco = true)
         {
             bool ofrecer = direcciones != null && direccionesActuales == null;
             buscador.MostrarResultados(localesActuales, direccionesActuales, direccionesFallaron, ofrecer, arriba);
@@ -520,11 +532,32 @@ namespace PriceMap.UI
             if (!buscador.MostrandoResultados) ultimosResultados = null;
             else if (BuscadorAbierto && modalBuscador) // solo cuenta como anunciado si de verdad se puede anunciar
             {
-                var actuales = localesActuales ?? Array.Empty<ResultadoBusqueda>();
+                var actuales = Juntar(localesActuales, direccionesActuales);
                 if (ultimosResultados == null || !MismosResultados(ultimosResultados, actuales)) anuncio = AnuncioResultados(actuales.Count);
                 ultimosResultados = actuales;
+                if (buscador.AvisoDireccionesVisible && !avisoAnunciado)
+                {
+                    string aviso = Textos.T(ClavesTexto.BuscadorDireccionesSinConexion);
+                    anuncio = anuncio == null ? aviso : anuncio + ". " + aviso;
+                    avisoAnunciado = true;
+                }
             }
-            DeclararResultadosEnTalkBack(anuncio);
+            if (!buscador.AvisoDireccionesVisible) avisoAnunciado = false;
+            if (focoAlCampoPendiente && !buscador.BuscarDireccionVisible)
+            {
+                focoAlCampoPendiente = false;
+                moverFoco = true; // el botón con el foco ya no está: el foco va al campo
+            }
+            DeclararResultadosEnTalkBack(anuncio, moverFoco);
+        }
+
+        static IReadOnlyList<ResultadoBusqueda> Juntar(IReadOnlyList<ResultadoBusqueda> locales, IReadOnlyList<ResultadoBusqueda> direcciones)
+        {
+            if (direcciones == null || direcciones.Count == 0) return locales ?? Array.Empty<ResultadoBusqueda>();
+            var r = new List<ResultadoBusqueda>();
+            if (locales != null) r.AddRange(locales);
+            r.AddRange(direcciones);
+            return r;
         }
 
         /// <summary>"No hay resultados", "1 resultado" o "N resultados".</summary>
@@ -537,7 +570,7 @@ namespace PriceMap.UI
         {
             if (a.Count != b.Count) return false;
             for (int i = 0; i < a.Count; i++)
-                if (a[i].Lugar != b[i].Lugar || a[i].Punto != b[i].Punto) return false;
+                if (a[i].Lugar != b[i].Lugar || a[i].Punto != b[i].Punto || a[i].Direccion != b[i].Direccion) return false;
             return true;
         }
 
@@ -545,20 +578,31 @@ namespace PriceMap.UI
         /// TalkBack: da de baja las filas anteriores y declara las nuevas como botones ("Clínica Areas, Clínica privada,
         /// a 350 m, desde 20 €"). Con la hoja desplegada (modal) rehace el recorrido, deja el foco en el campo y anuncia.
         /// </summary>
-        void DeclararResultadosEnTalkBack(string anuncio)
+        void DeclararResultadosEnTalkBack(string anuncio, bool moverFoco = true)
         {
             if (accesibilidad == null) return;
             accesibilidad.QuitarControles(buscador.Resultados);
+            Func<bool> enHoja = () => BuscadorAbierto && !ModalUbicacionAbierta;
             foreach (var f in buscador.Filas)
             {
-                if (f.Resultado.Tipo == TipoResultado.Direccion) continue; // TalkBack de las direcciones: otra parte
                 var fila = f;
                 accesibilidad.Boton(fila, () => fila.Anuncio, () => ElegirResultado(fila.Resultado),
-                    visible: () => BuscadorAbierto && !ModalUbicacionAbierta, enModal: true, grupo: buscador.Resultados);
+                    visible: enHoja, enModal: true, grupo: buscador.Resultados);
             }
+            // El aviso de conexión va debajo de la lista, como en pantalla
+            accesibilidad.Texto(buscador.AvisoDirecciones, () => buscador.AvisoDirecciones.text,
+                () => enHoja() && buscador.AvisoDireccionesVisible, enModal: true, grupo: buscador.Resultados);
             if (!BuscadorAbierto || !modalBuscador) return; // plegada: entran en el recorrido al desplegarla
             accesibilidad.Reconstruir();
-            if (anuncio != null) accesibilidad.PedirFoco(buscador.Campo, anuncio: anuncio);
+            if (!moverFoco)
+            {
+                // La jerarquía es nueva: el foco vuelve a donde estaba el usuario. Si ese nodo ya no está (p. ej. "No hay
+                // resultados" al llegar las direcciones), va al campo para no quedarse en nada
+                if (accesibilidad.RecuperarFoco()) { if (anuncio != null) AccesibilidadPantalla.Anunciar(anuncio); }
+                else if (anuncio != null) accesibilidad.PedirFoco(buscador.Campo, anuncio: anuncio);
+                else if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
+            }
+            else if (anuncio != null) accesibilidad.PedirFoco(buscador.Campo, anuncio: anuncio);
             else if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
         }
 

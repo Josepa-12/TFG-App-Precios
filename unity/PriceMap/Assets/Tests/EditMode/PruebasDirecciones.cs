@@ -94,6 +94,7 @@ namespace PriceMap.Tests.EditMode
         [TearDown]
         public void RestaurarContexto()
         {
+            SinOir();
             LimpiarPantalla();
             SynchronizationContext.SetSynchronizationContext(contextoAntes);
         }
@@ -618,31 +619,148 @@ namespace PriceMap.Tests.EditMode
             finally { UnityEngine.Object.DestroyImmediate(otro); }
         }
 
+        // ───────────────────────── TalkBack (parte 3) ─────────────────────────
+
+        List<string> anuncios;
+        Action<string> oir;
+
+        void ConLector()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            anuncios = new List<string>();
+            oir = anuncios.Add;
+            AccesibilidadPantalla.AnuncioPedido += oir;
+        }
+
+        void SinOir()
+        {
+            if (oir != null) AccesibilidadPantalla.AnuncioPedido -= oir;
+            oir = null;
+        }
+
         [Test]
-        public void LasDireccionesNoEntranEnTalkBackNiCambianElAnuncio()
+        public void LaDireccionEsUnBotonConSuAnuncio()
         {
             CrearPantalla(BarPepe());
-            AccesibilidadPantalla.LectorForzado = () => true;
-            var anuncios = new List<string>();
-            Action<string> oir = anuncios.Add;
-            AccesibilidadPantalla.AnuncioPedido += oir;
-            try
-            {
-                espera.Inmediata = false;
-                AbrirYEscribir("calle ancha 10");
-                Assert.AreEqual("1 resultado", anuncios.LastOrDefault());
-                int antes = anuncios.Count;
-                espera.Pendientes.Last().SetResult(true); // llegan las direcciones
-                var fila = FilasDireccion.Single();
-                Assert.AreEqual(antes, anuncios.Count, "Las direcciones no repiten el anuncio.");
-                var recorrido = pantalla.Accesibilidad.Recorrido();
-                CollectionAssert.Contains(recorrido, hoja.Filas[0].Anuncio, "El local sigue en TalkBack.");
-                CollectionAssert.DoesNotContain(recorrido, fila.Anuncio, "TalkBack de las direcciones: otra parte.");
-            }
-            finally
-            {
-                AccesibilidadPantalla.AnuncioPedido -= oir;
-            }
+            ConLector();
+            AbrirYEscribir("calle ancha 10");
+            var fila = FilasDireccion.Single();
+            Assert.AreEqual("Calle Ancha 10, Dirección, Sanlúcar de Barrameda, a 1,2" + Nbsp + "km", fila.Anuncio);
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            Assert.AreEqual(recorrido.IndexOf(hoja.Filas[0].Anuncio) + 1, recorrido.IndexOf(fila.Anuncio), "Detrás del local.");
+        }
+
+        [Test]
+        public void SinLocalidadElAnuncioEsNombreDireccionYDistancia()
+        {
+            CrearPantalla();
+            geo.Responder = _ => Unas(new Direccion("Calle Real", "", AlNorte(Cabildo, 350)));
+            AbrirYEscribir("calle real");
+            Assert.AreEqual("Calle Real, Dirección, a 350" + Nbsp + "m", FilasDireccion.Single().Anuncio);
+        }
+
+        [Test]
+        public void AlLlegarLasDireccionesSeAnuncianSinMoverElFoco()
+        {
+            CrearPantalla(BarPepe());
+            ConLector();
+            espera.Inmediata = false;
+            AbrirYEscribir("calle ancha 10");
+            Assert.AreEqual("1 resultado", anuncios.LastOrDefault());
+            var local = hoja.Filas[0];
+            pantalla.Accesibilidad.PedirFoco(local); // el usuario recorre la lista
+            anuncios.Clear();
+            espera.Pendientes.Last().SetResult(true); // llegan las direcciones
+            CollectionAssert.AreEqual(new[] { "2 resultados" }, anuncios, "Cuenta locales y direcciones.");
+            Assert.AreSame(local, hoja.Filas[0], "La fila local se conserva: no se rehace.");
+            Assert.AreSame(local, pantalla.Accesibilidad.Enfocado, "El foco no se mueve.");
+            Assert.AreSame(pantalla.Accesibilidad.NodoDe(local), pantalla.Accesibilidad.UltimoNodoEnfocado,
+                "TalkBack recibe otra vez el nodo de la fila en la jerarquía nueva.");
+            CollectionAssert.Contains(pantalla.Accesibilidad.Recorrido(), FilasDireccion.Single().Anuncio);
+        }
+
+        [Test]
+        public void SiElNodoConElFocoDesapareceElFocoVaAlCampo()
+        {
+            CrearPantalla(); // sin locales: "No hay resultados" mientras se espera
+            ConLector();
+            espera.Inmediata = false;
+            AbrirYEscribir("calle ancha 10");
+            pantalla.Accesibilidad.PedirFoco(hoja.SinResultados); // el usuario está en "No hay resultados"
+            espera.Pendientes.Last().SetResult(true); // llegan las direcciones: el texto se va
+            Assert.IsFalse(hoja.SinResultadosVisible);
+            Assert.AreSame(hoja.Campo, pantalla.Accesibilidad.Enfocado, "No se queda en nada.");
+            Assert.AreEqual("1 resultado", anuncios.Last());
+        }
+
+        [Test]
+        public void SinConexionElAvisoNoSeRepiteAlSeguirEscribiendo()
+        {
+            CrearPantalla(BarPepe());
+            ConLector();
+            geo.Responder = _ => SinRed();
+            espera.Inmediata = false;
+            AbrirYEscribir("calle ancha");
+            espera.Pendientes.Last().SetResult(true);
+            Assert.AreEqual(1, anuncios.Count(a => a.EndsWith("Las direcciones necesitan conexión")));
+            hoja.Escribir("calle ancha 1"); // en la espera, el aviso sigue (no parpadea)
+            Assert.IsTrue(hoja.AvisoDireccionesVisible);
+            espera.Pendientes.Last().SetResult(true); // vuelve a fallar
+            Assert.AreEqual(1, anuncios.Count(a => a.EndsWith("Las direcciones necesitan conexión")), "Una sola vez.");
+            geo.Responder = _ => Unas(CalleAncha); // vuelve la red
+            hoja.Escribir("calle ancha 10");
+            espera.Pendientes.Last().SetResult(true);
+            Assert.IsFalse(hoja.AvisoDireccionesVisible, "Una respuesta buena lo quita.");
+        }
+
+        [Test]
+        public void SiLasDireccionesNoCambianLaListaNoSeRepiteElAnuncio()
+        {
+            CrearPantalla(BarPepe());
+            ConLector();
+            geo.Responder = _ => Unas();
+            espera.Inmediata = false;
+            AbrirYEscribir("calle ancha 10");
+            anuncios.Clear();
+            espera.Pendientes.Last().SetResult(true); // respuesta sin direcciones
+            Assert.IsEmpty(anuncios);
+        }
+
+        [Test]
+        public void ElAvisoDeConexionSeAnunciaUnaVezYEstaEnElRecorrido()
+        {
+            CrearPantalla(BarPepe());
+            ConLector();
+            geo.Responder = _ => SinRed();
+            AbrirYEscribir("calle ancha");
+            StringAssert.EndsWith("Las direcciones necesitan conexión", anuncios.Last(), "Se anuncia al aparecer.");
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            Assert.AreEqual(recorrido.Count - 1, recorrido.IndexOf("Las direcciones necesitan conexión"), "Debajo de la lista.");
+            anuncios.Clear();
+            hoja.Escribir("calle anch"); // sigue sin red y el aviso sigue visible
+            CollectionAssert.DoesNotContain(anuncios, "Las direcciones necesitan conexión", "No se repite.");
+        }
+
+        [Test]
+        public void BuscarComoDireccionEsUnBotonYTrasResponderElFocoVaAlCampo()
+        {
+            CrearPantalla();
+            ConLector();
+            geo.Responder = _ => SinRed();
+            AbrirYEscribir("calle ancha");
+            CollectionAssert.Contains(pantalla.Accesibilidad.Recorrido(), "Buscar como dirección");
+            pantalla.Accesibilidad.PedirFoco(hoja.BuscarDireccion);
+            anuncios.Clear();
+            geo.Responder = _ => SinRed(); // el reintento vuelve a fallar
+            pantalla.BuscarComoDireccion(); // lo que hace el doble toque del botón
+            Assert.AreEqual(2, geo.Peticiones.Count);
+            CollectionAssert.Contains(anuncios, "Las direcciones necesitan conexión", "Un reintento que falla se anuncia.");
+            Assert.AreSame(hoja.BuscarDireccion, pantalla.Accesibilidad.Enfocado, "El botón sigue: el foco se queda.");
+            geo.Responder = _ => Unas(CalleAncha); // vuelve la red
+            pantalla.BuscarComoDireccion();
+            Assert.IsFalse(hoja.BuscarDireccionVisible);
+            Assert.AreSame(hoja.Campo, pantalla.Accesibilidad.Enfocado, "El botón desaparece: el foco va al campo.");
+            CollectionAssert.DoesNotContain(pantalla.Accesibilidad.Recorrido(), "Buscar como dirección");
         }
 
         [Test]

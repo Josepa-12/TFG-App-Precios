@@ -238,6 +238,7 @@ namespace PriceMap.UI
         public void PedirFoco(VisualElement elemento, bool porNavegacion = false, string anuncio = null)
         {
             Enfocado = elemento;
+            ultimoFoco = elemento;
             bool teclado = FocoDeTeclado = elemento != null && (porNavegacion || LectorActivo);
             if (elemento == null) { if (anuncio != null) Anunciar(anuncio); return; }
             if (raiz?.panel == null) { Enfocar(elemento, teclado, anuncio); return; }
@@ -258,6 +259,27 @@ namespace PriceMap.UI
             }
             if (anuncio != null) Anunciar(anuncio);
         }
+
+        /// <summary>
+        /// Tras rehacer la jerarquía sin que el usuario haya hecho nada (p. ej. llegan las direcciones del buscador):
+        /// devuelve el foco de TalkBack al elemento donde estaba, si sigue en el recorrido, sin anunciarlo de nuevo y
+        /// sin foco de teclado. Devuelve si lo ha hecho.
+        /// </summary>
+        public bool RecuperarFoco()
+        {
+            var nodo = NodoDe(ultimoFoco);
+            if (nodo == null || jerarquia == null || !jerarquia.ContainsNode(nodo)) return false;
+            if (LectorActivo && AssistiveSupport.activeHierarchy == jerarquia)
+            {
+                UltimoNodoEnfocado = nodo;
+                AssistiveSupport.notificationDispatcher?.SendLayoutChanged(nodo);
+            }
+            return true;
+        }
+
+        // Último foco, pedido (PedirFoco) o puesto por el usuario con TalkBack (focusChanged). Aparte de Enfocado, para
+        // que un foco que mueva el sistema no cancele un PedirFoco pendiente ni su anuncio.
+        VisualElement ultimoFoco;
 
         /// <summary>Último nodo al que Enfocar llevó el foco de TalkBack (SendLayoutChanged), para las pruebas.</summary>
         internal AccessibilityNode UltimoNodoEnfocado { get; private set; }
@@ -328,7 +350,12 @@ namespace PriceMap.UI
                 var accion = c.accion;
                 if (accion != null) nodo.invoked += () => { accion(); return true; };
                 var alEnfocar = c.alEnfocar;
-                if (alEnfocar != null) nodo.focusChanged += (_, enfocado) => { if (enfocado) alEnfocar(); };
+                nodo.focusChanged += (_, enfocado) =>
+                {
+                    if (!enfocado) return;
+                    ultimoFoco = elemento; // donde está el usuario: RecuperarFoco lo devuelve tras otra reconstrucción
+                    alEnfocar?.Invoke();
+                };
             }
             if (!Modal) AnadirMarcas(MarcasVisibles()); // con un menú abierto, el mapa no está en el recorrido
             AssistiveSupport.activeHierarchy = jerarquia;

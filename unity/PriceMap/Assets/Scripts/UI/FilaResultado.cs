@@ -65,7 +65,13 @@ namespace PriceMap.UI
                 Add(Precio);
             }
 
-            Anuncio = precio != null
+            string localidad = resultado.Direccion?.Localidad;
+            Anuncio = resultado.Tipo == TipoResultado.Direccion
+                // "Calle Ancha 10, Dirección, Sanlúcar de Barrameda, a 1,2 km" (sin localidad: "…, Dirección, a 1,2 km")
+                ? string.IsNullOrEmpty(localidad)
+                    ? Textos.Formatear(textos(ClavesTexto.BuscadorAnuncioResultado), resultado.Nombre, Mayuscula(tipo), distancia)
+                    : Textos.Formatear(textos(ClavesTexto.BuscadorAnuncioDireccion), resultado.Nombre, Mayuscula(tipo), localidad, distancia)
+                : precio != null
                 ? Textos.Formatear(textos(ClavesTexto.BuscadorAnuncioResultadoPrecio), resultado.Nombre, tipo, distancia, precio)
                 : Textos.Formatear(textos(ClavesTexto.BuscadorAnuncioResultado), resultado.Nombre, tipo, distancia);
         }
