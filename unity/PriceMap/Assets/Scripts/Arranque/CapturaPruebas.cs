@@ -157,6 +157,7 @@ namespace PriceMap.Arranque
             yield return Buscador();
             yield return Busqueda();
             yield return Cerca();
+            yield return Punto();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -605,16 +606,65 @@ namespace PriceMap.Arranque
         /// Historia 1.8 (parte 2): con la ficha abierta, el lugar debe caer en el centro horizontal y a media altura de
         /// la zona del mapa sobre la hoja (±2 px).
         /// </summary>
-        void ComprobarCentrado(Lugar lugar)
+        void ComprobarCentrado(Lugar lugar) => ComprobarCentrado(lugar.Nombre, lugar.Posicion);
+
+        void ComprobarCentrado(string nombre, Coordenada posicion)
         {
             float escala = pantalla.EscalaDp;
             var hoja = pantalla.Ficha.Hoja.worldBound;
             if (escala <= 0f || float.IsNaN(hoja.yMin)) { Debug.LogError("PriceMap: la hoja de la ficha no tiene medida."); return; }
             var esperado = PantallaMapa.PuntoCentradoFicha(Screen.width, Screen.height, hoja.yMin / escala);
-            var p = mapa.Proyectar(lugar.Posicion);
+            var p = mapa.Proyectar(posicion);
             float desvio = Vector2.Distance(new Vector2(p.X, p.Y), new Vector2(esperado.X, esperado.Y));
-            Debug.Log($"PriceMap: {lugar.Nombre} con la ficha abierta en {p}; esperado {esperado} (borde de la hoja {hoja.yMin / escala:F0} px); desvío {desvio:F1} px");
-            if (!p.Delante || desvio > 2f) Debug.LogError($"PriceMap: {lugar.Nombre} no queda centrado sobre la hoja (desvío {desvio:F1} px).");
+            Debug.Log($"PriceMap: {nombre} con la ficha abierta en {p}; esperado {esperado} (borde de la hoja {hoja.yMin / escala:F0} px); desvío {desvio:F1} px");
+            if (!p.Delante || desvio > 2f) Debug.LogError($"PriceMap: {nombre} no queda centrado sobre la hoja (desvío {desvio:F1} px).");
+        }
+
+        /// <summary>
+        /// Historia 2.5 (parte 1), captura "punto": con el mapa en la calle Ancha, una pulsación larga (llamando a
+        /// PantallaMapa.PulsarLargoMapa, sin pasar por CamaraMapa) abre la ficha del punto libre con la chincheta.
+        /// Comprueba "Punto en el mapa", que Desproyectar devuelve el punto pulsado, el centrado sobre la hoja y la
+        /// chincheta; espera la dirección de Photon hasta 8 s, sin dar error si no hay red (se quedan las
+        /// coordenadas). Después el botón atrás cierra la ficha y quita la chincheta.
+        /// </summary>
+        IEnumerator Punto()
+        {
+            if (pantalla == null || pantalla.Ficha == null) { Debug.LogError("PriceMap: no hay ficha para el punto libre."); yield break; }
+            var calleAncha = new Coordenada(36.7781, -6.3515);
+            mapa.Centrar(calleAncha);
+            yield return new WaitForSeconds(2f);
+            yield return new WaitForEndOfFrame();
+            var enPantalla = mapa.Proyectar(calleAncha);
+            var desproyectado = mapa.Desproyectar(enPantalla);
+            double error = desproyectado.HasValue ? desproyectado.Value.DistanciaMetros(calleAncha) : double.PositiveInfinity;
+            Debug.Log($"PriceMap: pulsación larga en {enPantalla}; Desproyectar da {desproyectado?.ToString() ?? "-"} ({error:F2} m del punto)");
+            if (error > 1.0) Debug.LogError("PriceMap: Desproyectar no devuelve el punto pulsado.");
+            bool abierta = pantalla.PulsarLargoMapa(enPantalla);
+            var ficha = pantalla.Ficha;
+            Debug.Log($"PriceMap: punto libre abierto {abierta}; título \"{ficha.Titulo.text}\"; subtítulo \"{ficha.Tipo.text}\"; " +
+                      $"debajo \"{ficha.Direccion.text}\"; filas {ficha.Filas.Count}");
+            if (!abierta || ficha.Punto == null) { Debug.LogError("PriceMap: la pulsación larga no ha abierto la ficha del punto."); yield break; }
+            if (ficha.Tipo.text != Textos.T(ClavesTexto.PuntoTipo)) Debug.LogError("PriceMap: la ficha del punto no dice \"Punto en el mapa\".");
+            if (ficha.Filas.Count > 0 || ficha.SinPrecio != null) Debug.LogError("PriceMap: la ficha del punto enseña precios.");
+
+            float espera = 0f;
+            while (ficha.BuscandoDireccion && espera < 8f) { yield return new WaitForSeconds(0.25f); espera += 0.25f; }
+            Debug.Log($"PriceMap: dirección del punto tras {espera:F2} s: título \"{ficha.Titulo.text}\"; debajo \"{ficha.Direccion.text}\"" +
+                      (ficha.BuscandoDireccion ? " (Photon no ha contestado: se quedan las coordenadas)" : ""));
+            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForEndOfFrame();
+            ComprobarCentrado("El punto libre", calleAncha);
+            var chincheta = pantalla.Chincheta;
+            Debug.Log($"PriceMap: chincheta visible {chincheta?.Visible ?? false} en {chincheta?.Posicion} dp; gota {chincheta?.Gota.worldBound}");
+            if (chincheta == null || !chincheta.Visible) Debug.LogError("PriceMap: con la ficha del punto abierta no se ve la chincheta.");
+            SolapesFicha("punto libre");
+            yield return Capturar("punto");
+            yield return new WaitForSeconds(1f);
+            pantalla.Atras();
+            yield return null;
+            Debug.Log($"PriceMap: tras el botón atrás, ficha abierta {pantalla.FichaAbierta}; chincheta visible {chincheta?.Visible ?? false}");
+            if (pantalla.FichaAbierta || (chincheta != null && chincheta.Visible)) Debug.LogError("PriceMap: el botón atrás no ha cerrado el punto libre.");
+            yield return new WaitForSeconds(0.5f);
         }
 
         /// <summary>

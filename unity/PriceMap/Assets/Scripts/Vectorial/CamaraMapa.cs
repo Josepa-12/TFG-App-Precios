@@ -8,6 +8,7 @@ namespace PriceMap.Vectorial
     ///  - Ratón: arrastrar con el botón izquierdo = mover; rueda = zoom; botón derecho = girar e inclinar.
     ///  - Teclado: WASD / flechas = mover; Q/E = girar; R/F = inclinar.
     ///  - Táctil: un dedo = mover; dos dedos = zoom (pellizco) y giro; dos dedos en vertical = inclinar.
+    ///  - Un dedo (o el botón izquierdo) quieto 500 ms = pulsación larga (historia 2.5).
     /// La entrada se lee y la cámara se mueve en Update, antes que ningún otro script (orden -100):
     /// así está quieta cuando la UI proyecta los marcadores en LateUpdate, en el mismo fotograma.
     /// </summary>
@@ -43,6 +44,14 @@ namespace PriceMap.Vectorial
         /// </summary>
         public event System.Action<Vector2> Tocado;
 
+        /// <summary>
+        /// Pulsación larga sobre el mapa (historia 2.5): un dedo, o el botón izquierdo, quieto 500 ms sin moverse
+        /// 6 dp. Se lanza al cumplirse el tiempo, sin esperar a soltar; desde entonces el dedo ya no arrastra el mapa
+        /// y al soltar no hay toque. Mismo punto de pantalla que Tocado; tampoco llega si el gesto empezó sobre la
+        /// interfaz ni con dos dedos.
+        /// </summary>
+        public event System.Action<Vector2> PulsacionLarga;
+
         Camera cam;
         Vector3? sueloAnterior;
         bool gestoSobreInterfaz; // el gesto empezó sobre un botón: el mapa no se mueve hasta soltar
@@ -56,7 +65,8 @@ namespace PriceMap.Vectorial
             if (Input.touchSupported && Input.touchCount > 0)
             {
                 if (Input.GetTouch(0).phase == TouchPhase.Began && Input.touchCount == 1) gestoSobreInterfaz = SobreInterfaz(Input.GetTouch(0).position);
-                if (!gestoSobreInterfaz) Tactil();
+                // Tras la pulsación larga el dedo ya no mueve el mapa (la chincheta queda donde se pulsó)
+                if (!gestoSobreInterfaz && !toque.ArrastreBloqueado) Tactil();
                 ToqueTactil();
             }
             else
@@ -82,6 +92,9 @@ namespace PriceMap.Vectorial
             if (t.phase == TouchPhase.Moved) toque.Mover(t.position);
             else if (t.phase == TouchPhase.Canceled) toque.Cancelar();
             else if (t.phase == TouchPhase.Ended && toque.Soltar(t.position, Screen.dpi)) Tocado?.Invoke(t.position);
+            // El tiempo de la pulsación larga cuenta desde el fotograma siguiente al de bajar el dedo
+            if ((t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary) && toque.Avanzar(Time.unscaledDeltaTime, Screen.dpi))
+                LanzarPulsacionLarga(t.position);
         }
 
         void ToqueRaton()
@@ -94,10 +107,35 @@ namespace PriceMap.Vectorial
             if (Input.GetMouseButton(1)) toque.Anular();
             if (Input.GetMouseButton(0)) toque.Mover(pos);
             if (Input.GetMouseButtonUp(0) && toque.Soltar(pos, Screen.dpi)) Tocado?.Invoke(pos);
+            if (Input.GetMouseButton(0) && !Input.GetMouseButtonDown(0) && toque.Avanzar(Time.unscaledDeltaTime, Screen.dpi))
+                LanzarPulsacionLarga(pos);
+        }
+
+        // Desde la pulsación larga, el gesto cuenta como empezado sobre la interfaz: ni un segundo dedo ni el ratón
+        // mueven el mapa bajo la ficha hasta soltar (gestoSobreInterfaz se recalcula al empezar el siguiente gesto)
+        void LanzarPulsacionLarga(Vector2 pantalla)
+        {
+            gestoSobreInterfaz = true;
+            sueloAnterior = null;
+            PulsacionLarga?.Invoke(pantalla);
         }
 
         /// <summary>Solo para las pruebas: lanza Tocado como si el dedo se soltara en ese punto (px, origen abajo).</summary>
         internal void SimularToque(Vector2 pantalla) => Tocado?.Invoke(pantalla);
+
+        /// <summary>Solo para las pruebas y la captura: lanza PulsacionLarga en ese punto (px, origen abajo).</summary>
+        internal void SimularPulsacionLarga(Vector2 pantalla) => PulsacionLarga?.Invoke(pantalla);
+
+        /// <summary>
+        /// Punto del suelo bajo ese punto de pantalla (px de la cámara, Y desde abajo, como Input); null si el rayo no
+        /// toca el suelo (por encima del horizonte).
+        /// </summary>
+        public Vector3? PuntoEnSuelo(Vector2 pantalla)
+        {
+            if (cam == null) cam = GetComponent<Camera>(); // en EditMode no se ejecuta Awake
+            if (cam == null) return null;
+            return PuntoSuelo(pantalla, out var p) ? p : (Vector3?)null;
+        }
 
         bool SobreInterfaz(Vector2 pantalla) => entradaBloqueada != null && entradaBloqueada(pantalla);
 
@@ -127,7 +165,8 @@ namespace PriceMap.Vectorial
 
         void Raton()
         {
-            if (Input.GetMouseButton(0)) Arrastrar(Input.mousePosition); else sueloAnterior = null;
+            // Tras la pulsación larga el botón izquierdo ya no mueve el mapa
+            if (Input.GetMouseButton(0) && !toque.ArrastreBloqueado) Arrastrar(Input.mousePosition); else sueloAnterior = null;
             if (Input.GetMouseButton(1))
             {
                 giro += Input.GetAxis("Mouse X") * velocidadGiro * 20f;

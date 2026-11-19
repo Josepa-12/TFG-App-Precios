@@ -64,5 +64,18 @@ namespace PriceMap.Aplicacion
         /// izquierda, como Proyectar. No llega si el gesto empezó sobre un control de la interfaz.
         /// </summary>
         event Action<PuntoPantalla> Toque;
+
+        /// <summary>
+        /// Pulsación larga sobre el mapa (historia 2.5): un dedo quieto 500 ms (menos de 6 dp), en px con origen
+        /// arriba a la izquierda, como Toque. Se lanza sin esperar a soltar; ese gesto ya no da Toque. Tampoco llega
+        /// si el gesto empezó sobre un control de la interfaz ni con dos dedos.
+        /// </summary>
+        event Action<PuntoPantalla> PulsacionLarga;
+
+        /// <summary>
+        /// Coordenada real del suelo bajo ese punto de pantalla (px, origen arriba a la izquierda, como Proyectar);
+        /// null si cae por encima del horizonte o no hay cámara.
+        /// </summary>
+        Coordenada? Desproyectar(PuntoPantalla punto);
     }
 }

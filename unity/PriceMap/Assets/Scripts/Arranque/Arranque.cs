@@ -49,9 +49,11 @@ namespace PriceMap.Arranque
             var accesibilidadSistema = new AccesibilidadSistemaAndroid();
             // El buscador (historia 2.3) lo crea Componer con el mapa ya comprobado y el mismo "ahora"
             // Direcciones (historia 2.3, parte 2): Photon, 350 ms después de la última tecla
-            var direcciones = new BuscadorDirecciones(new GeocodificadorPhoton(), Task.Delay);
+            // Dirección del punto libre (historia 2.5): el mismo Photon, con /reverse
+            var photon = new GeocodificadorPhoton();
+            var direcciones = new BuscadorDirecciones(photon, Task.Delay);
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
-                    accesibilidadSistema, direcciones: direcciones)) { enabled = false; return; }
+                    accesibilidadSistema, direcciones: direcciones, geocodificador: photon)) { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
@@ -89,9 +91,11 @@ namespace PriceMap.Arranque
         /// <param name="busqueda">Buscador (historia 2.3); si no se da, se crea con los lugares, el mapa y "ahora".</param>
         /// <param name="direcciones">Direcciones (historia 2.3, parte 2); sin él (null), el buscador no busca direcciones.</param>
         /// <param name="cerca">"Encuentra cerca" (historia 2.4); si no se da, se crea con los lugares, el mapa y "ahora".</param>
+        /// <param name="geocodificador">Dirección del punto libre (historia 2.5); sin él, la ficha del punto solo da coordenadas.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
-            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null)
+            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
+            IGeocodificador geocodificador = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -110,7 +114,7 @@ namespace PriceMap.Arranque
             busqueda ??= new ServicioBusqueda(lugares, mapa, ahora);
             // "Encuentra cerca" (historia 2.4): también local, con las mismas fuentes que el buscador
             cerca ??= new ServicioCerca(lugares, mapa, ahora);
-            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca);
+            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca, geocodificador);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

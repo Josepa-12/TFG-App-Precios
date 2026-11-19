@@ -156,6 +156,11 @@ namespace PriceMap.EditorTools
             [ClavesTexto.BuscadorQuitarCategoria] = "Quitar categoría",
             [ClavesTexto.PildoraQuitarCategoria] = "Quitar categoría {0}",
             [ClavesTexto.BuscadorCercaJuntar] = "{0}, {1}",
+            [ClavesTexto.PuntoTipo] = "Punto en el mapa",
+            [ClavesTexto.PuntoCoordenadas] = "{0}, {1}",
+            [ClavesTexto.PuntoCalleNumero] = "{0}, {1}",
+            [ClavesTexto.PuntoBuscando] = "Buscando la dirección…",
+            [ClavesTexto.PuntoAnuncio] = "{0}, {1}",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

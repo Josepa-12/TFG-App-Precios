@@ -397,6 +397,53 @@
     background-color: var(--color-posicion);
 }
 
+/* Chincheta del punto libre (historia 2.5). .chincheta mide 0×0 y está justo en la coordenada (ChinchetaPunto la
+   mueve con translate); la gota (dibujada con Painter2D) tiene la punta en ella y la sombra va centrada debajo.
+   Su color es el del borde y el centro; el de la gota, el del cuerpo. --chincheta-borde: grosor del borde en
+   unidades de la maqueta (34 × 44). Nada captura toques. */
+.capa-chincheta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.chincheta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    color: var(--color-chincheta-detalle);
+    --chincheta-borde: 3;
+}
+
+.pm-raiz.tema-oscuro .chincheta {
+    --chincheta-borde: 2;
+}
+
+.chincheta__gota {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--chincheta-ancho);
+    height: var(--chincheta-alto);
+    translate: -50% -97%; /* la punta (y = 42,8 de 44) cae en la coordenada */
+    color: var(--color-chincheta);
+}
+
+.chincheta__sombra {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 14px;
+    height: 5px;
+    translate: -50% -50%;
+    border-radius: 2.5px;
+    background-color: var(--color-chincheta-sombra);
+}
+
 /* Explicación del permiso de ubicación: velo a pantalla completa y tarjeta centrada */
 .hueco-explicacion {
     position: absolute;
@@ -667,6 +714,25 @@
     margin-right: var(--espacio-2);
     border-radius: 3px;
     background-color: var(--color-pin-servicio);
+}
+
+/* Gotita del punto libre (historia 2.5, maqueta): la gota de la chincheta en 12 × 14, sin borde. Su color es el del
+   centro; el del cuerpo, el de su hijo, que la dibuja (los mismos tokens de la chincheta) */
+.ficha__gota {
+    width: var(--gotita-ancho);
+    height: var(--gotita-alto);
+    flex-shrink: 0;
+    margin-right: var(--espacio-2);
+    color: var(--color-chincheta-detalle);
+}
+
+.ficha__gota-cuerpo {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    color: var(--color-chincheta);
 }
 
 .ficha__muestra--hosteleria { background-color: var(--color-pin-hosteleria); }

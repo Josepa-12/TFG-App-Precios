@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
 using UnityEngine;
@@ -26,6 +28,9 @@ namespace PriceMap.UI
         ServicioBusqueda busqueda;
         ServicioCerca servicioCerca;
         BuscadorDirecciones direcciones;
+        IGeocodificador geocodificador;      // dirección del punto libre (historia 2.5); null = solo coordenadas
+        ChinchetaPunto chincheta;
+        CancellationTokenSource peticionPunto; // petición de la dirección del punto abierto; null si no hay ninguna
         VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo, columnaControles;
         PildoraPrecios pildora;
         MenuPrecios menu;
@@ -60,22 +65,26 @@ namespace PriceMap.UI
         /// <param name="busqueda">Buscador de lugares y puntos de interés (historia 2.3); sin él, el campo no encuentra nada.</param>
         /// <param name="direcciones">Direcciones (historia 2.3, parte 2); sin él, el buscador no busca direcciones.</param>
         /// <param name="cerca">"Encuentra cerca" (historia 2.4); sin él, las listas de las categorías salen vacías.</param>
+        /// <param name="geocodificador">Dirección del punto libre (historia 2.5); sin él, la ficha del punto se queda con las coordenadas.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
-            BuscadorDirecciones direcciones = null, ServicioCerca cerca = null)
+            BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
+                geocodificador);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
-            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null)
+            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
+            IGeocodificador geocodificador = null)
         {
             this.mapa = mapa;
+            this.geocodificador = geocodificador;
             this.tema = tema;
             this.filtro = filtro;
             this.ubicacion = ubicacion;
@@ -152,6 +161,15 @@ namespace PriceMap.UI
             // Abierta sin medida (primer fotograma), el lugar se centró con el 72 %: al disponerse, con su borde real
             ficha.Hoja.RegisterCallback<GeometryChangedEvent>(_ => RecentrarFichaPendiente());
             this.mapa.Toque += AlTocarMapa;
+
+            // Punto libre (historia 2.5): mantener pulsado el mapa pone la chincheta y abre la ficha del punto
+            var capaChincheta = raiz.Q("capa-chincheta");
+            if (capaChincheta != null)
+            {
+                chincheta = new ChinchetaPunto();
+                capaChincheta.Add(chincheta);
+            }
+            this.mapa.PulsacionLarga += AlPulsarLargoMapa;
 
             // Buscador (historia 2.2): cápsula abajo que se despliega en hoja, encima de los controles del mapa
             CrearBuscador();
@@ -934,6 +952,24 @@ namespace PriceMap.UI
         public void AbrirFicha(Lugar lugar)
         {
             if (ficha == null || lugar == null || ModalUbicacionAbierta) return;
+            bool yaAbierta = PrepararFicha();
+            ficha.Abrir(lugar, ahora);
+            CentrarEnFicha(lugar.Posicion);
+            // De una ficha a otra la hoja tiene medida, pero la del lugar anterior: al disponerse, se recentra
+            if (yaAbierta) centrarPendiente = lugar.Posicion;
+
+            // TalkBack: la ficha es modal (solo sus nodos) y el foco va al título; al cerrarla vuelve a este marcador
+            marcadorFicha = MarcadorDe(lugar);
+            if (capa != null) capa.Fijado = marcadorFicha; // su marcador no lo oculta ni la píldora ni otro que lo pise
+            FichaModalEnTalkBack();
+        }
+
+        /// <summary>
+        /// Antes de abrir una ficha (de lugar o de punto): cierra el menú, pliega y oculta el buscador, olvida la
+        /// dirección pedida y la chincheta del punto anterior. Devuelve si ya había una ficha abierta.
+        /// </summary>
+        bool PrepararFicha()
+        {
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             // La hoja del buscador se pliega y la cápsula se oculta mientras la ficha está abierta
             if (buscador != null)
@@ -941,19 +977,112 @@ namespace PriceMap.UI
                 PlegarBuscadorPorOtraVentana();
                 buscador.Mostrar(false);
             }
-            bool yaAbierta = FichaAbierta;
-            ficha.Abrir(lugar, ahora);
-            CentrarEnFicha(lugar);
-            // De una ficha a otra la hoja tiene medida, pero la del lugar anterior: al disponerse, se recentra
-            if (yaAbierta) centrarPendiente = lugar;
+            CancelarDireccionPunto();
+            chincheta?.Actualizar(mapa, null, 1f); // la del punto anterior desaparece ya
+            return FichaAbierta;
+        }
 
-            // TalkBack: la ficha es modal (solo sus nodos) y el foco va al título; al cerrarla vuelve a este marcador
-            marcadorFicha = MarcadorDe(lugar);
-            if (capa != null) capa.Fijado = marcadorFicha; // su marcador no lo oculta ni la píldora ni otro que lo pise
+        /// <summary>TalkBack: declara los nodos de la ficha abierta, la hace modal y lleva el foco a su título.</summary>
+        void FichaModalEnTalkBack()
+        {
             DeclararFichaEnTalkBack();
             if (accesibilidad.Modal) accesibilidad.Reconstruir(); // de una ficha a otra: los nodos de la nueva
             else accesibilidad.Modal = true;
             accesibilidad.PedirFoco(ficha.Titulo);
+        }
+
+        // El mapa avisa de una pulsación larga (CamaraMapa: 500 ms quieto, fuera de la interfaz)
+        void AlPulsarLargoMapa(PuntoPantalla punto) => PulsarLargoMapa(punto);
+
+        /// <summary>
+        /// Pulsación larga en el mapa (px de pantalla, origen arriba a la izquierda), historia 2.5: siempre abre un
+        /// punto libre en el suelo bajo el dedo, también encima de un marcador o de un punto de interés (decisión del
+        /// 19/11/2026). Con una ventana de ubicación no hace nada y con el menú "Precios" abierto solo lo cierra, como
+        /// TocarMapa. Por encima del horizonte no hay punto. Devuelve true si ha abierto la ficha del punto.
+        /// </summary>
+        public bool PulsarLargoMapa(PuntoPantalla punto)
+        {
+            if (ModalUbicacionAbierta || ficha == null) return false;
+            if (MenuAbierto) { CerrarMenu(); return false; }
+            var donde = mapa.Desproyectar(punto);
+            if (!donde.HasValue) return false;
+            AbrirPunto(donde.Value);
+            return true;
+        }
+
+        /// <summary>
+        /// Ficha de punto libre (historia 2.5): chincheta en el punto, la hoja de la ficha sin precios con las
+        /// coordenadas de título y, si hay geocodificador, la petición de su dirección a Photon. Se centra y se
+        /// cierra como la ficha de un lugar. Nada se guarda (FR17).
+        /// </summary>
+        public void AbrirPunto(Coordenada punto)
+        {
+            if (ficha == null || ModalUbicacionAbierta) return;
+            bool yaAbierta = PrepararFicha();
+            ficha.AbrirPunto(punto, buscando: geocodificador != null);
+            CentrarEnFicha(punto);
+            if (yaAbierta) centrarPendiente = punto;
+            float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala;
+            if (chincheta != null && escala > 0f) chincheta.Actualizar(mapa, punto, escala);
+
+            // TalkBack: modal como la del lugar (título, subtítulo y "Cerrar ficha"); al cerrarla no hay marcador
+            marcadorFicha = null;
+            if (capa != null) capa.Fijado = null;
+            FichaModalEnTalkBack();
+
+            if (geocodificador != null)
+            {
+                var cts = new CancellationTokenSource();
+                peticionPunto = cts;
+                _ = PedirDireccionPunto(punto, cts);
+            }
+        }
+
+        /// <summary>Punto libre de la ficha abierta; null sin ficha o con la de un lugar.</summary>
+        public Coordenada? PuntoAbierto => FichaAbierta ? ficha.Punto : null;
+
+        /// <summary>Chincheta del punto libre; null sin interfaz.</summary>
+        public ChinchetaPunto Chincheta => chincheta;
+
+        /// <summary>
+        /// Pide la dirección del punto y la pone en la ficha. Una respuesta tardía (de un punto anterior, o con la
+        /// ficha ya cerrada) no cambia nada. Sin conexión o sin calle, el título se queda con las coordenadas. TalkBack:
+        /// se rehace la etiqueta del título en su nodo, sin mover el foco.
+        /// </summary>
+        async Task PedirDireccionPunto(Coordenada punto, CancellationTokenSource cts)
+        {
+            Resultado<Direccion> r;
+            try
+            {
+                r = await geocodificador.Inverso(punto, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception e)
+            {
+                // El puerto no debería lanzar; si lo hace, es un fallo más: se quedan las coordenadas
+                r = Resultado<Direccion>.Fallo(string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message);
+            }
+            // Cancelada (y ya liberada por CancelarDireccionPunto): no se toca
+            if (cts.IsCancellationRequested || !ReferenceEquals(peticionPunto, cts)) return;
+            peticionPunto = null;
+            cts.Dispose();
+            if (ficha == null || !FichaAbierta || ficha.Punto != punto) return;
+            if (!r.Ok) Debug.Log("PriceMap: sin dirección para el punto libre (" + r.Error + "); se quedan las coordenadas.");
+            ficha.PonerDireccionPunto(r.Ok ? r.Valor : null);
+            accesibilidad?.RefrescarEtiqueta(ficha.Titulo);
+        }
+
+        /// <summary>Cancela la petición de la dirección del punto: su respuesta ya no llegará a la ficha.</summary>
+        void CancelarDireccionPunto()
+        {
+            if (peticionPunto == null) return;
+            var cts = peticionPunto;
+            peticionPunto = null;
+            cts.Cancel();
+            cts.Dispose(); // la petición ya tiene su token; IsCancellationRequested sigue leyéndose tras liberarlo
         }
 
         MarcadorLugar marcadorFicha; // marcador del lugar de la ficha abierta: al cerrarla, el foco vuelve a él
@@ -974,7 +1103,9 @@ namespace PriceMap.UI
             foreach (var (elemento, texto) in ficha.TextosTalkBack())
             {
                 var e = elemento;
-                accesibilidad.Texto(e, () => texto, () => FichaAbierta, enModal: true, grupo: ficha,
+                // El título de un punto libre cambia al llegar su dirección: se lee cada vez (RefrescarEtiqueta)
+                Func<string> etiqueta = e == ficha.Titulo && ficha.Punto != null ? (Func<string>)ficha.AnuncioTituloPunto : () => texto;
+                accesibilidad.Texto(e, etiqueta, () => FichaAbierta, enModal: true, grupo: ficha,
                     alEnfocar: () => ficha.DesplazarHasta(e));
             }
             accesibilidad.Boton(ficha.BotonCerrar, () => Textos.T(ClavesTexto.FichaCerrar), CerrarFicha,
@@ -984,25 +1115,26 @@ namespace PriceMap.UI
         /// <summary>Alto máximo de la hoja (--ficha-alto-max): con él se centra mientras la hoja no tiene medida.</summary>
         public const float AltoMaximoFicha = 0.72f;
 
-        Lugar centrarPendiente; // lugar centrado con el 72 %, a recentrar con la medida real de la hoja
+        Coordenada? centrarPendiente; // lugar o punto centrado con el 72 %, a recentrar con la medida real de la hoja
 
         /// <summary>
-        /// Deja el lugar en el centro horizontal y a media altura de la zona del mapa que la ficha no tapa (de arriba
-        /// al borde superior de la hoja), al instante y sin tocar zoom, giro ni inclinación (historia 1.8, parte 2).
+        /// Deja el lugar (o el punto libre) en el centro horizontal y a media altura de la zona del mapa que la ficha
+        /// no tapa (de arriba al borde superior de la hoja), al instante y sin tocar zoom, giro ni inclinación
+        /// (historia 1.8, parte 2).
         /// </summary>
-        void CentrarEnFicha(Lugar lugar)
+        void CentrarEnFicha(Coordenada posicion)
         {
             float? borde = BordeHojaPx();
-            mapa.Centrar(lugar.Posicion, PuntoCentradoFicha(Screen.width, Screen.height, borde));
-            centrarPendiente = borde.HasValue ? null : lugar;
+            mapa.Centrar(posicion, PuntoCentradoFicha(Screen.width, Screen.height, borde));
+            centrarPendiente = borde.HasValue ? null : posicion;
         }
 
         void RecentrarFichaPendiente()
         {
-            var lugar = centrarPendiente;
-            if (lugar == null || !FichaAbierta || ficha.Lugar != lugar) return;
+            var posicion = centrarPendiente;
+            if (!posicion.HasValue || !FichaAbierta || ficha.Posicion != posicion) return;
             if (!BordeHojaPx().HasValue) return; // aún sin medida: se espera al siguiente cambio
-            CentrarEnFicha(lugar);
+            CentrarEnFicha(posicion.Value);
         }
 
         /// <summary>Borde superior de la hoja en px de pantalla (origen arriba); null si aún no tiene medida.</summary>
@@ -1029,6 +1161,8 @@ namespace PriceMap.UI
         public void CerrarFicha()
         {
             centrarPendiente = null;
+            CancelarDireccionPunto();
+            chincheta?.Actualizar(mapa, null, 1f); // la chincheta del punto libre se va con su ficha
             if (!FichaAbierta) return;
             ficha.Mostrar(false);
             buscador?.Mostrar(true); // vuelve la cápsula
@@ -1185,7 +1319,12 @@ namespace PriceMap.UI
             if (tema != null) tema.Cambiado -= AlCambiarTema;
             if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
-            if (ficha != null && mapa != null) mapa.Toque -= AlTocarMapa;
+            if (ficha != null && mapa != null)
+            {
+                mapa.Toque -= AlTocarMapa;
+                mapa.PulsacionLarga -= AlPulsarLargoMapa;
+            }
+            CancelarDireccionPunto();
             if (buscador != null)
             {
                 buscador.Desplegando -= AlDesplegarBuscador;
@@ -1317,6 +1456,8 @@ namespace PriceMap.UI
                 botonTema.MarkDirtyRepaint(); botonUbicacion?.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint();
                 capa?.Repintar(); pildora?.Repintar(); menu?.Repintar(); marcadorPosicion?.Repintar();
                 ficha?.BotonCerrar.MarkDirtyRepaint();
+                ficha?.RepintarGota();
+                chincheta?.Repintar();
                 buscador?.Repintar();
             });
         }
@@ -1413,6 +1554,8 @@ namespace PriceMap.UI
             }
             // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
             if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, ubicacion.Posicion, ubicacion.Rumbo, escala);
+            // La chincheta del punto libre sigue a su coordenada mientras su ficha está abierta
+            if (chincheta != null && escala > 0f) chincheta.Actualizar(mapa, PuntoAbierto, escala);
             if (escala > 0f) ultimaEscala = escala;
             // La etiqueta del botón de ubicación sigue a lo que hará al tocarlo: si cambia, se actualiza en su nodo,
             // sin rehacer la jerarquía (TalkBack no pierde el foco aunque la distancia oscile alrededor de 8 dp)

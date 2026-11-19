@@ -15,6 +15,9 @@ namespace PriceMap.UI
     ///
     /// Detrás de la hoja hay un velo transparente a pantalla completa: tocar fuera de la hoja la cierra y ese toque
     /// no llega al mapa. La abre y cierra PantallaMapa; nada se guarda (AD-3).
+    ///
+    /// La misma hoja sirve de ficha de punto libre (historia 2.5, AbrirPunto): título con la dirección o las
+    /// coordenadas, "Punto en el mapa" y la localidad; sin muestra ni precios.
     /// </summary>
     public class FichaLugar : VisualElement
     {
@@ -28,6 +31,8 @@ namespace PriceMap.UI
         public Label Titulo { get; }
         /// <summary>Muestra del color de la plantilla (--color-pin-*), junto al tipo.</summary>
         public VisualElement Muestra { get; }
+        /// <summary>Gotita delante de "Punto en el mapa" (historia 2.5); oculta con un lugar.</summary>
+        public VisualElement GotaPunto { get; }
         /// <summary>"Clínica privada · Servicio local".</summary>
         public Label Tipo { get; }
         /// <summary>Dirección; oculta si el lugar no la tiene.</summary>
@@ -45,7 +50,14 @@ namespace PriceMap.UI
         /// <summary>"Aún no tiene precio"; null si el lugar tiene algún precio o "Consultar".</summary>
         public Label SinPrecio { get; private set; }
 
+        /// <summary>Lugar de la ficha; null con la ficha de un punto libre.</summary>
         public Lugar Lugar { get; private set; }
+        /// <summary>Punto libre de la ficha (historia 2.5); null con la ficha de un lugar.</summary>
+        public Coordenada? Punto { get; private set; }
+        /// <summary>Coordenada de lo que enseña la ficha: el lugar o el punto libre.</summary>
+        public Coordenada? Posicion => Lugar != null ? Lugar.Posicion : Punto;
+        /// <summary>Con un punto libre: true mientras se espera su dirección ("Buscando la dirección…").</summary>
+        public bool BuscandoDireccion { get; private set; }
         public bool Abierta { get; private set; }
 
         /// <param name="alCerrar">Lo que hacen el botón de cerrar y el toque fuera de la hoja.</param>
@@ -78,6 +90,16 @@ namespace PriceMap.UI
             textosCabecera.Add(lineaTipo);
             Muestra = Nuevo("ficha-muestra", "ficha__muestra");
             lineaTipo.Add(Muestra);
+            // Gotita del punto libre (historia 2.5), en el sitio de la muestra: su color es el del centro; el del
+            // cuerpo lo lleva el hijo que la dibuja
+            GotaPunto = Nuevo("ficha-gota", "ficha__gota");
+            var cuerpoGota = Nuevo("ficha-gota-cuerpo", "ficha__gota-cuerpo");
+            cuerpoGota.generateVisualContent += mgc =>
+                ChinchetaPunto.Dibujar(mgc, cuerpoGota.contentRect, cuerpoGota.resolvedStyle.color, GotaPunto.resolvedStyle.color, 0f);
+            cuerpoGota.RegisterCallback<GeometryChangedEvent>(_ => cuerpoGota.MarkDirtyRepaint());
+            GotaPunto.Add(cuerpoGota);
+            GotaPunto.style.display = DisplayStyle.None;
+            lineaTipo.Add(GotaPunto);
             Tipo = Texto("ficha-tipo", "ficha__tipo", "t-meta");
             lineaTipo.Add(Tipo);
             Direccion = Texto("ficha-direccion", "ficha__direccion", "t-meta");
@@ -112,7 +134,12 @@ namespace PriceMap.UI
         public void Abrir(Lugar lugar, DateTime ahora)
         {
             Lugar = lugar ?? throw new ArgumentNullException(nameof(lugar));
+            Punto = null;
+            BuscandoDireccion = false;
+            RemoveFromClassList(ClasePunto);
             Titulo.text = lugar.Nombre;
+            Muestra.style.display = DisplayStyle.Flex;
+            GotaPunto.style.display = DisplayStyle.None;
             foreach (var p in new[] { Plantilla.ServicioLocal, Plantilla.Hosteleria, Plantilla.Ocio })
                 Muestra.EnableInClassList(ClaseMuestra(p), p == lugar.Plantilla);
             Tipo.text = Textos.Formatear(textos(ClavesTexto.FichaTipo), lugar.Tipo, textos(ClavePlantilla(lugar.Plantilla)));
@@ -171,6 +198,84 @@ namespace PriceMap.UI
             Mostrar(true);
         }
 
+        /// <summary>Clase de la ficha con un punto libre (historia 2.5).</summary>
+        public const string ClasePunto = "ficha--punto";
+
+        /// <summary>
+        /// Ficha de punto libre (historia 2.5): la misma hoja, sin muestra ni precios. Título con las coordenadas
+        /// ("36,7781, -6,3515") hasta que llegue la dirección, subtítulo "Punto en el mapa" y, debajo, "Buscando la
+        /// dirección…" si se va a preguntar (buscando) o nada. Nada se guarda (FR17).
+        /// </summary>
+        public void AbrirPunto(Coordenada punto, bool buscando)
+        {
+            Lugar = null;
+            Punto = punto;
+            AddToClassList(ClasePunto);
+            Titulo.text = TextoCoordenadas(punto, textos);
+            Muestra.style.display = DisplayStyle.None;
+            GotaPunto.style.display = DisplayStyle.Flex;
+            RepintarGota(); // el tema pudo cambiar con la ficha cerrada
+            Tipo.text = textos(ClavesTexto.PuntoTipo);
+            EscalaFuente.Olvidar(Contenido);
+            Contenido.Clear();
+            areas.Clear();
+            filas.Clear();
+            SinPrecio = null;
+            PonerLineaDireccion(buscando, null);
+            Contenido.scrollOffset = Vector2.zero;
+            Mostrar(true);
+        }
+
+        /// <summary>Vuelve a dibujar la gotita (sus colores llegan con el estilo del tema).</summary>
+        public void RepintarGota() => GotaPunto.Q("ficha-gota-cuerpo")?.MarkDirtyRepaint();
+
+        /// <summary>
+        /// Llega la respuesta de Photon para el punto abierto: con calle, el título pasa a "Calle Ancha, 10" y debajo
+        /// va la localidad (si la hay); sin calle o sin dirección (null: fallo o nada cerca) se quedan las coordenadas.
+        /// "Buscando la dirección…" desaparece en todos los casos.
+        /// </summary>
+        public void PonerDireccionPunto(Aplicacion.Direccion direccion)
+        {
+            if (Punto == null) return;
+            var titulo = TituloDireccion(direccion, textos);
+            if (titulo != null) Titulo.text = titulo;
+            PonerLineaDireccion(false, titulo != null ? direccion.Localidad : null);
+        }
+
+        void PonerLineaDireccion(bool buscando, string localidad)
+        {
+            BuscandoDireccion = buscando;
+            Direccion.text = buscando ? textos(ClavesTexto.PuntoBuscando) : localidad ?? "";
+            Direccion.style.display = string.IsNullOrWhiteSpace(Direccion.text) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        /// <summary>
+        /// Lo que lee TalkBack en el título de un punto libre: el título y, si se ve, la localidad ("Calle Ancha, 10,
+        /// Sanlúcar de Barrameda"). "Buscando la dirección…" no se lee.
+        /// </summary>
+        public string AnuncioTituloPunto()
+        {
+            if (BuscandoDireccion || string.IsNullOrWhiteSpace(Direccion.text)) return Titulo.text;
+            return Textos.Formatear(textos(ClavesTexto.PuntoAnuncio), Titulo.text, Direccion.text);
+        }
+
+        static readonly System.Globalization.NumberFormatInfo ComaDecimal =
+            new System.Globalization.NumberFormatInfo { NumberDecimalSeparator = ",", NegativeSign = "-" };
+
+        /// <summary>Coordenadas con 4 decimales y coma decimal: "36,7781, -6,3515".</summary>
+        public static string TextoCoordenadas(Coordenada c, Func<string, string> textos) =>
+            Textos.Formatear(textos(ClavesTexto.PuntoCoordenadas),
+                c.Latitud.ToString("0.0000", ComaDecimal), c.Longitud.ToString("0.0000", ComaDecimal));
+
+        /// <summary>"Calle Ancha, 10" (o solo la calle, sin número); null si no hay dirección o no está en una calle.</summary>
+        public static string TituloDireccion(Aplicacion.Direccion d, Func<string, string> textos)
+        {
+            if (d == null || string.IsNullOrWhiteSpace(d.Calle)) return null;
+            return string.IsNullOrWhiteSpace(d.Numero)
+                ? d.Calle.Trim()
+                : Textos.Formatear(textos(ClavesTexto.PuntoCalleNumero), d.Calle.Trim(), d.Numero.Trim());
+        }
+
         /// <summary>
         /// Textos del recorrido de TalkBack en orden (historia 1.8, parte 3), sin el botón de cerrar: título, tipo,
         /// dirección si la hay y, en el orden en que se ven, encabezados de área, la frase de cada concepto seguida
@@ -178,6 +283,8 @@ namespace PriceMap.UI
         /// </summary>
         public List<(VisualElement elemento, string texto)> TextosTalkBack()
         {
+            // Punto libre (historia 2.5): título (con la localidad) y subtítulo; "Cerrar ficha" lo añade PantallaMapa
+            if (Punto != null) return new List<(VisualElement, string)> { (Titulo, AnuncioTituloPunto()), (Tipo, Tipo.text) };
             var r = new List<(VisualElement, string)> { (Titulo, Titulo.text), (Tipo, Tipo.text) };
             if (!string.IsNullOrWhiteSpace(Direccion.text)) // sin dirección, la línea está oculta (Abrir)
                 r.Add((Direccion, Direccion.text));

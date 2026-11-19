@@ -10,7 +10,8 @@ namespace PriceMap.Adaptadores.Busqueda
     /// Lee la respuesta GeoJSON de Photon (historia 2.3, parte 2) y la convierte en direcciones. Pura: no sale a la
     /// red. <c>coordinates</c> viene como [lon, lat]. Nombre: <c>name</c> o, si no hay, <c>street</c> +
     /// <c>housenumber</c>; localidad: <c>city</c>, <c>district</c> o <c>county</c>. Fuera los registros sin nombre ni
-    /// calle y los que no traen coordenadas válidas.
+    /// calle y los que no traen coordenadas válidas. Cada dirección lleva también su calle y su número por separado
+    /// (la ficha de punto libre los junta con coma: "Calle Ancha, 10").
     /// </summary>
     internal static class LecturaPhoton
     {
@@ -21,7 +22,7 @@ namespace PriceMap.Adaptadores.Busqueda
         [Serializable]
         class Propiedades
         {
-            public string name, street, housenumber, city, district, county;
+            public string name, street, housenumber, city, district, county, osm_key;
         }
 
         /// <summary>Las direcciones del texto JSON, en el orden de Photon; Fallo si el texto no es GeoJSON de Photon.</summary>
@@ -54,7 +55,25 @@ namespace PriceMap.Adaptadores.Busqueda
             if (double.IsNaN(lat) || double.IsNaN(lon) || Math.Abs(lat) > 90.0 || Math.Abs(lon) > 180.0) return null;
             string nombre = Nombre(p);
             if (nombre == null) return null;
-            return new Direccion(nombre, Primero(p.city, p.district, p.county) ?? "", new Coordenada(lat, lon));
+            return new Direccion(nombre, Primero(p.city, p.district, p.county) ?? "", new Coordenada(lat, lon), Calle(p), Limpio(p.housenumber));
+        }
+
+        /// <summary>
+        /// Calle del sitio (historia 2.5): <c>street</c> o, si el propio rasgo es una calle (<c>osm_key</c> =
+        /// highway, como da Photon al pulsar encima de ella), su <c>name</c>; null si no está en ninguna calle.
+        /// </summary>
+        static string Calle(Propiedades p) =>
+            Limpio(p.street) ?? (string.Equals(Limpio(p.osm_key), "highway", StringComparison.OrdinalIgnoreCase) ? Limpio(p.name) : null);
+
+        /// <summary>
+        /// La primera dirección del texto JSON de <c>/reverse</c> (historia 2.5); null dentro de un Éxito si Photon no
+        /// da ninguna. Fallo si el texto no es GeoJSON de Photon.
+        /// </summary>
+        public static Resultado<Direccion> LeerInverso(string json)
+        {
+            var r = Leer(json);
+            if (!r.Ok) return Resultado<Direccion>.Fallo(r.Error);
+            return Resultado<Direccion>.Exito(r.Valor.Count > 0 ? r.Valor[0] : null);
         }
 
         static string Nombre(Propiedades p)

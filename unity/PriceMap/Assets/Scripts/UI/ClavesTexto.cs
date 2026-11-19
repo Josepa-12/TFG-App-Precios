@@ -209,8 +209,20 @@ namespace PriceMap.UI
         /// </summary>
         public const string BuscadorCercaJuntar = "buscador.cerca.juntar";
 
+        /// <summary>Ficha de punto libre (historia 2.5): subtítulo bajo el título ("Punto en el mapa").</summary>
+        public const string PuntoTipo = "punto.tipo";
+        /// <summary>Título con las coordenadas: {0} latitud, {1} longitud, ya con 4 decimales y coma decimal ("36,7781, -6,3515").</summary>
+        public const string PuntoCoordenadas = "punto.coordenadas";
+        /// <summary>Título con la dirección: {0} calle, {1} número ("Calle Ancha, 10").</summary>
+        public const string PuntoCalleNumero = "punto.callenumero";
+        /// <summary>Bajo el subtítulo mientras se espera a Photon ("Buscando la dirección…").</summary>
+        public const string PuntoBuscando = "punto.buscando";
+        /// <summary>TalkBack del título con la localidad: {0} título, {1} localidad ("Calle Ancha, 10, Sanlúcar de Barrameda").</summary>
+        public const string PuntoAnuncio = "punto.anuncio";
+
         public static readonly string[] Todas =
         {
+            PuntoTipo, PuntoCoordenadas, PuntoCalleNumero, PuntoBuscando, PuntoAnuncio,
             BuscadorCercaCategoria, BuscadorCercaTitulo, BuscadorCercaDesdeCentro, BuscadorCercaVacio, BuscadorQuitarCategoria,
             PildoraQuitarCategoria, BuscadorCercaJuntar,
             CercaNombreComer, CercaNombreBares, CercaNombreSuper, CercaNombreFarmacia, CercaNombreGasolina, CercaNombreDeporte,

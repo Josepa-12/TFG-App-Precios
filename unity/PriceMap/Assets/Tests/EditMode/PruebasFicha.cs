@@ -47,6 +47,8 @@ namespace PriceMap.Tests.EditMode
             public Coordenada Centro => default;
             public void OrientarNorte() { }
             public event Action<PuntoPantalla> Toque { add => toque += value; remove => toque -= value; }
+            public event Action<PuntoPantalla> PulsacionLarga { add { } remove { } }
+            public Coordenada? Desproyectar(PuntoPantalla punto) => null;
         }
 
         class PreferenciasFalsas : IPreferencias

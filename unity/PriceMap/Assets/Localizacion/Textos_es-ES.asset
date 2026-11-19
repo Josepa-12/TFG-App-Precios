@@ -535,6 +535,26 @@ MonoBehaviour:
     m_Localized: '{0}, {1}'
     m_Metadata:
       m_Items: []
+  - m_Id: 908788897931264
+    m_Localized: Punto en el mapa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485696
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485697
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485698
+    m_Localized: "Buscando la direcci\xF3n\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485699
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

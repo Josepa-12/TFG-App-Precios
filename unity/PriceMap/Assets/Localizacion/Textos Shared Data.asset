@@ -527,6 +527,26 @@ MonoBehaviour:
     m_Key: buscador.cerca.juntar
     m_Metadata:
       m_Items: []
+  - m_Id: 908788897931264
+    m_Key: punto.tipo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485696
+    m_Key: punto.coordenadas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485697
+    m_Key: punto.callenumero
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485698
+    m_Key: punto.buscando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 908788931485699
+    m_Key: punto.anuncio
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

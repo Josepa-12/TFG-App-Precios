@@ -807,6 +807,23 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Revisión:** tres revisores automáticos encontraron 15 posibles problemas. Se añadió una prueba de arrastrar la hoja abierta con la lista, y gracias a ella apareció un fallo real: al arrastrar, las filas se rehacen y TalkBack perdía la fila en la que estaba. Ahora el foco vuelve a la fila del mismo sitio. El resto se descartó por no cumplirse o quedar fuera de lo pedido.
     - **Comprobación:** pasan 654 pruebas; la build de PC y la captura terminan sin errores.
     - **Pendiente:** probar en el móvil con TalkBack (elegir Salud, recorrer la lista, abrir una ficha y quitar la categoría). Al abrir la lista, TalkBack lee el título y después el anuncio, que también empieza por el título: comprobar si se hace pesado.
+  - *Historia 2.5 (parte 1): mantener pulsado el mapa abre un punto libre (19/11/2026).*
+    - **Motivo:** solo se podía ir a lugares de la app; hay que poder elegir cualquier punto del mapa (FR16). Las partes 2 (pegar enlaces) y 3 (compartir con la app) abrirán esta misma ficha.
+    - **Decisiones del autor:** mantener pulsado da siempre un punto libre, también encima de un marcador o de un punto de interés, como Google Maps; la ficha del sitio sigue abriéndose con un toque. Chincheta azul marino con borde y centro blancos (blanca con centro azul marino en oscuro), aprobada en maqueta: la roja se confundía con farmacias y centros de salud.
+    - **Solución:**
+      - `DetectorToque` cuenta el tiempo: con el dedo quieto (menos de 6 dp) 500 ms lanza la pulsación larga sin esperar a soltar; desde ahí el dedo ya no mueve el mapa y al soltar no hay toque. Un segundo dedo la anula. `IMapa` gana `PulsacionLarga` y `Desproyectar` (el rayo de la cámara contra el suelo; nada por encima del horizonte).
+      - La ficha del punto es la misma hoja de la ficha del lugar, sin muestra ni precios: título con las coordenadas («36,7781, -6,3515») hasta que llega la dirección («Calle Ancha, 10»), subtítulo «Punto en el mapa» y, debajo, «Buscando la dirección…» o la localidad. Se centra y se cierra igual que la del lugar, y la chincheta se va con ella.
+      - La dirección sale de la geocodificación inversa de Photon (`/reverse`). Cada punto nuevo cancela la petición anterior, y una respuesta tardía no cambia la ficha. Sin conexión o sin calle se quedan las coordenadas. No se guarda nada (FR17).
+      - TalkBack: la ficha es modal con título, subtítulo y «Cerrar ficha»; al llegar la dirección se cambia la etiqueta del título en su nodo, sin mover el foco.
+    - **Revisión:** tres revisores automáticos encontraron 21 posibles problemas y se arreglaron 7:
+      - la gotita de la maqueta junto a «Punto en el mapa»;
+      - un fallo real: un segundo dedo tras la pulsación larga movía el mapa bajo la ficha;
+      - el idioma en la petición a Photon y la liberación de cada petición;
+      - pruebas que faltaban (el arranque pasa Photon a la pantalla y la chincheta sigue al mapa) o que no comprobaban nada.
+      
+      Quedan para el móvil: si Photon da calles lejanas al pulsar en el río o el pinar, y una vibración al soltar la chincheta.
+    - **Comprobación:** pasan 684 pruebas (30 nuevas, una por fila de la matriz y las de Photon y del puerto real). En la captura de PC `punto`, la chincheta y la ficha salen con «Punto en el mapa» y la dirección real de Photon («Calle Carmen Viejo»); el registro no tiene errores.
+    - **Pendiente:** probar en el móvil a mantener pulsado, arrastrar sin querer, usar dos dedos y quitar los datos.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

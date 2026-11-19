@@ -71,6 +71,9 @@ namespace PriceMap.Tests.EditMode
                 else if (!IgnorarCancelacion) ct.Register(() => p.Tcs.TrySetCanceled());
                 return p.Tcs.Task;
             }
+
+            public Task<Resultado<Direccion>> Inverso(Coordenada punto, CancellationToken ct) =>
+                Task.FromResult(Resultado<Direccion>.Fallo("sin conexión"));
         }
 
         static readonly Direccion CalleAncha = new Direccion("Calle Ancha 10", "Sanlúcar de Barrameda", AlNorte(Cabildo, 1234));
@@ -326,6 +329,8 @@ namespace PriceMap.Tests.EditMode
             public Coordenada Centro => centro;
             public void OrientarNorte() { }
             public event Action<PuntoPantalla> Toque { add { } remove { } }
+            public event System.Action<PuntoPantalla> PulsacionLarga { add { } remove { } }
+            public Coordenada? Desproyectar(PuntoPantalla punto) => null;
         }
 
         class Repositorio : IRepositorioLugares

@@ -267,6 +267,26 @@ namespace PriceMap.Vectorial
 
         void AlTocarCamara(Vector2 pantalla) => Toque?.Invoke(new PuntoPantalla(pantalla.x, Screen.height - pantalla.y, 1f));
 
+        /// <summary>Pulsación larga de la cámara pasada a px con origen arriba a la izquierda (como Toque).</summary>
+        public event System.Action<PuntoPantalla> PulsacionLarga;
+
+        void AlPulsarLargoCamara(Vector2 pantalla) => PulsacionLarga?.Invoke(new PuntoPantalla(pantalla.x, Screen.height - pantalla.y, 1f));
+
+        /// <summary>
+        /// Coordenada del suelo bajo el punto (px, origen arriba a la izquierda): el rayo de la cámara contra el
+        /// suelo, pasado a latitud y longitud. Null por encima del horizonte o sin cámara.
+        /// </summary>
+        public Coordenada? Desproyectar(PuntoPantalla punto)
+        {
+            var c = Camara();
+            if (c == null || float.IsNaN(punto.X) || float.IsNaN(punto.Y)) return null;
+            // Unity cuenta Y desde abajo: la inversa de Proyectar
+            var suelo = c.PuntoEnSuelo(new Vector2(punto.X, Screen.height - punto.Y));
+            if (!suelo.HasValue) return null;
+            var g = Geo.AGeo(suelo.Value);
+            return new Coordenada(g.lat, g.lon);
+        }
+
         void RecomponerPuntos()
         {
             puntosInteres.Clear();
@@ -308,7 +328,11 @@ namespace PriceMap.Vectorial
             if (camara == null)
             {
                 camara = FindFirstObjectByType<CamaraMapa>();
-                if (camara != null) camara.Tocado += AlTocarCamara; // una sola vez, al encontrarla
+                if (camara != null)
+                {
+                    camara.Tocado += AlTocarCamara; // una sola vez, al encontrarla
+                    camara.PulsacionLarga += AlPulsarLargoCamara;
+                }
             }
             if (camara != null && entradaBloqueada != null) camara.entradaBloqueada = entradaBloqueada;
             return camara;

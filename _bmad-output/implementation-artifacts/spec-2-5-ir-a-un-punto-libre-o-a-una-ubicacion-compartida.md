@@ -2,7 +2,8 @@
 title: 'Historia 2.5 (parte 1): mantener pulsado el mapa abre un punto libre'
 type: 'feature'
 created: '2026-11-19'
-status: 'draft'
+status: 'done'
+baseline_commit: '26af338a60bc8d677bd5def850c5f204ff5becd5'
 route: 'dispatch'
 review_loop_iteration: 0
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-2-context.md']
@@ -65,11 +66,11 @@ Rutas bajo `unity/PriceMap/Assets/Scripts` salvo otra indicación.
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `DetectorToque` + `CamaraMapa` + `IMapa`/`MapaVectorial` (+ falsos): pulsación larga y `Desproyectar`.
-- [ ] `IGeocodificador.Inverso` en Photon.
-- [ ] Ficha de punto libre, chincheta y `PantallaMapa`.
-- [ ] Textos, Localization y captura «punto».
-- [ ] `PruebasPuntoLibre.cs`: filas de la matriz.
+- [x] `DetectorToque` + `CamaraMapa` + `IMapa`/`MapaVectorial` (+ falsos): pulsación larga y `Desproyectar`.
+- [x] `IGeocodificador.Inverso` en Photon.
+- [x] Ficha de punto libre, chincheta y `PantallaMapa`.
+- [x] Textos, Localization y captura «punto».
+- [x] `PruebasPuntoLibre.cs`: filas de la matriz.
 
 **Acceptance Criteria:**
 - Dada la suite EditMode, cuando se ejecuta, entonces pasan todas.
@@ -77,9 +78,42 @@ Rutas bajo `unity/PriceMap/Assets/Scripts` salvo otra indicación.
 
 ## Implementation Notes
 
+- `DetectorToque.Avanzar(segundos, dpi)` cuenta el tiempo por fotograma (`Time.unscaledDeltaTime`) desde el fotograma siguiente al de bajar el dedo; `ArrastreBloqueado` para el arrastre de un dedo (y del botón izquierdo) tras dispararse; un segundo dedo lo libera.
+- `Direccion` gana `Calle` y `Numero` (opcionales); `LecturaPhoton` toma la calle de `street` o, si el rasgo es una calle (`osm_key=highway`), de `name`. Sin calle → coordenadas. El `Nombre` del buscador no cambia.
+- `GeocodificadorPhoton`: `Buscar` e `Inverso` comparten la petición (`Pedir`); URL inversa con 6 decimales.
+- TalkBack: el nodo del título lee también la localidad cuando llega («Calle Ancha, 10, Sanlúcar de Barrameda»), para no perderla sin añadir un cuarto nodo; se refresca con `RefrescarEtiqueta`.
+- En el punto, la muestra de la plantilla se oculta y en su sitio va la gotita de la maqueta (`FichaLugar.GotaPunto`, 12×14, misma gota y tokens que la chincheta, sin borde); con un lugar, al revés.
+- Tras la pulsación larga, `CamaraMapa` marca el gesto como empezado sobre la interfaz: ni un segundo dedo ni el ratón mueven el mapa hasta soltar.
+- Chincheta dibujada con Painter2D (gota 34×44 de la maqueta); colores en `Tokens.uss` (`--color-chincheta*`), grosor del borde en `--chincheta-borde` (3 claro, 2 oscuro).
+- Textos nuevos: `punto.tipo`, `punto.coordenadas`, `punto.callenumero`, `punto.buscando`, `punto.anuncio`.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Hallazgo | Veredicto | Evidencia | Ruta |
+|---|----------|-----------|-----------|------|
+| 1 | Falta la gotita junto a «Punto en el mapa» de la maqueta aprobada | low | La captura `punto.png` enseña el subtítulo sin icono; la maqueta lo tiene | patch |
+| 2 | Tras la pulsación larga, un segundo dedo desbloquea el arrastre y mueve el mapa bajo la ficha | low | `Anular` pone `anulado` y `ArrastreBloqueado` pasa a false; `gestoSobreInterfaz` solo se mira en `Began` con un dedo (`CamaraMapa.cs:67-69`) | patch |
+| 3 | `UrlInversa` sin `lang=default`, a diferencia de `Buscar` y de su propio comentario | low | La URL solo lleva lat, lon y limit | patch |
+| 4 | Los `CancellationTokenSource` del punto no se liberan | low | `CancelarDireccionPunto` y `PedirDireccionPunto` los sueltan sin `Dispose` | patch |
+| 5 | Ninguna prueba comprueba que el Arranque pasa el geocodificador a la pantalla | low | Solo `PruebasPuntoLibre` lo inyecta en `Inicializar`; quitarlo de `Componer` no rompe nada | patch |
+| 6 | `ActualizarCapas` con la chincheta no se prueba (sigue al mapa y se oculta al cerrar) | low | Las pruebas copian la línea en `Recolocar()` | patch |
+| 7 | Pruebas engañosas: `ConArrastre…` comprueba la ficha con un detector suelto; `ConElMenuOUnaVentana…` no prueba la ventana de ubicación | low | El `Assert.IsFalse(FichaAbierta)` no puede fallar; falta el caso `ModalUbicacionAbierta` | patch |
+| 8 | Photon `/reverse` puede dar una calle lejana (río, pinar, mar) | maybe-false (medium si es cierto) | No hay radio ni comprobación de distancia; hay que medir en Sanlúcar | defer |
+| 9 | Sin vibración al dispararse la pulsación larga | low | No lo pide el spec; en Android es lo habitual | defer |
+| 10 | Entrada real de `CamaraMapa` (dedos y ratón) sin prueba automática | low | `Input` estático no se puede falsear en EditMode | defer (prueba en el móvil) |
+| 11 | Recentrado con la medida real de la hoja sin prueba | false | La captura `punto` lo comprueba: desvío 0,0 px | rechazado |
+| 12 | Título de coordenadas ambiguo («36,7781, -6,3515») | false | Es el formato que fija la intención | rechazado |
+| 13 | TalkBack no puede crear un punto libre | low | Un gesto de mantener pulsado no existe con TalkBack; la parte 2 (pegar coordenadas) da la alternativa | rechazado |
+| 14 | Sin calle se pierde el nombre del sitio y la localidad | low | La intención fija coordenadas sin calle | rechazado |
+| 15 | Sin mensaje cuando falla Photon | low | La intención fija que se queden las coordenadas | rechazado |
+| 16 | Texto de error genérico cambiado sin prueba | low | Ni la UI ni las pruebas lo usan | rechazado |
+| 17 | Pulsaciones repetidas lanzan varias peticiones | low | Cada una cancela la anterior; uso normal de una persona | rechazado |
+| 18 | `RecentrarFichaPendiente` compara por coordenada | low | Solo coincide si un punto cae exactamente en la coordenada de un lugar | rechazado |
+| 19 | Un tirón de más de 500 ms convierte un toque en pulsación larga | false | `Avanzar` solo corre con el dedo aún abajo (`Moved`/`Stationary`): el dedo ha estado ese tiempo | rechazado |
+| 20 | Pulsar junto al horizonte da un punto muy lejano | low | Es el suelo que hay bajo el dedo; caso raro | rechazado |
+| 21 | Ficheros del diff ausentes (assets, CLAUDE.md) | false | Excluidos a propósito del diff de revisión; están modificados en el árbol | rechazado |
 
 ## Verification
 

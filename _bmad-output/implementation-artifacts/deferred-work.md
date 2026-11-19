@@ -178,3 +178,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-ir-a-un-punto-libre-o-a-una-ubicacion-compartida.md`
   summary: Historia 2.5 (parte 3), «Compartir con» PriceMap. Intent-filters `ACTION_SEND` (text/plain) y `ACTION_VIEW` con esquema `geo` en el manifiesto (`Editor/PermisosUbicacionAndroid.cs`); Unity lee el intent al arrancar y al volver (`deepLinkActivated`/`absoluteURL` o plugin con `onNewIntent`) y lo pasa al analizador de la parte 2. Comprobación manual: compartir desde WhatsApp y Google Maps (también enlace corto).
   evidence: El usuario partió la 2.5 en tres el 19/11/2026; esta parte depende del analizador de la parte 2 y solo se prueba en el móvil.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-ir-a-un-punto-libre-o-a-una-ubicacion-compartida.md`
+  summary: Comprobar en Sanlúcar si Photon `/reverse` da calles lejanas al pulsar en el río, el pinar o la playa, y si hace falta un radio (`radius`) o un límite de distancia antes de usar la calle como título.
+  evidence: Sin verificar (maybe-false, medium si es cierto). El adaptador acepta la primera respuesta sin mirar su distancia al punto pulsado.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5-ir-a-un-punto-libre-o-a-una-ubicacion-compartida.md`
+  summary: Vibración corta al dispararse la pulsación larga (como hace Android), y probar en el móvil el gesto real (dedo quieto, temblor, dos dedos, ratón en PC).
+  evidence: La entrada de `CamaraMapa` lee `Input` estático y no se puede probar en EditMode; la vibración no estaba en el spec.

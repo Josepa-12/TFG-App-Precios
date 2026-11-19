@@ -80,6 +80,8 @@ namespace PriceMap.Tests.EditMode
             public Coordenada Centro => centro;
             public void OrientarNorte() { }
             public event Action<PuntoPantalla> Toque { add { } remove { } }
+            public event System.Action<PuntoPantalla> PulsacionLarga { add { } remove { } }
+            public Coordenada? Desproyectar(PuntoPantalla punto) => null;
         }
 
         class Repositorio : IRepositorioLugares
