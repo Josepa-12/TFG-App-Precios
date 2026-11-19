@@ -419,6 +419,34 @@ MonoBehaviour:
     m_Key: buscador.contraer
     m_Metadata:
       m_Items: []
+  - m_Id: 748322011734016
+    m_Key: buscador.sinresultados
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871360
+    m_Key: buscador.resultados.uno
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871361
+    m_Key: buscador.resultados.varios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871362
+    m_Key: buscador.borrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871363
+    m_Key: buscador.resultado.detalle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871364
+    m_Key: buscador.resultado.anuncio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871365
+    m_Key: buscador.resultado.anuncio.precio
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

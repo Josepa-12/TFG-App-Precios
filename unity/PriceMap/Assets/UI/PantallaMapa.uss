@@ -1117,3 +1117,115 @@
     color: var(--color-text);
     white-space: normal;
 }
+
+/* ───────── Búsqueda (historia 2.3) ───────── */
+
+/* La X del campo: solo con texto (la muestra el código); 36 dp de zona táctil dentro del campo de 46 */
+.buscador__borrar {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    margin-left: var(--espacio-1);
+    margin-right: -6px;
+    border-radius: 18px;
+    align-items: center;
+    justify-content: center;
+}
+
+.buscador__borrar-glifo {
+    width: 18px;
+    height: 18px;
+    color: var(--color-muted);
+}
+
+.buscador__resultados {
+    flex-shrink: 0;
+}
+
+/* Fila de resultado (prototipo .result): icono de 36, nombre, tipo y distancia debajo y el precio a la derecha */
+.buscador__resultado {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: 56px;
+    padding: var(--espacio-2) var(--espacio-1);
+    border-bottom-width: 1px;
+    border-color: var(--color-border);
+}
+
+.buscador__resultado-icono {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    border-radius: 18px;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-poi-talleres);
+}
+
+.buscador__resultado-glifo {
+    width: 19px;
+    height: 19px;
+    color: var(--color-poi-borde);
+}
+
+/* Lugares de la app: el logo de su tipo en acento sobre surface-2 */
+.buscador__resultado-icono--lugar { background-color: var(--color-surface-2); }
+.buscador__resultado-icono--lugar .buscador__resultado-glifo { color: var(--color-accent-text); }
+
+.buscador__resultado-icono--comer { background-color: var(--color-poi-comer); }
+.buscador__resultado-icono--rapida { background-color: var(--color-poi-rapida); }
+.buscador__resultado-icono--cafe { background-color: var(--color-poi-cafe); }
+.buscador__resultado-icono--bares { background-color: var(--color-poi-bares); }
+.buscador__resultado-icono--super { background-color: var(--color-poi-super); }
+.buscador__resultado-icono--tiendas { background-color: var(--color-poi-tiendas); }
+.buscador__resultado-icono--gasolina { background-color: var(--color-poi-gasolina); }
+.buscador__resultado-icono--carga { background-color: var(--color-poi-carga); }
+.buscador__resultado-icono--parking { background-color: var(--color-poi-parking); }
+.buscador__resultado-icono--hoteles { background-color: var(--color-poi-hoteles); }
+.buscador__resultado-icono--farmacia { background-color: var(--color-poi-farmacia); }
+.buscador__resultado-icono--salud { background-color: var(--color-poi-salud); }
+.buscador__resultado-icono--deporte { background-color: var(--color-poi-deporte); }
+.buscador__resultado-icono--parques { background-color: var(--color-poi-parques); }
+.buscador__resultado-icono--cultura { background-color: var(--color-poi-cultura); }
+.buscador__resultado-icono--bancos { background-color: var(--color-poi-bancos); }
+.buscador__resultado-icono--belleza { background-color: var(--color-poi-belleza); }
+.buscador__resultado-icono--talleres { background-color: var(--color-poi-talleres); }
+.buscador__resultado-icono--transporte { background-color: var(--color-poi-transporte); }
+.buscador__resultado-icono--educacion { background-color: var(--color-poi-educacion); }
+.buscador__resultado-icono--publico { background-color: var(--color-poi-publico); }
+.buscador__resultado-icono--culto { background-color: var(--color-poi-culto); }
+
+.buscador__resultado-textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0 var(--espacio-3);
+}
+
+.buscador__resultado-nombre {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}
+
+.buscador__resultado-detalle {
+    margin: 2px 0 0 0;
+    padding: 0;
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+.buscador__resultado-precio {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    color: var(--color-accent-text);
+}
+
+.buscador__sin-resultados {
+    margin: 0;
+    padding: 14px var(--espacio-1);
+    color: var(--color-muted);
+    white-space: normal;
+}

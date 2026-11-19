@@ -157,10 +157,26 @@ namespace PriceMap.UI
         public const string BuscadorSalud = "buscador.categoria.salud";
         public const string BuscadorCultura = "buscador.categoria.cultura";
 
+        /// <summary>Resultados del buscador (historia 2.3): sin resultados y cuántos hay (anuncio de TalkBack).</summary>
+        public const string BuscadorSinResultados = "buscador.sinresultados";
+        public const string BuscadorUnResultado = "buscador.resultados.uno";
+        /// <summary>{0} número de resultados ("12 resultados").</summary>
+        public const string BuscadorResultados = "buscador.resultados.varios";
+        /// <summary>La X del campo: "Borrar búsqueda".</summary>
+        public const string BuscadorBorrar = "buscador.borrar";
+        /// <summary>Segunda línea de cada resultado: {0} tipo, {1} distancia ("Clínica privada · 350 m").</summary>
+        public const string BuscadorDetalle = "buscador.resultado.detalle";
+        /// <summary>TalkBack de un resultado: {0} nombre, {1} tipo, {2} distancia ("Mercadona, supermercado, a 350 m").</summary>
+        public const string BuscadorAnuncioResultado = "buscador.resultado.anuncio";
+        /// <summary>Igual, con {3} el precio ("Clínica Areas, Clínica privada, a 350 m, desde 20 €").</summary>
+        public const string BuscadorAnuncioResultadoPrecio = "buscador.resultado.anuncio.precio";
+
         public static readonly string[] Todas =
         {
             BuscadorCampo, BuscadorCerca, BuscadorExpandir, BuscadorContraer, BuscadorComer, BuscadorBares, BuscadorSuper, BuscadorFarmacia,
             BuscadorGasolina, BuscadorDeporte, BuscadorSalud, BuscadorCultura,
+            BuscadorSinResultados, BuscadorUnResultado, BuscadorResultados, BuscadorBorrar, BuscadorDetalle,
+            BuscadorAnuncioResultado, BuscadorAnuncioResultadoPrecio,
             FichaAnuncioConcepto, FichaAnuncioUnidad, FichaAnuncioOrigenWeb, FichaAnuncioFrase,
             FichaAnuncioVariante, FichaAnuncioVarianteAhora,
             FichaAhora, VarianteHorario, VarianteDiasSeguidos, VarianteDiasLista, VarianteConBono,

@@ -23,6 +23,7 @@ namespace PriceMap.UI
         ServicioTema tema;
         ServicioFiltro filtro;
         ServicioUbicacion ubicacion;
+        ServicioBusqueda busqueda;
         VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo, columnaControles;
         PildoraPrecios pildora;
         MenuPrecios menu;
@@ -54,23 +55,26 @@ namespace PriceMap.UI
         /// <param name="filtro">Filtro "Precios"; sin él no hay píldora y se ven todos los lugares.</param>
         /// <param name="ubicacion">Posición del usuario; sin ella no hay botón de ubicación ni círculo.</param>
         /// <param name="accesibilidadSistema">Ajustes de accesibilidad del sistema; sin él, animaciones normales.</param>
+        /// <param name="busqueda">Buscador de lugares y puntos de interés (historia 2.3); sin él, el campo no encuentra nada.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
-            ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null)
+            ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
-            ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null)
+            ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
+            ServicioBusqueda busqueda = null)
         {
             this.mapa = mapa;
             this.tema = tema;
             this.filtro = filtro;
             this.ubicacion = ubicacion;
+            this.busqueda = busqueda;
             this.accesibilidadSistema = accesibilidadSistema;
             this.ahora = ahora;
             this.mapa.Centrar(VistaInicial);
@@ -363,6 +367,8 @@ namespace PriceMap.UI
             huecoBuscador.Add(buscador);
             SombraSuave.Poner(buscador);
             buscador.Desplegando += AlDesplegarBuscador;
+            buscador.TextoCambiado += Buscar;
+            buscador.ResultadoElegido += ElegirResultado;
             huecoBuscador.RegisterCallback<GeometryChangedEvent>(_ => MedirBuscador());
             buscador.Linea.RegisterCallback<GeometryChangedEvent>(_ => ColocarAtribucion());
             LeerAccesibilidadSistema();
@@ -382,6 +388,8 @@ namespace PriceMap.UI
             Func<bool> enHoja = () => BuscadorAbierto && !ModalUbicacionAbierta;
             accesibilidad.Boton(buscador.Campo, () => Textos.T(ClavesTexto.BuscadorCampo), () => buscador.Campo.Focus(),
                 visible: enHoja, enModal: true);
+            accesibilidad.Boton(buscador.Borrar, () => Textos.T(ClavesTexto.BuscadorBorrar), BorrarBusqueda,
+                visible: () => enHoja() && buscador.HayTexto, enModal: true);
             accesibilidad.Boton(buscador.Expandir, () => Textos.T(ClavesTexto.BuscadorExpandir), ExpandirBuscador,
                 visible: () => enHoja() && ExpandirEnRecorrido, enModal: true);
             accesibilidad.Boton(buscador.Contraer, () => Textos.T(ClavesTexto.BuscadorContraer), PlegarBuscador,
@@ -389,9 +397,96 @@ namespace PriceMap.UI
             foreach (var c in buscador.Chips)
             {
                 var chip = c;
-                accesibilidad.Texto(chip, () => chip.Q<Label>().text, enHoja, enModal: true);
+                accesibilidad.Texto(chip, () => chip.Q<Label>().text, () => enHoja() && !buscador.MostrandoResultados, enModal: true);
             }
-            accesibilidad.Texto(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, enHoja, enModal: true);
+            accesibilidad.Texto(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, () => enHoja() && !buscador.MostrandoResultados, enModal: true);
+            accesibilidad.Texto(buscador.SinResultados, () => buscador.SinResultados.text, () => enHoja() && buscador.SinResultadosVisible, enModal: true);
+            // Las filas de los resultados se declaran al pintarlas (DeclararResultadosEnTalkBack), detrás de todo esto
+        }
+
+        // ───────────────────────── Búsqueda (historia 2.3) ─────────────────────────
+
+        IReadOnlyList<ResultadoBusqueda> ultimosResultados; // lo último que se anunció (null sin búsqueda)
+
+        /// <summary>
+        /// Punto de cercanía de la búsqueda: la posición del usuario o, si no la hay, el centro del mapa.
+        /// </summary>
+        public Coordenada PuntoCercania() => ubicacion?.Posicion ?? mapa.Centro;
+
+        /// <summary>
+        /// Busca el texto del campo (a cada tecla: todo es local) y pinta los resultados en la hoja. TalkBack: cada
+        /// fila es un botón y, si los resultados cambian, se anuncia "N resultados" o "No hay resultados".
+        /// </summary>
+        public void Buscar(string texto)
+        {
+            if (buscador == null) return;
+            IReadOnlyList<ResultadoBusqueda> resultados = null;
+            if (busqueda != null && buscador.EnBusqueda) resultados = busqueda.Buscar(texto, PuntoCercania());
+            buscador.MostrarResultados(resultados);
+
+            string anuncio = null;
+            if (!buscador.MostrandoResultados) ultimosResultados = null;
+            else if (BuscadorAbierto && modalBuscador) // solo cuenta como anunciado si de verdad se puede anunciar
+            {
+                var actuales = resultados ?? Array.Empty<ResultadoBusqueda>();
+                if (ultimosResultados == null || !MismosResultados(ultimosResultados, actuales)) anuncio = AnuncioResultados(actuales.Count);
+                ultimosResultados = actuales;
+            }
+            DeclararResultadosEnTalkBack(anuncio);
+        }
+
+        /// <summary>"No hay resultados", "1 resultado" o "N resultados".</summary>
+        public static string AnuncioResultados(int n) =>
+            n == 0 ? Textos.T(ClavesTexto.BuscadorSinResultados)
+            : n == 1 ? Textos.T(ClavesTexto.BuscadorUnResultado)
+            : Textos.T(ClavesTexto.BuscadorResultados, n.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        static bool MismosResultados(IReadOnlyList<ResultadoBusqueda> a, IReadOnlyList<ResultadoBusqueda> b)
+        {
+            if (a.Count != b.Count) return false;
+            for (int i = 0; i < a.Count; i++)
+                if (a[i].Lugar != b[i].Lugar || a[i].Punto != b[i].Punto) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// TalkBack: da de baja las filas anteriores y declara las nuevas como botones ("Clínica Areas, Clínica privada,
+        /// a 350 m, desde 20 €"). Con la hoja desplegada (modal) rehace el recorrido, deja el foco en el campo y anuncia.
+        /// </summary>
+        void DeclararResultadosEnTalkBack(string anuncio)
+        {
+            if (accesibilidad == null) return;
+            accesibilidad.QuitarControles(buscador.Resultados);
+            foreach (var f in buscador.Filas)
+            {
+                var fila = f;
+                accesibilidad.Boton(fila, () => fila.Anuncio, () => ElegirResultado(fila.Resultado),
+                    visible: () => BuscadorAbierto && !ModalUbicacionAbierta, enModal: true, grupo: buscador.Resultados);
+            }
+            if (!BuscadorAbierto || !modalBuscador) return; // plegada: entran en el recorrido al desplegarla
+            accesibilidad.Reconstruir();
+            if (anuncio != null) accesibilidad.PedirFoco(buscador.Campo, anuncio: anuncio);
+            else if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
+        }
+
+        /// <summary>
+        /// Toque en un resultado: un lugar abre su ficha (que centra el mapa y pliega la hoja); un punto de interés
+        /// centra el mapa en él y pliega la hoja (su ficha llega en la 2.5).
+        /// </summary>
+        public void ElegirResultado(ResultadoBusqueda resultado)
+        {
+            if (resultado == null || buscador == null || ModalUbicacionAbierta) return;
+            if (resultado.Tipo == TipoResultado.Lugar) { AbrirFicha(resultado.Lugar); return; }
+            mapa.Centrar(resultado.Posicion);
+            PlegarBuscador();
+        }
+
+        /// <summary>La X del campo ("Borrar búsqueda" en TalkBack): lo vacía, vuelven las categorías y el foco va al campo.</summary>
+        public void BorrarBusqueda()
+        {
+            if (buscador == null) return;
+            buscador.BorrarTexto();
+            accesibilidad?.PedirFoco(buscador.Campo);
         }
 
         // "Expandir" solo está en el recorrido con el lector y la hoja desplegada sin abrir del todo
@@ -492,6 +587,8 @@ namespace PriceMap.UI
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             CerrarFicha();
             SeguirModalBuscador(enfocarCapsula: false); // TalkBack: la hoja desplegada es modal
+            // La búsqueda guardada al plegar se rehace: el usuario, el mapa o los puntos cargados pueden haber cambiado
+            if (buscador != null && buscador.EnBusqueda) Buscar(buscador.Campo.value);
         }
 
         /// <summary>
@@ -775,7 +872,12 @@ namespace PriceMap.UI
             if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
             if (ficha != null && mapa != null) mapa.Toque -= AlTocarMapa;
-            if (buscador != null) buscador.Desplegando -= AlDesplegarBuscador;
+            if (buscador != null)
+            {
+                buscador.Desplegando -= AlDesplegarBuscador;
+                buscador.TextoCambiado -= Buscar;
+                buscador.ResultadoElegido -= ElegirResultado;
+            }
             AssistiveSupport.screenReaderStatusChanged -= AlCambiarLector;
             AccessibilitySettings.fontScaleChanged -= AlCambiarEscalaFuente;
             if (raiz != null) EscalaFuente.Olvidar(raiz);
@@ -816,6 +918,8 @@ namespace PriceMap.UI
         public HojaBuscador Buscador => buscador;
         /// <summary>Ajustes de accesibilidad del sistema que recibió al iniciarse (para las pruebas del arranque).</summary>
         internal IAccesibilidadSistema AccesibilidadSistema => accesibilidadSistema;
+        /// <summary>Buscador que recibió al iniciarse (para las pruebas y la captura); null sin él.</summary>
+        public ServicioBusqueda Busqueda => busqueda;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;

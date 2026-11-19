@@ -155,6 +155,7 @@ namespace PriceMap.Arranque
             yield return Ficha();
             yield return Variantes();
             yield return Buscador();
+            yield return Busqueda();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -718,6 +719,70 @@ namespace PriceMap.Arranque
             }
             finally
             {
+                buscador.Plegar();
+                if (tema.Actual != temaAntes) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+        }
+
+        /// <summary>
+        /// Historia 2.3 (parte 1), capturas "busqueda" (tema claro) y "busqueda-oscuro": la hoja abierta del todo con
+        /// "clinica" escrito y sus resultados. Comprueba que el primero es un lugar de la app con "Clínica", que no hay
+        /// más de 20, que los chips no se ven y que la X sí; registra qué encuentra "mercadona" con las teselas
+        /// cargadas. Al final, atrás pliega la hoja sin borrar el texto y la X lo vacía. Deja el tema como estaba.
+        /// </summary>
+        IEnumerator Busqueda()
+        {
+            var buscador = pantalla != null ? pantalla.Buscador : null;
+            if (buscador == null) { Debug.LogError("PriceMap: no hay buscador para la búsqueda."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var temaAntes = tema.Actual;
+            try
+            {
+                mapa.Centrar(PantallaMapa.VistaInicial);
+                yield return new WaitForSeconds(2f); // teselas de la vista inicial cargadas: sus puntos de interés
+                if (pantalla.Busqueda == null) { Debug.LogError("PriceMap: la pantalla no ha recibido el ServicioBusqueda."); yield break; }
+                var mercadona = pantalla.Busqueda.Buscar("mercadona", pantalla.PuntoCercania());
+                Debug.Log($"PriceMap: \"mercadona\" encuentra {mercadona.Count}: " +
+                          string.Join("; ", mercadona.Take(5).Select(r => $"{r.Nombre} ({r.Tipo}, {r.Categoria}, {r.Metros:F0} m)")));
+
+                buscador.Abrir();
+                buscador.Campo.value = "clinica"; // como el teclado: pasa por el aviso de cambio del campo
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                var filas = buscador.Filas;
+                int filasAntes = filas.Count; // Filas es la lista viva: se guarda cuántas había
+                Debug.Log($"PriceMap: \"clinica\" da {filas.Count} resultados: " +
+                          string.Join("; ", filas.Take(6).Select(f => $"{f.Nombre.text} | {f.Detalle.text} | {f.Precio?.text ?? "-"} | TalkBack \"{f.Anuncio}\"")));
+                if (filas.Count == 0) Debug.LogError("PriceMap: \"clinica\" no encuentra nada.");
+                else if (filas[0].Resultado.Tipo != TipoResultado.Lugar || !filas[0].Resultado.Nombre.StartsWith("Clínica"))
+                    Debug.LogError($"PriceMap: el primer resultado de \"clinica\" es {filas[0].Resultado} y no un lugar \"Clínica …\".");
+                if (filas.Count > ServicioBusqueda.MaximoResultados) Debug.LogError($"PriceMap: {filas.Count} resultados (máximo {ServicioBusqueda.MaximoResultados}).");
+                if (buscador.FilaChips.resolvedStyle.display != DisplayStyle.None) Debug.LogError("PriceMap: con texto se siguen viendo los chips.");
+                if (buscador.Borrar.resolvedStyle.display == DisplayStyle.None) Debug.LogError("PriceMap: con texto no se ve la X.");
+                if (filas.Count > 0 && filas[0].worldBound.height < 55.5f) Debug.LogError($"PriceMap: la fila de resultado mide {filas[0].worldBound.height:F1} dp (mínimo 56).");
+
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                yield return Capturar("busqueda");
+                yield return new WaitForSeconds(1f);
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return Capturar("busqueda-oscuro");
+                yield return new WaitForSeconds(1f);
+
+                pantalla.Atras();
+                yield return null;
+                if (buscador.Abierta) Debug.LogError("PriceMap: el botón atrás no ha plegado la hoja con resultados.");
+                if (buscador.Campo.value != "clinica" || buscador.Filas.Count != filasAntes)
+                    Debug.LogError($"PriceMap: al plegar la hoja se ha perdido la búsqueda (\"{buscador.Campo.value}\", {buscador.Filas.Count} filas).");
+                pantalla.BorrarBusqueda();
+                yield return null;
+                if (buscador.Campo.value != "" || buscador.MostrandoResultados) Debug.LogError("PriceMap: la X no ha vaciado la búsqueda.");
+            }
+            finally
+            {
+                buscador.BorrarTexto();
                 buscador.Plegar();
                 if (tema.Actual != temaAntes) tema.Alternar();
                 if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);

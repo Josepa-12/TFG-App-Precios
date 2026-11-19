@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using PriceMap.Aplicacion;
 using PriceMap.Dominio;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,7 +13,9 @@ namespace PriceMap.UI
     /// que sigue al dedo (FisicaHoja). La cápsula y la hoja son el mismo elemento: con la fracción abierta k, la forma
     /// se mezcla con s = min(1, k / 0,15) (márgenes de 12/12/20 a 0, esquinas de píldora a 24 arriba y 0 abajo, fondo
     /// de la cápsula a surface opaco). Antes de escribir muestra los chips de categorías y "Encuentra cerca", que aún
-    /// no hacen nada (historia 2.4); la búsqueda es de la 2.3.
+    /// no hacen nada (historia 2.4). Con texto (historia 2.3) muestra en su lugar los resultados que le da
+    /// PantallaMapa (o "No hay resultados") y una X en el campo que lo vacía. Plegarla no borra ni el texto ni los
+    /// resultados: al volver a abrirla siguen ahí.
     ///
     /// Un movimiento de menos de 6 dp fuera de la lista es un toque: abre la hoja del todo y enfoca el campo (sale el
     /// teclado). Uno mayor es un arrastre: captura el puntero (el campo no recibe el soltar y no saca el teclado).
@@ -48,6 +51,7 @@ namespace PriceMap.UI
         readonly FisicaHoja fisica = new FisicaHoja();
         readonly List<VisualElement> chips = new List<VisualElement>();
         readonly List<VisualElement> glifos = new List<VisualElement>();
+        readonly List<FilaResultado> filas = new List<FilaResultado>();
 
         float altoPanel = float.NaN;     // alto del hueco (dp); NaN hasta la primera disposición
         float seguraArriba, seguraAbajo; // zonas seguras (dp) que pone PantallaMapa
@@ -58,6 +62,12 @@ namespace PriceMap.UI
         /// "Precios" (nunca están abiertos a la vez).
         /// </summary>
         public event Action Desplegando;
+
+        /// <summary>Cambia el texto del campo (al teclear, con la X o con Escribir): PantallaMapa busca otra vez.</summary>
+        public event Action<string> TextoCambiado;
+
+        /// <summary>Se ha tocado un resultado de la lista.</summary>
+        public event Action<ResultadoBusqueda> ResultadoElegido;
 
         public VisualElement AsaZona { get; }
         public VisualElement Asa { get; }
@@ -71,8 +81,26 @@ namespace PriceMap.UI
         public ScrollView Panel { get; }
         /// <summary>Chips de categorías en el orden de Categorias.</summary>
         public IReadOnlyList<VisualElement> Chips => chips;
+        /// <summary>Fila que contiene los chips (se oculta mientras se busca).</summary>
+        public VisualElement FilaChips { get; }
         /// <summary>Entrada "Encuentra cerca".</summary>
         public VisualElement Cerca { get; }
+        /// <summary>La X del campo: se ve cuando hay texto y lo vacía.</summary>
+        public VisualElement Borrar { get; }
+        /// <summary>Lista de resultados (dentro del panel, en lugar de los chips mientras se busca).</summary>
+        public VisualElement Resultados { get; }
+        /// <summary>"No hay resultados".</summary>
+        public Label SinResultados { get; }
+        /// <summary>Filas de los resultados que se ven, en orden.</summary>
+        public IReadOnlyList<FilaResultado> Filas => filas;
+        /// <summary>El campo tiene texto (entonces se ve la X).</summary>
+        public bool HayTexto => !string.IsNullOrEmpty(Campo.value);
+        /// <summary>El texto tiene letras o números: se muestran resultados en lugar de las categorías.</summary>
+        public bool EnBusqueda => ReglaBusqueda.Normalizar(Campo.value).Length > 0;
+        /// <summary>Se ve "No hay resultados".</summary>
+        public bool SinResultadosVisible { get; private set; }
+        /// <summary>Se ven los resultados (o "No hay resultados") en lugar de los chips y "Encuentra cerca".</summary>
+        public bool MostrandoResultados { get; private set; }
         /// <summary>
         /// "Expandir" y "Contraer" de TalkBack (historia 2.2, parte 2): no se ven ni recogen toques; solo dan el marco
         /// de su nodo (las dos mitades de la zona del tirador).
@@ -133,6 +161,14 @@ namespace PriceMap.UI
             Campo.AddToClassList("t-body");
             Campo.textEdition.placeholder = this.textos(ClavesTexto.BuscadorCampo);
             CajaCampo.Add(Campo);
+            Campo.RegisterValueChangedCallback(_ => AlCambiarTexto());
+
+            // La X que vacía el campo (historia 2.3): solo con texto
+            Borrar = new VisualElement { name = "buscador-borrar", pickingMode = PickingMode.Position };
+            Borrar.AddToClassList("buscador__borrar");
+            Borrar.Add(Glifo(IconosLugar.Borrar, "buscador-borrar-glifo", "buscador__borrar-glifo"));
+            Borrar.AddManipulator(new Clickable(BorrarTexto));
+            CajaCampo.Add(Borrar);
 
             // Avatar genérico: captura el toque (no despliega la hoja) y aún no hace nada (perfil, historia 3.5)
             Avatar = new VisualElement { name = "buscador-avatar", pickingMode = PickingMode.Position };
@@ -150,7 +186,7 @@ namespace PriceMap.UI
             Panel.AddToClassList("buscador__panel");
             Interior.Add(Panel);
 
-            var filaChips = Nuevo("buscador-chips", "buscador__chips");
+            var filaChips = FilaChips = Nuevo("buscador-chips", "buscador__chips");
             Panel.Add(filaChips);
             foreach (var categoria in Categorias)
             {
@@ -176,6 +212,17 @@ namespace PriceMap.UI
             textoCerca.AddToClassList("t-label");
             Cerca.Add(textoCerca);
             Panel.Add(Cerca);
+
+            // Resultados de la búsqueda (historia 2.3): en lugar de los chips y "Encuentra cerca" mientras hay texto
+            Resultados = Nuevo("buscador-resultados", "buscador__resultados");
+            Panel.Add(Resultados);
+            SinResultados = new Label(this.textos(ClavesTexto.BuscadorSinResultados)) { name = "buscador-sin-resultados", pickingMode = PickingMode.Ignore };
+            SinResultados.AddToClassList("buscador__sin-resultados");
+            SinResultados.AddToClassList("t-body");
+            Panel.Add(SinResultados);
+            // Las filas se crean al buscar: la escala de fuente se les aplica al disponerse
+            Resultados.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(Resultados, EscalaFuente.Sistema));
+            MostrarResultados(null);
 
             // Gestos: el dedo baja en la hoja (fase de bajada, antes que el campo y la lista). Mover, soltar y cancelar
             // se escuchan en la raíz del panel mientras dura el gesto: el dedo puede salir de la cápsula (56 dp) antes
@@ -284,15 +331,66 @@ namespace PriceMap.UI
             Aplicar();
         }
 
-        /// <summary>Pliega la hoja en la cápsula: quita el foco del campo (y el teclado) y lo vacía.</summary>
+        /// <summary>
+        /// Pliega la hoja en la cápsula: quita el foco del campo (y el teclado). El texto y los resultados se quedan
+        /// (decisión del 19/11/2026): al volver a abrirla siguen ahí.
+        /// </summary>
         public void Plegar()
         {
             SoltarPuntero();
             fisica.Cancelar();
             fisica.Poner(0f);
             QuitarFoco();
-            Campo.SetValueWithoutNotify(string.Empty);
             Aplicar();
+        }
+
+        // ───────────────────────── Búsqueda (historia 2.3) ─────────────────────────
+
+        /// <summary>Pone ese texto en el campo y avisa como si se hubiera tecleado (TextoCambiado).</summary>
+        public void Escribir(string texto)
+        {
+            texto ??= string.Empty;
+            if (Campo.value == texto) return;
+            Campo.SetValueWithoutNotify(texto);
+            AlCambiarTexto();
+        }
+
+        /// <summary>La X: vacía el campo; vuelven las categorías.</summary>
+        public void BorrarTexto() => Escribir(string.Empty);
+
+        void AlCambiarTexto()
+        {
+            Borrar.style.display = HayTexto ? DisplayStyle.Flex : DisplayStyle.None;
+            TextoCambiado?.Invoke(Campo.value);
+        }
+
+        /// <summary>
+        /// Pinta los resultados. Sin texto que buscar (EnBusqueda falso) vuelven los chips y "Encuentra cerca"; con
+        /// texto, las filas o, si no hay ninguna, "No hay resultados". La lista vuelve arriba.
+        /// </summary>
+        public void MostrarResultados(IReadOnlyList<ResultadoBusqueda> resultados)
+        {
+            EscalaFuente.Olvidar(Resultados); // las filas viejas se van: sus tamaños guardados también
+            Resultados.Clear();
+            filas.Clear();
+            MostrandoResultados = EnBusqueda;
+            if (MostrandoResultados && resultados != null)
+                foreach (var r in resultados)
+                {
+                    var fila = new FilaResultado(r, x => ResultadoElegido?.Invoke(x), textos);
+                    // Si la lista mide lo mismo que antes, Resultados no recibe GeometryChanged: cada fila se escala sola
+                    fila.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(fila, EscalaFuente.Sistema));
+                    filas.Add(fila);
+                    Resultados.Add(fila);
+                }
+            SinResultadosVisible = MostrandoResultados && filas.Count == 0;
+            var categorias = MostrandoResultados ? DisplayStyle.None : DisplayStyle.Flex;
+            FilaChips.style.display = categorias;
+            Cerca.style.display = categorias;
+            Resultados.style.display = MostrandoResultados ? DisplayStyle.Flex : DisplayStyle.None;
+            SinResultados.style.display = SinResultadosVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            Borrar.style.display = HayTexto ? DisplayStyle.Flex : DisplayStyle.None;
+            Panel.scrollOffset = Vector2.zero;
         }
 
         /// <summary>Muestra u oculta la cápsula (oculta mientras la ficha está abierta).</summary>
@@ -350,10 +448,7 @@ namespace PriceMap.UI
                 EnfocarCampo();
             }
             else if (r.FueArrastre && r.Destino == DestinoHoja.Plegada)
-            {
-                QuitarFoco();
-                Campo.SetValueWithoutNotify(string.Empty);
-            }
+                QuitarFoco(); // el texto y los resultados se quedan
             Aplicar();
             return r;
         }
@@ -364,7 +459,8 @@ namespace PriceMap.UI
             if (fisica.Pulsado && e.pointerId == puntero) return;
             if (e.pointerType == UnityEngine.UIElements.PointerType.mouse && e.button != 0) return;
             var objetivo = e.target as VisualElement;
-            if (Dentro(objetivo, Avatar)) return; // el avatar no despliega ni arrastra
+            // El avatar y la X (que se ve también en la cápsula plegada) no despliegan ni arrastran
+            if (Dentro(objetivo, Avatar) || Dentro(objetivo, Borrar)) return;
             // Un gesto anterior que no llegó a soltarse (p. ej. otro dedo) no bloquea la hoja: empieza uno nuevo
             if (fisica.Pulsado) { SoltarPuntero(); fisica.Cancelar(); }
             puntero = e.pointerId;
@@ -434,6 +530,7 @@ namespace PriceMap.UI
         public void Repintar()
         {
             foreach (var g in glifos) g.MarkDirtyRepaint();
+            foreach (var f in filas) f.Repintar();
         }
 
         VisualElement Glifo(string glifo, string nombre, string clase)

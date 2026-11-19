@@ -129,6 +129,13 @@ namespace PriceMap.EditorTools
             [ClavesTexto.BuscadorDeporte] = "Gimnasios",
             [ClavesTexto.BuscadorSalud] = "Salud",
             [ClavesTexto.BuscadorCultura] = "Cultura",
+            [ClavesTexto.BuscadorSinResultados] = "No hay resultados",
+            [ClavesTexto.BuscadorUnResultado] = "1 resultado",
+            [ClavesTexto.BuscadorResultados] = "{0} resultados",
+            [ClavesTexto.BuscadorBorrar] = "Borrar búsqueda",
+            [ClavesTexto.BuscadorDetalle] = "{0} · {1}",
+            [ClavesTexto.BuscadorAnuncioResultado] = "{0}, {1}, a {2}",
+            [ClavesTexto.BuscadorAnuncioResultadoPrecio] = "{0}, {1}, a {2}, {3}",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

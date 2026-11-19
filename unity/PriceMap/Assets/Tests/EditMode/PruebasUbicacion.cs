@@ -440,6 +440,18 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void ConPosicionLaBusquedaMideDesdeElUsuarioYNoDesdeElCentro()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Activa, Usuario, 90f);
+            var m = Pantalla(gps);
+            Assert.AreNotEqual(Usuario, m.mapa.Centro, "El centro del mapa no es el usuario.");
+            Assert.AreEqual(Usuario, m.pantalla.PuntoCercania(), "Con posición: la del usuario (historia 2.3).");
+            gps.Poner(EstadoUbicacion.Denegado);
+            Assert.AreEqual(m.mapa.Centro, m.pantalla.PuntoCercania(), "Sin posición: el centro del mapa.");
+        }
+
+        [Test]
         public void DenegadoElMapaSigueEnLaVistaInicialSinCirculoYTocarSacaElAviso()
         {
             var gps = new UbicacionFalsa();

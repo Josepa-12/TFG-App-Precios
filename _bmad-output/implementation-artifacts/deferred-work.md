@@ -136,3 +136,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2b-talkback-y-reducir-animaciones-del-buscador.md`
   summary: Probar en un móvil con TalkBack la hoja del buscador (abrir desde la cápsula, recorrido, Expandir/Contraer y botón atrás) y el ajuste de Android «quitar animaciones».
   evidence: En EditMode, TalkBack se simula con LectorForzado y la escala de animaciones con un puerto falso.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-buscar-lugares-puntos-de-interes-y-direcciones.md`
+  summary: Historia 2.3 (parte 2), direcciones con Photon. Un puerto IGeocodificador con su adaptador PriceMap.Adaptadores.Busqueda (GeocodificadorPhoton con UnityWebRequest y LecturaPhoton para leer el GeoJSON). La URL es https://photon.komoot.io/api/?q=&lat=&lon=&limit=8&lang=default, sin bbox (decisión del 19/11: todo el mundo, con prioridad por cercanía) y con User-Agent "PriceMap/1.0". Espera 350 ms tras la última tecla, con un mínimo de 3 caracteres, y cancela la petición anterior. Las direcciones salen después de los lugares y de los puntos; el botón «Buscar como dirección» va junto a «No hay resultados»; sin conexión se avisa «Las direcciones necesitan conexión». Los errores van como Resultado<T>, y las direcciones no se guardan (FR17). Matriz: dirección "calle ancha 10", sin conexión y tecleo rápido (una sola petición).
+  evidence: El usuario partió la 2.3 el 19/11/2026 porque su spec pasaba de 1.600 tokens.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-buscar-lugares-puntos-de-interes-y-direcciones.md`
+  summary: Comprobar en el móvil que arrastrar la lista de resultados no elige un resultado sin querer (el Clickable de FilaResultado dentro del ScrollView).
+  evidence: Sin verificar (maybe-false, medium si es cierto). Se resuelve probando en un móvil real a desplazar la lista y soltar sobre una fila.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-buscar-lugares-puntos-de-interes-y-direcciones.md`
+  summary: Comprobar con TalkBack real que escribir deprisa no encadena anuncios "N resultados" ni corta el eco del teclado.
+  evidence: Sin verificar (maybe-false, medium si es cierto). Solo se anuncia si cambian los resultados, pero el foco se pide a cada tecla con el lector activo; se resuelve en el móvil.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-buscar-lugares-puntos-de-interes-y-direcciones.md`
+  summary: Añadir a PruebasContraste los iconos de los resultados (glifo sobre los fondos --color-poi-* y accent sobre surface-2) y el texto muted en oscuro.
+  evidence: Sin verificar (maybe-false, medium si es cierto). Se resuelve midiendo el contraste de esos pares de tokens en claro y oscuro.

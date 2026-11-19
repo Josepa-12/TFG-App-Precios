@@ -71,8 +71,12 @@ namespace PriceMap.UI
             // para el avatar (Lucide "user")
             [Lupa] = "<circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/>",
             [Avatar] = "<circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/>",
+            // La X que vacía el campo del buscador (historia 2.3; Lucide "x")
+            [Borrar] = "<path d=\"M18 6 6 18M6 6l12 12\"/>",
         };
 
+        /// <summary>Glifo de la X que borra la búsqueda.</summary>
+        public const string Borrar = "borrar";
         /// <summary>Glifo de la lupa del campo del buscador.</summary>
         public const string Lupa = "lupa";
         /// <summary>Glifo del avatar genérico de la cápsula del buscador.</summary>

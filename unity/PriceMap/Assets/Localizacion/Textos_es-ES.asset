@@ -427,6 +427,34 @@ MonoBehaviour:
     m_Localized: Contraer
     m_Metadata:
       m_Items: []
+  - m_Id: 748322011734016
+    m_Localized: No hay resultados
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871360
+    m_Localized: 1 resultado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871361
+    m_Localized: '{0} resultados'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871362
+    m_Localized: "Borrar b\xFAsqueda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871363
+    m_Localized: "{0} \xB7 {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871364
+    m_Localized: '{0}, {1}, a {2}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871365
+    m_Localized: '{0}, {1}, a {2}, {3}'
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []
