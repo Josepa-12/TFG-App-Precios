@@ -607,8 +607,271 @@ namespace PriceMap.Tests.EditMode
             var recorrido = pantalla.Accesibilidad.Recorrido();
             foreach (var c in HojaBuscador.Categorias) CollectionAssert.DoesNotContain(recorrido, T(HojaBuscador.ClaveCategoria(c)));
             CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorCerca));
-            foreach (var f in filasBusqueda) CollectionAssert.DoesNotContain(recorrido, f.Anuncio);
+            // Las filas de Salud ya están en el recorrido (2.4, parte 3) y algunas repiten texto con las de la búsqueda:
+            // de las viejas no queda ninguna (solo hay una entrada por fila nueva)
+            var actuales = hoja.Filas.Select(f => f.Anuncio).ToList();
+            foreach (var f in filasBusqueda)
+                Assert.AreEqual(actuales.Count(a => a == f.Anuncio), recorrido.Count(e => e == f.Anuncio), f.Anuncio);
             CollectionAssert.Contains(recorrido, T(ClavesTexto.BuscadorCampo));
+        }
+
+        // ───────────────────────── TalkBack de la lista (historia 2.4, parte 3) ─────────────────────────
+
+        /// <summary>Lo que se pide anunciar mientras se hace eso.</summary>
+        static List<string> Oir(Action accion)
+        {
+            var oidos = new List<string>();
+            Action<string> oir = oidos.Add;
+            AccesibilidadPantalla.AnuncioPedido += oir;
+            try { accion(); }
+            finally { AccesibilidadPantalla.AnuncioPedido -= oir; }
+            return oidos;
+        }
+
+        static string Nombre(CategoriaPoi c) => T(HojaBuscador.ClaveCategoria(c));
+
+        void ConPosicion()
+        {
+            gps.Estado = EstadoUbicacion.Activa;
+            gps.Posicion = Cabildo;
+        }
+
+        /// <summary>Con posición, lector activo, jerarquía real y la hoja abierta con TalkBack (con las categorías).</summary>
+        void AbrirConJerarquiaReal()
+        {
+            ConPosicion();
+            AccesibilidadPantalla.LectorForzado = () => true;
+            pantalla.Accesibilidad.Reconstruir();
+            if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            pantalla.AbrirBuscadorConLector();
+        }
+
+        [Test]
+        public void ConTalkBackLosChipsYEncuentraCercaSonBotones()
+        {
+            AbrirConJerarquiaReal();
+            foreach (var c in HojaBuscador.Categorias)
+                Assert.AreEqual(AccessibilityRole.Button, NodoTalkBack(Nombre(c)).role, Nombre(c));
+            Assert.AreEqual(AccessibilityRole.Button, NodoTalkBack(T(ClavesTexto.BuscadorCerca)).role);
+        }
+
+        [Test]
+        public void ElDobleToqueEnUnChipEnsenaSuListaAnunciaYEnfocaElTitulo()
+        {
+            AbrirConJerarquiaReal();
+            var oidos = Oir(() => ActivarTalkBack(NodoTalkBack(Nombre(CategoriaPoi.Salud))));
+            Assert.IsTrue(pantalla.CercaActiva);
+            Assert.AreEqual(CategoriaPoi.Salud, pantalla.CategoriaActiva);
+            Assert.Greater(hoja.Filas.Count, 1);
+            string esperado = "Salud cerca, " + PantallaMapa.AnuncioResultados(hoja.Filas.Count);
+            StringAssert.EndsWith(" resultados", esperado);
+            CollectionAssert.Contains(oidos, esperado);
+            Assert.AreSame(hoja.TituloCerca, pantalla.Accesibilidad.Enfocado, "El foco va al título.");
+            var titulo = NodoTalkBack("Salud cerca");
+            Assert.AreEqual(AccessibilityRole.StaticText, titulo.role, "El título es un texto.");
+            Assert.AreEqual(AccessibilityRole.Button, NodoTalkBack(T(ClavesTexto.BuscadorQuitarCategoria)).role);
+        }
+
+        [Test]
+        public void ElDobleToqueEnEncuentraCercaEnsenaTodoYAnuncia()
+        {
+            AbrirConJerarquiaReal();
+            var oidos = Oir(() => ActivarTalkBack(NodoTalkBack(T(ClavesTexto.BuscadorCerca))));
+            Assert.IsTrue(pantalla.CercaActiva);
+            Assert.IsNull(pantalla.CategoriaActiva);
+            CollectionAssert.Contains(oidos, "Cerca, " + PantallaMapa.AnuncioResultados(hoja.Filas.Count));
+            Assert.AreSame(hoja.TituloCerca, pantalla.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void ConTalkBackElChipAnunciaCuantosHayYEnfocaElTitulo()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            var oidos = Oir(() => AbrirYElegir(CategoriaPoi.Salud));
+            CollectionAssert.Contains(oidos, "Salud cerca, " + PantallaMapa.AnuncioResultados(hoja.Filas.Count));
+            Assert.AreSame(hoja.TituloCerca, pantalla.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void ConTalkBackUnaListaVaciaAnunciaSuTextoVacio()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            ConPosicion();
+            var oidos = Oir(() => AbrirYElegir(CategoriaPoi.Gasolina));
+            CollectionAssert.Contains(oidos, "No hay gasolineras cerca");
+            Assert.IsFalse(oidos.Any(o => o.StartsWith("Gasolineras cerca")), "Sin \"N resultados\".");
+            Assert.AreSame(hoja.TituloCerca, pantalla.Accesibilidad.Enfocado);
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            Assert.AreEqual(1, recorrido.Count(e => e == "No hay gasolineras cerca"), "El texto vacío, una vez.");
+            Assert.Less(recorrido.IndexOf("Gasolineras cerca"), recorrido.IndexOf("No hay gasolineras cerca"),
+                "El texto vacío va detrás de la cabecera.");
+        }
+
+        [Test]
+        public void ConUnSoloResultadoSeAnunciaUnResultado() =>
+            Assert.AreEqual("Salud cerca, " + T(ClavesTexto.BuscadorUnResultado),
+                Textos.Formatear(T(ClavesTexto.BuscadorCercaJuntar), "Salud cerca", PantallaMapa.AnuncioResultados(1)));
+
+        [Test]
+        public void ConTalkBackSinPosicionElTituloDiceDesdeElCentroDelMapa()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            gps.Estado = EstadoUbicacion.Buscando;
+            AbrirYElegir(CategoriaPoi.Salud);
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            CollectionAssert.Contains(recorrido, "Salud cerca, desde el centro del mapa");
+            CollectionAssert.DoesNotContain(recorrido, "Salud cerca");
+        }
+
+        [Test]
+        public void ConTalkBackConPosicionElTituloEsSoloElTitulo()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            ConPosicion();
+            AbrirYElegir(CategoriaPoi.Salud);
+            CollectionAssert.Contains(pantalla.Accesibilidad.Recorrido(), "Salud cerca");
+        }
+
+        [Test]
+        public void ConTalkBackLaCabeceraYLasFilasVanEnOrdenDetrasDelCampo()
+        {
+            ConPosicion();
+            AccesibilidadPantalla.LectorForzado = () => true;
+            AbrirYElegir(CategoriaPoi.Salud);
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            int campo = recorrido.IndexOf(T(ClavesTexto.BuscadorCampo));
+            int titulo = recorrido.IndexOf("Salud cerca");
+            int quitar = recorrido.IndexOf(T(ClavesTexto.BuscadorQuitarCategoria));
+            int fila = recorrido.IndexOf(hoja.Filas[0].Anuncio);
+            Assert.That(campo >= 0 && campo < titulo && titulo < quitar && quitar < fila, string.Join(" | ", recorrido));
+            foreach (var f in hoja.Filas) CollectionAssert.Contains(recorrido, f.Anuncio);
+        }
+
+        [Test]
+        public void ElDobleToqueEnUnaFilaDeLugarAbreLaFichaConElFocoEnSuTitulo()
+        {
+            AbrirConJerarquiaReal();
+            ActivarTalkBack(NodoTalkBack(Nombre(CategoriaPoi.Salud)));
+            var fila = hoja.Filas.First(f => f.Resultado.Tipo == TipoResultado.Lugar);
+            ActivarTalkBack(AssistiveSupport.activeHierarchy.rootNodes.First(n => n.label == fila.Anuncio));
+            Assert.IsTrue(pantalla.FichaAbierta);
+            Assert.AreSame(fila.Resultado.Lugar, pantalla.Ficha.Lugar);
+            Assert.AreSame(pantalla.Ficha.Titulo, pantalla.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void ElDobleToqueEnUnaFilaDePuntoHaceLoMismoQueTocarla()
+        {
+            AbrirConJerarquiaReal();
+            ActivarTalkBack(NodoTalkBack(Nombre(CategoriaPoi.Salud)));
+            var fila = hoja.Filas.First(f => f.Resultado.Tipo == TipoResultado.Punto);
+            ActivarTalkBack(AssistiveSupport.activeHierarchy.rootNodes.First(n => n.label == fila.Anuncio));
+            Assert.AreEqual(fila.Resultado.Posicion, mapaPantalla.centrados.Last());
+            Assert.IsFalse(hoja.Abierta);
+            Assert.IsFalse(pantalla.FichaAbierta);
+        }
+
+        [Test]
+        public void ElDobleToqueEnQuitarCategoriaVuelveALosChipsConElFocoEnElDeSalud()
+        {
+            AbrirConJerarquiaReal();
+            ActivarTalkBack(NodoTalkBack(Nombre(CategoriaPoi.Salud)));
+            ActivarTalkBack(NodoTalkBack(T(ClavesTexto.BuscadorQuitarCategoria)));
+            Assert.IsFalse(pantalla.CercaActiva);
+            Assert.IsTrue(hoja.MostrandoCategorias);
+            int i = Array.IndexOf(HojaBuscador.Categorias, CategoriaPoi.Salud);
+            Assert.AreSame(hoja.Chips[i], pantalla.Accesibilidad.Enfocado);
+            CollectionAssert.Contains(AssistiveSupport.activeHierarchy.rootNodes.Select(n => n.label).ToList(), Nombre(CategoriaPoi.Salud));
+        }
+
+        [Test]
+        public void ConTalkBackAtrasConEncuentraCercaLlevaElFocoAEncuentraCerca()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            AbrirYElegir(null);
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsTrue(hoja.MostrandoCategorias);
+            Assert.AreSame(hoja.Cerca, pantalla.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void ConTalkBackLaPildoraSigueLlevandoElFocoALaPildora()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            AbrirYElegir(CategoriaPoi.Salud);
+            pantalla.PlegarBuscador();
+            pantalla.PulsarPildora();
+            Assert.AreSame(pantalla.Pildora, pantalla.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void PlegadaNiFilasNiCabeceraEnElRecorrido()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            ConPosicion();
+            AbrirYElegir(CategoriaPoi.Salud);
+            var filas = hoja.Filas.Select(f => f.Anuncio).ToList();
+            CollectionAssert.Contains(pantalla.Accesibilidad.Recorrido(), "Salud cerca");
+            pantalla.PlegarBuscador();
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            CollectionAssert.DoesNotContain(recorrido, "Salud cerca");
+            CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorQuitarCategoria));
+            foreach (var f in filas) CollectionAssert.DoesNotContain(recorrido, f);
+        }
+
+        [Test]
+        public void ConTalkBackAlVolverADesplegarLaListaSeAnunciaYElFocoVaAlTitulo()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            AbrirYElegir(CategoriaPoi.Salud);
+            pantalla.PlegarBuscador();
+            var oidos = Oir(pantalla.AbrirBuscadorConLector);
+            CollectionAssert.Contains(oidos, "Salud cerca, " + PantallaMapa.AnuncioResultados(hoja.Filas.Count));
+            Assert.AreEqual(1, oidos.Count(o => o.StartsWith("Salud cerca")), "Se anuncia una vez.");
+            Assert.AreSame(hoja.TituloCerca, pantalla.Accesibilidad.Enfocado);
+            CollectionAssert.Contains(pantalla.Accesibilidad.Recorrido(), hoja.Filas[0].Anuncio);
+        }
+
+        [Test]
+        public void ConTalkBackArrastrarLaHojaAbiertaConLaListaNoAnunciaYElFocoSigueEnLaFila()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            ConPosicion();
+            AbrirYElegir(CategoriaPoi.Salud);
+            var vieja = hoja.Filas[0];
+            var sitio = vieja.Resultado;
+            pantalla.Accesibilidad.PedirFoco(vieja);
+            var oidos = Oir(() =>
+            {
+                // Arrastre lento hacia abajo de 40 dp (más de 10): la hoja sigue abierta
+                var p = new Vector2(150f, hoja.TopAbierta + 20f);
+                hoja.Bajar(p, 0.0);
+                for (int i = 1; i <= 10; i++) hoja.Mover(p + new Vector2(0f, 4f * i), 100.0 * i);
+                hoja.Soltar(1500.0);
+                pantalla.ActualizarCapas(0f);
+            });
+            Assert.IsTrue(hoja.Abierta, "No se ha plegado.");
+            Assert.IsTrue(hoja.MostrandoCerca);
+            Assert.AreNotSame(vieja, hoja.Filas[0], "Al desplegar, la lista se rehace (PintarCerca).");
+            Assert.AreSame(sitio.Lugar, hoja.Filas[0].Resultado.Lugar);
+            Assert.AreSame(sitio.Punto, hoja.Filas[0].Resultado.Punto);
+            Assert.AreSame(hoja.Filas[0], pantalla.Accesibilidad.Enfocado, "El foco sigue en la fila (la nueva del mismo sitio).");
+            Assert.IsFalse(oidos.Any(o => o.StartsWith("Salud cerca")), string.Join(" | ", oidos));
+        }
+
+        [Test]
+        public void SinLectorElegirUnChipNoAnunciaNiMueveElFoco()
+        {
+            var oidos = Oir(() => AbrirYElegir(CategoriaPoi.Salud));
+            Assert.IsFalse(oidos.Any(o => o.StartsWith("Salud cerca")));
+            Assert.AreNotSame(hoja.TituloCerca, pantalla.Accesibilidad.Enfocado);
+        }
+
+        [Test]
+        public void LaClaveParaJuntarEstaEnLaTablaYEnLocalization()
+        {
+            Assert.AreEqual("{0}, {1}", T(ClavesTexto.BuscadorCercaJuntar));
+            CollectionAssert.Contains(ClavesTexto.Todas, ClavesTexto.BuscadorCercaJuntar);
         }
 
         // ───────────────────────── Mapa filtrado por categoría (historia 2.4, parte 2) ─────────────────────────

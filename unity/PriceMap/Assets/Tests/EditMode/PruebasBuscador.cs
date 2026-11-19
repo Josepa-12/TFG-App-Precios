@@ -601,7 +601,7 @@ namespace PriceMap.Tests.EditMode
             CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: false, contraer: true), nodos.Select(n => n.label).ToList());
             Assert.AreEqual(AccessibilityRole.Button, nodos[0].role, "El campo.");
             Assert.AreEqual(AccessibilityRole.Button, nodos[1].role, "Contraer.");
-            Assert.IsTrue(nodos.Skip(2).All(n => n.role == AccessibilityRole.StaticText), "Chips y Encuentra cerca, como texto hasta la 2.4.");
+            Assert.IsTrue(nodos.Skip(2).All(n => n.role == AccessibilityRole.Button), "Chips y Encuentra cerca, botones (2.4, parte 3).");
         }
 
         [Test]

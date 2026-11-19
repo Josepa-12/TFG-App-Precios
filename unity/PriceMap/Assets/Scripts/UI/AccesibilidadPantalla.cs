@@ -281,6 +281,9 @@ namespace PriceMap.UI
         // que un foco que mueva el sistema no cancele un PedirFoco pendiente ni su anuncio.
         VisualElement ultimoFoco;
 
+        /// <summary>Último foco (pedido o puesto por el usuario con TalkBack): el que devolvería RecuperarFoco.</summary>
+        public VisualElement UltimoFoco => ultimoFoco;
+
         /// <summary>Último nodo al que Enfocar llevó el foco de TalkBack (SendLayoutChanged), para las pruebas.</summary>
         internal AccessibilityNode UltimoNodoEnfocado { get; private set; }
 

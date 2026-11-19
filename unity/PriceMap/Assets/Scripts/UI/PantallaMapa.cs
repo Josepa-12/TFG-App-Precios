@@ -390,7 +390,7 @@ namespace PriceMap.UI
         /// TalkBack (historia 2.2, parte 2). Plegada, la cápsula es un botón "Buscar en Sanlúcar" detrás de los
         /// controles del mapa (el avatar no está: aún no hace nada). Desplegada a cualquier altura, la hoja es modal:
         /// el campo, "Expandir" (si no está abierta del todo) y "Contraer" (botones que solo ve el lector), los 8 chips
-        /// y "Encuentra cerca" (textos: aún no hacen nada, historia 2.4). Ni marcadores ni controles del mapa.
+        /// y "Encuentra cerca" (botones, historia 2.4). Ni marcadores ni controles del mapa.
         /// </summary>
         void DeclararBuscadorEnTalkBack()
         {
@@ -405,13 +405,19 @@ namespace PriceMap.UI
                 visible: () => enHoja() && ExpandirEnRecorrido, enModal: true);
             accesibilidad.Boton(buscador.Contraer, () => Textos.T(ClavesTexto.BuscadorContraer), PlegarBuscador,
                 visible: () => enHoja() && AccesibilidadPantalla.LectorActivo, enModal: true);
-            foreach (var c in buscador.Chips)
+            // Chips y "Encuentra cerca" (historia 2.4, parte 3): botones que hacen lo mismo que el toque
+            for (int i = 0; i < buscador.Chips.Count; i++)
             {
-                var chip = c;
-                accesibilidad.Texto(chip, () => chip.Q<Label>().text, () => enHoja() && buscador.MostrandoCategorias, enModal: true);
+                var chip = buscador.Chips[i];
+                CategoriaPoi? categoria = HojaBuscador.Categorias[i];
+                accesibilidad.Boton(chip, () => chip.Q<Label>().text, () => buscador.ElegirCategoria(categoria),
+                    visible: () => enHoja() && buscador.MostrandoCategorias, enModal: true);
             }
-            accesibilidad.Texto(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, () => enHoja() && buscador.MostrandoCategorias, enModal: true);
-            accesibilidad.Texto(buscador.SinResultados, () => buscador.SinResultados.text, () => enHoja() && buscador.SinResultadosVisible, enModal: true);
+            accesibilidad.Boton(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, () => buscador.ElegirCategoria(null),
+                visible: () => enHoja() && buscador.MostrandoCategorias, enModal: true);
+            // Con la lista "cerca", su texto vacío va detrás de la cabecera (se declara en PintarCerca)
+            accesibilidad.Texto(buscador.SinResultados, () => buscador.SinResultados.text,
+                () => enHoja() && buscador.SinResultadosVisible && !buscador.MostrandoCerca, enModal: true);
             accesibilidad.Boton(buscador.BuscarDireccion, () => Textos.T(ClavesTexto.BuscadorBuscarDireccion), BuscarComoDireccion,
                 visible: () => enHoja() && buscador.BuscarDireccionVisible, enModal: true);
             // Las filas de los resultados se declaran al pintarlas (DeclararResultadosEnTalkBack), detrás de todo esto
@@ -657,15 +663,20 @@ namespace PriceMap.UI
 
         /// <summary>
         /// La X de la cabecera, el botón atrás o la píldora con la categoría: quita la categoría y vuelven las categorías
-        /// (o la búsqueda), y en el mapa, el filtro "Precios" guardado.
+        /// (o la búsqueda), y en el mapa, el filtro "Precios" guardado. TalkBack con la hoja desplegada: el foco va al
+        /// chip de la categoría quitada ("Encuentra cerca" si era esa); con la píldora, PulsarPildora lo lleva a ella.
         /// </summary>
         public void QuitarCategoria()
         {
             if (buscador == null || !cercaActiva) return;
+            var quitada = categoriaActiva;
             cercaActiva = false;
             categoriaActiva = null;
             AplicarCategoriaAlMapa();
             Buscar(buscador.Campo.value);
+            if (accesibilidad == null || !AccesibilidadPantalla.LectorActivo || !BuscadorAbierto || !modalBuscador) return;
+            int i = quitada is CategoriaPoi c ? Array.IndexOf(HojaBuscador.Categorias, c) : -1;
+            accesibilidad.PedirFoco(i >= 0 && i < buscador.Chips.Count ? buscador.Chips[i] : buscador.Cerca);
         }
 
         CategoriaPoi? categoriaMapa; // la que filtra el mapa ahora (null: el filtro "Precios")
@@ -706,10 +717,12 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Calcula y pinta la lista de la categoría activa con la distancia desde el usuario o, sin posición, desde el
-        /// centro del mapa (y entonces lo dice la cabecera). TalkBack de la lista: otra parte; aquí solo se dan de baja
-        /// los nodos de las filas anteriores, que ya no existen.
+        /// centro del mapa (y entonces lo dice la cabecera). TalkBack (historia 2.4, parte 3): el título (texto), la X
+        /// ("Quitar categoría"), el texto vacío y las filas (botones, como los de la búsqueda) entran en el recorrido
+        /// con la hoja desplegada. Con <paramref name="enfocar"/>, el foco va al título y se anuncia "Salud cerca,
+        /// N resultados" (o el texto vacío); si no, vuelve a donde estaba.
         /// </summary>
-        void PintarCerca()
+        void PintarCerca(bool enfocar = true)
         {
             var lista = servicioCerca?.Listar(categoriaActiva, PuntoCercania()) ?? Array.Empty<ResultadoBusqueda>();
             string titulo, vacio;
@@ -724,16 +737,50 @@ namespace PriceMap.UI
                 titulo = Textos.T(ClavesTexto.BuscadorCercaTitulo);
                 vacio = Textos.T(ClavesTexto.BuscadorSinResultados);
             }
+            // Las filas se rehacen (elementos nuevos): si el foco estaba en una, irá a la nueva del mismo sitio
+            var filaEnfocada = (accesibilidad?.UltimoFoco as FilaResultado)?.Resultado;
             buscador.MostrarCerca(titulo, ubicacion?.Posicion == null, lista, vacio);
             localesActuales = null;
             ultimosResultados = null;
 
             if (accesibilidad == null) return;
             accesibilidad.QuitarControles(buscador.Resultados);
-            if (!BuscadorAbierto || !modalBuscador) return;
-            accesibilidad.Reconstruir(); // los chips salen del recorrido
-            if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
+            Func<bool> enHoja = () => BuscadorAbierto && !ModalUbicacionAbierta && buscador.MostrandoCerca;
+            accesibilidad.Texto(buscador.TituloCerca, EtiquetaTituloCerca, enHoja, enModal: true, grupo: buscador.Resultados);
+            accesibilidad.Boton(buscador.QuitarCategoria, () => Textos.T(ClavesTexto.BuscadorQuitarCategoria),
+                buscador.PulsarQuitarCategoria, visible: enHoja, enModal: true, grupo: buscador.Resultados);
+            accesibilidad.Texto(buscador.FilaSinResultados, () => buscador.SinResultados.text,
+                () => enHoja() && buscador.SinResultadosVisible, enModal: true, grupo: buscador.Resultados);
+            foreach (var f in buscador.Filas)
+            {
+                var fila = f;
+                accesibilidad.Boton(fila, () => fila.Anuncio, () => ElegirResultado(fila.Resultado),
+                    visible: enHoja, enModal: true, grupo: buscador.Resultados);
+            }
+            int n = buscador.Filas.Count;
+            string anuncio = n == 0 ? vacio : Textos.T(ClavesTexto.BuscadorCercaJuntar, titulo, AnuncioResultados(n));
+            if (!BuscadorAbierto || !modalBuscador) return; // plegada: entran en el recorrido al desplegarla
+            accesibilidad.Reconstruir(); // los chips salen del recorrido; entran la cabecera y las filas
+            if (!AccesibilidadPantalla.LectorActivo) return; // sin lector, nada cambia
+            if (enfocar) { accesibilidad.PedirFoco(buscador.TituloCerca, anuncio: anuncio); return; }
+            var misma = MismaFila(filaEnfocada);
+            if (misma != null) accesibilidad.PedirFoco(misma);
+            else if (!accesibilidad.RecuperarFoco()) accesibilidad.PedirFoco(buscador.TituloCerca);
         }
+
+        // La fila de ahora del mismo lugar o punto que ese resultado; null si ya no está
+        FilaResultado MismaFila(ResultadoBusqueda r)
+        {
+            if (r == null) return null;
+            foreach (var f in buscador.Filas)
+                if (f.Resultado.Lugar == r.Lugar && f.Resultado.Punto == r.Punto && f.Resultado.Direccion == r.Direccion) return f;
+            return null;
+        }
+
+        /// <summary>Título de la lista "cerca" para TalkBack: "Salud cerca" o, sin posición, "Salud cerca, desde el centro del mapa".</summary>
+        string EtiquetaTituloCerca() => buscador.DesdeCentro.style.display == DisplayStyle.None
+            ? buscador.TituloCerca.text
+            : Textos.T(ClavesTexto.BuscadorCercaJuntar, buscador.TituloCerca.text, buscador.DesdeCentro.text);
 
         /// <summary>La X del campo ("Borrar búsqueda" en TalkBack): lo vacía, vuelven las categorías y el foco va al campo.</summary>
         public void BorrarBusqueda()
@@ -763,8 +810,8 @@ namespace PriceMap.UI
             if (buscador == null || !buscador.Visible) return;
             AlDesplegarBuscador(); // cierra la ficha y el menú
             buscador.Abrir();
-            SeguirModalBuscador(enfocarCapsula: false);
-            accesibilidad.PedirFoco(buscador.Campo);
+            SeguirModalBuscador(enfocarCapsula: false); // con la lista "cerca" y el lector, ya enfoca su título
+            if (!cercaActiva || !AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
         }
 
         /// <summary>"Expandir" de TalkBack: abre la hoja del todo; "Expandir" sale del recorrido y el foco pasa a "Contraer".</summary>
@@ -791,8 +838,10 @@ namespace PriceMap.UI
                 modalBuscador = true;
                 expandirEnRecorrido = ExpandirEnRecorrido;
                 ModalNuevo(); // reconstruye: solo los nodos de la hoja
+                // Con la lista "cerca": se rehace, el foco va a su título y se anuncia (historia 2.4, parte 3)
+                if (cercaActiva) PintarCerca();
                 // Desplegada con el dedo: el foco de TalkBack no puede quedarse en un nodo que ya no está
-                if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
+                else if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
             }
             else if (!abierta && modalBuscador)
             {
@@ -841,9 +890,11 @@ namespace PriceMap.UI
         {
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             CerrarFicha();
+            bool eraModal = modalBuscador;
             SeguirModalBuscador(enfocarCapsula: false); // TalkBack: la hoja desplegada es modal
+            bool repintada = !eraModal && modalBuscador && cercaActiva; // SeguirModalBuscador ya rehízo la lista "cerca"
             // La búsqueda guardada al plegar se rehace: el usuario, el mapa o los puntos cargados pueden haber cambiado
-            if (buscador != null && cercaActiva) PintarCerca(); // la lista "cerca", igual
+            if (buscador != null && cercaActiva) { if (!repintada) PintarCerca(enfocar: false); } // la lista "cerca", igual
             else if (buscador != null && buscador.EnBusqueda) Buscar(buscador.Campo.value);
         }
 

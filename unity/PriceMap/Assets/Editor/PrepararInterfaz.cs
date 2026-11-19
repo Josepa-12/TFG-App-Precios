@@ -155,6 +155,7 @@ namespace PriceMap.EditorTools
             [ClavesTexto.CercaNombreCultura] = "sitios de cultura",
             [ClavesTexto.BuscadorQuitarCategoria] = "Quitar categoría",
             [ClavesTexto.PildoraQuitarCategoria] = "Quitar categoría {0}",
+            [ClavesTexto.BuscadorCercaJuntar] = "{0}, {1}",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

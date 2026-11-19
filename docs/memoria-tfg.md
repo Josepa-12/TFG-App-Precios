@@ -796,6 +796,17 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Revisión:** tres revisores automáticos encontraron 16 posibles problemas y se arreglaron 6. Si la píldora se pulsa con la ficha abierta, ahora primero cierra la ficha. Hay pruebas nuevas para el doble toque de TalkBack (etiqueta y valor del nodo) y la captura hace más comprobaciones. Los otros 10 se descartaron: no se cumplían o quedaban fuera de lo pedido. Por ejemplo, el botón atrás con la hoja plegada no quita la categoría porque así se decidió.
     - **Comprobación:** pasan 635 pruebas. En la captura de PC `cerca-mapa`, con la hoja plegada solo se ven los marcadores de salud y la píldora dice «Salud ✕». El registro no tiene errores.
     - **Pendiente:** probar en el móvil a elegir una categoría, plegar la hoja y tocar «Salud ✕».
+  - *Historia 2.4 (parte 3): TalkBack de la lista «Encuentra cerca» (19/11/2026).*
+    - **Motivo:** con TalkBack, los chips se leían pero no se podían activar, y la lista de una categoría no entraba en el recorrido. Quien usa lector de pantalla no podía usar «Encuentra cerca».
+    - **Decisión del autor:** al quitar la categoría, el foco vuelve al chip que estaba elegido, para no tener que recorrer otra vez los chips.
+    - **Solución:**
+      - Los chips y «Encuentra cerca» son botones.
+      - Al abrir la lista se anuncia «Salud cerca, N resultados» (o «No hay … cerca») y el foco va al título. Sin GPS, el título dice además «desde el centro del mapa».
+      - Cada fila es un botón con el mismo texto que en la búsqueda; una fila de lugar abre la ficha con el foco en su título. La X es el botón «Quitar categoría».
+      - Con la hoja plegada, la lista no está en el recorrido.
+    - **Revisión:** tres revisores automáticos encontraron 15 posibles problemas. Se añadió una prueba de arrastrar la hoja abierta con la lista, y gracias a ella apareció un fallo real: al arrastrar, las filas se rehacen y TalkBack perdía la fila en la que estaba. Ahora el foco vuelve a la fila del mismo sitio. El resto se descartó por no cumplirse o quedar fuera de lo pedido.
+    - **Comprobación:** pasan 654 pruebas; la build de PC y la captura terminan sin errores.
+    - **Pendiente:** probar en el móvil con TalkBack (elegir Salud, recorrer la lista, abrir una ficha y quitar la categoría). Al abrir la lista, TalkBack lee el título y después el anuncio, que también empieza por el título: comprobar si se hace pesado.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
