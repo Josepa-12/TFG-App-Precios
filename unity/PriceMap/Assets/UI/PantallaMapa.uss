@@ -1223,9 +1223,51 @@
     color: var(--color-accent-text);
 }
 
+/* Direcciones (historia 2.3, parte 2): el pin en el color del texto sobre surface-2 */
+.buscador__resultado-icono--direccion { background-color: var(--color-surface-2); }
+.buscador__resultado-icono--direccion .buscador__resultado-glifo { color: var(--color-text); }
+
+/* "No hay resultados" y, a su lado, "Buscar como dirección" (baja de línea si no cabe) */
+.buscador__fila-sin-resultados {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
 .buscador__sin-resultados {
+    flex-shrink: 1;
     margin: 0;
     padding: 14px var(--espacio-1);
+    color: var(--color-muted);
+    white-space: normal;
+}
+
+/* Botón de texto con zona táctil de 48 dp */
+.buscador__buscar-direccion {
+    flex-shrink: 0;
+    min-height: 48px;
+    min-width: 48px;
+    padding: 0 var(--espacio-3);
+    border-radius: var(--radio-lg);
+    justify-content: center;
+    align-items: center;
+    background-color: var(--color-surface-2);
+}
+
+.buscador__buscar-direccion-texto {
+    margin: 0;
+    padding: 0;
+    color: var(--color-accent-text);
+    white-space: normal;
+}
+
+/* "Las direcciones necesitan conexión", bajo la lista */
+.buscador__aviso-direcciones {
+    flex-shrink: 0;
+    margin: 0;
+    padding: var(--espacio-2) var(--espacio-1);
     color: var(--color-muted);
     white-space: normal;
 }

@@ -171,8 +171,18 @@ namespace PriceMap.UI
         /// <summary>Igual, con {3} el precio ("Clínica Areas, Clínica privada, a 350 m, desde 20 €").</summary>
         public const string BuscadorAnuncioResultadoPrecio = "buscador.resultado.anuncio.precio";
 
+        /// <summary>Direcciones del buscador (historia 2.3, parte 2): tipo de la fila ("Dirección").</summary>
+        public const string BuscadorDireccion = "buscador.direccion";
+        /// <summary>Distancia de la fila de una dirección: {0} distancia ("a 1,2 km").</summary>
+        public const string BuscadorDistanciaA = "buscador.direccion.distancia";
+        /// <summary>Aviso bajo la lista sin conexión o si Photon falla.</summary>
+        public const string BuscadorDireccionesSinConexion = "buscador.direcciones.sinconexion";
+        /// <summary>Botón junto a "No hay resultados": pide las direcciones ya (también sirve de reintento).</summary>
+        public const string BuscadorBuscarDireccion = "buscador.direccion.buscar";
+
         public static readonly string[] Todas =
         {
+            BuscadorDireccion, BuscadorDistanciaA, BuscadorDireccionesSinConexion, BuscadorBuscarDireccion,
             BuscadorCampo, BuscadorCerca, BuscadorExpandir, BuscadorContraer, BuscadorComer, BuscadorBares, BuscadorSuper, BuscadorFarmacia,
             BuscadorGasolina, BuscadorDeporte, BuscadorSalud, BuscadorCultura,
             BuscadorSinResultados, BuscadorUnResultado, BuscadorResultados, BuscadorBorrar, BuscadorDetalle,

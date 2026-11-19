@@ -8,7 +8,8 @@
         "PriceMap.Vectorial",
         "PriceMap.UI",
         "PriceMap.Adaptadores.Sistema",
-        "PriceMap.Adaptadores.Gps"
+        "PriceMap.Adaptadores.Gps",
+        "PriceMap.Adaptadores.Busqueda"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

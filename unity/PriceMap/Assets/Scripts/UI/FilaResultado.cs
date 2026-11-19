@@ -36,8 +36,8 @@ namespace PriceMap.UI
 
             Icono = new VisualElement { name = "buscador-resultado-icono", pickingMode = PickingMode.Ignore };
             Icono.AddToClassList("buscador__resultado-icono");
-            Icono.AddToClassList(resultado.Tipo == TipoResultado.Lugar
-                ? "buscador__resultado-icono--lugar"
+            Icono.AddToClassList(resultado.Tipo == TipoResultado.Lugar ? "buscador__resultado-icono--lugar"
+                : resultado.Tipo == TipoResultado.Direccion ? "buscador__resultado-icono--direccion"
                 : "buscador__resultado-icono--" + HojaBuscador.Nombre(resultado.Categoria));
             string glifo = GlifoDe(resultado);
             Glifo = new VisualElement { name = "buscador-resultado-glifo", pickingMode = PickingMode.Ignore };
@@ -53,7 +53,7 @@ namespace PriceMap.UI
             textosFila.Add(Nombre);
             string tipo = TipoDe(resultado, textos);
             string distancia = FormatoDistancia.Texto(resultado.Metros);
-            Detalle = Etiqueta(Textos.Formatear(textos(ClavesTexto.BuscadorDetalle), Mayuscula(tipo), distancia),
+            Detalle = Etiqueta(DetalleDe(resultado, tipo, distancia, textos),
                 "buscador-resultado-detalle", "buscador__resultado-detalle", "t-caption");
             textosFila.Add(Detalle);
             Add(textosFila);
@@ -73,9 +73,24 @@ namespace PriceMap.UI
         /// <summary>Vuelve a dibujar el glifo (el color cambia con el tema).</summary>
         public void Repintar() => Glifo.MarkDirtyRepaint();
 
-        /// <summary>Glifo del tipo de negocio (lugares) o de la categoría (puntos de interés).</summary>
+        /// <summary>Glifo del tipo de negocio (lugares), de la categoría (puntos de interés) o el pin (direcciones).</summary>
         public static string GlifoDe(ResultadoBusqueda r) =>
-            r.Tipo == TipoResultado.Lugar ? IconosLugar.GlifoDe(r.Lugar.Tipo) : IconosLugar.GlifoDe(r.Categoria);
+            r.Tipo == TipoResultado.Lugar ? IconosLugar.GlifoDe(r.Lugar.Tipo)
+            : r.Tipo == TipoResultado.Direccion ? IconosLugar.Generico
+            : IconosLugar.GlifoDe(r.Categoria);
+
+        /// <summary>
+        /// Segunda línea: "Clínica privada · 350 m" en lugares y puntos; en las direcciones (historia 2.3, parte 2)
+        /// "Dirección · Sanlúcar de Barrameda · a 1,2 km" (sin localidad, "Dirección · a 1,2 km").
+        /// </summary>
+        public static string DetalleDe(ResultadoBusqueda r, string tipo, string distancia, Func<string, string> textos)
+        {
+            string formato = textos(ClavesTexto.BuscadorDetalle);
+            if (r.Tipo != TipoResultado.Direccion) return Textos.Formatear(formato, Mayuscula(tipo), distancia);
+            string localidad = r.Direccion?.Localidad;
+            string cabeza = string.IsNullOrEmpty(localidad) ? Mayuscula(tipo) : Textos.Formatear(formato, Mayuscula(tipo), localidad);
+            return Textos.Formatear(formato, cabeza, Textos.Formatear(textos(ClavesTexto.BuscadorDistanciaA), distancia));
+        }
 
         /// <summary>
         /// Tipo tal como se lee: el del lugar ("Clínica privada") o el nombre de la categoría del punto en minúsculas
@@ -84,6 +99,7 @@ namespace PriceMap.UI
         public static string TipoDe(ResultadoBusqueda r, Func<string, string> textos)
         {
             if (r.Tipo == TipoResultado.Lugar) return r.Lugar.Tipo;
+            if (r.Tipo == TipoResultado.Direccion) return textos(ClavesTexto.BuscadorDireccion).ToLowerInvariant();
             var clave = r.SanidadPublica ? ClavesTexto.PoiSanidadPublica : TextosPuntos.ClaveCategoria(r.Categoria);
             return clave != null ? textos(clave) : "";
         }

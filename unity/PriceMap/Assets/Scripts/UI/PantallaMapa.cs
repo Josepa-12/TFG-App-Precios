@@ -24,6 +24,7 @@ namespace PriceMap.UI
         ServicioFiltro filtro;
         ServicioUbicacion ubicacion;
         ServicioBusqueda busqueda;
+        BuscadorDirecciones direcciones;
         VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo, columnaControles;
         PildoraPrecios pildora;
         MenuPrecios menu;
@@ -56,25 +57,28 @@ namespace PriceMap.UI
         /// <param name="ubicacion">Posición del usuario; sin ella no hay botón de ubicación ni círculo.</param>
         /// <param name="accesibilidadSistema">Ajustes de accesibilidad del sistema; sin él, animaciones normales.</param>
         /// <param name="busqueda">Buscador de lugares y puntos de interés (historia 2.3); sin él, el campo no encuentra nada.</param>
+        /// <param name="direcciones">Direcciones (historia 2.3, parte 2); sin él, el buscador no busca direcciones.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
-            ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null)
+            ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
+            BuscadorDirecciones direcciones = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
-            ServicioBusqueda busqueda = null)
+            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null)
         {
             this.mapa = mapa;
             this.tema = tema;
             this.filtro = filtro;
             this.ubicacion = ubicacion;
             this.busqueda = busqueda;
+            this.direcciones = direcciones;
             this.accesibilidadSistema = accesibilidadSistema;
             this.ahora = ahora;
             this.mapa.Centrar(VistaInicial);
@@ -369,6 +373,8 @@ namespace PriceMap.UI
             buscador.Desplegando += AlDesplegarBuscador;
             buscador.TextoCambiado += Buscar;
             buscador.ResultadoElegido += ElegirResultado;
+            buscador.BuscarComoDireccionPedido += BuscarComoDireccion;
+            if (direcciones != null) direcciones.Cambiado += AlCambiarDirecciones;
             huecoBuscador.RegisterCallback<GeometryChangedEvent>(_ => MedirBuscador());
             buscador.Linea.RegisterCallback<GeometryChangedEvent>(_ => ColocarAtribucion());
             LeerAccesibilidadSistema();
@@ -407,6 +413,12 @@ namespace PriceMap.UI
         // ───────────────────────── Búsqueda (historia 2.3) ─────────────────────────
 
         IReadOnlyList<ResultadoBusqueda> ultimosResultados; // lo último que se anunció (null sin búsqueda)
+        IReadOnlyList<ResultadoBusqueda> localesActuales;   // lugares y puntos del texto actual (null sin búsqueda)
+        // Direcciones (historia 2.3, parte 2): texto del campo para el que se pidieron, su respuesta (null sin
+        // respuesta buena: en la espera, con poco texto o tras un fallo) y si la última respuesta fue un fallo
+        string consultaDirecciones;
+        IReadOnlyList<ResultadoBusqueda> direccionesActuales;
+        bool direccionesFallaron;
 
         /// <summary>
         /// Punto de cercanía de la búsqueda: la posición del usuario o, si no la hay, el centro del mapa.
@@ -414,21 +426,101 @@ namespace PriceMap.UI
         public Coordenada PuntoCercania() => ubicacion?.Posicion ?? mapa.Centro;
 
         /// <summary>
-        /// Busca el texto del campo (a cada tecla: todo es local) y pinta los resultados en la hoja. TalkBack: cada
-        /// fila es un botón y, si los resultados cambian, se anuncia "N resultados" o "No hay resultados".
+        /// Busca el texto del campo (a cada tecla: lo local, al momento) y pinta los resultados en la hoja; las
+        /// direcciones se piden aparte (BuscadorDirecciones: tras la espera) y se añaden debajo al llegar. TalkBack:
+        /// cada fila local es un botón y, si los locales cambian, se anuncia "N resultados" o "No hay resultados".
         /// </summary>
         public void Buscar(string texto)
         {
             if (buscador == null) return;
             IReadOnlyList<ResultadoBusqueda> resultados = null;
             if (busqueda != null && buscador.EnBusqueda) resultados = busqueda.Buscar(texto, PuntoCercania());
-            buscador.MostrarResultados(resultados);
+            localesActuales = resultados;
+            PedirDirecciones(texto);
+            PintarResultados(arriba: true);
+        }
+
+        /// <summary>
+        /// Al cambiar el texto: cancela las direcciones anteriores y pide las del texto nuevo (tras la espera y con el
+        /// mínimo de caracteres). Si el texto es el mismo (al volver a desplegar la hoja) y ya hay respuesta o está en
+        /// camino, se deja como está; tras un fallo se vuelve a pedir.
+        /// </summary>
+        void PedirDirecciones(string texto)
+        {
+            if (direcciones == null) return;
+            if (!buscador.EnBusqueda)
+            {
+                direcciones.Cancelar();
+                consultaDirecciones = null;
+                direccionesActuales = null;
+                direccionesFallaron = false;
+                return;
+            }
+            if (texto == consultaDirecciones && !direccionesFallaron && (direcciones.Pendiente || direccionesActuales != null))
+            {
+                // Mismo texto (al volver a desplegar): no se pide otra vez, pero las distancias se miden desde el punto de ahora
+                if (direccionesActuales != null) direccionesActuales = ConDistancia(direccionesActuales, PuntoCercania());
+                return;
+            }
+            consultaDirecciones = texto;
+            direccionesActuales = null;
+            direccionesFallaron = false;
+            direcciones.Pedir(texto, PuntoCercania());
+        }
+
+        /// <summary>
+        /// "Buscar como dirección" (junto a "No hay resultados"): pide las direcciones del texto ya, sin espera ni
+        /// mínimo. Tras un fallo sirve de reintento.
+        /// </summary>
+        public void BuscarComoDireccion()
+        {
+            if (buscador == null || direcciones == null || !buscador.EnBusqueda || ModalUbicacionAbierta) return;
+            string texto = buscador.Campo.value;
+            consultaDirecciones = texto;
+            direccionesActuales = null;
+            direccionesFallaron = false;
+            direcciones.PedirYa(texto, PuntoCercania()); // con un geocodificador inmediato, la respuesta ya ha llegado
+            PintarResultados(arriba: false);
+        }
+
+        // Respuesta del geocodificador: solo vale si es del texto que hay ahora en el campo
+        void AlCambiarDirecciones(string consulta, Resultado<IReadOnlyList<ResultadoBusqueda>> r)
+        {
+            if (buscador == null || consulta != consultaDirecciones || consulta != buscador.Campo.value) return;
+            try
+            {
+                direccionesFallaron = !r.Ok;
+                direccionesActuales = r.Ok ? r.Valor ?? Array.Empty<ResultadoBusqueda>() : null;
+                if (!r.Ok) Debug.Log("PriceMap: direcciones no disponibles (" + r.Error + ").");
+                PintarResultados(arriba: false);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e); // llega desde una tarea que nadie espera: sin esto el error se perdería
+            }
+        }
+
+        static IReadOnlyList<ResultadoBusqueda> ConDistancia(IReadOnlyList<ResultadoBusqueda> lista, Coordenada cerca)
+        {
+            var r = new List<ResultadoBusqueda>(lista.Count);
+            foreach (var x in lista) r.Add(ResultadoBusqueda.DeDireccion(x.Direccion, cerca.DistanciaMetros(x.Posicion)));
+            return r.AsReadOnly();
+        }
+
+        /// <summary>
+        /// Pinta locales + direcciones, el aviso de conexión y "Buscar como dirección" (si aún no hay direcciones
+        /// buenas). El anuncio de TalkBack cuenta solo los locales: las direcciones van en otra parte.
+        /// </summary>
+        void PintarResultados(bool arriba)
+        {
+            bool ofrecer = direcciones != null && direccionesActuales == null;
+            buscador.MostrarResultados(localesActuales, direccionesActuales, direccionesFallaron, ofrecer, arriba);
 
             string anuncio = null;
             if (!buscador.MostrandoResultados) ultimosResultados = null;
             else if (BuscadorAbierto && modalBuscador) // solo cuenta como anunciado si de verdad se puede anunciar
             {
-                var actuales = resultados ?? Array.Empty<ResultadoBusqueda>();
+                var actuales = localesActuales ?? Array.Empty<ResultadoBusqueda>();
                 if (ultimosResultados == null || !MismosResultados(ultimosResultados, actuales)) anuncio = AnuncioResultados(actuales.Count);
                 ultimosResultados = actuales;
             }
@@ -459,6 +551,7 @@ namespace PriceMap.UI
             accesibilidad.QuitarControles(buscador.Resultados);
             foreach (var f in buscador.Filas)
             {
+                if (f.Resultado.Tipo == TipoResultado.Direccion) continue; // TalkBack de las direcciones: otra parte
                 var fila = f;
                 accesibilidad.Boton(fila, () => fila.Anuncio, () => ElegirResultado(fila.Resultado),
                     visible: () => BuscadorAbierto && !ModalUbicacionAbierta, enModal: true, grupo: buscador.Resultados);
@@ -471,7 +564,7 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Toque en un resultado: un lugar abre su ficha (que centra el mapa y pliega la hoja); un punto de interés
-        /// centra el mapa en él y pliega la hoja (su ficha llega en la 2.5).
+        /// centra el mapa en él y pliega la hoja (su ficha llega en la 2.5); una dirección, igual que un punto.
         /// </summary>
         public void ElegirResultado(ResultadoBusqueda resultado)
         {
@@ -485,6 +578,7 @@ namespace PriceMap.UI
         public void BorrarBusqueda()
         {
             if (buscador == null) return;
+            direcciones?.Cancelar(); // una petición en curso no llega a pintarse
             buscador.BorrarTexto();
             accesibilidad?.PedirFoco(buscador.Campo);
         }
@@ -877,6 +971,12 @@ namespace PriceMap.UI
                 buscador.Desplegando -= AlDesplegarBuscador;
                 buscador.TextoCambiado -= Buscar;
                 buscador.ResultadoElegido -= ElegirResultado;
+                buscador.BuscarComoDireccionPedido -= BuscarComoDireccion;
+            }
+            if (direcciones != null)
+            {
+                direcciones.Cambiado -= AlCambiarDirecciones;
+                direcciones.Cancelar();
             }
             AssistiveSupport.screenReaderStatusChanged -= AlCambiarLector;
             AccessibilitySettings.fontScaleChanged -= AlCambiarEscalaFuente;
@@ -920,6 +1020,8 @@ namespace PriceMap.UI
         internal IAccesibilidadSistema AccesibilidadSistema => accesibilidadSistema;
         /// <summary>Buscador que recibió al iniciarse (para las pruebas y la captura); null sin él.</summary>
         public ServicioBusqueda Busqueda => busqueda;
+        /// <summary>Buscador de direcciones que recibió al iniciarse (historia 2.3, parte 2); null sin él.</summary>
+        public BuscadorDirecciones Direcciones => direcciones;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;

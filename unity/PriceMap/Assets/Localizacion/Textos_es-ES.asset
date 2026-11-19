@@ -455,6 +455,22 @@ MonoBehaviour:
     m_Localized: '{0}, {1}, a {2}, {3}'
     m_Metadata:
       m_Items: []
+  - m_Id: 748322057871366
+    m_Localized: "Dirección"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871367
+    m_Localized: 'a {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871368
+    m_Localized: "Las direcciones necesitan conexión"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871369
+    m_Localized: "Buscar como dirección"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

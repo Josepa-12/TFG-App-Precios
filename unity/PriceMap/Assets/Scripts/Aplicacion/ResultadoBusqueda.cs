@@ -2,11 +2,15 @@ using PriceMap.Dominio;
 
 namespace PriceMap.Aplicacion
 {
-    /// <summary>De dónde sale un resultado del buscador: un lugar de la app o un punto de interés del mapa.</summary>
+    /// <summary>
+    /// De dónde sale un resultado del buscador: un lugar de la app, un punto de interés del mapa o una dirección del
+    /// geocodificador (historia 2.3, parte 2).
+    /// </summary>
     public enum TipoResultado
     {
         Lugar,
         Punto,
+        Direccion,
     }
 
     /// <summary>
@@ -22,6 +26,8 @@ namespace PriceMap.Aplicacion
         public Lugar Lugar { get; }
         /// <summary>El punto de interés; null si es un lugar de la app.</summary>
         public PuntoInteres Punto { get; }
+        /// <summary>La dirección del geocodificador; null en los lugares y los puntos.</summary>
+        public Direccion Direccion { get; }
         /// <summary>Categoría del punto de interés; Ninguna en los lugares de la app.</summary>
         public CategoriaPoi Categoria { get; }
         /// <summary>Punto de interés que es un centro sanitario público (ReglaPuntosInteres.EsSanidadPublica).</summary>
@@ -34,13 +40,15 @@ namespace PriceMap.Aplicacion
         public ValorPrecio? Precio { get; }
 
         ResultadoBusqueda(TipoResultado tipo, string nombre, Coordenada posicion, Lugar lugar, PuntoInteres punto,
-            CategoriaPoi categoria, bool sanidadPublica, double metros, int puntuacion, ValorPrecio? precio)
+            CategoriaPoi categoria, bool sanidadPublica, double metros, int puntuacion, ValorPrecio? precio,
+            Direccion direccion = null)
         {
             Tipo = tipo;
             Nombre = nombre ?? "";
             Posicion = posicion;
             Lugar = lugar;
             Punto = punto;
+            Direccion = direccion;
             Categoria = categoria;
             SanidadPublica = sanidadPublica;
             Metros = metros;
@@ -55,6 +63,11 @@ namespace PriceMap.Aplicacion
         public static ResultadoBusqueda DePunto(PuntoInteres punto, CategoriaPoi categoria, bool sanidadPublica, double metros, int puntuacion) =>
             new ResultadoBusqueda(TipoResultado.Punto, punto.Nombre, punto.Posicion, null, punto, categoria, sanidadPublica,
                 metros, puntuacion, null);
+
+        /// <summary>Una dirección del geocodificador (va siempre detrás de los lugares y los puntos).</summary>
+        public static ResultadoBusqueda DeDireccion(Direccion direccion, double metros) =>
+            new ResultadoBusqueda(TipoResultado.Direccion, direccion.Nombre, direccion.Posicion, null, null, CategoriaPoi.Ninguna,
+                false, metros, 0, null, direccion);
 
         public override string ToString() => $"{Tipo} {Nombre} ({Puntuacion}, {Metros:F0} m)";
     }

@@ -447,6 +447,22 @@ MonoBehaviour:
     m_Key: buscador.resultado.anuncio.precio
     m_Metadata:
       m_Items: []
+  - m_Id: 748322057871366
+    m_Key: buscador.direccion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871367
+    m_Key: buscador.direccion.distancia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871368
+    m_Key: buscador.direcciones.sinconexion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 748322057871369
+    m_Key: buscador.direccion.buscar
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

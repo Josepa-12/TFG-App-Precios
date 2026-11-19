@@ -69,6 +69,9 @@ namespace PriceMap.UI
         /// <summary>Se ha tocado un resultado de la lista.</summary>
         public event Action<ResultadoBusqueda> ResultadoElegido;
 
+        /// <summary>Se ha tocado "Buscar como dirección" (historia 2.3, parte 2): PantallaMapa pide las direcciones ya.</summary>
+        public event Action BuscarComoDireccionPedido;
+
         public VisualElement AsaZona { get; }
         public VisualElement Asa { get; }
         public VisualElement Interior { get; }
@@ -91,6 +94,18 @@ namespace PriceMap.UI
         public VisualElement Resultados { get; }
         /// <summary>"No hay resultados".</summary>
         public Label SinResultados { get; }
+        /// <summary>Fila de "No hay resultados" y "Buscar como dirección".</summary>
+        public VisualElement FilaSinResultados { get; }
+        /// <summary>Botón "Buscar como dirección" (historia 2.3, parte 2), junto a "No hay resultados".</summary>
+        public VisualElement BuscarDireccion { get; }
+        /// <summary>"Las direcciones necesitan conexión", bajo la lista.</summary>
+        public Label AvisoDirecciones { get; }
+        /// <summary>Se ve "Buscar como dirección".</summary>
+        public bool BuscarDireccionVisible { get; private set; }
+        /// <summary>Se ve "Las direcciones necesitan conexión".</summary>
+        public bool AvisoDireccionesVisible { get; private set; }
+        /// <summary>Filas de direcciones que se ven (van al final de Filas).</summary>
+        public int DireccionesVisibles { get; private set; }
         /// <summary>Filas de los resultados que se ven, en orden.</summary>
         public IReadOnlyList<FilaResultado> Filas => filas;
         /// <summary>El campo tiene texto (entonces se ve la X).</summary>
@@ -216,10 +231,27 @@ namespace PriceMap.UI
             // Resultados de la búsqueda (historia 2.3): en lugar de los chips y "Encuentra cerca" mientras hay texto
             Resultados = Nuevo("buscador-resultados", "buscador__resultados");
             Panel.Add(Resultados);
+            // "No hay resultados" y, a su lado, "Buscar como dirección" (historia 2.3, parte 2); debajo, el aviso
+            FilaSinResultados = Nuevo("buscador-fila-sin-resultados", "buscador__fila-sin-resultados");
+            Panel.Add(FilaSinResultados);
             SinResultados = new Label(this.textos(ClavesTexto.BuscadorSinResultados)) { name = "buscador-sin-resultados", pickingMode = PickingMode.Ignore };
             SinResultados.AddToClassList("buscador__sin-resultados");
             SinResultados.AddToClassList("t-body");
-            Panel.Add(SinResultados);
+            FilaSinResultados.Add(SinResultados);
+            BuscarDireccion = new VisualElement { name = "buscador-buscar-direccion", pickingMode = PickingMode.Position };
+            BuscarDireccion.AddToClassList("buscador__buscar-direccion");
+            var textoBuscarDireccion = new Label(this.textos(ClavesTexto.BuscadorBuscarDireccion))
+                { name = "buscador-buscar-direccion-texto", pickingMode = PickingMode.Ignore };
+            textoBuscarDireccion.AddToClassList("buscador__buscar-direccion-texto");
+            textoBuscarDireccion.AddToClassList("t-label");
+            BuscarDireccion.Add(textoBuscarDireccion);
+            BuscarDireccion.AddManipulator(new Clickable(PulsarBuscarDireccion));
+            FilaSinResultados.Add(BuscarDireccion);
+            AvisoDirecciones = new Label(this.textos(ClavesTexto.BuscadorDireccionesSinConexion))
+                { name = "buscador-aviso-direcciones", pickingMode = PickingMode.Ignore };
+            AvisoDirecciones.AddToClassList("buscador__aviso-direcciones");
+            AvisoDirecciones.AddToClassList("t-caption");
+            Panel.Add(AvisoDirecciones);
             // Las filas se crean al buscar: la escala de fuente se les aplica al disponerse
             Resultados.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(Resultados, EscalaFuente.Sistema));
             MostrarResultados(null);
@@ -355,6 +387,12 @@ namespace PriceMap.UI
             AlCambiarTexto();
         }
 
+        /// <summary>Lo que hace tocar "Buscar como dirección": avisa a PantallaMapa (si el botón se ve).</summary>
+        public void PulsarBuscarDireccion()
+        {
+            if (BuscarDireccionVisible) BuscarComoDireccionPedido?.Invoke();
+        }
+
         /// <summary>La X: vacía el campo; vuelven las categorías.</summary>
         public void BorrarTexto() => Escribir(string.Empty);
 
@@ -366,31 +404,53 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Pinta los resultados. Sin texto que buscar (EnBusqueda falso) vuelven los chips y "Encuentra cerca"; con
-        /// texto, las filas o, si no hay ninguna, "No hay resultados". La lista vuelve arriba.
+        /// texto, los locales (lugares y puntos) y detrás las direcciones (historia 2.3, parte 2) o, si no hay ninguna
+        /// fila, "No hay resultados". La lista vuelve arriba solo si cambian los locales: las direcciones que llegan
+        /// después se añaden debajo sin mover lo que el usuario está mirando.
         /// </summary>
-        public void MostrarResultados(IReadOnlyList<ResultadoBusqueda> resultados)
+        /// <param name="direcciones">Direcciones del geocodificador para el texto actual; null si aún no hay.</param>
+        /// <param name="sinConexion">Las direcciones han fallado: se ve "Las direcciones necesitan conexión".</param>
+        /// <param name="ofrecerDireccion">Se puede "Buscar como dirección": el botón sale si no hay ninguna fila.</param>
+        /// <param name="arriba">Devolver la lista arriba (falso al añadir solo direcciones).</param>
+        public void MostrarResultados(IReadOnlyList<ResultadoBusqueda> resultados, IReadOnlyList<ResultadoBusqueda> direcciones = null,
+            bool sinConexion = false, bool ofrecerDireccion = false, bool arriba = true)
         {
             EscalaFuente.Olvidar(Resultados); // las filas viejas se van: sus tamaños guardados también
             Resultados.Clear();
             filas.Clear();
+            DireccionesVisibles = 0;
             MostrandoResultados = EnBusqueda;
-            if (MostrandoResultados && resultados != null)
-                foreach (var r in resultados)
-                {
-                    var fila = new FilaResultado(r, x => ResultadoElegido?.Invoke(x), textos);
-                    // Si la lista mide lo mismo que antes, Resultados no recibe GeometryChanged: cada fila se escala sola
-                    fila.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(fila, EscalaFuente.Sistema));
-                    filas.Add(fila);
-                    Resultados.Add(fila);
-                }
+            if (MostrandoResultados)
+            {
+                if (resultados != null) foreach (var r in resultados) AnadirFila(r);
+                if (direcciones != null)
+                    foreach (var r in direcciones)
+                        if (AnadirFila(r)) DireccionesVisibles++;
+            }
             SinResultadosVisible = MostrandoResultados && filas.Count == 0;
+            BuscarDireccionVisible = SinResultadosVisible && ofrecerDireccion;
+            AvisoDireccionesVisible = MostrandoResultados && sinConexion;
             var categorias = MostrandoResultados ? DisplayStyle.None : DisplayStyle.Flex;
             FilaChips.style.display = categorias;
             Cerca.style.display = categorias;
             Resultados.style.display = MostrandoResultados ? DisplayStyle.Flex : DisplayStyle.None;
+            FilaSinResultados.style.display = SinResultadosVisible ? DisplayStyle.Flex : DisplayStyle.None;
             SinResultados.style.display = SinResultadosVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            BuscarDireccion.style.display = BuscarDireccionVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            AvisoDirecciones.style.display = AvisoDireccionesVisible ? DisplayStyle.Flex : DisplayStyle.None;
             Borrar.style.display = HayTexto ? DisplayStyle.Flex : DisplayStyle.None;
-            Panel.scrollOffset = Vector2.zero;
+            if (arriba) Panel.scrollOffset = Vector2.zero;
+        }
+
+        bool AnadirFila(ResultadoBusqueda r)
+        {
+            if (r == null) return false;
+            var fila = new FilaResultado(r, x => ResultadoElegido?.Invoke(x), textos);
+            // Si la lista mide lo mismo que antes, Resultados no recibe GeometryChanged: cada fila se escala sola
+            fila.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(fila, EscalaFuente.Sistema));
+            filas.Add(fila);
+            Resultados.Add(fila);
+            return true;
         }
 
         /// <summary>Muestra u oculta la cápsula (oculta mientras la ficha está abierta).</summary>

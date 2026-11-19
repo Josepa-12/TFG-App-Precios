@@ -148,3 +148,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-buscar-lugares-puntos-de-interes-y-direcciones.md`
   summary: Añadir a PruebasContraste los iconos de los resultados (glifo sobre los fondos --color-poi-* y accent sobre surface-2) y el texto muted en oscuro.
   evidence: Sin verificar (maybe-false, medium si es cierto). Se resuelve midiendo el contraste de esos pares de tokens en claro y oscuro.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3b-direcciones-con-photon.md`
+  summary: Historia 2.3 (parte 3), TalkBack de las direcciones. La fila de dirección es un botón («Calle Ancha 10, Dirección, Sanlúcar de Barrameda, a 1,2 km»), «Buscar como dirección» es un botón del recorrido, al llegar las direcciones se anuncia «N resultados» si cambian y el aviso «Las direcciones necesitan conexión» se anuncia una vez.
+  evidence: El usuario partió la 2.3 parte 2 el 19/11/2026 porque su spec pasaba de 1.600 tokens (unos 2.300).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3b-direcciones-con-photon.md`
+  summary: Comprobar en el móvil que la lista no salta arriba cuando llegan las direcciones (MostrarResultados con arriba falso).
+  evidence: Sin verificar (maybe-false, medium si es cierto). En EditMode no hay panel dispuesto y no se puede leer el scrollOffset; se ve desplazando la lista antes de que respondan.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3b-direcciones-con-photon.md`
+  summary: Photon no encuentra "calle ancha 10" en Sanlúcar (da Barrameda y calles de otras ciudades); estudiar dar más peso a la cercanía (location_bias_scale, zoom) o un bbox suave.
+  evidence: Captura de PC del 19/11/2026: los 7 resultados son de Marbella, Motril, etc. La decisión del 19/11 fue sin bbox; habría que medir con varias consultas reales.

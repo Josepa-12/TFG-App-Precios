@@ -136,6 +136,10 @@ namespace PriceMap.EditorTools
             [ClavesTexto.BuscadorDetalle] = "{0} · {1}",
             [ClavesTexto.BuscadorAnuncioResultado] = "{0}, {1}, a {2}",
             [ClavesTexto.BuscadorAnuncioResultadoPrecio] = "{0}, {1}, a {2}, {3}",
+            [ClavesTexto.BuscadorDireccion] = "Dirección",
+            [ClavesTexto.BuscadorDistanciaA] = "a {0}",
+            [ClavesTexto.BuscadorDireccionesSinConexion] = "Las direcciones necesitan conexión",
+            [ClavesTexto.BuscadorBuscarDireccion] = "Buscar como dirección",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

@@ -1,4 +1,6 @@
 using System;
+using System.Threading.Tasks;
+using PriceMap.Adaptadores.Busqueda;
 using PriceMap.Adaptadores.Datos;
 using PriceMap.Adaptadores.Gps;
 using PriceMap.Adaptadores.Sistema;
@@ -46,8 +48,10 @@ namespace PriceMap.Arranque
             // "Quitar animaciones" del sistema (UX-DR19): la hoja del buscador cambia de altura sin transición
             var accesibilidadSistema = new AccesibilidadSistemaAndroid();
             // El buscador (historia 2.3) lo crea Componer con el mapa ya comprobado y el mismo "ahora"
+            // Direcciones (historia 2.3, parte 2): Photon, 350 ms después de la última tecla
+            var direcciones = new BuscadorDirecciones(new GeocodificadorPhoton(), Task.Delay);
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
-                    accesibilidadSistema)) { enabled = false; return; }
+                    accesibilidadSistema, direcciones: direcciones)) { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
@@ -83,9 +87,10 @@ namespace PriceMap.Arranque
         /// <param name="ubicacion">Posición del usuario; sin ella (null) no hay botón de ubicación ni círculo.</param>
         /// <param name="accesibilidadSistema">Ajustes de accesibilidad del sistema; sin él, animaciones normales.</param>
         /// <param name="busqueda">Buscador (historia 2.3); si no se da, se crea con los lugares, el mapa y "ahora".</param>
+        /// <param name="direcciones">Direcciones (historia 2.3, parte 2); sin él (null), el buscador no busca direcciones.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
-            ServicioBusqueda busqueda = null)
+            ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -102,7 +107,7 @@ namespace PriceMap.Arranque
             tema.Cambiado += mapa.AplicarTema;   // el mapa y la interfaz cambian a la vez (FR-6)
             // Buscador de lugares y puntos de interés (historia 2.3): todo local, con el mismo "ahora" que los precios
             busqueda ??= new ServicioBusqueda(lugares, mapa, ahora);
-            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda);
+            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

@@ -779,6 +779,8 @@ namespace PriceMap.Arranque
                 pantalla.BorrarBusqueda();
                 yield return null;
                 if (buscador.Campo.value != "" || buscador.MostrandoResultados) Debug.LogError("PriceMap: la X no ha vaciado la búsqueda.");
+
+                yield return Direcciones(buscador);
             }
             finally
             {
@@ -788,6 +790,47 @@ namespace PriceMap.Arranque
                 if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             }
+        }
+
+        /// <summary>
+        /// Historia 2.3 (parte 2), captura "busqueda-direccion" (tema claro): "calle ancha 10" escrito y, tras la
+        /// espera y la respuesta de Photon, las direcciones debajo de los resultados locales. Sin red no es un error:
+        /// solo se registra (y se comprueba que se ve el aviso de conexión).
+        /// </summary>
+        IEnumerator Direcciones(HojaBuscador buscador)
+        {
+            if (pantalla.Direcciones == null) { Debug.LogError("PriceMap: la pantalla no ha recibido el BuscadorDirecciones."); yield break; }
+            buscador.Abrir();
+            buscador.Campo.value = "calle ancha 10";
+            // 350 ms de espera y la respuesta (Photon da por fallida la petición a los 10 s)
+            float limite = Time.realtimeSinceStartup + 12f;
+            yield return new WaitForSeconds(0.5f);
+            while (pantalla.Direcciones.Pendiente && Time.realtimeSinceStartup < limite) yield return null;
+            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForEndOfFrame();
+            var filas = buscador.Filas;
+            var direcciones = filas.Where(f => f.Resultado.Tipo == TipoResultado.Direccion).ToList();
+            if (direcciones.Count > 0)
+            {
+                Debug.Log($"PriceMap: \"calle ancha 10\" da {direcciones.Count} direcciones (de {filas.Count} filas): " +
+                          string.Join("; ", direcciones.Take(4).Select(f => $"{f.Nombre.text} | {f.Detalle.text}")));
+                int primera = filas.ToList().FindIndex(f => f.Resultado.Tipo == TipoResultado.Direccion);
+                if (filas.Skip(primera).Any(f => f.Resultado.Tipo != TipoResultado.Direccion))
+                    Debug.LogError("PriceMap: hay resultados locales detrás de las direcciones.");
+                if (direcciones.Count > BuscadorDirecciones.MaximoDirecciones)
+                    Debug.LogError($"PriceMap: {direcciones.Count} direcciones (máximo {BuscadorDirecciones.MaximoDirecciones}).");
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                yield return Capturar("busqueda-direccion");
+                yield return new WaitForSeconds(1f);
+            }
+            else
+            {
+                Debug.Log($"PriceMap: \"calle ancha 10\" sin direcciones (¿sin red?); aviso de conexión {(buscador.AvisoDireccionesVisible ? "visible" : "oculto")}, " +
+                          $"botón \"Buscar como dirección\" {(buscador.BuscarDireccionVisible ? "visible" : "oculto")}.");
+            }
+            pantalla.BorrarBusqueda();
+            yield return null;
+            if (pantalla.Direcciones.Pendiente) Debug.LogError("PriceMap: la X no ha cancelado la petición de direcciones.");
         }
 
         /// <summary>Da Debug.LogError si la zona pisa alguno de los controles (medio dp de tolerancia).</summary>
