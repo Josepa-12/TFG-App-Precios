@@ -419,6 +419,14 @@ MonoBehaviour:
     m_Localized: Cultura
     m_Metadata:
       m_Items: []
+  - m_Id: 741387917058048
+    m_Localized: Expandir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 741387946418176
+    m_Localized: Contraer
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

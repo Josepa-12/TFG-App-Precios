@@ -411,6 +411,14 @@ MonoBehaviour:
     m_Key: buscador.categoria.cultura
     m_Metadata:
       m_Items: []
+  - m_Id: 741387917058048
+    m_Key: buscador.expandir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 741387946418176
+    m_Key: buscador.contraer
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

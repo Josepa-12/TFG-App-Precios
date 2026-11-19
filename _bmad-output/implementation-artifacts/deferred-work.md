@@ -127,3 +127,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-hoja-del-buscador-desplegable.md`
   summary: Añadir a PruebasContraste los pares nuevos del buscador: el texto de ayuda del campo sobre la cápsula y sobre la hoja (claro y oscuro), el texto de los chips y de "Encuentra cerca", y los iconos blancos sobre los colores de categoría.
   evidence: El diff de la 2.2 añade --color-capsula y --color-buscador-campo y ninguna prueba mide su contraste.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2b-talkback-y-reducir-animaciones-del-buscador.md`
+  summary: Hacer que TalkBack anuncie el campo del buscador como campo de búsqueda (AccessibilityRole.SearchField) y lea lo que se ha escrito. Hoy se declara como botón porque AccesibilidadPantalla solo sabe crear botones y textos.
+  evidence: El nodo del campo es un Button con la etiqueta fija «Buscar en Sanlúcar». Tiene más sentido hacerlo en la 2.3, cuando haya búsqueda real.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2b-talkback-y-reducir-animaciones-del-buscador.md`
+  summary: Aplicar «quitar animaciones» del sistema también a los movimientos de cámara del mapa (centrar en la ficha o en mi posición), no solo a la hoja del buscador (UX-DR19).
+  evidence: IAccesibilidadSistema solo lo consulta la hoja; las animaciones de CamaraMapa son anteriores a esta historia y no miran el ajuste.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2b-talkback-y-reducir-animaciones-del-buscador.md`
+  summary: Probar en un móvil con TalkBack la hoja del buscador (abrir desde la cápsula, recorrido, Expandir/Contraer y botón atrás) y el ajuste de Android «quitar animaciones».
+  evidence: En EditMode, TalkBack se simula con LectorForzado y la escala de animaciones con un puerto falso.

@@ -119,6 +119,8 @@ namespace PriceMap.EditorTools
             [ClavesTexto.FichaAnuncioVarianteAhora] = "{0}: {1}, {2}",
             [ClavesTexto.BuscadorCampo] = "Buscar en Sanlúcar",
             [ClavesTexto.BuscadorCerca] = "Encuentra cerca",
+            [ClavesTexto.BuscadorExpandir] = "Expandir",
+            [ClavesTexto.BuscadorContraer] = "Contraer",
             [ClavesTexto.BuscadorComer] = "Restaurantes",
             [ClavesTexto.BuscadorBares] = "Bares",
             [ClavesTexto.BuscadorSuper] = "Supermercados",

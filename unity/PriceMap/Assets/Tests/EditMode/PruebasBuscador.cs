@@ -278,6 +278,10 @@ namespace PriceMap.Tests.EditMode
 
         class SistemaClaro : ITemaSistema { public bool EsOscuro => false; }
 
+        class AccesibilidadSistemaFalsa : IAccesibilidadSistema { public bool AnimacionesQuitadas { get; set; } }
+
+        AccesibilidadSistemaFalsa sistema;
+
         static ServicioLugares lugares;
         static ServicioLugares Lugares()
         {
@@ -304,7 +308,8 @@ namespace PriceMap.Tests.EditMode
             var prefs = new PreferenciasFalsas();
             var tema = new ServicioTema(prefs, new SistemaClaro());
             var filtro = new ServicioFiltro(prefs);
-            pantalla.Inicializar(new MapaFalso(), tema, Lugares(), Ahora, arbol, filtro);
+            sistema = new AccesibilidadSistemaFalsa();
+            pantalla.Inicializar(new MapaFalso(), tema, Lugares(), Ahora, arbol, filtro, accesibilidadSistema: sistema);
             tema.Iniciar();
             filtro.Iniciar();
             hoja = pantalla.Buscador;
@@ -533,6 +538,246 @@ namespace PriceMap.Tests.EditMode
             var oscuro = System.Text.RegularExpressions.Regex.Match(tokens, @"\.pm-raiz\.tema-oscuro\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
             StringAssert.Contains("--color-capsula: rgba(255, 255, 255, 0.90)", claro, "Cristal, como --color-glass.");
             StringAssert.Contains("--color-capsula: #1A2238", oscuro, "Opaca (surface) en oscuro.");
+        }
+
+        // ───────────────────────── TalkBack y quitar animaciones (parte 2) ─────────────────────────
+
+        AccesibilidadPantalla Acc => pantalla.Accesibilidad;
+
+        /// <summary>Recorrido de la hoja desplegada: campo, [Expandir], [Contraer], 8 chips y "Encuentra cerca".</summary>
+        static List<string> RecorridoDeLaHoja(bool expandir, bool contraer)
+        {
+            var r = new List<string> { T(ClavesTexto.BuscadorCampo) };
+            if (expandir) r.Add(T(ClavesTexto.BuscadorExpandir));
+            if (contraer) r.Add(T(ClavesTexto.BuscadorContraer));
+            r.AddRange(HojaBuscador.Categorias.Select(c => T(HojaBuscador.ClaveCategoria(c))));
+            r.Add(T(ClavesTexto.BuscadorCerca));
+            return r;
+        }
+
+        /// <summary>Despliega la hoja a media altura como lo haría el dedo (la pantalla la sigue en su fotograma).</summary>
+        void DesplegarAMedias()
+        {
+            hoja.Poner(0.5f);
+            pantalla.ActualizarCapas(0f);
+        }
+
+        [Test]
+        public void ConTalkBackLaCapsulaEsUnBotonDetrasDeLosControlesDelMapa()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            var recorrido = Acc.Recorrido();
+            int capsula = recorrido.IndexOf(T(ClavesTexto.BuscadorCampo));
+            Assert.AreEqual(recorrido.IndexOf(T(ClavesTexto.MapaAlejar)) + 1, capsula, "Justo después del último control del mapa.");
+            Assert.AreEqual(1, recorrido.Count(e => e == T(ClavesTexto.BuscadorCampo)), "Plegada, solo la cápsula (no el campo).");
+            Assert.AreEqual(Acc.Recorrido().Count - Acc.RecorridoDeMarcas().Count - 1, capsula, "Los marcadores van después.");
+            CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorContraer));
+            CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorExpandir));
+            CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorCerca));
+            Assert.IsFalse(Acc.Modal);
+        }
+
+        [Test]
+        public void ConTalkBackActivarLaCapsulaLaAbreDelTodoModalConElFocoEnElCampo()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            pantalla.AbrirBuscadorConLector();
+            Assert.IsTrue(hoja.AbiertaDelTodo);
+            Assert.IsTrue(Acc.Modal);
+            Assert.AreSame(hoja.Campo, Acc.Enfocado, "El foco va al campo.");
+            CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: false, contraer: true), Acc.Recorrido(),
+                "Campo, Contraer, chips y Encuentra cerca; sin marcadores ni controles del mapa.");
+            Assert.IsEmpty(Acc.RecorridoDeMarcas());
+        }
+
+        [Test]
+        public void ConTalkBackLaJerarquiaRealEsLaDeLaHoja()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            Acc.Reconstruir();
+            if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            pantalla.AbrirBuscadorConLector();
+            var nodos = AssistiveSupport.activeHierarchy.rootNodes.ToList();
+            CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: false, contraer: true), nodos.Select(n => n.label).ToList());
+            Assert.AreEqual(AccessibilityRole.Button, nodos[0].role, "El campo.");
+            Assert.AreEqual(AccessibilityRole.Button, nodos[1].role, "Contraer.");
+            Assert.IsTrue(nodos.Skip(2).All(n => n.role == AccessibilityRole.StaticText), "Chips y Encuentra cerca, como texto hasta la 2.4.");
+        }
+
+        [Test]
+        public void ConTalkBackAMediaAlturaTambienEsModalYTieneExpandir()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            DesplegarAMedias();
+            Assert.IsTrue(Acc.Modal, "Desplegada a cualquier altura, modal.");
+            CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: true, contraer: true), Acc.Recorrido());
+        }
+
+        [Test]
+        public void ExpandirAbreLaHojaDelTodoYSaleDelRecorrido()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            DesplegarAMedias();
+            pantalla.ExpandirBuscador();
+            Assert.IsTrue(hoja.AbiertaDelTodo);
+            Assert.IsTrue(Acc.Modal);
+            CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: false, contraer: true), Acc.Recorrido());
+            Assert.AreSame(hoja.Contraer, Acc.Enfocado, "El foco pasa a Contraer.");
+        }
+
+        [Test]
+        public void ContraerPliegaQuitaElModoModalYDevuelveElFocoALaCapsula()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            pantalla.AbrirBuscadorConLector();
+            pantalla.PlegarBuscador(); // la acción de "Contraer"
+            Assert.AreEqual(0f, hoja.Fraccion);
+            Assert.IsFalse(Acc.Modal);
+            Assert.AreSame(hoja, Acc.Enfocado, "El foco vuelve a la cápsula.");
+            var recorrido = Acc.Recorrido();
+            CollectionAssert.Contains(recorrido, T(ClavesTexto.TemaCambiar), "Vuelven los controles del mapa.");
+            CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorContraer));
+        }
+
+        [Test]
+        public void ConTalkBackAtrasHaceLoMismoQueContraer()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            pantalla.AbrirBuscadorConLector();
+            Assert.IsTrue(pantalla.Atras());
+            Assert.AreEqual(0f, hoja.Fraccion);
+            Assert.IsFalse(Acc.Modal);
+            Assert.AreSame(hoja, Acc.Enfocado);
+        }
+
+        [Test]
+        public void SinLectorNiExpandirNiContraer()
+        {
+            AccesibilidadPantalla.LectorForzado = () => false;
+            DesplegarAMedias();
+            Assert.IsTrue(Acc.Modal);
+            CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: false, contraer: false), Acc.Recorrido());
+        }
+
+        [Test]
+        public void PlegarlaConElDedoQuitaElModoModal()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            DesplegarAMedias();
+            Assert.IsTrue(Acc.Modal);
+            // Arrastre rápido hacia abajo: se pliega
+            var p = new Vector2(150f, hoja.Top + 20f);
+            hoja.Bajar(p, 0.0);
+            hoja.Mover(p + new Vector2(0f, 40f), 20.0);
+            hoja.Mover(p + new Vector2(0f, 400f), 40.0);
+            hoja.Soltar(45.0);
+            Assert.AreEqual(0f, hoja.Fraccion, "Se ha plegado.");
+            pantalla.ActualizarCapas(0f);
+            Assert.IsFalse(Acc.Modal);
+            Assert.AreSame(hoja, Acc.Enfocado, "El foco vuelve a la cápsula.");
+        }
+
+        [Test]
+        public void AbrirLaFichaConLaHojaDesplegadaDejaElModoModalDeLaFicha()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            DesplegarAMedias();
+            pantalla.AbrirFicha(Lugares().Lugares.First());
+            pantalla.ActualizarCapas(0f);
+            Assert.IsTrue(Acc.Modal, "La hoja plegada no quita el modo modal de la ficha.");
+            Assert.AreSame(pantalla.Ficha.Titulo, Acc.Enfocado);
+            CollectionAssert.DoesNotContain(Acc.Recorrido(), T(ClavesTexto.BuscadorContraer));
+        }
+
+        [Test]
+        public void AbrirElMenuConLaHojaDesplegadaDejaElRecorridoDelMenu()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            DesplegarAMedias();
+            pantalla.AlternarMenu();
+            pantalla.ActualizarCapas(0f);
+            Assert.IsTrue(pantalla.MenuAbierto);
+            Assert.IsTrue(Acc.Modal);
+            var recorrido = Acc.Recorrido();
+            Assert.AreEqual(T(ClavesTexto.PreciosControl), recorrido[0], "La píldora y sus opciones.");
+            CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorCampo));
+        }
+
+        /// <summary>Etiquetas de la jerarquía que lee TalkBack de verdad (no el recorrido calculado).</summary>
+        static List<string> JerarquiaReal() => AssistiveSupport.activeHierarchy.rootNodes.Select(n => n.label).ToList();
+
+        [Test]
+        public void TrasExpandirLaJerarquiaRealYaNoTieneExpandir()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            Acc.Reconstruir();
+            if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            DesplegarAMedias();
+            CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: true, contraer: true), JerarquiaReal());
+            pantalla.ExpandirBuscador();
+            CollectionAssert.AreEqual(RecorridoDeLaHoja(expandir: false, contraer: true), JerarquiaReal());
+        }
+
+        [Test]
+        public void ConElMenuSobreLaHojaLaJerarquiaRealEsLaDelMenu()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            Acc.Reconstruir();
+            if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            DesplegarAMedias();
+            pantalla.AlternarMenu();
+            pantalla.ActualizarCapas(0f);
+            var nodos = JerarquiaReal();
+            Assert.AreEqual(T(ClavesTexto.PreciosControl), nodos[0]);
+            CollectionAssert.DoesNotContain(nodos, T(ClavesTexto.BuscadorCampo));
+        }
+
+        [Test]
+        public void DesplegadaConElDedoElFocoDeTalkBackVaAlCampo()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            DesplegarAMedias();
+            Assert.AreSame(hoja.Campo, Acc.Enfocado, "No se queda en un nodo del mapa que ya no está.");
+        }
+
+        [Test]
+        public void ConLaHojaDesplegadaLaPildoraNoEstaEnElRecorrido()
+        {
+            DesplegarAMedias();
+            CollectionAssert.DoesNotContain(Acc.Recorrido(), T(ClavesTexto.PreciosControl));
+        }
+
+        [Test]
+        public void ConAnimacionesNormalesLaHojaTieneTransicion()
+        {
+            Assert.IsFalse(hoja.SinTransicion);
+            Assert.IsFalse(hoja.ClassListContains(HojaBuscador.ClaseSinTransicion));
+            var uss = System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            var buscador = System.Text.RegularExpressions.Regex.Match(uss, @"\n\.buscador\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            StringAssert.Contains("transition-duration: 0.32s", buscador);
+            Assert.AreEqual(0.32f, HojaBuscador.Transicion);
+        }
+
+        [Test]
+        public void ConLasAnimacionesQuitadasLaHojaNoTieneTransicion()
+        {
+            sistema.AnimacionesQuitadas = true;
+            pantalla.LeerAccesibilidadSistema(); // al volver a primer plano
+            Assert.IsTrue(hoja.ClassListContains(HojaBuscador.ClaseSinTransicion));
+            var uss = System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            var regla = System.Text.RegularExpressions.Regex.Match(uss, @"\.buscador--sin-transicion\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            StringAssert.Contains("transition-duration: 0s", regla);
+
+            sistema.AnimacionesQuitadas = false; // se vuelven a poner en Ajustes
+            pantalla.LeerAccesibilidadSistema();
+            Assert.IsFalse(hoja.SinTransicion, "Al volver a primer plano se aplica la nueva escala.");
+        }
+
+        [Test]
+        public void SinAccesibilidadDelSistemaLasAnimacionesSonNormales()
+        {
+            Assert.IsFalse(new PriceMap.Adaptadores.Sistema.AccesibilidadSistemaAndroid().AnimacionesQuitadas,
+                "Fuera de Android, false.");
         }
     }
 }

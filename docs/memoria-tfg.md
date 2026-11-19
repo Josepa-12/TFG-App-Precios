@@ -737,6 +737,16 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
       - los gestos horizontales en el campo, que movían la hoja;
       - el menú «Precios», que quedaba debajo de la hoja.
     - **Comprobación:** pasan 439 pruebas EditMode (cada fila de la física, gestos, botón atrás, ficha, menú y forma). En la captura de PC no queda ningún marcador bajo la cápsula y a media altura se ven los 8 chips y «Encuentra cerca». Quedan para el móvil los gestos reales y el teclado.
+  - *Historia 2.2 (parte 2): TalkBack y quitar animaciones del buscador (19/11/2026, revisada).*
+    - **Motivo:** la hoja no existía para TalkBack y su transición de 0,32 s no respetaba el ajuste «Quitar animaciones» del sistema (UX-DR19).
+    - **Decisiones del autor:** hasta la 2.4 los chips y «Encuentra cerca» se leen como texto, no como botones; «Expandir» solo aparece si la hoja no está abierta del todo. Android no ofrece a las apps el ajuste de reducir transparencias, así que la cápsula sigue como en la parte 1.
+    - **Solución:** con TalkBack, la cápsula es un botón «Buscar en Sanlúcar» detrás de los controles del mapa; activarla abre la hoja del todo y lleva el foco al campo. Desplegada a cualquier altura (también con el dedo), la hoja es modal: campo, «Expandir», «Contraer» (botones que solo ve el lector, como el zoom), los chips y «Encuentra cerca», sin marcadores ni controles del mapa. «Contraer» y atrás la pliegan y devuelven el foco a la cápsula. Si se abre la ficha, el menú o una ventana de ubicación, la hoja se pliega y manda su modo modal.
+      - Un puerto nuevo, `IAccesibilidadSistema`, dice si están quitadas las animaciones; su adaptador de Android lee `Settings.Global.ANIMATOR_DURATION_SCALE` (fuera de Android o si falla, no). Se lee al arrancar y al volver a primer plano, y la hoja cambia entonces de altura sin transición.
+    - **Revisión:** se añadieron pruebas sobre la jerarquía real que lee TalkBack (no solo sobre el recorrido calculado), sobre abrir una ventana de ubicación con la hoja desplegada y sobre el paso del ajuste desde el arranque. Además:
+      - al desplegar la hoja con el dedo, el foco de TalkBack va al campo y no se queda en un nodo que ya no está;
+      - el ajuste se lee una sola vez al volver a la app.
+      Quedan pendientes anunciar el campo como campo de búsqueda (con la 2.3) y aplicar «quitar animaciones» también a los movimientos de cámara del mapa.
+    - **Comprobación:** pasan 459 pruebas EditMode (una por fila de la matriz: abrir con TalkBack, recorrido abierta y a media altura, Expandir, Contraer, atrás, sin lector, plegar con el dedo, ficha, menú y aviso de ubicación encima, animaciones quitadas y normales y su relectura). La captura de PC sale igual que en la parte 1 y la APK compila. Queda probarlo en un móvil con TalkBack.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

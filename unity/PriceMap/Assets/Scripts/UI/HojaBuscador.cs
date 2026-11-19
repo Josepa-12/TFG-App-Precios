@@ -41,6 +41,8 @@ namespace PriceMap.UI
 
         public const string ClaseAbierta = "buscador--abierta";
         public const string ClaseArrastrando = "buscador--arrastrando";
+        /// <summary>"Quitar animaciones" del sistema (UX-DR19): la hoja cambia de altura sin transición.</summary>
+        public const string ClaseSinTransicion = "buscador--sin-transicion";
 
         readonly Func<string, string> textos;
         readonly FisicaHoja fisica = new FisicaHoja();
@@ -71,6 +73,19 @@ namespace PriceMap.UI
         public IReadOnlyList<VisualElement> Chips => chips;
         /// <summary>Entrada "Encuentra cerca".</summary>
         public VisualElement Cerca { get; }
+        /// <summary>
+        /// "Expandir" y "Contraer" de TalkBack (historia 2.2, parte 2): no se ven ni recogen toques; solo dan el marco
+        /// de su nodo (las dos mitades de la zona del tirador).
+        /// </summary>
+        public VisualElement Expandir { get; }
+        public VisualElement Contraer { get; }
+
+        /// <summary>Sin transición al cambiar de altura (animaciones quitadas en el sistema).</summary>
+        public bool SinTransicion
+        {
+            get => ClassListContains(ClaseSinTransicion);
+            set => EnableInClassList(ClaseSinTransicion, value);
+        }
 
         /// <summary>Física de la hoja (fracción abierta y gesto en curso).</summary>
         public FisicaHoja Fisica => fisica;
@@ -96,6 +111,12 @@ namespace PriceMap.UI
             AsaZona = Nuevo("buscador-asa-zona", "buscador__asa-zona");
             Asa = Nuevo("buscador-asa", "buscador__asa");
             AsaZona.Add(Asa);
+            Expandir = Nuevo("buscador-expandir", "buscador__solo-lector");
+            Expandir.AddToClassList("buscador__expandir");
+            Contraer = Nuevo("buscador-contraer", "buscador__solo-lector");
+            Contraer.AddToClassList("buscador__contraer");
+            AsaZona.Add(Expandir);
+            AsaZona.Add(Contraer);
 
             Interior = Nuevo("buscador-interior", "buscador__interior");
             Add(Interior);

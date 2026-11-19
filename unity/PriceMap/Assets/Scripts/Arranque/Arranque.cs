@@ -43,16 +43,25 @@ namespace PriceMap.Arranque
 
             // "mapa != null" usa la comparación de Unity (objeto destruido = nulo) antes de pasarlo como interfaz.
             // "Ahora" lo da el Arranque (AD-12): con él se calcula el resumen del precio de cada lugar.
-            if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion)) { enabled = false; return; }
+            // "Quitar animaciones" del sistema (UX-DR19): la hoja del buscador cambia de altura sin transición
+            var accesibilidadSistema = new AccesibilidadSistemaAndroid();
+            if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
+                    accesibilidadSistema)) { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
         }
 
         // GPS solo con la app delante (NFR-3): se apagan ubicación y brújula en segundo plano y se encienden al volver
+        // Al volver delante (OnApplicationFocus, que llega también tras la pausa), la pantalla relee los ajustes de
+        // accesibilidad que pudieron cambiar en Ajustes: una sola lectura por vuelta
         void OnApplicationPause(bool enPausa) => AlPausar(ubicacion, enPausa);
 
-        void OnApplicationFocus(bool conFoco) => AlCambiarFoco(ubicacion, conFoco);
+        void OnApplicationFocus(bool conFoco)
+        {
+            AlCambiarFoco(ubicacion, conFoco);
+            if (conFoco && enabled && pantallaMapa != null) pantallaMapa.LeerAccesibilidadSistema();
+        }
 
         /// <summary>Lo que hace OnApplicationPause: en pausa se detiene; al salir de ella se reanuda.</summary>
         internal static void AlPausar(ServicioUbicacion ubicacion, bool enPausa) => AplicarPrimerPlano(ubicacion, delante: !enPausa);
@@ -71,8 +80,9 @@ namespace PriceMap.Arranque
         /// Conecta las piezas. Si falta alguna, lo registra y devuelve false sin lanzar excepciones.
         /// </summary>
         /// <param name="ubicacion">Posición del usuario; sin ella (null) no hay botón de ubicación ni círculo.</param>
+        /// <param name="accesibilidadSistema">Ajustes de accesibilidad del sistema; sin él, animaciones normales.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
-            ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null)
+            ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -87,7 +97,7 @@ namespace PriceMap.Arranque
             }
 
             tema.Cambiado += mapa.AplicarTema;   // el mapa y la interfaz cambian a la vez (FR-6)
-            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion);
+            pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

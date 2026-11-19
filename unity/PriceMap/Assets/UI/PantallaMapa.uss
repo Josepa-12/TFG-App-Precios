@@ -878,6 +878,27 @@
     transition-duration: 0s;
 }
 
+/* "Quitar animaciones" del sistema (UX-DR19): la hoja cambia de altura sin transición */
+.buscador--sin-transicion {
+    transition-duration: 0s;
+}
+
+/* "Expandir" y "Contraer" de TalkBack: no se ven; solo dan el marco de su nodo (mitades de la zona del tirador) */
+.buscador__solo-lector {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: var(--espacio-5);
+}
+
+.buscador__expandir {
+    left: 0;
+}
+
+.buscador__contraer {
+    right: 0;
+}
+
 /* Abierta (desde el 15 %): fondo opaco de superficie */
 .buscador--abierta {
     background-color: var(--color-surface);

@@ -8,6 +8,7 @@
         "PriceMap.Aplicacion",
         "PriceMap.Adaptadores.Datos",
         "PriceMap.Adaptadores.Gps",
+        "PriceMap.Adaptadores.Sistema",
         "PriceMap.UI",
         "PriceMap.Arranque",
         "PriceMap.Vectorial",

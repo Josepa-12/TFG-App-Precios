@@ -33,6 +33,9 @@ namespace PriceMap.UI
         FichaLugar ficha;
         HojaBuscador buscador;
         VisualElement huecoBuscador;
+        IAccesibilidadSistema accesibilidadSistema; // "quitar animaciones" del sistema; null = animaciones normales
+        bool modalBuscador;       // la hoja del buscador desplegada ha puesto el modo modal de TalkBack
+        bool expandirEnRecorrido; // "Expandir" estaba en el recorrido al rehacerlo por última vez
         DateTime ahora;             // "ahora" del Arranque (AD-12): con él se calculan los precios de la ficha
         float ultimaEscala;          // última escala px → dp con disposición (para medir si el usuario está centrado)
         string claveBotonUbicacion;  // etiqueta de TalkBack del botón de ubicación en el último fotograma
@@ -50,23 +53,25 @@ namespace PriceMap.UI
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
         /// <param name="filtro">Filtro "Precios"; sin él no hay píldora y se ven todos los lugares.</param>
         /// <param name="ubicacion">Posición del usuario; sin ella no hay botón de ubicación ni círculo.</param>
+        /// <param name="accesibilidadSistema">Ajustes de accesibilidad del sistema; sin él, animaciones normales.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
-            ServicioUbicacion ubicacion = null)
+            ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
-            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion);
+            Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
-            ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null)
+            ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null)
         {
             this.mapa = mapa;
             this.tema = tema;
             this.filtro = filtro;
             this.ubicacion = ubicacion;
+            this.accesibilidadSistema = accesibilidadSistema;
             this.ahora = ahora;
             this.mapa.Centrar(VistaInicial);
 
@@ -267,8 +272,9 @@ namespace PriceMap.UI
             if (aviso == null || aviso.Abierta) return;
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             CerrarFicha(); // la ventana no queda encima de la ficha ni la ficha debajo al cerrarla (recorrido modal)
+            PlegarBuscadorPorOtraVentana();
             aviso.Abrir(ubicacion.Estado);
-            accesibilidad.Modal = true; // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
+            ModalNuevo(); // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
             accesibilidad.PedirFoco(aviso.Texto);
         }
 
@@ -283,9 +289,10 @@ namespace PriceMap.UI
             bool yaAbierto = aviso.Abierta;
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             CerrarFicha();
+            PlegarBuscadorPorOtraVentana();
             aviso.AbrirSinNotificaciones();
             if (yaAbierto) accesibilidad.RefrescarEtiqueta(aviso.Texto);
-            else accesibilidad.Modal = true; // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
+            else ModalNuevo(); // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
             accesibilidad.PedirFoco(aviso.Texto);
         }
 
@@ -311,9 +318,10 @@ namespace PriceMap.UI
             if (explicacion == null || explicacion.Abierta) return;
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             CerrarFicha(); // la ventana no queda encima de la ficha ni la ficha debajo al cerrarla (recorrido modal)
+            PlegarBuscadorPorOtraVentana();
             explicacion.Mostrar(true);
             ubicacion.MarcarExplicacionMostrada();
-            accesibilidad.Modal = true; // reconstruye: solo el texto y los dos botones
+            ModalNuevo(); // reconstruye: solo el texto y los dos botones
             accesibilidad.PedirFoco(explicacion.Texto);
         }
 
@@ -357,6 +365,111 @@ namespace PriceMap.UI
             buscador.Desplegando += AlDesplegarBuscador;
             huecoBuscador.RegisterCallback<GeometryChangedEvent>(_ => MedirBuscador());
             buscador.Linea.RegisterCallback<GeometryChangedEvent>(_ => ColocarAtribucion());
+            LeerAccesibilidadSistema();
+            DeclararBuscadorEnTalkBack();
+        }
+
+        /// <summary>
+        /// TalkBack (historia 2.2, parte 2). Plegada, la cápsula es un botón "Buscar en Sanlúcar" detrás de los
+        /// controles del mapa (el avatar no está: aún no hace nada). Desplegada a cualquier altura, la hoja es modal:
+        /// el campo, "Expandir" (si no está abierta del todo) y "Contraer" (botones que solo ve el lector), los 8 chips
+        /// y "Encuentra cerca" (textos: aún no hacen nada, historia 2.4). Ni marcadores ni controles del mapa.
+        /// </summary>
+        void DeclararBuscadorEnTalkBack()
+        {
+            accesibilidad.Boton(buscador, () => Textos.T(ClavesTexto.BuscadorCampo), AbrirBuscadorConLector,
+                visible: () => buscador.Visible && !BuscadorAbierto);
+            Func<bool> enHoja = () => BuscadorAbierto && !ModalUbicacionAbierta;
+            accesibilidad.Boton(buscador.Campo, () => Textos.T(ClavesTexto.BuscadorCampo), () => buscador.Campo.Focus(),
+                visible: enHoja, enModal: true);
+            accesibilidad.Boton(buscador.Expandir, () => Textos.T(ClavesTexto.BuscadorExpandir), ExpandirBuscador,
+                visible: () => enHoja() && ExpandirEnRecorrido, enModal: true);
+            accesibilidad.Boton(buscador.Contraer, () => Textos.T(ClavesTexto.BuscadorContraer), PlegarBuscador,
+                visible: () => enHoja() && AccesibilidadPantalla.LectorActivo, enModal: true);
+            foreach (var c in buscador.Chips)
+            {
+                var chip = c;
+                accesibilidad.Texto(chip, () => chip.Q<Label>().text, enHoja, enModal: true);
+            }
+            accesibilidad.Texto(buscador.Cerca, () => buscador.Cerca.Q<Label>().text, enHoja, enModal: true);
+        }
+
+        // "Expandir" solo está en el recorrido con el lector y la hoja desplegada sin abrir del todo
+        bool ExpandirEnRecorrido => AccesibilidadPantalla.LectorActivo && BuscadorAbierto && !buscador.AbiertaDelTodo;
+
+        /// <summary>
+        /// Lee del sistema si están quitadas las animaciones (UX-DR19): entonces la hoja cambia de altura sin
+        /// transición. Al arrancar y cada vez que la app vuelve a primer plano (lo llama el Arranque).
+        /// </summary>
+        public void LeerAccesibilidadSistema()
+        {
+            if (buscador == null) return;
+            buscador.SinTransicion = accesibilidadSistema != null && accesibilidadSistema.AnimacionesQuitadas;
+        }
+
+        /// <summary>La cápsula activada con TalkBack: abre la hoja del todo, modal, y lleva el foco al campo.</summary>
+        public void AbrirBuscadorConLector()
+        {
+            if (buscador == null || !buscador.Visible) return;
+            AlDesplegarBuscador(); // cierra la ficha y el menú
+            buscador.Abrir();
+            SeguirModalBuscador(enfocarCapsula: false);
+            accesibilidad.PedirFoco(buscador.Campo);
+        }
+
+        /// <summary>"Expandir" de TalkBack: abre la hoja del todo; "Expandir" sale del recorrido y el foco pasa a "Contraer".</summary>
+        public void ExpandirBuscador()
+        {
+            if (buscador == null || !BuscadorAbierto) return;
+            buscador.Abrir();
+            SeguirModalBuscador(enfocarCapsula: false);
+            accesibilidad.PedirFoco(buscador.Contraer);
+        }
+
+        /// <summary>
+        /// El modo modal sigue a la hoja: al desplegarse (por gesto o por TalkBack) se pone y al plegarse (también por
+        /// gesto) se quita y el foco vuelve a la cápsula, salvo que otra ventana (ficha, menú, ubicación) se haya
+        /// abierto: entonces manda ella. Si "Expandir" entra o sale del recorrido, se rehace.
+        /// </summary>
+        void SeguirModalBuscador(bool enfocarCapsula)
+        {
+            if (buscador == null || accesibilidad == null) return;
+            bool abierta = BuscadorAbierto;
+            // (también si otra ventana quitó el modo modal con la hoja aún desplegada)
+            if (abierta && (!modalBuscador || !accesibilidad.Modal))
+            {
+                modalBuscador = true;
+                expandirEnRecorrido = ExpandirEnRecorrido;
+                ModalNuevo(); // reconstruye: solo los nodos de la hoja
+                // Desplegada con el dedo: el foco de TalkBack no puede quedarse en un nodo que ya no está
+                if (AccesibilidadPantalla.LectorActivo) accesibilidad.PedirFoco(buscador.Campo);
+            }
+            else if (!abierta && modalBuscador)
+            {
+                modalBuscador = false;
+                if (MenuAbierto || FichaAbierta || ModalUbicacionAbierta) return;
+                accesibilidad.Modal = false; // reconstruye: vuelven los controles del mapa, la cápsula y los marcadores
+                if (enfocarCapsula) accesibilidad.PedirFoco(buscador);
+            }
+            else if (abierta && ExpandirEnRecorrido != expandirEnRecorrido)
+            {
+                expandirEnRecorrido = !expandirEnRecorrido;
+                accesibilidad.Reconstruir();
+            }
+        }
+
+        // Pliega la hoja porque se abre otra ventana modal (ficha, menú, ubicación): el modo modal pasa a ser el suyo
+        void PlegarBuscadorPorOtraVentana()
+        {
+            buscador?.Plegar();
+            modalBuscador = false;
+        }
+
+        // Pone el modo modal de una ventana nueva; si ya lo estaba (otra ventana o la hoja), rehace el recorrido
+        void ModalNuevo()
+        {
+            if (accesibilidad.Modal) accesibilidad.Reconstruir();
+            else accesibilidad.Modal = true;
         }
 
         void MedirBuscador()
@@ -378,10 +491,19 @@ namespace PriceMap.UI
         {
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             CerrarFicha();
+            SeguirModalBuscador(enfocarCapsula: false); // TalkBack: la hoja desplegada es modal
         }
 
-        /// <summary>Pliega la hoja del buscador en la cápsula (botón atrás, abrir la ficha).</summary>
-        public void PlegarBuscador() => buscador?.Plegar();
+        /// <summary>
+        /// Pliega la hoja del buscador en la cápsula (botón atrás o "Contraer" de TalkBack): quita el modo modal y el
+        /// foco vuelve a la cápsula.
+        /// </summary>
+        public void PlegarBuscador()
+        {
+            SeguirModalBuscador(enfocarCapsula: false); // desplegada en este mismo fotograma: aún no era modal
+            buscador?.Plegar();
+            SeguirModalBuscador(enfocarCapsula: true);
+        }
 
         // El mapa avisa de un toque (CamaraMapa: menos de 6 dp de movimiento y fuera de la interfaz)
         void AlTocarMapa(PuntoPantalla punto) => TocarMapa(punto, EscalaDp > 0f ? EscalaDp : ultimaEscala);
@@ -412,7 +534,7 @@ namespace PriceMap.UI
             // La hoja del buscador se pliega y la cápsula se oculta mientras la ficha está abierta
             if (buscador != null)
             {
-                buscador.Plegar();
+                PlegarBuscadorPorOtraVentana();
                 buscador.Mostrar(false);
             }
             bool yaAbierta = FichaAbierta;
@@ -538,7 +660,7 @@ namespace PriceMap.UI
             // es modal (píldora, que lo cierra, y las 5 opciones), igual que el velo a la vista
             // (con la explicación de la ubicación o la ficha abiertas, la píldora sale del recorrido modal)
             accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro,
-                visible: () => !ModalUbicacionAbierta && !FichaAbierta, enModal: true);
+                visible: () => !ModalUbicacionAbierta && !FichaAbierta && !BuscadorAbierto, enModal: true);
             foreach (var o in menu.Opciones)
             {
                 var opcion = o;
@@ -595,11 +717,11 @@ namespace PriceMap.UI
             {
                 // Con la ficha abierta (píldora activada por teclado o TalkBack) el menú no puede quedar debajo
                 CerrarFicha();
-                PlegarBuscador(); // a media altura la hoja taparía el menú
+                PlegarBuscadorPorOtraVentana(); // a media altura la hoja taparía el menú
                 menu.Marcar(filtro.Actual);
                 menu.Mostrar(true);
                 velo.EnableInClassList("abierto", true);
-                accesibilidad.Modal = true; // reconstruye: solo la píldora y las opciones
+                ModalNuevo(); // reconstruye: solo la píldora y las opciones
                 // El foco de TalkBack (y el de teclado, con lector o por navegación) va a la opción elegida
                 foreach (var o in menu.Opciones)
                     if (o.Elegida) accesibilidad.PedirFoco(o, porNavegacion);
@@ -692,6 +814,8 @@ namespace PriceMap.UI
         public FichaLugar Ficha => ficha;
         /// <summary>Cápsula y hoja del buscador; null sin interfaz.</summary>
         public HojaBuscador Buscador => buscador;
+        /// <summary>Ajustes de accesibilidad del sistema que recibió al iniciarse (para las pruebas del arranque).</summary>
+        internal IAccesibilidadSistema AccesibilidadSistema => accesibilidadSistema;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;
@@ -898,6 +1022,8 @@ namespace PriceMap.UI
                     accesibilidad?.RefrescarEtiqueta(aviso.Texto);
                 }
             }
+            // La hoja del buscador también se despliega y se pliega con el dedo: el modo modal de TalkBack la sigue
+            SeguirModalBuscador(enfocarCapsula: true);
             // Con TalkBack: rehace los nodos de marcadores y puntos si cambian los visibles o su orden
             // (después de las dos capas, para que los puntos ocultos en este fotograma no tengan nodo)
             accesibilidad?.ActualizarMarcadores();

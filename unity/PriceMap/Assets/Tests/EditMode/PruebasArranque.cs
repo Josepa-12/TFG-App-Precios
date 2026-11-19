@@ -76,6 +76,20 @@ namespace PriceMap.Tests.EditMode
             CollectionAssert.AreEqual(new[] { new Coordenada(36.7779, -6.3528) }, mapa.centrados);
         }
 
+        class AccesibilidadFalsa : IAccesibilidadSistema
+        {
+            public bool AnimacionesQuitadas => true;
+        }
+
+        [Test]
+        public void LaPantallaRecibeLosAjustesDeAccesibilidadDelSistema()
+        {
+            var sistema = new AccesibilidadFalsa();
+            Assert.IsTrue(Arranque.Arranque.Componer(new MapaFalso(), pantalla, NuevoTema(), Lugares(), Filtro(), Ahora,
+                accesibilidadSistema: sistema));
+            Assert.AreSame(sistema, pantalla.AccesibilidadSistema, "Componer se los pasa a la pantalla (quitar animaciones).");
+        }
+
         [Test]
         public void ElMapaRecibeElTemaInicialYCadaCambio()
         {

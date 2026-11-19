@@ -144,6 +144,9 @@ namespace PriceMap.UI
         /// <summary>Buscador (historia 2.2): texto del campo vacío y entrada "Encuentra cerca".</summary>
         public const string BuscadorCampo = "buscador.campo";
         public const string BuscadorCerca = "buscador.cerca";
+        /// <summary>Botones de la hoja que solo ve TalkBack (historia 2.2, parte 2): "Expandir" y "Contraer".</summary>
+        public const string BuscadorExpandir = "buscador.expandir";
+        public const string BuscadorContraer = "buscador.contraer";
         /// <summary>Chips de categorías del buscador (en plural y con mayúscula: "Restaurantes").</summary>
         public const string BuscadorComer = "buscador.categoria.comer";
         public const string BuscadorBares = "buscador.categoria.bares";
@@ -156,7 +159,7 @@ namespace PriceMap.UI
 
         public static readonly string[] Todas =
         {
-            BuscadorCampo, BuscadorCerca, BuscadorComer, BuscadorBares, BuscadorSuper, BuscadorFarmacia,
+            BuscadorCampo, BuscadorCerca, BuscadorExpandir, BuscadorContraer, BuscadorComer, BuscadorBares, BuscadorSuper, BuscadorFarmacia,
             BuscadorGasolina, BuscadorDeporte, BuscadorSalud, BuscadorCultura,
             FichaAnuncioConcepto, FichaAnuncioUnidad, FichaAnuncioOrigenWeb, FichaAnuncioFrase,
             FichaAnuncioVariante, FichaAnuncioVarianteAhora,

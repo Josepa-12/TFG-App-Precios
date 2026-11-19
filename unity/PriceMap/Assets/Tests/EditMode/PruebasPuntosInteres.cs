@@ -889,8 +889,9 @@ namespace PriceMap.Tests.EditMode
 
             var anuncioLugar = p.Capa.Marcadores.Single().Anuncio;
             Assert.IsTrue(p.Capa.Marcadores.Single().Visible);
-            CollectionAssert.AreEqual(new[] { TextosEs(ClavesTexto.PreciosControl), TextosEs(ClavesTexto.TemaCambiar), anuncioLugar, "Mercadona, supermercado" },
-                p.Accesibilidad.Recorrido(), "Botones, el lugar (abajo) y después el punto (arriba).");
+            CollectionAssert.AreEqual(new[] { TextosEs(ClavesTexto.PreciosControl), TextosEs(ClavesTexto.TemaCambiar),
+                    TextosEs(ClavesTexto.BuscadorCampo), anuncioLugar, "Mercadona, supermercado" },
+                p.Accesibilidad.Recorrido(), "Botones (y la cápsula del buscador), el lugar (abajo) y después el punto (arriba).");
             CollectionAssert.AreEqual(new[] { (anuncioLugar, AccesibilidadPantalla.GrupoLugares), ("Mercadona, supermercado", AccesibilidadPantalla.GrupoPuntos) },
                 p.Accesibilidad.RecorridoDeMarcas());
         }

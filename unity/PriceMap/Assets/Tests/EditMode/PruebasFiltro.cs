@@ -591,7 +591,7 @@ namespace PriceMap.Tests.EditMode
             Assert.Contains(Textos.T(ClavesTexto.TemaCambiar), recorrido, "Vuelve el botón de tema.");
             int ocio = Visibles(p);
             Assert.Greater(ocio, 0);
-            Assert.AreEqual(2 + ocio, recorrido.Count, "Píldora, tema y los marcadores de Ocio (sin lector no hay zoom).");
+            Assert.AreEqual(3 + ocio, recorrido.Count, "Píldora, tema, cápsula del buscador y los marcadores de Ocio (sin lector no hay zoom).");
             Assert.IsFalse(p.Accesibilidad.RecorridoConEstado().Any(e => e.seleccionada), "Sin menú no hay nada seleccionado.");
         }
 

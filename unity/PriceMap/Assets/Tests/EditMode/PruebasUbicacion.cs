@@ -1343,6 +1343,32 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void ElAvisoDeUbicacionPliegaLaHojaDelBuscadorYQuedaSoloElEnTalkBack()
+        {
+            AccesibilidadPantalla.LectorForzado = () => true;
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Apagada, null);
+            var m = Pantalla(gps, YaExplicado());
+            var hoja = m.pantalla.Buscador;
+            hoja.Medir(800f);
+            hoja.Poner(0.5f);
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.IsTrue(m.pantalla.Accesibilidad.Modal, "La hoja desplegada es modal.");
+
+            m.pantalla.TocarUbicacion(); // aviso de ubicación apagada
+            Assert.IsTrue(m.pantalla.AvisoAbierto);
+            Assert.AreEqual(0f, hoja.Fraccion, "La ventana pliega la hoja.");
+            Assert.IsTrue(m.pantalla.Accesibilidad.Modal);
+            CollectionAssert.DoesNotContain(m.pantalla.Accesibilidad.Recorrido(), PrepararInterfaz.TextosEs[ClavesTexto.BuscadorCampo]);
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.IsTrue(m.pantalla.AvisoAbierto, "La hoja plegada no le quita el modo modal.");
+
+            m.pantalla.CerrarAviso();
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.IsFalse(m.pantalla.Accesibilidad.Modal, "Al cerrarla, la hoja (plegada) no vuelve a ponerlo.");
+        }
+
+        [Test]
         public void SinNotificacionesSaleElAvisoUnaVezPorRuta()
         {
             var gps = new UbicacionFalsa();
