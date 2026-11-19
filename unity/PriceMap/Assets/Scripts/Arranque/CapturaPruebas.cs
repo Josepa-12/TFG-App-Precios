@@ -56,6 +56,11 @@ namespace PriceMap.Arranque
             public void Iniciar() { }
             public void Detener() { }
             public void AbrirAjustes() { }
+            public bool RutaActiva => false;
+            public bool RutaSoloPrimerPlano => false;
+            public Resultado<bool> IniciarRuta(string textoNotificacion) => Resultado<bool>.Exito(false);
+            public void ActualizarNotificacion(string textoNotificacion) { }
+            public void TerminarRuta() { }
         }
 
         /// <summary>Ancho del panel en la captura: el de referencia de EXPERIENCE.md (un móvil de 412 dp).</summary>

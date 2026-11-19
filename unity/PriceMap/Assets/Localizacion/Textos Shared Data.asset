@@ -367,6 +367,10 @@ MonoBehaviour:
     m_Key: ficha.anuncio.variante.ahora
     m_Metadata:
       m_Items: []
+  - m_Id: 551330417467392
+    m_Key: ubicacion.aviso.notificaciones
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

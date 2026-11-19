@@ -7,7 +7,9 @@ namespace PriceMap.Tests.EditMode
 {
     /// <summary>
     /// Historia 1.7: al generar el proyecto de Android, el manifiesto lleva la ubicación precisa y la aproximada
-    /// (una vez cada una) y le dice a Unity que no pida permisos al arrancar. Se prueba sobre un manifiesto mínimo.
+    /// (una vez cada una) y le dice a Unity que no pida permisos al arrancar. Historia 2.1: el servicio de ruta en
+    /// primer plano de tipo "location", no exportado, con sus permisos y sin ACCESS_BACKGROUND_LOCATION. Se prueba
+    /// sobre un manifiesto mínimo.
     /// </summary>
     public class PruebasPermisosUbicacionAndroid
     {
@@ -48,6 +50,17 @@ namespace PriceMap.Tests.EditMode
             xml.Load(Manifiesto);
             Assert.AreEqual(1, Contar(xml, "uses-permission", "android.permission.ACCESS_FINE_LOCATION"));
             Assert.AreEqual(1, Contar(xml, "uses-permission", "android.permission.ACCESS_COARSE_LOCATION"));
+            Assert.AreEqual(1, Contar(xml, "uses-permission", "android.permission.FOREGROUND_SERVICE"));
+            Assert.AreEqual(1, Contar(xml, "uses-permission", "android.permission.FOREGROUND_SERVICE_LOCATION"));
+            Assert.AreEqual(1, Contar(xml, "uses-permission", "android.permission.POST_NOTIFICATIONS"));
+            Assert.AreEqual(0, Contar(xml, "uses-permission", "android.permission.ACCESS_BACKGROUND_LOCATION"), "Nunca GPS en segundo plano sin ruta (AD-19).");
+            Assert.AreEqual(1, Contar(xml, "service", "com.pricemap.ruta.ServicioUbicacionRuta"));
+            foreach (XmlElement e in xml.GetElementsByTagName("service"))
+            {
+                Assert.AreEqual("location", e.GetAttribute("foregroundServiceType", Android));
+                Assert.AreEqual("false", e.GetAttribute("exported", Android));
+                Assert.AreEqual("application", e.ParentNode.Name, "El servicio va dentro de <application>.");
+            }
             Assert.AreEqual(1, Contar(xml, "meta-data", "unityplayer.SkipPermissionsDialog"));
             foreach (XmlElement e in xml.GetElementsByTagName("meta-data"))
                 if (e.GetAttribute("name", Android) == "unityplayer.SkipPermissionsDialog")
@@ -60,6 +73,19 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void AnadeLosDosPermisosYQueUnityNoLosPidaAlArrancar()
         {
+            new PermisosUbicacionAndroid().OnPostGenerateGradleAndroidProject(carpeta);
+            Comprobar();
+        }
+
+        [Test]
+        public void SiAlgoAnadeLaUbicacionEnSegundoPlanoSeQuita()
+        {
+            File.WriteAllText(Manifiesto,
+                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                "<manifest xmlns:android=\"" + Android + "\">\n" +
+                "  <uses-permission android:name=\"android.permission.ACCESS_BACKGROUND_LOCATION\" />\n" +
+                "  <application />\n" +
+                "</manifest>\n");
             new PermisosUbicacionAndroid().OnPostGenerateGradleAndroidProject(carpeta);
             Comprobar();
         }

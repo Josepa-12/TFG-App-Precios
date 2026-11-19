@@ -106,3 +106,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-mapa-sin-solapes-con-precios.md`
   summary: Probar en EditMode, con un panel dispuesto, las zonas reales de los controles (`ZonasControles`) y que las filas de la ficha no se encogen. Hoy solo lo comprueba la captura de PC.
   evidence: Revisión del arreglo de solapes, hallazgo 9 (Verification Gap). Quitar `Ocupar(pildora)` o los `flex-shrink: 0` no rompe ninguna prueba EditMode.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-gps-activo-con-la-pantalla-apagada-durante-una-ruta.md`
+  summary: Probar en un Android real el servicio de ruta. Al iniciar la ruta tiene que salir la notificación fija "Navegando a …" y, con la pantalla apagada 2 min, al volver tienen que llegar las posiciones en orden; al terminar, la notificación desaparece. En Android 13 o superior, comprobar la petición de `POST_NOTIFICATIONS` y el aviso si se deniega. Hasta la 2.7 no hay botón que llame a `IniciarRuta`: hará falta esa historia o un disparador temporal.
+  evidence: Decisión del autor del 19/11/2026 (spec 2.1). En EditMode solo se prueba la lógica con un servicio falso; el plugin Java solo se ha compilado en la APK.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-gps-activo-con-la-pantalla-apagada-durante-una-ruta.md`
+  summary: El puerto de ubicación solo entrega la coordenada de las posiciones de la ruta; se pierden el rumbo de la marcha, la velocidad, la precisión y la hora que ya lee LecturaRuta.
+  evidence: UbicacionGps.RecogerRuta usa solo lectura.Posicion e IUbicacion no tiene hora; la navegación (2.7) y la visita verificada (4.2) necesitan distinguir una posición antigua de la cola de una actual.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-gps-activo-con-la-pantalla-apagada-durante-una-ruta.md`
+  summary: La notificación de navegación usa el icono de la app a todo color como icono pequeño; en la barra de estado se vería como una mancha blanca. Hace falta un icono monocromo.
+  evidence: ServicioUbicacionRuta.notificacion usa setSmallIcon(getApplicationInfo().icon). Comprobarlo junto con la prueba en un Android real.

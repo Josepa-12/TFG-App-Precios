@@ -54,7 +54,10 @@ namespace PriceMap.Aplicacion
         /// <summary>"Permitir" en la explicación: lanza el permiso de Android.</summary>
         public void Permitir() => ubicacion.PedirPermiso();
 
-        /// <summary>La app pasa a segundo plano (OnApplicationPause(true) u OnApplicationFocus(false)).</summary>
+        /// <summary>
+        /// La app pasa a segundo plano (OnApplicationPause(true) u OnApplicationFocus(false)). Sin ruta se apagan
+        /// ubicación y brújula; con una ruta en marcha el adaptador mantiene el GPS (AD-19).
+        /// </summary>
         public void Pausar()
         {
             if (Pausada) return;
@@ -69,6 +72,21 @@ namespace PriceMap.Aplicacion
             Pausada = false;
             if (iniciada) ubicacion.Iniciar();
         }
+
+        /// <summary>Hay una ruta en marcha: el GPS sigue con la app en segundo plano (AD-19).</summary>
+        public bool RutaActiva => ubicacion.RutaActiva;
+
+        /// <summary>Ruta en marcha que se pausa al apagar la pantalla (permiso de notificaciones denegado).</summary>
+        public bool RutaSoloPrimerPlano => ubicacion.RutaSoloPrimerPlano;
+
+        /// <summary>Empieza una ruta con GPS en segundo plano y notificación fija (IUbicacion.IniciarRuta).</summary>
+        public Resultado<bool> IniciarRuta(string textoNotificacion) => ubicacion.IniciarRuta(textoNotificacion);
+
+        /// <summary>Cambia el texto de la notificación de la ruta.</summary>
+        public void ActualizarNotificacion(string textoNotificacion) => ubicacion.ActualizarNotificacion(textoNotificacion);
+
+        /// <summary>Termina la ruta: fuera la notificación y el GPS en segundo plano.</summary>
+        public void TerminarRuta() => ubicacion.TerminarRuta();
 
         /// <summary>Distancia (dp) entre el usuario y el centro de la pantalla por debajo de la cual está "centrado".</summary>
         public const float UmbralCentradoDp = 8f;

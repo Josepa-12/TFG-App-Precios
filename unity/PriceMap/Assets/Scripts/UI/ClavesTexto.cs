@@ -78,6 +78,8 @@ namespace PriceMap.UI
         public const string UbicacionAvisoApagada = "ubicacion.aviso.apagada";
         public const string UbicacionAbrirAjustes = "ubicacion.abrirajustes";
         public const string UbicacionCerrar = "ubicacion.cerrar";
+        /// <summary>Aviso de ruta sin GPS en segundo plano: permiso de notificaciones denegado (historia 2.1).</summary>
+        public const string UbicacionAvisoNotificaciones = "ubicacion.aviso.notificaciones";
 
         /// <summary>Ficha del lugar (historia 1.8): botón de cerrar para TalkBack.</summary>
         public const string FichaCerrar = "ficha.cerrar";
@@ -150,7 +152,7 @@ namespace PriceMap.UI
             FichaOrigenWeb, FichaOrigenDeclarado, FichaOrigenClientes, FrescuraAlDia, FrescuraPodria, FrescuraAntiguo,
             UbicacionCentrar, UbicacionExplicacion, UbicacionPermitir, UbicacionAhoraNo,
             UbicacionNorte, UbicacionBuscando, UbicacionDesactivada,
-            UbicacionAvisoDenegado, UbicacionAvisoApagada, UbicacionAbrirAjustes, UbicacionCerrar,
+            UbicacionAvisoDenegado, UbicacionAvisoApagada, UbicacionAbrirAjustes, UbicacionCerrar, UbicacionAvisoNotificaciones,
             TemaCambiar, TemaClaro, TemaOscuro, MapaAcercar, MapaAlejar, MapaAtribucion,
             MarcadorConPrecio, MarcadorSinPrecio,
             PreciosControl, PreciosVer, PreciosTodos, PreciosTitulo,

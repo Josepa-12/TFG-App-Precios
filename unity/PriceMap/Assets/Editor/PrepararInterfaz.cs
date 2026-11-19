@@ -81,6 +81,7 @@ namespace PriceMap.EditorTools
             [ClavesTexto.UbicacionAvisoApagada] = "La ubicación del móvil está apagada. Actívala en los ajustes rápidos del móvil.",
             [ClavesTexto.UbicacionAbrirAjustes] = "Abrir Ajustes",
             [ClavesTexto.UbicacionCerrar] = "Cerrar",
+            [ClavesTexto.UbicacionAvisoNotificaciones] = "Sin permiso de notificaciones, la navegación se pausa al apagar la pantalla.",
             [ClavesTexto.FichaCerrar] = "Cerrar ficha",
             [ClavesTexto.FichaTipo] = "{0} · {1}",
             [ClavesTexto.PlantillaServicio] = "Servicio local",

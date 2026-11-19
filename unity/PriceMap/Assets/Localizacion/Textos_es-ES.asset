@@ -374,6 +374,11 @@ MonoBehaviour:
     m_Localized: '{0}: {1}, {2}'
     m_Metadata:
       m_Items: []
+  - m_Id: 551330417467392
+    m_Localized: "Sin permiso de notificaciones, la navegaci\xF3n se pausa al apagar
+      la pantalla."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

@@ -34,6 +34,7 @@ namespace PriceMap.UI
         DateTime ahora;              // "ahora" del Arranque (AD-12): con él se calculan los precios de la ficha
         float ultimaEscala;          // última escala px → dp con disposición (para medir si el usuario está centrado)
         string claveBotonUbicacion;  // etiqueta de TalkBack del botón de ubicación en el último fotograma
+        bool avisoNotificacionesVisto; // ya salió el aviso de ruta sin notificaciones (vuelve a salir en otra ruta)
         Label atribucion;
         AccesibilidadPantalla accesibilidad;
         CapaMarcadores capa;
@@ -263,6 +264,23 @@ namespace PriceMap.UI
             CerrarFicha(); // la ventana no queda encima de la ficha ni la ficha debajo al cerrarla (recorrido modal)
             aviso.Abrir(ubicacion.Estado);
             accesibilidad.Modal = true; // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
+            accesibilidad.PedirFoco(aviso.Texto);
+        }
+
+        /// <summary>
+        /// Aviso de ruta sin GPS en segundo plano (historia 2.1): se denegó el permiso de notificaciones y la
+        /// navegación se pausa al apagar la pantalla. Misma ventana que el aviso de ubicación; si ya estaba abierto,
+        /// cambia el texto.
+        /// </summary>
+        void AbrirAvisoNotificaciones()
+        {
+            if (aviso == null) return;
+            bool yaAbierto = aviso.Abierta;
+            if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            CerrarFicha();
+            aviso.AbrirSinNotificaciones();
+            if (yaAbierto) accesibilidad.RefrescarEtiqueta(aviso.Texto);
+            else accesibilidad.Modal = true; // reconstruye: solo el texto, "Cerrar" y "Abrir Ajustes"
             accesibilidad.PedirFoco(aviso.Texto);
         }
 
@@ -782,8 +800,25 @@ namespace PriceMap.UI
                     accesibilidad?.RefrescarEtiqueta(botonUbicacion);
                 }
             }
+            // Ruta sin notificaciones (permiso denegado): el aviso sale una vez por ruta, cuando no hay otra ventana
+            if (ubicacion != null)
+            {
+                if (!ubicacion.RutaSoloPrimerPlano)
+                {
+                    avisoNotificacionesVisto = false;
+                    // Terminó la ruta o se dio el permiso: el aviso ya no es verdad
+                    if (AvisoAbierto && aviso.SinNotificaciones) CerrarAviso();
+                }
+                // Espera a que se cierre otra ventana (no tapa el aviso de ubicación)
+                else if (!avisoNotificacionesVisto && !ExplicacionAbierta && !AvisoAbierto)
+                {
+                    avisoNotificacionesVisto = true;
+                    AbrirAvisoNotificaciones();
+                }
+            }
             // El aviso abierto sigue al estado: si ya no toca avisar se cierra; si cambia el motivo, cambia el texto
-            if (AvisoAbierto)
+            // (el de las notificaciones no depende del estado de la ubicación)
+            if (AvisoAbierto && !aviso.SinNotificaciones)
             {
                 if (AccionUbicacionActual() != AccionUbicacion.Avisar) CerrarAviso();
                 else if (aviso.Motivo != ubicacion.Estado)
