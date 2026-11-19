@@ -371,6 +371,46 @@ MonoBehaviour:
     m_Key: ubicacion.aviso.notificaciones
     m_Metadata:
       m_Items: []
+  - m_Id: 732624669630464
+    m_Key: buscador.campo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184896
+    m_Key: buscador.cerca
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184897
+    m_Key: buscador.categoria.comer
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184898
+    m_Key: buscador.categoria.bares
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184899
+    m_Key: buscador.categoria.super
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184900
+    m_Key: buscador.categoria.farmacia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184901
+    m_Key: buscador.categoria.gasolina
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184902
+    m_Key: buscador.categoria.deporte
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184903
+    m_Key: buscador.categoria.salud
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184904
+    m_Key: buscador.categoria.cultura
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

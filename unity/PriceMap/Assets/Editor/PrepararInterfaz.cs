@@ -117,6 +117,16 @@ namespace PriceMap.EditorTools
             [ClavesTexto.FichaAnuncioFrase] = "{0}. {1}",
             [ClavesTexto.FichaAnuncioVariante] = "{0}, {1}",
             [ClavesTexto.FichaAnuncioVarianteAhora] = "{0}: {1}, {2}",
+            [ClavesTexto.BuscadorCampo] = "Buscar en Sanlúcar",
+            [ClavesTexto.BuscadorCerca] = "Encuentra cerca",
+            [ClavesTexto.BuscadorComer] = "Restaurantes",
+            [ClavesTexto.BuscadorBares] = "Bares",
+            [ClavesTexto.BuscadorSuper] = "Supermercados",
+            [ClavesTexto.BuscadorFarmacia] = "Farmacias",
+            [ClavesTexto.BuscadorGasolina] = "Gasolineras",
+            [ClavesTexto.BuscadorDeporte] = "Gimnasios",
+            [ClavesTexto.BuscadorSalud] = "Salud",
+            [ClavesTexto.BuscadorCultura] = "Cultura",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

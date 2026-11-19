@@ -725,6 +725,18 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
       - El aviso de notificaciones ya no tapa el de ubicación y se cierra cuando deja de ser cierto.
       - Quedan pendientes dos cosas: dar al puerto la hora y la velocidad de cada posición (para las historias 2.7 y 4.2) y un icono monocromo para la notificación.
     - **Comprobación:** pasan 400 pruebas EditMode (pausa con y sin ruta, cola en orden tras 2 minutos, parada, notificaciones denegadas y concedidas después, sin permiso de ubicación al empezar o a mitad de ruta, servicio caído, lectura de la cola y manifiesto). La APK compila y su manifiesto tiene el servicio con tipo `location` y no tiene `ACCESS_BACKGROUND_LOCATION`. La prueba en un móvil real queda pendiente (`deferred-work`). Nadie arranca aún la ruta: lo hará el botón Ir en la historia 2.7.
+  - *Historia 2.2 (parte 1): hoja del buscador desplegable (19/11/2026, revisada).*
+    - **Motivo:** no había forma de buscar (FR13, UX-DR4, UX-DR5).
+    - **Decisiones del autor:** la hoja se queda donde se suelta, sin imán a media altura; la historia se parte en dos y TalkBack y los ajustes del sistema (reducir animaciones y transparencias) van en la parte 2. Antes de implementar se enseñó una maqueta.
+    - **Solución:** una cápsula de cristal abajo con «Buscar en Sanlúcar» y un avatar genérico, que es el mismo elemento que la hoja (`HojaBuscador`). Al subir, pasa de forma de píldora a hoja con las esquinas de arriba redondeadas, mezclando ambas formas en el primer 15 % del recorrido.
+      - La física es lógica pura en `FisicaHoja`, con los valores del prototipo: hueco de 64 dp arriba, lanzamiento a 0,6 dp/ms, se pliega por debajo del 15 % y se abre por encima del 88 %, toque por debajo de 6 dp.
+      - Muestra los chips de las 8 categorías con los iconos y colores de los puntos de interés, y «Encuentra cerca» (llegan en la 2.4).
+      - El botón atrás pliega la hoja. La ficha y la hoja nunca están abiertas a la vez, y la cápsula se oculta con la ficha.
+    - **Revisión:** se corrigió un gesto que podía quedarse colgado si el dedo salía de la cápsula antes de empezar el arrastre: ahora se escucha en la raíz del panel. También se arreglaron:
+      - una velocidad inicial inflada que convertía un arrastre lento en un lanzamiento;
+      - los gestos horizontales en el campo, que movían la hoja;
+      - el menú «Precios», que quedaba debajo de la hoja.
+    - **Comprobación:** pasan 439 pruebas EditMode (cada fila de la física, gestos, botón atrás, ficha, menú y forma). En la captura de PC no queda ningún marcador bajo la cápsula y a media altura se ven los 8 chips y «Encuentra cerca». Quedan para el móvil los gestos reales y el teclado.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

@@ -31,7 +31,9 @@ namespace PriceMap.UI
         ExplicacionUbicacion explicacion;
         AvisoUbicacion aviso;
         FichaLugar ficha;
-        DateTime ahora;              // "ahora" del Arranque (AD-12): con él se calculan los precios de la ficha
+        HojaBuscador buscador;
+        VisualElement huecoBuscador;
+        DateTime ahora;             // "ahora" del Arranque (AD-12): con él se calculan los precios de la ficha
         float ultimaEscala;          // última escala px → dp con disposición (para medir si el usuario está centrado)
         string claveBotonUbicacion;  // etiqueta de TalkBack del botón de ubicación en el último fotograma
         bool avisoNotificacionesVisto; // ya salió el aviso de ruta sin notificaciones (vuelve a salir en otra ruta)
@@ -134,6 +136,9 @@ namespace PriceMap.UI
             // Abierta sin medida (primer fotograma), el lugar se centró con el 72 %: al disponerse, con su borde real
             ficha.Hoja.RegisterCallback<GeometryChangedEvent>(_ => RecentrarFichaPendiente());
             this.mapa.Toque += AlTocarMapa;
+
+            // Buscador (historia 2.2): cápsula abajo que se despliega en hoja, encima de los controles del mapa
+            CrearBuscador();
 
             // Posición del usuario, encima de lugares y puntos, y la explicación del permiso (modal)
             if (this.ubicacion != null) CrearUbicacion();
@@ -333,6 +338,51 @@ namespace PriceMap.UI
         /// <summary>True con la ficha de un lugar a la vista.</summary>
         public bool FichaAbierta => ficha != null && ficha.Abierta;
 
+        /// <summary>True con la hoja del buscador desplegada (más que la cápsula) o arrastrándose.</summary>
+        public bool BuscadorAbierto => buscador != null && buscador.Abierta;
+
+        /// <summary>
+        /// Cápsula y hoja del buscador. Desplegarla cierra la ficha y el menú "Precios"; su hueco da el alto que recorre
+        /// la hoja. La atribución queda por encima de la cápsula plegada (que crece con la fuente: se sigue su línea).
+        /// La escala de fuente le llega con la del resto de la pantalla (AjustarDisposicion): sus textos existen desde
+        /// el principio, así que no hace falta aplicarla en cada cambio de su geometría (cada fotograma al arrastrar).
+        /// </summary>
+        void CrearBuscador()
+        {
+            huecoBuscador = raiz.Q("hueco-buscador");
+            if (huecoBuscador == null) return;
+            buscador = new HojaBuscador();
+            huecoBuscador.Add(buscador);
+            SombraSuave.Poner(buscador);
+            buscador.Desplegando += AlDesplegarBuscador;
+            huecoBuscador.RegisterCallback<GeometryChangedEvent>(_ => MedirBuscador());
+            buscador.Linea.RegisterCallback<GeometryChangedEvent>(_ => ColocarAtribucion());
+        }
+
+        void MedirBuscador()
+        {
+            if (buscador == null) return;
+            buscador.Medir(huecoBuscador.layout.height);
+            ColocarAtribucion();
+        }
+
+        // La atribución (abajo a la derecha, en la zona segura) va encima de la cápsula plegada, no debajo
+        void ColocarAtribucion()
+        {
+            if (buscador == null || atribucion == null) return;
+            atribucion.style.bottom = buscador.AltoCapsula + HojaBuscador.MargenAbajo + 8f;
+        }
+
+        // El usuario empieza a desplegar el buscador: la ficha y el menú nunca están abiertos a la vez que la hoja
+        void AlDesplegarBuscador()
+        {
+            if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            CerrarFicha();
+        }
+
+        /// <summary>Pliega la hoja del buscador en la cápsula (botón atrás, abrir la ficha).</summary>
+        public void PlegarBuscador() => buscador?.Plegar();
+
         // El mapa avisa de un toque (CamaraMapa: menos de 6 dp de movimiento y fuera de la interfaz)
         void AlTocarMapa(PuntoPantalla punto) => TocarMapa(punto, EscalaDp > 0f ? EscalaDp : ultimaEscala);
 
@@ -359,6 +409,12 @@ namespace PriceMap.UI
         {
             if (ficha == null || lugar == null || ModalUbicacionAbierta) return;
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            // La hoja del buscador se pliega y la cápsula se oculta mientras la ficha está abierta
+            if (buscador != null)
+            {
+                buscador.Plegar();
+                buscador.Mostrar(false);
+            }
             bool yaAbierta = FichaAbierta;
             ficha.Abrir(lugar, ahora);
             CentrarEnFicha(lugar);
@@ -449,6 +505,7 @@ namespace PriceMap.UI
             centrarPendiente = null;
             if (!FichaAbierta) return;
             ficha.Mostrar(false);
+            buscador?.Mostrar(true); // vuelve la cápsula
             // TalkBack: fuera los nodos de la ficha, vuelve el mapa y el foco al marcador que la abrió, si se ve
             var marcador = marcadorFicha;
             marcadorFicha = null;
@@ -538,6 +595,7 @@ namespace PriceMap.UI
             {
                 // Con la ficha abierta (píldora activada por teclado o TalkBack) el menú no puede quedar debajo
                 CerrarFicha();
+                PlegarBuscador(); // a media altura la hoja taparía el menú
                 menu.Marcar(filtro.Actual);
                 menu.Mostrar(true);
                 velo.EnableInClassList("abierto", true);
@@ -562,13 +620,15 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con la
-        /// ficha del lugar abierta la cierra; con el menú abierto lo cierra sin cambiar el filtro. Si no, no hace nada (la app no sale:
-        /// Input.backButtonLeavesApp sigue en false). Devuelve true si lo ha gestionado.
+        /// hoja del buscador desplegada la pliega; con la ficha del lugar abierta la cierra; con el menú abierto lo
+        /// cierra sin cambiar el filtro. Si no, no hace nada (la app no sale: Input.backButtonLeavesApp sigue en
+        /// false). Devuelve true si lo ha gestionado.
         /// </summary>
         public bool Atras()
         {
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (AvisoAbierto) { CerrarAviso(); return true; }
+            if (BuscadorAbierto) { PlegarBuscador(); return true; }
             if (FichaAbierta) { CerrarFicha(); return true; }
             if (!MenuAbierto) return false;
             ConsumirNavegacion();
@@ -593,6 +653,7 @@ namespace PriceMap.UI
             if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
             if (ficha != null && mapa != null) mapa.Toque -= AlTocarMapa;
+            if (buscador != null) buscador.Desplegando -= AlDesplegarBuscador;
             AssistiveSupport.screenReaderStatusChanged -= AlCambiarLector;
             AccessibilitySettings.fontScaleChanged -= AlCambiarEscalaFuente;
             if (raiz != null) EscalaFuente.Olvidar(raiz);
@@ -603,11 +664,13 @@ namespace PriceMap.UI
         /// True si el punto de pantalla (origen abajo a la izquierda, como Input) cae sobre un control:
         /// así el mapa no se mueve al pulsar un botón. Con el menú "Precios" abierto, todo el mapa
         /// cuenta como tapado: ese toque solo cierra el menú. Con la explicación de la ubicación, también. Con la
-        /// ficha del lugar abierta, igual: un toque fuera de la hoja la cierra (su velo) y no mueve el mapa.
+        /// ficha del lugar abierta, igual: un toque fuera de la hoja la cierra (su velo) y no mueve el mapa. La hoja del
+        /// buscador tapa el mapa: mientras se arrastra y abierta del todo, entero; a media altura, lo que cubre (Pick).
         /// </summary>
         public bool TapaPunto(Vector2 pantalla)
         {
             if (MenuAbierto || ModalUbicacionAbierta || FichaAbierta) return true;
+            if (buscador != null && buscador.Visible && (buscador.Arrastrando || buscador.AbiertaDelTodo)) return true;
             if (raiz?.panel == null) return false;
             var p = RuntimePanelUtils.ScreenToPanel(raiz.panel, new Vector2(pantalla.x, Screen.height - pantalla.y));
             return EsControl(raiz, raiz.panel.Pick(p));
@@ -627,6 +690,8 @@ namespace PriceMap.UI
         public AvisoUbicacion Aviso => aviso;
         /// <summary>Ficha del lugar; null sin interfaz.</summary>
         public FichaLugar Ficha => ficha;
+        /// <summary>Cápsula y hoja del buscador; null sin interfaz.</summary>
+        public HojaBuscador Buscador => buscador;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;
@@ -698,6 +763,7 @@ namespace PriceMap.UI
                 botonTema.MarkDirtyRepaint(); botonUbicacion?.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint();
                 capa?.Repintar(); pildora?.Repintar(); menu?.Repintar(); marcadorPosicion?.Repintar();
                 ficha?.BotonCerrar.MarkDirtyRepaint();
+                buscador?.Repintar();
             });
         }
 
@@ -724,6 +790,10 @@ namespace PriceMap.UI
             }
             // La hoja de la ficha llega al borde inferior; su contenido termina encima de la barra de gestos
             ficha?.PonerMargenInferior(segura.yMin * escala);
+            // El buscador está fuera de la zona segura: plegado va encima de la barra de gestos y abierto del todo,
+            // 64 dp por debajo de la barra de estado
+            buscador?.PonerZonaSegura((Screen.height - segura.yMax) * escala, segura.yMin * escala);
+            ColocarAtribucion();
         }
 
         readonly List<Lugar> lugaresVisibles = new List<Lugar>();
@@ -742,6 +812,7 @@ namespace PriceMap.UI
             if (MenuAbierto) Ocupar(menu);
             Ocupar(columnaControles); // tema y ubicación
             if (zoom != null && zoom.ClassListContains("visible")) Ocupar(zoom);
+            Ocupar(buscador); // la cápsula (o lo que cubre la hoja desplegada)
             return zonasOcupadas;
         }
 

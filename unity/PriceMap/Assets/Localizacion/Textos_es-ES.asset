@@ -379,6 +379,46 @@ MonoBehaviour:
       la pantalla."
     m_Metadata:
       m_Items: []
+  - m_Id: 732624669630464
+    m_Localized: "Buscar en Sanl\xFAcar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184896
+    m_Localized: Encuentra cerca
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184897
+    m_Localized: Restaurantes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184898
+    m_Localized: Bares
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184899
+    m_Localized: Supermercados
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184900
+    m_Localized: Farmacias
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184901
+    m_Localized: Gasolineras
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184902
+    m_Localized: Gimnasios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184903
+    m_Localized: Salud
+    m_Metadata:
+      m_Items: []
+  - m_Id: 732624703184904
+    m_Localized: Cultura
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

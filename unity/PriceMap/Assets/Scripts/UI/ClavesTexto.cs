@@ -141,8 +141,23 @@ namespace PriceMap.UI
         /// <summary>Variante vigente: {0} texto de FichaAhora, {1} condición en minúscula, {2} precio ("Ahora: de 20:00 a 24:00, 24 €").</summary>
         public const string FichaAnuncioVarianteAhora = "ficha.anuncio.variante.ahora";
 
+        /// <summary>Buscador (historia 2.2): texto del campo vacío y entrada "Encuentra cerca".</summary>
+        public const string BuscadorCampo = "buscador.campo";
+        public const string BuscadorCerca = "buscador.cerca";
+        /// <summary>Chips de categorías del buscador (en plural y con mayúscula: "Restaurantes").</summary>
+        public const string BuscadorComer = "buscador.categoria.comer";
+        public const string BuscadorBares = "buscador.categoria.bares";
+        public const string BuscadorSuper = "buscador.categoria.super";
+        public const string BuscadorFarmacia = "buscador.categoria.farmacia";
+        public const string BuscadorGasolina = "buscador.categoria.gasolina";
+        public const string BuscadorDeporte = "buscador.categoria.deporte";
+        public const string BuscadorSalud = "buscador.categoria.salud";
+        public const string BuscadorCultura = "buscador.categoria.cultura";
+
         public static readonly string[] Todas =
         {
+            BuscadorCampo, BuscadorCerca, BuscadorComer, BuscadorBares, BuscadorSuper, BuscadorFarmacia,
+            BuscadorGasolina, BuscadorDeporte, BuscadorSalud, BuscadorCultura,
             FichaAnuncioConcepto, FichaAnuncioUnidad, FichaAnuncioOrigenWeb, FichaAnuncioFrase,
             FichaAnuncioVariante, FichaAnuncioVarianteAhora,
             FichaAhora, VarianteHorario, VarianteDiasSeguidos, VarianteDiasLista, VarianteConBono,

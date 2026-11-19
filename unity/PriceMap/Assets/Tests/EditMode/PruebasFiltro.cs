@@ -322,9 +322,13 @@ namespace PriceMap.Tests.EditMode
             // La ficha del lugar (historia 1.8) va encima de la píldora: con ella abierta, su velo tapa también el filtro;
             // cerrada no se ve (display: none) y no tapa nada
             var ficha = arbol.Q("hueco-ficha");
-            Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(ficha), "La ficha va justo debajo de la explicación.");
+            // El buscador (historia 2.2) va entre la ficha y la explicación: desplegado tapa los controles; con la
+            // ficha abierta la cápsula se oculta, así que nunca queda encima de ella
+            var buscador = arbol.Q("hueco-buscador");
+            Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(buscador), "El buscador va justo debajo de la explicación.");
+            Assert.AreEqual(raiz.childCount - 3, raiz.IndexOf(ficha), "La ficha va justo debajo del buscador.");
             Assert.AreEqual(DisplayStyle.None, p.Ficha.style.display.value, "Cerrada, la ficha no tapa la píldora.");
-            Assert.AreEqual(raiz.childCount - 3, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
+            Assert.AreEqual(raiz.childCount - 4, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
         }
 
         static readonly Dictionary<FiltroPrecios, string> ClaveEsperada = new Dictionary<FiltroPrecios, string>

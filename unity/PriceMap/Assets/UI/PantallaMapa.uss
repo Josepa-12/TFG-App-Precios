@@ -842,3 +842,257 @@
     color: var(--color-muted);
     white-space: normal;
 }
+
+/* Buscador (historia 2.2; DESIGN components.capsule y sheet; prototipo .dock). El hueco cubre la pantalla sin capturar
+   toques. La cápsula y la hoja son el mismo elemento: HojaBuscador le pone desde el código top, márgenes, esquinas y
+   relleno según la fracción abierta; aquí van los valores de la cápsula plegada antes de medir y la transición de
+   0,32 s (sin transición mientras el dedo arrastra). */
+.hueco-buscador {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.buscador {
+    position: absolute;
+    left: var(--espacio-3);
+    right: var(--espacio-3);
+    bottom: 20px;
+    min-height: var(--capsula-alto-min);
+    padding: 5px;
+    flex-direction: column;
+    border-top-left-radius: 28px;
+    border-top-right-radius: 28px;
+    border-bottom-left-radius: 28px;
+    border-bottom-right-radius: 28px;
+    background-color: var(--color-capsula);
+    transition-property: top, left, right, bottom, height, padding-top, padding-bottom, padding-left, padding-right,
+        border-top-left-radius, border-top-right-radius, border-bottom-left-radius, border-bottom-right-radius, background-color;
+    transition-duration: 0.32s;
+    transition-timing-function: ease-out-cubic;
+}
+
+.buscador--arrastrando {
+    transition-duration: 0s;
+}
+
+/* Abierta (desde el 15 %): fondo opaco de superficie */
+.buscador--abierta {
+    background-color: var(--color-surface);
+}
+
+/* Tirador: plegada va encima del borde superior sin ocupar sitio (36 × 3); abierta tiene su propio hueco (40 × 5) */
+.buscador__asa-zona {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 5px;
+    padding-top: 1px;
+    align-items: center;
+}
+
+.buscador__asa {
+    width: 36px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: var(--color-border);
+    flex-shrink: 0;
+}
+
+.buscador--abierta .buscador__asa-zona {
+    height: var(--espacio-5);
+    padding-top: 9px;
+}
+
+.buscador--abierta .buscador__asa {
+    width: 40px;
+    height: 5px;
+    border-radius: 2.5px;
+}
+
+/* Lo de dentro se recorta: plegada solo se ve la línea del campo */
+.buscador__interior {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.buscador__linea {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.buscador__campo {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--buscador-campo-alto);
+    padding: 0 var(--espacio-3);
+    border-radius: var(--radio-buscador-campo);
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+    background-color: var(--color-buscador-campo);
+}
+
+.buscador--abierta .buscador__campo {
+    border-color: var(--color-accent);
+}
+
+.buscador__lupa {
+    width: var(--buscador-lupa);
+    height: var(--buscador-lupa);
+    flex-shrink: 0;
+    margin-right: var(--espacio-2);
+    color: var(--color-muted);
+}
+
+/* Campo de texto sin el tema por defecto de Unity: sin fondo ni borde propios; el texto vacío ("Buscar en Sanlúcar")
+   en muted */
+.buscador__texto {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+}
+
+.buscador__texto .unity-base-text-field__input {
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--color-text);
+    --unity-cursor-color: var(--color-accent);
+    --unity-selection-color: var(--color-accent-soft);
+}
+
+.buscador__texto .unity-base-text-field__input--placeholder {
+    color: var(--color-muted);
+}
+
+/* Avatar genérico de 40 dp (aún no hace nada: el perfil es de la historia 3.5) */
+.buscador__avatar {
+    width: var(--avatar);
+    height: var(--avatar);
+    flex-shrink: 0;
+    margin-left: var(--espacio-2);
+    border-radius: var(--radio-avatar);
+    border-width: 2px;
+    border-color: var(--color-border);
+    background-color: var(--color-surface-2);
+    align-items: center;
+    justify-content: center;
+}
+
+.buscador__avatar-glifo {
+    width: var(--avatar-glifo);
+    height: var(--avatar-glifo);
+    color: var(--color-accent-text);
+}
+
+/* Contenido de la hoja: categorías y "Encuentra cerca" (lo que se ve antes de escribir) */
+.buscador__panel {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-top: var(--espacio-1);
+}
+
+.buscador__panel .unity-scroll-view__content-and-vertical-scroll-container {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.buscador__panel .unity-scroll-view__content-viewport {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.buscador__panel .unity-scroll-view__content-container {
+    flex-shrink: 0;
+    padding: var(--espacio-3) 2px var(--espacio-5) 2px;
+}
+
+.buscador__chips {
+    flex-direction: row;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+/* Chip de categoría: 40 dp de alto mínimo, borde de 1,5 y el icono de su categoría de punto de interés */
+.buscador__chip {
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--chip-alto-min);
+    margin: 0 var(--espacio-2) var(--espacio-2) 0;
+    padding: var(--espacio-1) var(--espacio-3) var(--espacio-1) 6px;
+    border-radius: var(--radio-chip);
+    border-width: 1.5px;
+    border-color: var(--color-border);
+}
+
+.buscador__chip-icono {
+    width: var(--chip-icono);
+    height: var(--chip-icono);
+    flex-shrink: 0;
+    border-radius: var(--radio-chip-icono);
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-poi-talleres);
+}
+
+.buscador__chip-icono--comer { background-color: var(--color-poi-comer); }
+.buscador__chip-icono--bares { background-color: var(--color-poi-bares); }
+.buscador__chip-icono--super { background-color: var(--color-poi-super); }
+.buscador__chip-icono--farmacia { background-color: var(--color-poi-farmacia); }
+.buscador__chip-icono--gasolina { background-color: var(--color-poi-gasolina); }
+.buscador__chip-icono--deporte { background-color: var(--color-poi-deporte); }
+.buscador__chip-icono--salud { background-color: var(--color-poi-salud); }
+.buscador__chip-icono--cultura { background-color: var(--color-poi-cultura); }
+
+.buscador__chip-glifo {
+    width: var(--chip-glifo);
+    height: var(--chip-glifo);
+    color: var(--color-poi-borde);
+}
+
+.buscador__chip-texto {
+    flex-shrink: 1;
+    margin: 0 0 0 var(--espacio-2);
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}
+
+/* "Encuentra cerca" (prototipo .near-list): fila de 52 dp sobre surface-2 */
+.buscador__cerca {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    min-height: var(--cerca-alto-min);
+    margin-top: var(--espacio-2);
+    padding: var(--espacio-2) var(--espacio-4);
+    border-radius: var(--radio-lg);
+    background-color: var(--color-surface-2);
+}
+
+.buscador__cerca-glifo {
+    width: var(--cerca-glifo);
+    height: var(--cerca-glifo);
+    flex-shrink: 0;
+    color: var(--color-accent-text);
+}
+
+.buscador__cerca-texto {
+    flex-shrink: 1;
+    margin: 0 0 0 var(--espacio-3);
+    padding: 0;
+    color: var(--color-text);
+    white-space: normal;
+}

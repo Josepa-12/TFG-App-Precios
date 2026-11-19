@@ -154,6 +154,7 @@ namespace PriceMap.Arranque
             yield return Posicion();
             yield return Ficha();
             yield return Variantes();
+            yield return Buscador();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -661,6 +662,82 @@ namespace PriceMap.Arranque
             }
         }
 
+        /// <summary>
+        /// Historia 2.2 (parte 1), capturas "buscador" (tema claro) y "buscador-oscuro": la hoja del buscador a media
+        /// altura con los chips de categorías y "Encuentra cerca". Antes comprueba la cápsula plegada (56 dp como
+        /// mínimo, sin pisar la atribución ni los controles) y, a media altura, que la hoja está donde se dejó, que los
+        /// 8 chips se ven dentro de ella y que no pisa la píldora ni la columna de controles. Al final, el botón atrás
+        /// la pliega. Deja el tema y su preferencia como estaban.
+        /// </summary>
+        IEnumerator Buscador()
+        {
+            var buscador = pantalla != null ? pantalla.Buscador : null;
+            if (buscador == null) { Debug.LogError("PriceMap: no hay buscador que capturar."); yield break; }
+            var raiz = pantalla.GetComponent<UIDocument>()?.rootVisualElement;
+            var columna = raiz?.Q("columna-controles");
+            var atribucion = raiz?.Q("atribucion");
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var temaAntes = tema.Actual;
+            try
+            {
+                mapa.Centrar(PantallaMapa.VistaInicial);
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                var capsula = buscador.worldBound;
+                Debug.Log($"PriceMap: cápsula del buscador {capsula} ({buscador.AltoCapsula:F1} dp de alto); atribución {atribucion?.worldBound}; " +
+                          $"campo \"{buscador.Campo.textEdition.placeholder}\"");
+                if (capsula.height < HojaBuscador.AltoCapsulaMin - 0.5f) Debug.LogError($"PriceMap: la cápsula mide {capsula.height:F1} dp de alto (mínimo 56).");
+                SinSolape("la cápsula", capsula, ("la atribución", atribucion), ("la columna de controles", columna), ("la píldora", pantalla.Pildora));
+
+                buscador.Poner(0.5f);
+                yield return new WaitForSeconds(1f); // la transición dura 0,32 s
+                yield return new WaitForEndOfFrame();
+                var hoja = buscador.worldBound;
+                float esperado = buscador.Top;
+                var viewport = buscador.Panel.contentViewport.worldBound;
+                int chipsVisibles = buscador.Chips.Count(c => viewport.Contains(c.worldBound.center));
+                Debug.Log($"PriceMap: hoja del buscador a media altura en {hoja} (top esperado {esperado:F1} dp, recorrido {buscador.Fisica.AltoUtil:F1} dp); " +
+                          $"chips visibles {chipsVisibles} de {buscador.Chips.Count}; \"Encuentra cerca\" en {buscador.Cerca.worldBound}");
+                if (Mathf.Abs(hoja.yMin - esperado) > 1f) Debug.LogError($"PriceMap: la hoja no está donde se dejó ({hoja.yMin:F1} dp y no {esperado:F1}).");
+                if (chipsVisibles != HojaBuscador.Categorias.Length) Debug.LogError("PriceMap: a media altura no se ven los 8 chips de categorías.");
+                if (!viewport.Contains(buscador.Cerca.worldBound.center)) Debug.LogError("PriceMap: a media altura no se ve \"Encuentra cerca\".");
+                SinSolape("la hoja", hoja, ("la columna de controles", columna), ("la píldora", pantalla.Pildora));
+
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                yield return Capturar("buscador");
+                yield return new WaitForSeconds(1f);
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return Capturar("buscador-oscuro");
+                yield return new WaitForSeconds(1f);
+
+                pantalla.Atras();
+                yield return null;
+                Debug.Log($"PriceMap: tras el botón atrás, hoja del buscador en {buscador.Fraccion:F2}");
+                if (buscador.Abierta) Debug.LogError("PriceMap: el botón atrás no ha plegado la hoja del buscador.");
+            }
+            finally
+            {
+                buscador.Plegar();
+                if (tema.Actual != temaAntes) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+        }
+
+        /// <summary>Da Debug.LogError si la zona pisa alguno de los controles (medio dp de tolerancia).</summary>
+        static void SinSolape(string que, Rect zona, params (string nombre, VisualElement control)[] controles)
+        {
+            var z = Rect.MinMaxRect(zona.xMin + 0.5f, zona.yMin + 0.5f, zona.xMax - 0.5f, zona.yMax - 0.5f);
+            foreach (var (nombre, control) in controles)
+            {
+                if (control == null || control.resolvedStyle.display == DisplayStyle.None) continue;
+                var r = control.worldBound;
+                if (float.IsNaN(r.x) || r.width <= 0f) continue;
+                if (z.Overlaps(r)) Debug.LogError($"PriceMap: {que} pisa {nombre} ({zona} y {r}).");
+            }
+        }
+
         int Visibles()
         {
             int n = 0;
@@ -713,6 +790,9 @@ namespace PriceMap.Arranque
             int bajoControles = 0;
             var controles = new List<Rect>(pantalla.ZonasControles()); // copia: la pantalla rehace la lista cada fotograma
             if (controles.Count == 0) Debug.LogError("PriceMap: la pantalla no da ninguna zona de controles medida.");
+            // La cápsula del buscador se mide aparte (no de la lista de la pantalla): si faltara en ella, aquí se ve
+            var buscador = pantalla.Buscador;
+            if (buscador != null && buscador.Visible && !float.IsNaN(buscador.worldBound.x)) controles.Add(buscador.worldBound);
             foreach (var c in controles)
             {
                 var r = Encoger(c);

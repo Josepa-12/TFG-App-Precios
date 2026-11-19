@@ -99,6 +99,10 @@
     --color-poi-educacion-texto: #624D37;
     --color-poi-publico-texto: #465161;
     --color-poi-culto-texto: #575761;
+    /* Buscador (historia 2.2): la cápsula es de cristal en claro y opaca en oscuro; el campo, surface en claro y
+       surface-2 en oscuro (prototipo .search) */
+    --color-capsula: rgba(255, 255, 255, 0.90);
+    --color-buscador-campo: #FFFFFF;
 
     /* Espaciado (4 / 8 / 12 / 16 / 24 / 32) */
     --espacio-1: 4px;
@@ -146,6 +150,22 @@
     --ficha-alto-max: 72%;
     --muestra-plantilla: 10px;
     --frescura-punto: 9px;
+    /* Buscador (historia 2.2; DESIGN components.capsule y sheet; prototipo .dock): cápsula de 56 dp como mínimo
+       (5 + campo de 46 + 5), avatar de 40 dp, chips de 40 dp con icono de 24 dp y "Encuentra cerca" de 52 dp */
+    --capsula-alto-min: 56px;
+    --buscador-campo-alto: 46px;
+    --radio-buscador-campo: 23px;  /* 46 / 2 */
+    --buscador-lupa: 18px;
+    --avatar: 40px;
+    --radio-avatar: 20px;          /* 40 / 2 */
+    --avatar-glifo: 22px;
+    --chip-alto-min: 40px;
+    --radio-chip: 20px;            /* 40 / 2 */
+    --chip-icono: 24px;
+    --radio-chip-icono: 12px;      /* 24 / 2 */
+    --chip-glifo: 13px;
+    --cerca-alto-min: 52px;
+    --cerca-glifo: 22px;
 
     -unity-font: url("../Fuentes/NunitoSans-Regular.ttf");
     color: var(--color-text);
@@ -205,6 +225,8 @@
     --color-poi-educacion-texto: #B4A18C;
     --color-poi-publico-texto: #9AA5B4;
     --color-poi-culto-texto: #AAAAB3;
+    --color-capsula: #1A2238;        /* opaca en oscuro (surface) */
+    --color-buscador-campo: #232D49; /* surface-2 */
 }
 
 /* Tipografía: Varela Round para títulos, Nunito Sans para el resto (tamaños en dp, escalados a sp) */

@@ -67,7 +67,16 @@ namespace PriceMap.UI
             ["bank"] = "<path d=\"M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7Z\"/>",
             ["bus"] = "<rect x=\"4\" y=\"3\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M4 11h16M8 19v2M16 19v2M8 15h.01M16 15h.01\"/>",
             ["church"] = "<path d=\"M12 2v5M10 4h4M6 22V12l6-5 6 5v10M10 22v-5h4v5\"/>",
+            // Los del buscador (historia 2.2): la lupa del prototipo (index.html · .search) y una persona genérica
+            // para el avatar (Lucide "user")
+            [Lupa] = "<circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/>",
+            [Avatar] = "<circle cx=\"12\" cy=\"8\" r=\"5\"/><path d=\"M20 21a8 8 0 0 0-16 0\"/>",
         };
+
+        /// <summary>Glifo de la lupa del campo del buscador.</summary>
+        public const string Lupa = "lupa";
+        /// <summary>Glifo del avatar genérico de la cápsula del buscador.</summary>
+        public const string Avatar = "avatar";
 
         /// <summary>Glifo de cada categoría de punto de interés (prototipo/lugares.js · POI_CATS[...].glyph).</summary>
         public static string GlifoDe(CategoriaPoi categoria)

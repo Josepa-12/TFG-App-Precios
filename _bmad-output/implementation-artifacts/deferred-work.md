@@ -115,3 +115,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-gps-activo-con-la-pantalla-apagada-durante-una-ruta.md`
   summary: La notificación de navegación usa el icono de la app a todo color como icono pequeño; en la barra de estado se vería como una mancha blanca. Hace falta un icono monocromo.
   evidence: ServicioUbicacionRuta.notificacion usa setSmallIcon(getApplicationInfo().icon). Comprobarlo junto con la prueba en un Android real.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-hoja-del-buscador-desplegable.md`
+  summary: Historia 2.2 (parte 2): TalkBack de la hoja del buscador y ajustes del sistema. Con TalkBack, tocar la cápsula abre la hoja del todo y pone el foco en el campo; la hoja ofrece las acciones "Expandir" y "Contraer" (dos botones visibles solo para el lector, porque AccesibilidadPantalla no tiene acciones personalizadas); y la hoja es modal mientras está abierta. Un puerto `IAccesibilidadSistema` con adaptador para Android: con "reducir animaciones" (ANIMATOR_DURATION_SCALE == 0) la altura cambia sin transición, y con "reducir transparencias" el fondo de la cápsula es opaco.
+  evidence: El usuario partió la 2.2 el 19/11/2026 porque su spec pasaba de 1.600 tokens.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-hoja-del-buscador-desplegable.md`
+  summary: Probar en el móvil los gestos reales de la hoja del buscador. Arrastrar la lista frente a arrastrar la hoja, tocar el avatar, soltar fuera de la hoja y comprobar que el teclado sale al tocar.
+  evidence: En EditMode no hay panel que reparta eventos de puntero, así que las pruebas llaman a Bajar/Mover/Soltar directamente y no pasan por los manejadores de HojaBuscador.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-hoja-del-buscador-desplegable.md`
+  summary: Decidir en la 2.3 si plegar la hoja del buscador (con atrás, al abrir una ficha o al arrastrarla abajo) borra lo escrito en el campo, como hace ahora.
+  evidence: HojaBuscador.Plegar y la suelta plegada vacían el campo; el spec de la 2.2 no lo dice y en la parte 1 todavía no hay búsqueda.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-hoja-del-buscador-desplegable.md`
+  summary: Añadir a PruebasContraste los pares nuevos del buscador: el texto de ayuda del campo sobre la cápsula y sobre la hoja (claro y oscuro), el texto de los chips y de "Encuentra cerca", y los iconos blancos sobre los colores de categoría.
+  evidence: El diff de la 2.2 añade --color-capsula y --color-buscador-campo y ninguna prueba mide su contraste.

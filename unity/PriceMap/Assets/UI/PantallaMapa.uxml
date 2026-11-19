@@ -34,6 +34,9 @@
         <!-- Ficha del lugar (FichaLugar, historia 1.8): velo transparente y hoja desde abajo, encima de los controles
              del mapa y debajo de las ventanas de ubicación -->
         <ui:VisualElement name="hueco-ficha" class="hueco-ficha" picking-mode="Ignore" />
+        <!-- Buscador (HojaBuscador, historia 2.2): cápsula abajo que se despliega en hoja, encima de los controles del
+             mapa (abierta los tapa); se oculta con la ficha abierta, así que nunca están las dos a la vez -->
+        <ui:VisualElement name="hueco-buscador" class="hueco-buscador" picking-mode="Ignore" />
         <!-- Explicación del permiso de ubicación (ExplicacionUbicacion): ventana modal por encima de todo -->
         <ui:VisualElement name="hueco-explicacion" class="hueco-explicacion" picking-mode="Ignore" />
     </ui:VisualElement>
