@@ -201,10 +201,13 @@ namespace PriceMap.UI
             CercaNombreSalud = "buscador.cerca.nombre.salud", CercaNombreCultura = "buscador.cerca.nombre.cultura";
         /// <summary>La X de la cabecera de la lista: vuelve a las categorías.</summary>
         public const string BuscadorQuitarCategoria = "buscador.cerca.quitar";
+        /// <summary>La píldora con una categoría, para TalkBack: "Quitar categoría Salud" (historia 2.4, parte 2).</summary>
+        public const string PildoraQuitarCategoria = "precios.quitar-categoria";
 
         public static readonly string[] Todas =
         {
             BuscadorCercaCategoria, BuscadorCercaTitulo, BuscadorCercaDesdeCentro, BuscadorCercaVacio, BuscadorQuitarCategoria,
+            PildoraQuitarCategoria,
             CercaNombreComer, CercaNombreBares, CercaNombreSuper, CercaNombreFarmacia, CercaNombreGasolina, CercaNombreDeporte,
             CercaNombreSalud, CercaNombreCultura,
             BuscadorAnuncioDireccion, BuscadorDireccion, BuscadorDistanciaA, BuscadorDireccionesSinConexion, BuscadorBuscarDireccion,

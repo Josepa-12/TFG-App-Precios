@@ -446,6 +446,7 @@ namespace PriceMap.UI
                 if (string.IsNullOrEmpty(texto)) { PintarCerca(); return; }
                 cercaActiva = false;
                 categoriaActiva = null;
+                AplicarCategoriaAlMapa(); // vuelven el filtro "Precios" y su píldora
             }
             IReadOnlyList<ResultadoBusqueda> resultados = null;
             if (busqueda != null && buscador.EnBusqueda) resultados = busqueda.Buscar(texto, PuntoCercania());
@@ -650,16 +651,57 @@ namespace PriceMap.UI
             direcciones?.Cancelar(); // con la categoría no se buscan direcciones
             cercaActiva = true;
             categoriaActiva = categoria;
+            AplicarCategoriaAlMapa();
             PintarCerca();
         }
 
-        /// <summary>La X de la cabecera (o el botón atrás): quita la categoría y vuelven las categorías (o la búsqueda).</summary>
+        /// <summary>
+        /// La X de la cabecera, el botón atrás o la píldora con la categoría: quita la categoría y vuelven las categorías
+        /// (o la búsqueda), y en el mapa, el filtro "Precios" guardado.
+        /// </summary>
         public void QuitarCategoria()
         {
             if (buscador == null || !cercaActiva) return;
             cercaActiva = false;
             categoriaActiva = null;
+            AplicarCategoriaAlMapa();
             Buscar(buscador.Campo.value);
+        }
+
+        CategoriaPoi? categoriaMapa; // la que filtra el mapa ahora (null: el filtro "Precios")
+
+        /// <summary>Categoría que filtra el mapa y enseña la píldora; null con el filtro "Precios" (y con "Encuentra cerca").</summary>
+        public CategoriaPoi? CategoriaMapa => categoriaMapa;
+
+        /// <summary>
+        /// Historia 2.4, parte 2: con un chip activo el mapa enseña solo sus marcadores y puntos y la píldora dice
+        /// "Salud ✕"; "Encuentra cerca" (null) no filtra el mapa. Sin categoría vuelve el filtro "Precios" guardado,
+        /// que nunca se cambia por una categoría.
+        /// </summary>
+        void AplicarCategoriaAlMapa()
+        {
+            var nueva = cercaActiva ? categoriaActiva : null;
+            if (nueva == categoriaMapa) return;
+            categoriaMapa = nueva;
+            if (capa != null) capa.Categoria = nueva;
+            if (capaPuntos != null) capaPuntos.Categoria = nueva;
+            if (pildora == null) return;
+            if (nueva is CategoriaPoi c) pildora.MostrarCategoria(c, NombreCategoria(c));
+            else pildora.Mostrar(filtro.Actual);
+            accesibilidad?.Reconstruir(); // la etiqueta de la píldora ha cambiado
+        }
+
+        static string NombreCategoria(CategoriaPoi c) => Textos.T(HojaBuscador.ClaveCategoria(c));
+
+        /// <summary>Lo que hace la píldora: con una categoría la quita; si no, abre o cierra el menú "Precios".</summary>
+        public void PulsarPildora()
+        {
+            if (categoriaMapa == null) { AlternarMenu(); return; }
+            bool navegacion = ConsumirNavegacion();
+            CerrarFicha(); // por teclado con la ficha abierta: no se cambia el mapa detrás de ella (como AlternarMenu)
+            QuitarCategoria();
+            // Como al elegir un filtro: el foco vuelve a la píldora y se anuncia el filtro que vuelve
+            accesibilidad?.PedirFoco(pildora, navegacion, AnuncioFiltro(filtro.Actual));
         }
 
         /// <summary>
@@ -951,7 +993,7 @@ namespace PriceMap.UI
         /// <summary>Píldora "Precios", su menú y el velo que lo cierra al tocar fuera (FR-2, UX-DR6).</summary>
         void CrearFiltro()
         {
-            pildora = new PildoraPrecios(AlternarMenu);
+            pildora = new PildoraPrecios(PulsarPildora);
             menu = new MenuPrecios(Elegir);
             var hueco = raiz.Q("hueco-precios");
             hueco.Add(pildora);
@@ -970,7 +1012,8 @@ namespace PriceMap.UI
             // TalkBack: la píldora es un botón con la opción actual como valor; con el menú abierto el recorrido
             // es modal (píldora, que lo cierra, y las 5 opciones), igual que el velo a la vista
             // (con la explicación de la ubicación o la ficha abiertas, la píldora sale del recorrido modal)
-            accesibilidad.Boton(pildora, () => Textos.T(ClavesTexto.PreciosControl), AlternarMenu, ValorFiltro,
+            // Con una categoría (historia 2.4, parte 2) es el botón "Quitar categoría Salud", sin valor
+            accesibilidad.Boton(pildora, EtiquetaPildora, PulsarPildora, () => categoriaMapa == null ? ValorFiltro() : "",
                 visible: () => !ModalUbicacionAbierta && !FichaAbierta && !BuscadorAbierto, enModal: true);
             foreach (var o in menu.Opciones)
             {
@@ -1004,11 +1047,16 @@ namespace PriceMap.UI
         /// <summary>Valor de la píldora para TalkBack: la opción elegida ("Hostelería").</summary>
         public string ValorFiltro() => Textos.T(TextosFiltro.ClaveOpcion(filtro.Actual));
 
+        /// <summary>Etiqueta de la píldora en TalkBack: "Precios en el mapa" o, con una categoría, "Quitar categoría Salud".</summary>
+        public string EtiquetaPildora() => categoriaMapa is CategoriaPoi c
+            ? Textos.T(ClavesTexto.PildoraQuitarCategoria, NombreCategoria(c))
+            : Textos.T(ClavesTexto.PreciosControl);
+
         void AlCambiarFiltro(FiltroPrecios nuevo)
         {
             if (capa != null) capa.Filtro = nuevo;
             if (pildora == null) return;
-            pildora.Mostrar(nuevo);
+            if (categoriaMapa == null) pildora.Mostrar(nuevo); // con categoría la píldora la sigue enseñando
             menu.Marcar(nuevo);
             accesibilidad?.Reconstruir(); // el valor de la píldora ha cambiado
         }

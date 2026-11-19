@@ -783,6 +783,19 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Pendiente:**
       - Probar en el móvil los toques y el arrastre.
       - Decidir si el chip «Gimnasios» pasa a llamarse «Deporte», porque también enseña golf y piscinas.
+  - *Historia 2.4 (parte 2): mapa filtrado por categoría (19/11/2026).*
+    - **Motivo:** al elegir una categoría solo cambiaba la lista; el mapa seguía enseñándolo todo (FR15).
+    - **Decisiones del autor:**
+      - La píldora «Precios» se convierte en «Salud ✕» con el icono de la categoría; tocarla quita la categoría.
+      - «Encuentra cerca» (todas) no filtra el mapa ni cambia la píldora.
+    - **Solución:**
+      - `CapaMarcadores` y `CapaPuntosInteres` tienen una `Categoria` que, mientras está puesta, sustituye al filtro «Precios» con `ReglaCerca.Incluye`. En el mapa no hay radio de 3 km y las reglas de solapes y repetidos siguen igual.
+      - La categoría sigue activa al plegar la hoja y se quita con la X de la cabecera, el botón atrás con la lista, al escribir o con la píldora. El filtro «Precios» guardado no cambia nunca.
+      - `PildoraPrecios` tiene un modo categoría: el icono del chip (mismo glifo y color), su nombre y una ✕ dibujada en lugar de la flecha. En ese modo no abre el menú.
+      - TalkBack: la píldora es el botón «Quitar categoría Salud»; al quitarla se anuncia el filtro que vuelve («Precios en el mapa: Hostelería»).
+    - **Revisión:** tres revisores automáticos encontraron 16 posibles problemas y se arreglaron 6. Si la píldora se pulsa con la ficha abierta, ahora primero cierra la ficha. Hay pruebas nuevas para el doble toque de TalkBack (etiqueta y valor del nodo) y la captura hace más comprobaciones. Los otros 10 se descartaron: no se cumplían o quedaban fuera de lo pedido. Por ejemplo, el botón atrás con la hoja plegada no quita la categoría porque así se decidió.
+    - **Comprobación:** pasan 635 pruebas. En la captura de PC `cerca-mapa`, con la hoja plegada solo se ven los marcadores de salud y la píldora dice «Salud ✕». El registro no tiene errores.
+    - **Pendiente:** probar en el móvil a elegir una categoría, plegar la hoja y tocar «Salud ✕».
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

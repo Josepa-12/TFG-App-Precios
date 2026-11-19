@@ -152,6 +152,23 @@
     color: var(--color-text);
 }
 
+/* Con una categoría de "Encuentra cerca" (historia 2.4, parte 2): icono del chip (buscador__chip-icono y su
+   color), el nombre y una ✕ en lugar de la flecha; el padding izquierdo se ajusta al círculo del icono */
+.pildora-precios--categoria {
+    padding-left: var(--espacio-2);
+}
+
+.pildora-precios__icono {
+    margin: 0;
+}
+
+.pildora-precios__quitar {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: var(--color-text);
+}
+
 /* Punto de color de cada opción (PuntoPrecios lo dibuja con su color) */
 .punto-precios {
     width: 12px;

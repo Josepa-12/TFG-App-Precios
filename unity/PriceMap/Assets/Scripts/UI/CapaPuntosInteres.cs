@@ -31,6 +31,15 @@ namespace PriceMap.UI
         readonly List<PuntoInteresVista> orden = new List<PuntoInteresVista>();
 
         public VisualElement Contenedor => contenedor;
+
+        /// <summary>
+        /// Categoría de "Encuentra cerca" activa (historia 2.4, parte 2): mientras no es null solo se ven los puntos
+        /// de esa categoría (ReglaCerca.Incluye). Null: todos.
+        /// </summary>
+        public CategoriaPoi? Categoria { get; set; }
+
+        /// <summary>Si un punto de esa categoría entra con la categoría activa (sin ella, todos).</summary>
+        public bool Incluye(CategoriaPoi categoriaPunto) => Categoria == null || ReglaCerca.Incluye(Categoria, categoriaPunto);
         /// <summary>Vistas de los puntos con categoría, en el orden en que se pintan.</summary>
         public IReadOnlyList<PuntoInteresVista> Vistas => orden;
 
@@ -112,6 +121,8 @@ namespace PriceMap.UI
             foreach (var v in orden)
             {
                 if (!cerca) { v.Mostrar(false); continue; }
+                // Fuera de la categoría activa se oculta sin proyectarlo, antes de los repetidos y los solapes
+                if (!Incluye(v.Categoria)) { v.Mostrar(false); continue; }
                 var p = mapa.Proyectar(v.Punto.Posicion);
                 var dp = new Vector2(p.X * escalaDp, p.Y * escalaDp);
                 bool enPantalla = p.Delante && !float.IsNaN(dp.x) && !float.IsNaN(dp.y)

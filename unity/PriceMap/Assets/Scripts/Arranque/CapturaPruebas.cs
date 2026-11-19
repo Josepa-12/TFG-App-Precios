@@ -873,10 +873,42 @@ namespace PriceMap.Arranque
                 yield return Capturar("cerca");
                 yield return new WaitForSeconds(1f);
 
+                // Historia 2.4 (parte 2), captura "cerca-mapa": la hoja plegada, el mapa solo con Salud y la píldora
+                // "Salud ✕"; después la píldora quita la categoría y vuelve el filtro guardado
+                var filtroAntes = filtro.Actual;
+                pantalla.PlegarBuscador();
+                yield return new WaitForSeconds(1.5f);
+                yield return new WaitForEndOfFrame();
+                if (pantalla.CategoriaMapa != CategoriaPoi.Salud) Debug.LogError("PriceMap: al plegar la hoja el mapa ya no está filtrado por Salud.");
+                var pildora = pantalla.Pildora;
+                if (pildora == null || !pildora.ClassListContains(PildoraPrecios.ClaseCategoria) || pildora.Texto.text != Textos.T(ClavesTexto.BuscadorSalud))
+                    Debug.LogError($"PriceMap: la píldora no dice \"Salud ✕\" (\"{pildora?.Texto.text}\").");
+                var marcadoresFuera = pantalla.Capa.Marcadores.Where(m => m.Visible && !ReglaCerca.Incluye(CategoriaPoi.Salud, m.Lugar)).ToList();
+                if (marcadoresFuera.Count > 0)
+                    Debug.LogError("PriceMap: con Salud se ven marcadores de otras categorías: " + string.Join(", ", marcadoresFuera.Select(m => m.Lugar.Nombre)));
+                var puntosFuera = pantalla.CapaPuntos.Vistas.Where(v => v.Visible && !ReglaCerca.Incluye(CategoriaPoi.Salud, v.Categoria)).ToList();
+                if (puntosFuera.Count > 0)
+                    Debug.LogError("PriceMap: con Salud se ven puntos de otras categorías: " + string.Join(", ", puntosFuera.Select(v => v.Punto.Nombre)));
+                Debug.Log($"PriceMap: mapa de Salud con {pantalla.Capa.Marcadores.Count(m => m.Visible)} marcadores y {pantalla.CapaPuntos.Visibles} puntos.");
+                yield return Capturar("cerca-mapa");
+                yield return new WaitForSeconds(1f);
+
+                pantalla.PulsarPildora();
+                yield return null;
+                if (pildora == null || pantalla.CercaActiva || pantalla.CategoriaMapa != null || filtro.Actual != filtroAntes
+                    || pildora.ClassListContains(PildoraPrecios.ClaseCategoria) || pildora.Texto.text != Textos.T(TextosFiltro.ClavePildora(filtroAntes)))
+                    Debug.LogError("PriceMap: la píldora \"Salud ✕\" no ha quitado la categoría o no ha vuelto el filtro guardado.");
+
+                // Otra vez Salud con la hoja abierta: el botón atrás vuelve a las categorías
+                buscador.Abrir();
+                buscador.ElegirCategoria(CategoriaPoi.Salud);
+                yield return new WaitForSeconds(1f);
                 pantalla.Atras();
                 yield return null;
                 if (pantalla.CercaActiva || !buscador.MostrandoCategorias || !buscador.Abierta)
                     Debug.LogError("PriceMap: el botón atrás no ha vuelto a las categorías con la hoja abierta.");
+                if (pantalla.CategoriaMapa != null || filtro.Actual != filtroAntes)
+                    Debug.LogError("PriceMap: el botón atrás no ha devuelto el filtro guardado al mapa.");
             }
             finally
             {

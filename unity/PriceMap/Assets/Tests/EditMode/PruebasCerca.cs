@@ -35,7 +35,16 @@ namespace PriceMap.Tests.EditMode
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }
-            public PuntoPantalla Proyectar(Coordenada punto) => PuntoPantalla.Ninguno;
+            // Con rejilla (historia 2.4, parte 2), cada coordenada distinta cae en su casilla, lejos de las demás: sin
+            // solapes, se ve todo lo que entra en el filtro o la categoría
+            public bool rejilla;
+            readonly Dictionary<Coordenada, int> casillas = new Dictionary<Coordenada, int>();
+            public PuntoPantalla Proyectar(Coordenada punto)
+            {
+                if (!rejilla) return PuntoPantalla.Ninguno;
+                if (!casillas.TryGetValue(punto, out int i)) casillas[punto] = i = casillas.Count;
+                return new PuntoPantalla(300f + (i % 40) * 600f, 300f + (i / 40) * 400f, 100f + i);
+            }
             public IReadOnlyList<PuntoInteres> PuntosInteres => puntos;
             public event Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
@@ -373,6 +382,7 @@ namespace PriceMap.Tests.EditMode
         HojaBuscador hoja;
         MapaFalso mapaPantalla;
         UbicacionFalsa gps;
+        ServicioFiltro filtroPantalla;
 
         [SetUp]
         public void Crear()
@@ -383,9 +393,11 @@ namespace PriceMap.Tests.EditMode
             var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
             var prefs = new PreferenciasFalsas();
             var tema = new ServicioTema(prefs, new SistemaClaro());
-            var filtro = new ServicioFiltro(prefs);
+            var filtro = filtroPantalla = new ServicioFiltro(prefs);
             mapaPantalla = new MapaFalso();
             mapaPantalla.puntos.Add(Punto("Centro de Salud Barrio Bajo", "doctors", null, AlNorte(Cabildo, 200)));
+            mapaPantalla.puntos.Add(Punto("Restaurante de Prueba", "restaurant", null, AlNorte(Cabildo, 260)));
+            mapaPantalla.puntos.Add(Punto("Supermercado de Prueba", "grocery", "supermarket", AlNorte(Cabildo, 320)));
             gps = new UbicacionFalsa();
             pantalla.Inicializar(mapaPantalla, tema, Reales(), Ahora, arbol, filtro,
                 ubicacion: new ServicioUbicacion(gps, prefs),
@@ -597,6 +609,276 @@ namespace PriceMap.Tests.EditMode
             CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.BuscadorCerca));
             foreach (var f in filasBusqueda) CollectionAssert.DoesNotContain(recorrido, f.Anuncio);
             CollectionAssert.Contains(recorrido, T(ClavesTexto.BuscadorCampo));
+        }
+
+        // ───────────────────────── Mapa filtrado por categoría (historia 2.4, parte 2) ─────────────────────────
+
+        /// <summary>Coloca marcadores y puntos en la rejilla (sin solapes) en una pantalla enorme.</summary>
+        void PintarMapa()
+        {
+            mapaPantalla.rejilla = true;
+            pantalla.Capa.Actualizar(1f, 100000f, 100000f);
+            pantalla.CapaPuntos.Actualizar(1f, 100000f, 100000f);
+        }
+
+        List<MarcadorLugar> MarcadoresVisibles() => pantalla.Capa.Marcadores.Where(m => m.Visible).ToList();
+        List<string> PuntosVisibles() => pantalla.CapaPuntos.Vistas.Where(v => v.Visible).Select(v => v.Punto.Nombre).ToList();
+
+        string TextoFiltro(FiltroPrecios f) => T(TextosFiltro.ClavePildora(f));
+
+        void AssertPildoraConSalud()
+        {
+            var p = pantalla.Pildora;
+            Assert.IsTrue(p.ClassListContains(PildoraPrecios.ClaseCategoria));
+            Assert.AreEqual(CategoriaPoi.Salud, p.Categoria);
+            Assert.AreEqual("Salud", p.Texto.text);
+            Assert.IsTrue(p.IconoCategoria.ClassListContains("buscador__chip-icono"), "El círculo del icono del chip.");
+            Assert.IsTrue(p.IconoCategoria.ClassListContains("buscador__chip-icono--salud"), "El color del chip de Salud.");
+            Assert.IsFalse(Oculto(p.IconoCategoria));
+            Assert.IsFalse(Oculto(p.Quitar), "La ✕ en lugar de la flecha.");
+            Assert.IsTrue(Oculto(p.Punto), "Sin el punto del filtro.");
+        }
+
+        /// <summary>Vuelve el filtro guardado (Hostelería) en el mapa y en la píldora; la categoría ya no está.</summary>
+        void AssertVuelveHosteleria()
+        {
+            Assert.AreEqual(FiltroPrecios.Hosteleria, filtroPantalla.Actual, "El filtro guardado no cambia.");
+            Assert.IsNull(pantalla.CategoriaMapa);
+            Assert.IsNull(pantalla.Capa.Categoria);
+            Assert.IsNull(pantalla.CapaPuntos.Categoria);
+            var p = pantalla.Pildora;
+            Assert.IsFalse(p.ClassListContains(PildoraPrecios.ClaseCategoria));
+            Assert.IsNull(p.Categoria);
+            Assert.AreEqual(TextoFiltro(FiltroPrecios.Hosteleria), p.Texto.text);
+            Assert.IsTrue(Oculto(p.IconoCategoria));
+            Assert.IsTrue(Oculto(p.Quitar));
+            Assert.IsFalse(Oculto(p.Punto));
+            PintarMapa();
+            var visibles = MarcadoresVisibles();
+            Assert.IsNotEmpty(visibles);
+            Assert.IsTrue(visibles.All(m => m.Lugar.Plantilla == Plantilla.Hosteleria), "El mapa de Hostelería.");
+            CollectionAssert.AreEquivalent(new[] { "Centro de Salud Barrio Bajo", "Restaurante de Prueba", "Supermercado de Prueba" }, PuntosVisibles());
+        }
+
+        void ElegirSaludConHosteleria()
+        {
+            filtroPantalla.Elegir(FiltroPrecios.Hosteleria);
+            AbrirYElegir(CategoriaPoi.Salud);
+        }
+
+        [Test]
+        public void SaludEnsenaSoloSaludEnElMapaYLaPildoraSaludX()
+        {
+            ElegirSaludConHosteleria();
+            Assert.AreEqual(CategoriaPoi.Salud, pantalla.CategoriaMapa);
+            PintarMapa();
+            var visibles = MarcadoresVisibles();
+            Assert.IsNotEmpty(visibles);
+            Assert.IsTrue(visibles.All(m => ReglaCerca.Incluye(CategoriaPoi.Salud, m.Lugar)), "Solo marcadores de salud.");
+            Assert.IsTrue(visibles.Any(m => m.Lugar.Plantilla != Plantilla.Hosteleria), "El filtro \"Precios\" no cuenta.");
+            Assert.IsTrue(visibles.Any(m => m.Lugar.Id == "clinica-areas"));
+            int todosSalud = Reales().Lugares.Count(l => ReglaCerca.Incluye(CategoriaPoi.Salud, l));
+            Assert.AreEqual(todosSalud, pantalla.Capa.Marcadores.Count(m => ReglaCerca.Incluye(CategoriaPoi.Salud, m.Lugar)));
+            Assert.IsTrue(pantalla.Capa.Marcadores.Where(m => !ReglaCerca.Incluye(CategoriaPoi.Salud, m.Lugar)).All(m => !m.Visible));
+            CollectionAssert.AreEquivalent(new[] { "Centro de Salud Barrio Bajo" }, PuntosVisibles());
+            AssertPildoraConSalud();
+            Assert.AreEqual(FiltroPrecios.Hosteleria, filtroPantalla.Actual, "El filtro guardado no cambia.");
+            Assert.AreEqual(FiltroPrecios.Hosteleria, pantalla.Capa.Filtro);
+        }
+
+        [Test]
+        public void AlPlegarElMapaSigueConSalud()
+        {
+            ElegirSaludConHosteleria();
+            pantalla.PlegarBuscador();
+            Assert.IsFalse(hoja.Abierta);
+            Assert.IsTrue(pantalla.CercaActiva);
+            Assert.AreEqual(CategoriaPoi.Salud, pantalla.CategoriaMapa);
+            PintarMapa();
+            Assert.IsTrue(MarcadoresVisibles().All(m => ReglaCerca.Incluye(CategoriaPoi.Salud, m.Lugar)));
+            CollectionAssert.AreEquivalent(new[] { "Centro de Salud Barrio Bajo" }, PuntosVisibles());
+            AssertPildoraConSalud();
+        }
+
+        [Test]
+        public void TocarUnPuntoDeLaListaPliegaYElMapaSigueConSalud()
+        {
+            ElegirSaludConHosteleria();
+            pantalla.ElegirResultado(hoja.Filas.First(f => f.Resultado.Tipo == TipoResultado.Punto).Resultado);
+            Assert.IsFalse(hoja.Abierta);
+            Assert.AreEqual(CategoriaPoi.Salud, pantalla.CategoriaMapa);
+            PintarMapa();
+            Assert.IsTrue(MarcadoresVisibles().All(m => ReglaCerca.Incluye(CategoriaPoi.Salud, m.Lugar)));
+            CollectionAssert.AreEquivalent(new[] { "Centro de Salud Barrio Bajo" }, PuntosVisibles());
+            AssertPildoraConSalud();
+        }
+
+        [Test]
+        public void LaPildoraConLaFichaAbiertaLaCierraAntesDeQuitarLaCategoria()
+        {
+            ElegirSaludConHosteleria();
+            pantalla.PlegarBuscador();
+            pantalla.AbrirFicha(Reales().Lugares.First(l => l.Id == "clinica-areas"));
+            Assert.IsTrue(pantalla.FichaAbierta);
+            pantalla.PulsarPildora();
+            Assert.IsFalse(pantalla.FichaAbierta, "No se cambia el mapa detrás de la ficha.");
+            AssertVuelveHosteleria();
+        }
+
+        [Test]
+        public void ElDobleToqueDeTalkBackEnLaPildoraQuitaLaCategoria()
+        {
+            ElegirSaludConHosteleria();
+            pantalla.PlegarBuscador();
+            AccesibilidadPantalla.LectorForzado = () => true;
+            pantalla.Accesibilidad.Reconstruir();
+            if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
+            var nodo = NodoTalkBack("Quitar categoría Salud");
+            Assert.IsTrue(string.IsNullOrEmpty(nodo.value), "Con categoría la píldora no tiene valor.");
+            ActivarTalkBack(nodo);
+            Assert.IsFalse(pantalla.CercaActiva);
+            Assert.IsFalse(pantalla.MenuAbierto, "No abre el menú de precios.");
+            AssertVuelveHosteleria();
+            var etiquetas = AssistiveSupport.activeHierarchy.rootNodes.Select(n => n.label).ToList();
+            CollectionAssert.DoesNotContain(etiquetas, "Quitar categoría Salud");
+            Assert.AreEqual(T(TextosFiltro.ClaveOpcion(FiltroPrecios.Hosteleria)), NodoTalkBack(T(ClavesTexto.PreciosControl)).value);
+        }
+
+        static AccessibilityNode NodoTalkBack(string etiqueta) =>
+            AssistiveSupport.activeHierarchy.rootNodes.Single(n => n.label == etiqueta);
+
+        /// <summary>El doble toque de TalkBack: lanza el evento invoked del nodo (por reflexión, como en PruebasFicha).</summary>
+        static void ActivarTalkBack(AccessibilityNode nodo)
+        {
+            const System.Reflection.BindingFlags Campos = System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public;
+            var campo = typeof(AccessibilityNode).GetFields(Campos)
+                .FirstOrDefault(f => typeof(Func<bool>).IsAssignableFrom(f.FieldType) && f.Name.IndexOf("invoked", StringComparison.OrdinalIgnoreCase) >= 0);
+            if (campo == null) Assert.Inconclusive("Esta versión de Unity no deja leer el evento invoked del nodo.");
+            var accion = campo.GetValue(nodo) as Func<bool>;
+            Assert.IsNotNull(accion, $"El nodo \"{nodo.label}\" no tiene acción.");
+            Assert.IsTrue(accion());
+        }
+
+        [Test]
+        public void LaPildoraQuitaLaCategoriaYVuelveElFiltroSinAbrirElMenu()
+        {
+            ElegirSaludConHosteleria();
+            pantalla.PulsarPildora();
+            Assert.IsFalse(pantalla.CercaActiva);
+            Assert.IsFalse(pantalla.MenuAbierto, "No abre el menú de precios.");
+            Assert.IsTrue(hoja.MostrandoCategorias, "La lista vuelve a las categorías.");
+            AssertVuelveHosteleria();
+            pantalla.PulsarPildora();
+            Assert.IsTrue(pantalla.MenuAbierto, "Sin categoría, la píldora vuelve a abrir el menú.");
+        }
+
+        [Test]
+        public void LaPildoraConLaHojaPlegadaQuitaLaCategoriaYAlDesplegarSalenLasCategorias()
+        {
+            ElegirSaludConHosteleria();
+            pantalla.PlegarBuscador();
+            pantalla.PulsarPildora();
+            AssertVuelveHosteleria();
+            pantalla.AbrirBuscadorConLector();
+            Assert.IsTrue(hoja.MostrandoCategorias);
+            Assert.IsFalse(hoja.MostrandoCerca);
+        }
+
+        [Test]
+        public void LaXDeLaCabeceraQuitaLaCategoriaDelMapa()
+        {
+            ElegirSaludConHosteleria();
+            hoja.PulsarQuitarCategoria();
+            Assert.IsTrue(hoja.MostrandoCategorias);
+            AssertVuelveHosteleria();
+        }
+
+        [Test]
+        public void AtrasConLaListaQuitaLaCategoriaDelMapa()
+        {
+            ElegirSaludConHosteleria();
+            Assert.IsTrue(pantalla.Atras());
+            AssertVuelveHosteleria();
+        }
+
+        [Test]
+        public void EscribirVuelveElFiltroYLaBusqueda()
+        {
+            ElegirSaludConHosteleria();
+            hoja.Escribir("bar");
+            Assert.IsTrue(hoja.MostrandoResultados);
+            AssertVuelveHosteleria();
+        }
+
+        [Test]
+        public void EncuentraCercaNoCambiaNiElMapaNiLaPildora()
+        {
+            filtroPantalla.Elegir(FiltroPrecios.Hosteleria);
+            PintarMapa();
+            var antes = MarcadoresVisibles();
+            var puntosAntes = PuntosVisibles();
+            AbrirYElegir(null);
+            Assert.IsTrue(pantalla.CercaActiva);
+            Assert.IsNull(pantalla.CategoriaMapa);
+            Assert.IsNull(pantalla.Capa.Categoria);
+            Assert.IsNull(pantalla.CapaPuntos.Categoria);
+            Assert.IsFalse(pantalla.Pildora.ClassListContains(PildoraPrecios.ClaseCategoria));
+            Assert.AreEqual(TextoFiltro(FiltroPrecios.Hosteleria), pantalla.Pildora.Texto.text);
+            PintarMapa();
+            CollectionAssert.AreEquivalent(antes, MarcadoresVisibles());
+            CollectionAssert.AreEquivalent(puntosAntes, PuntosVisibles());
+        }
+
+        [Test]
+        public void SupermercadosSinMarcadoresSoloPuntosDeSuper()
+        {
+            filtroPantalla.Elegir(FiltroPrecios.Todos);
+            AbrirYElegir(CategoriaPoi.Super);
+            PintarMapa();
+            Assert.IsEmpty(MarcadoresVisibles(), "Ningún marcador de la app.");
+            CollectionAssert.AreEquivalent(new[] { "Supermercado de Prueba" }, PuntosVisibles());
+            Assert.AreEqual(T(ClavesTexto.BuscadorSuper), pantalla.Pildora.Texto.text);
+            Assert.IsTrue(pantalla.Pildora.IconoCategoria.ClassListContains("buscador__chip-icono--super"));
+            Assert.IsFalse(pantalla.Pildora.IconoCategoria.ClassListContains("buscador__chip-icono--salud"));
+        }
+
+        [Test]
+        public void CambiarDeChipCambiaElIconoDeLaPildora()
+        {
+            AbrirYElegir(CategoriaPoi.Super);
+            hoja.PulsarQuitarCategoria();
+            hoja.ElegirCategoria(CategoriaPoi.Salud);
+            AssertPildoraConSalud();
+            Assert.IsFalse(pantalla.Pildora.IconoCategoria.ClassListContains("buscador__chip-icono--super"));
+        }
+
+        [Test]
+        public void ConTalkBackLaPildoraEsQuitarCategoriaYAnunciaElFiltroQueVuelve()
+        {
+            ElegirSaludConHosteleria();
+            pantalla.PlegarBuscador();
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            CollectionAssert.Contains(recorrido, "Quitar categoría Salud");
+            CollectionAssert.DoesNotContain(recorrido, T(ClavesTexto.PreciosControl));
+            Assert.AreEqual("Quitar categoría Salud", pantalla.EtiquetaPildora());
+            var oidos = new List<string>();
+            Action<string> oir = oidos.Add;
+            AccesibilidadPantalla.AnuncioPedido += oir;
+            try { pantalla.PulsarPildora(); }
+            finally { AccesibilidadPantalla.AnuncioPedido -= oir; }
+            CollectionAssert.Contains(oidos, PantallaMapa.AnuncioFiltro(FiltroPrecios.Hosteleria));
+            Assert.AreEqual("Precios en el mapa: Hostelería", PantallaMapa.AnuncioFiltro(FiltroPrecios.Hosteleria));
+            recorrido = pantalla.Accesibilidad.Recorrido();
+            CollectionAssert.Contains(recorrido, T(ClavesTexto.PreciosControl));
+            CollectionAssert.DoesNotContain(recorrido, "Quitar categoría Salud");
+        }
+
+        [Test]
+        public void ElTextoQuitarCategoriaEstaEnLaTablaYEnLocalization()
+        {
+            Assert.AreEqual("Quitar categoría {0}", T(ClavesTexto.PildoraQuitarCategoria));
+            CollectionAssert.Contains(ClavesTexto.Todas, ClavesTexto.PildoraQuitarCategoria);
         }
 
         [Test]

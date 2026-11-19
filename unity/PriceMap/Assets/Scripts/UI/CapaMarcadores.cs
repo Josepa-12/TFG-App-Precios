@@ -41,6 +41,23 @@ namespace PriceMap.UI
             set { if (filtro != value) { filtro = value; filtroCambiado = true; } }
         }
 
+        CategoriaPoi? categoria;
+
+        /// <summary>
+        /// Categoría de "Encuentra cerca" activa (historia 2.4, parte 2): mientras no es null sustituye al filtro
+        /// "Precios" (que no cambia) y solo se ven los lugares de esa categoría (ReglaCerca.Incluye).
+        /// </summary>
+        public CategoriaPoi? Categoria
+        {
+            get => categoria;
+            set { if (categoria != value) { categoria = value; filtroCambiado = true; } }
+        }
+
+        /// <summary>Si el lugar entra en lo que se ve: la categoría activa o, sin ella, el filtro "Precios".</summary>
+        public bool Incluye(Lugar lugar) =>
+            categoria != null ? ReglaCerca.Incluye(categoria, lugar)
+            : filtro == null || ReglaFiltro.Incluye(filtro.Value, lugar.Plantilla);
+
         /// <param name="contenedor">Elemento de la capa (primer hijo de la raíz, sin capturar toques).</param>
         /// <param name="lugares">Cada lugar con el resumen de su precio, calculado al crear la capa.</param>
         /// <param name="textos">Textos de la UI (por defecto Localization); las pruebas pasan los de es-ES.</param>
@@ -83,8 +100,8 @@ namespace PriceMap.UI
             candidatos.Clear();
             foreach (var m in marcadores)
             {
-                // Fuera del filtro no hace falta proyectarlo: se oculta igual
-                bool incluido = filtro == null || ReglaFiltro.Incluye(filtro.Value, m.Lugar.Plantilla);
+                // Fuera del filtro (o de la categoría) no hace falta proyectarlo: se oculta igual
+                bool incluido = Incluye(m.Lugar);
                 var p = incluido ? mapa.Proyectar(m.Lugar.Posicion) : PuntoPantalla.Ninguno;
                 var dp = new Vector2(p.X * escalaDp, p.Y * escalaDp);
                 bool ver = incluido && p.Delante && !float.IsNaN(dp.x) && !float.IsNaN(dp.y)

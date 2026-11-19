@@ -19,7 +19,7 @@ App Android (Unity 6000.3.28f1, UI Toolkit, Localization) que muestra precios de
 - Textos traducibles: `Assets/Localizacion/Textos_es-ES.asset` + `Textos Shared Data.asset`.
 
 ## Pruebas (Assets/Tests/EditMode, `Pruebas<Tema>.cs`)
-Arranque, Buscador, Busqueda, Capas, Cerca, Direcciones, Contraste, Coordenada, EscenaPrincipal, Ficha, Filtro, GestosYTeselas, Lugares, MapaVectorial, Marcadores, PantallaMapa, PermisosUbicacionAndroid, Precio, PuntosInteres, Tema, Textos, Ubicacion.
+Arranque, Buscador, Busqueda, Capas, Cerca (2.4: lista y mapa por categoría), Direcciones, Contraste, Coordenada, EscenaPrincipal, Ficha, Filtro, GestosYTeselas, Lugares, MapaVectorial, Marcadores, PantallaMapa, PermisosUbicacionAndroid, Precio, PuntosInteres, Tema, Textos, Ubicacion.
 
 ## Comandos (con el editor de Unity CERRADO)
 ```
