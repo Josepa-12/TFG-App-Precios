@@ -229,8 +229,35 @@ namespace PriceMap.UI
         /// <summary>En el sitio de "No hay resultados" si el enlace no se reconoce (o el corto no se puede resolver).</summary>
         public const string BuscadorEnlaceNoReconocido = "buscador.enlace.noreconocido";
 
+        /// <summary>Fila de acciones de la ficha (historia 2.6): nombres de los modos ("Coche", "A pie").</summary>
+        public const string FichaModoCoche = "ficha.modo.coche", FichaModoPie = "ficha.modo.pie";
+        /// <summary>Texto del botón Ir.</summary>
+        public const string FichaIr = "ficha.ir";
+        /// <summary>TalkBack de Ir con un lugar: {0} su nombre ("Ir a Clínica Areas").</summary>
+        public const string FichaIrA = "ficha.ir.a";
+        /// <summary>TalkBack de Ir con un punto libre ("Ir a este punto").</summary>
+        public const string FichaIrPunto = "ficha.ir.punto";
+        /// <summary>Minutos bajo el modo: {0} minutos ("6 min").</summary>
+        public const string FichaMinutos = "ficha.minutos";
+        /// <summary>Bajo el modo mientras se calcula ("…").</summary>
+        public const string FichaCalculando = "ficha.calculando";
+        /// <summary>Bajo el modo sin posición o si la ruta falla ("—").</summary>
+        public const string FichaSinTiempo = "ficha.sintiempo";
+        /// <summary>TalkBack de un modo: {0} nombre, {1} minutos ("Coche, 6 minutos").</summary>
+        public const string FichaAnuncioMinutos = "ficha.anuncio.minutos";
+        /// <summary>TalkBack de un modo con 1 minuto: {0} nombre ("A pie, 1 minuto").</summary>
+        public const string FichaAnuncioMinuto = "ficha.anuncio.minuto";
+        /// <summary>TalkBack de un modo sin tiempo: {0} nombre ("Coche, sin tiempo").</summary>
+        public const string FichaAnuncioSinTiempo = "ficha.anuncio.sintiempo";
+        /// <summary>TalkBack de un modo mientras se calcula: {0} nombre ("Coche, calculando el tiempo").</summary>
+        public const string FichaAnuncioCalculando = "ficha.anuncio.calculando";
+        /// <summary>Aviso de TalkBack al elegir otro modo: {0} su anuncio ("A pie, 15 minutos, seleccionado").</summary>
+        public const string FichaModoElegido = "ficha.modo.elegido";
+
         public static readonly string[] Todas =
         {
+            FichaModoCoche, FichaModoPie, FichaIr, FichaIrA, FichaIrPunto, FichaMinutos, FichaCalculando, FichaSinTiempo,
+            FichaAnuncioMinutos, FichaAnuncioMinuto, FichaAnuncioSinTiempo, FichaAnuncioCalculando, FichaModoElegido,
             BuscadorIrAPunto, BuscadorAnuncioPunto, BuscadorComprobandoEnlace, BuscadorEnlaceNoReconocido,
             PuntoTipo, PuntoCoordenadas, PuntoCalleNumero, PuntoBuscando, PuntoAnuncio,
             BuscadorCercaCategoria, BuscadorCercaTitulo, BuscadorCercaDesdeCentro, BuscadorCercaVacio, BuscadorQuitarCategoria,

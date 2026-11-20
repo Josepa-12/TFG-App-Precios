@@ -15,5 +15,13 @@ namespace PriceMap.Dominio
         public const int FrescuraOtrosMesesAlDia = 3;
         /// <summary>Servicio local y ocio: antiguo por encima de estos meses.</summary>
         public const int FrescuraOtrosMesesAntiguo = 6;
+
+        // Rutas y tiempos de la ficha (historia 2.6)
+        /// <summary>Segundos que se espera a un servicio de rutas antes de pasar al de reserva (o dejar el modo sin tiempo).</summary>
+        public const int RutaTiempoMaximoSegundos = 8;
+        /// <summary>Metros que puede moverse el usuario sin que la caché de rutas deje de valer.</summary>
+        public const double RutaCacheMetros = 20.0;
+        /// <summary>Minutos que vale una ruta guardada en la caché (solo en memoria).</summary>
+        public const int RutaCacheMinutos = 2;
     }
 }

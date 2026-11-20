@@ -30,6 +30,8 @@ namespace PriceMap.UI
         BuscadorDirecciones direcciones;
         IGeocodificador geocodificador;      // dirección del punto libre (historia 2.5); null = solo coordenadas
         IResolutorEnlaces resolutorEnlaces;  // enlaces cortos del buscador (historia 2.5, parte 2); null = no se reconocen
+        ServicioRutas rutas;                 // tiempos de la ficha (historia 2.6); null = fila de acciones vacía
+        bool tiemposPedidos;                 // ya se han pedido los tiempos de la ficha abierta con una posición
         ChinchetaPunto chincheta;
         CancellationTokenSource peticionPunto; // petición de la dirección del punto abierto; null si no hay ninguna
         VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo, columnaControles;
@@ -68,26 +70,28 @@ namespace PriceMap.UI
         /// <param name="cerca">"Encuentra cerca" (historia 2.4); sin él, las listas de las categorías salen vacías.</param>
         /// <param name="geocodificador">Dirección del punto libre (historia 2.5); sin él, la ficha del punto se queda con las coordenadas.</param>
         /// <param name="resolutorEnlaces">Enlaces cortos pegados en el buscador (historia 2.5, parte 2); sin él, no se reconocen.</param>
+        /// <param name="rutas">Tiempos e Ir de la ficha (historia 2.6); sin él, la fila de acciones de la ficha queda vacía.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
             BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
-            IResolutorEnlaces resolutorEnlaces = null)
+            IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador, resolutorEnlaces);
+                geocodificador, resolutorEnlaces, rutas);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
-            IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null)
+            IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null)
         {
             this.mapa = mapa;
             this.geocodificador = geocodificador;
+            this.rutas = rutas;
             this.resolutorEnlaces = resolutorEnlaces;
             this.tema = tema;
             this.filtro = filtro;
@@ -165,6 +169,14 @@ namespace PriceMap.UI
             // Abierta sin medida (primer fotograma), el lugar se centró con el 72 %: al disponerse, con su borde real
             ficha.Hoja.RegisterCallback<GeometryChangedEvent>(_ => RecentrarFichaPendiente());
             this.mapa.Toque += AlTocarMapa;
+            // Modos con sus minutos e Ir (historia 2.6), solo con servicio de rutas
+            if (this.rutas != null)
+            {
+                ficha.MostrarAcciones(true);
+                ficha.Acciones.ModoCambiado += AlElegirModo;
+                ficha.Acciones.IrPulsado += Ir;
+                this.rutas.TiempoCalculado += AlCalcularTiempo;
+            }
 
             // Punto libre (historia 2.5): mantener pulsado el mapa pone la chincheta y abre la ficha del punto
             var capaChincheta = raiz.Q("capa-chincheta");
@@ -1171,6 +1183,7 @@ namespace PriceMap.UI
             if (ficha == null || lugar == null || ModalUbicacionAbierta) return;
             bool yaAbierta = PrepararFicha();
             ficha.Abrir(lugar, ahora);
+            PedirTiempos();
             CentrarEnFicha(lugar.Posicion);
             // De una ficha a otra la hoja tiene medida, pero la del lugar anterior: al disponerse, se recentra
             if (yaAbierta) centrarPendiente = lugar.Posicion;
@@ -1237,6 +1250,7 @@ namespace PriceMap.UI
             if (ficha == null || ModalUbicacionAbierta) return;
             bool yaAbierta = PrepararFicha();
             ficha.AbrirPunto(punto, buscando: geocodificador != null);
+            PedirTiempos();
             CentrarEnFicha(punto);
             if (yaAbierta) centrarPendiente = punto;
             float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala;
@@ -1317,17 +1331,120 @@ namespace PriceMap.UI
         void DeclararFichaEnTalkBack()
         {
             accesibilidad.QuitarControles(ficha);
+            bool accionesDeclaradas = !ficha.AccionesVisibles;
             foreach (var (elemento, texto) in ficha.TextosTalkBack())
             {
                 var e = elemento;
+                // La fila de acciones va entre la cabecera y el contenido, como se ve
+                if (!accionesDeclaradas && ficha.Contenido.Contains(e))
+                {
+                    DeclararAccionesEnTalkBack();
+                    accionesDeclaradas = true;
+                }
                 // El título de un punto libre cambia al llegar su dirección: se lee cada vez (RefrescarEtiqueta)
                 Func<string> etiqueta = e == ficha.Titulo && ficha.Punto != null ? (Func<string>)ficha.AnuncioTituloPunto : () => texto;
                 accesibilidad.Texto(e, etiqueta, () => FichaAbierta, enModal: true, grupo: ficha,
                     alEnfocar: () => ficha.DesplazarHasta(e));
             }
+            if (!accionesDeclaradas) DeclararAccionesEnTalkBack();
             accesibilidad.Boton(ficha.BotonCerrar, () => Textos.T(ClavesTexto.FichaCerrar), CerrarFicha,
                 visible: () => FichaAbierta, enModal: true, grupo: ficha);
         }
+
+        /// <summary>
+        /// TalkBack de la fila de acciones (historia 2.6): "Coche, 6 minutos" (seleccionado), "A pie, 15 minutos" e
+        /// "Ir a Clínica Areas" ("Ir a este punto" con un punto libre).
+        /// </summary>
+        void DeclararAccionesEnTalkBack()
+        {
+            var a = ficha.Acciones;
+            foreach (var modo in new[] { ModoViaje.Coche, ModoViaje.APie })
+            {
+                var m = modo;
+                accesibilidad.Boton(a.Boton(m), () => a.Anuncio(m), () => a.Tocar(m), visible: () => FichaAbierta,
+                    seleccionado: () => a.Elegido == m, enModal: true, grupo: ficha);
+            }
+            accesibilidad.Boton(a.Ir, () => a.AnuncioIr, a.PulsarIr, visible: () => FichaAbierta, enModal: true, grupo: ficha);
+        }
+
+        /// <summary>
+        /// Tiempos de la ficha abierta (historia 2.6): con posición, "…" en los dos modos y se piden coche y a pie a la
+        /// vez (una ruta en la caché llega al momento); sin posición, "—" en los dos y se piden cuando llegue
+        /// (ActualizarCapas). Cancela los de la ficha anterior.
+        /// </summary>
+        void PedirTiempos()
+        {
+            tiemposPedidos = false;
+            if (rutas == null || ficha == null || !FichaAbierta) return;
+            rutas.Cancelar();
+            var origen = ubicacion?.Posicion;
+            var destino = ficha.Posicion;
+            var a = ficha.Acciones;
+            if (!origen.HasValue || !destino.HasValue)
+            {
+                a.PonerSinTiempo(ModoViaje.Coche);
+                a.PonerSinTiempo(ModoViaje.APie);
+                RefrescarAcciones();
+                return;
+            }
+            tiemposPedidos = true;
+            a.PonerCalculando(ModoViaje.Coche);
+            a.PonerCalculando(ModoViaje.APie);
+            RefrescarAcciones();
+            rutas.PedirTiempos(origen.Value, destino.Value);
+        }
+
+        /// <summary>Llega el tiempo de un modo: si es del destino de la ficha abierta, sus minutos o "—".</summary>
+        void AlCalcularTiempo(ModoViaje modo, Coordenada destino, Resultado<Ruta> r)
+        {
+            try
+            {
+                if (ficha == null || !FichaAbierta || ficha.Posicion != destino) return;
+                if (r.Ok && r.Valor != null) ficha.Acciones.PonerMinutos(modo, r.Valor.Minutos);
+                else
+                {
+                    Debug.Log($"PriceMap: sin tiempo en {modo} ({r.Error}).");
+                    ficha.Acciones.PonerSinTiempo(modo);
+                }
+                accesibilidad?.RefrescarEtiqueta(ficha.Acciones.Boton(modo));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e); // llega desde una tarea que nadie espera: sin esto el error se perdería
+            }
+        }
+
+        /// <summary>Otro modo elegido: sus nodos cambian de estado y TalkBack lo dice ("A pie, 15 minutos, seleccionado").</summary>
+        void AlElegirModo(ModoViaje modo)
+        {
+            RefrescarAcciones();
+            if (FichaAbierta) AccesibilidadPantalla.Anunciar(ficha.Acciones.AnuncioElegido(modo));
+        }
+
+        void RefrescarAcciones()
+        {
+            if (accesibilidad == null || ficha == null) return;
+            accesibilidad.RefrescarEtiqueta(ficha.Acciones.Coche);
+            accesibilidad.RefrescarEtiqueta(ficha.Acciones.APie);
+        }
+
+        /// <summary>
+        /// Ir (historia 2.6, parte 1): sin posición hace lo del botón de ubicación (explicación del permiso o aviso);
+        /// con ella deja el modo elegido, el destino y su ruta listos para dibujarla (parte 2).
+        /// </summary>
+        public void Ir()
+        {
+            if (rutas == null || ficha == null || !FichaAbierta) return;
+            var destino = ficha.Posicion;
+            if (!destino.HasValue) return;
+            if (ubicacion?.Posicion == null) { TocarUbicacion(); return; }
+            rutas.ElegirParaIr(ficha.Acciones.Elegido, destino.Value);
+            Debug.Log($"PriceMap: Ir en {ficha.Acciones.Elegido} a {destino.Value} " +
+                      (rutas.RutaElegida != null ? $"({rutas.RutaElegida.Minutos} min, {rutas.RutaElegida.Metros:F0} m)." : "(ruta aún sin calcular)."));
+        }
+
+        /// <summary>Servicio de rutas que recibió al iniciarse (historia 2.6); null sin él.</summary>
+        public ServicioRutas Rutas => rutas;
 
         /// <summary>Alto máximo de la hoja (--ficha-alto-max): con él se centra mientras la hoja no tiene medida.</summary>
         public const float AltoMaximoFicha = 0.72f;
@@ -1379,6 +1496,8 @@ namespace PriceMap.UI
         {
             centrarPendiente = null;
             CancelarDireccionPunto();
+            tiemposPedidos = false;
+            rutas?.Cancelar(); // los tiempos pedidos se cancelan: una respuesta tardía no pinta nada
             chincheta?.Actualizar(mapa, null, 1f); // la chincheta del punto libre se va con su ficha
             if (!FichaAbierta) return;
             ficha.Mostrar(false);
@@ -1544,6 +1663,11 @@ namespace PriceMap.UI
             }
             CancelarDireccionPunto();
             CancelarEnlace();
+            if (rutas != null)
+            {
+                rutas.TiempoCalculado -= AlCalcularTiempo;
+                rutas.Cancelar();
+            }
             if (buscador != null)
             {
                 buscador.Desplegando -= AlDesplegarBuscador;
@@ -1776,6 +1900,8 @@ namespace PriceMap.UI
             // La chincheta del punto libre sigue a su coordenada mientras su ficha está abierta
             if (chincheta != null && escala > 0f) chincheta.Actualizar(mapa, PuntoAbierto, escala);
             if (escala > 0f) ultimaEscala = escala;
+            // La posición pasa a Activa con la ficha abierta: se piden sus tiempos (historia 2.6)
+            if (rutas != null && !tiemposPedidos && FichaAbierta && ubicacion?.Posicion != null) PedirTiempos();
             // La etiqueta del botón de ubicación sigue a lo que hará al tocarlo: si cambia, se actualiza en su nodo,
             // sin rehacer la jerarquía (TalkBack no pierde el foco aunque la distancia oscile alrededor de 8 dp)
             if (botonUbicacion != null)

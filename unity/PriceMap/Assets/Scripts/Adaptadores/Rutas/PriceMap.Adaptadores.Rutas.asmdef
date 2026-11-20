@@ -1,0 +1,17 @@
+{
+    "name": "PriceMap.Adaptadores.Rutas",
+    "rootNamespace": "PriceMap.Adaptadores.Rutas",
+    "references": [
+        "PriceMap.Aplicacion",
+        "PriceMap.Dominio"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

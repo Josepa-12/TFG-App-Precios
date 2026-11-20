@@ -196,3 +196,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5c-compartir-con-pricemap.md`
   summary: Que un `geo:0,0?q=Calle Ancha 3` (lo que mandan contactos y calendario al abrir una dirección) busque esa dirección en vez de dar «No reconozco esta ubicación».
   evidence: Hoy el analizador de la parte 2 lo trata como enlace sin coordenadas (prueba «geo sin coordenadas»); cambiarlo es una decisión de producto.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-ver-los-tiempos-y-calcular-la-ruta-mas-corta.md`
+  summary: Historia 2.6 (parte 2): Ir dibuja la ruta del modo elegido en el mapa (`IMapa.MostrarRuta`/`QuitarRuta`; línea accent de 6 dp con borde, por encima de las calles; `MapaVectorial.Linea` hay que sacarla a una lista de puntos) y la encuadra (`CamaraMapa` no tiene encuadre: añadirlo con el hueco libre sobre la ficha). Sin conexión: recta semitransparente (accent al 50 %) del origen al destino con su distancia y el aviso «Sin conexión: ruta aproximada» (UX-DR16). TalkBack del aviso, prueba de sentido único con respuesta grabada y captura «ruta».
+  evidence: El usuario partió la 2.6 en dos el 20/11/2026 y eligió la línea con borde y la recta semitransparente (la discontinua es un cosmético de la Épica 5).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-ver-los-tiempos-y-calcular-la-ruta-mas-corta.md`
+  summary: Para la 2.6 parte 2: Ir debe calcular la ruta desde la posición actual (no fiarse de `RutaElegida` si el usuario se ha movido más de 20 m), y la fila podría volver a pedir los minutos al moverse o al volver la red tras «—».
+  evidence: Hoy los minutos solo se piden al abrir la ficha o al pasar la posición a `Activa`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6-ver-los-tiempos-y-calcular-la-ruta-mas-corta.md`
+  summary: Probar el montaje del Arranque (Valhalla principal, OSRM de reserva, espera real) con una fábrica estática, junto con Photon y el resolutor de enlaces, que tampoco lo tienen.
+  evidence: Sin verificar (maybe-false, medium si es cierto): ninguna prueba construye la rama que no es de captura.

@@ -63,6 +63,23 @@ namespace PriceMap.Arranque
             public void TerminarRuta() { }
         }
 
+        /// <summary>
+        /// Rutas fijas para la captura (historia 2.6): 4 min en coche y 12 a pie, como la maqueta; una recta entre
+        /// los dos puntos, sin red.
+        /// </summary>
+        public static IRutas RutasFalsas() => new RutasCaptura();
+
+        class RutasCaptura : IRutas
+        {
+            public System.Threading.Tasks.Task<Resultado<Ruta>> Calcular(Coordenada origen, Coordenada destino, ModoViaje modo,
+                System.Threading.CancellationToken ct)
+            {
+                double segundos = modo == ModoViaje.APie ? 690 : 230;
+                var ruta = new Ruta(new[] { origen, destino }, origen.DistanciaMetros(destino), segundos, Array.Empty<Maniobra>());
+                return System.Threading.Tasks.Task.FromResult(Resultado<Ruta>.Exito(ruta));
+            }
+        }
+
         /// <summary>Ancho del panel en la captura: el de referencia de EXPERIENCE.md (un móvil de 412 dp).</summary>
         public const float AnchoMovilDp = 412f;
 
@@ -457,6 +474,29 @@ namespace PriceMap.Arranque
         }
 
         /// <summary>
+        /// Historia 2.6: la fila de acciones de la ficha enseña coche (elegido) y a pie con sus minutos e Ir, entre la
+        /// cabecera y los conceptos, sin tapar ninguno de los dos.
+        /// </summary>
+        void ComprobarAcciones(FichaLugar ficha)
+        {
+            var a = ficha.Acciones;
+            var cabecera = ficha.Hoja.Q("ficha-cabecera").worldBound;
+            var fila = a.worldBound;
+            var contenido = ficha.Contenido.worldBound;
+            Debug.Log($"PriceMap: fila de acciones {fila} (visible {ficha.AccionesVisibles}); coche \"{a.Coche.Tiempo.text}\" " +
+                      $"{a.Coche.worldBound}, a pie \"{a.APie.Tiempo.text}\" {a.APie.worldBound}, Ir {a.Ir.worldBound}; elegido {a.Elegido}; " +
+                      $"TalkBack \"{a.Anuncio(ModoViaje.Coche)}\", \"{a.Anuncio(ModoViaje.APie)}\", \"{a.AnuncioIr}\"");
+            if (!ficha.AccionesVisibles || fila.height < 48f) Debug.LogError("PriceMap: la fila de acciones de la ficha no se ve.");
+            if (a.Elegido != ModoViaje.Coche || !a.Coche.Elegido || a.APie.Elegido) Debug.LogError("PriceMap: al abrir la ficha, el coche no es el modo elegido.");
+            if (a.Coche.Estado != EstadoTiempo.Minutos || a.APie.Estado != EstadoTiempo.Minutos)
+                Debug.LogError("PriceMap: la fila de acciones no tiene los minutos de los dos modos.");
+            if (a.Coche.worldBound.height < 48f - 0.5f || a.Ir.worldBound.height < 52f - 0.5f)
+                Debug.LogError("PriceMap: los modos no llegan a 48 dp o Ir a 52 dp.");
+            if (fila.yMin < cabecera.yMax - 0.5f || contenido.yMin < fila.yMax - 0.5f)
+                Debug.LogError($"PriceMap: la fila de acciones tapa la cabecera ({cabecera.yMax:F0}) o los conceptos ({contenido.yMin:F0}).");
+        }
+
+        /// <summary>
         /// Historia 1.8 (parte 1), captura "ficha": con Todos, el mapa centrado en Clínica Areas y un toque (simulado
         /// en la punta de su marcador llamando directamente a PantallaMapa.TocarMapa, sin pasar por CamaraMapa) abre su ficha. Registra áreas y filas
         /// y comprueba "desde 40 €", que no queda ningún "Consultar", el origen, la frescura y que ningún texto se monta
@@ -500,6 +540,7 @@ namespace PriceMap.Arranque
                 Debug.Log($"PriceMap: hoja de la ficha {ficha.Hoja.worldBound} (panel {ficha.worldBound}); contenido {ficha.Contenido.worldBound}; " +
                           $"filas {ficha.Contenido.contentContainer.worldBound.height:F0} dp de alto en un viewport de {ficha.Contenido.contentViewport.worldBound.height:F0} dp");
                 SolapesFicha($"{AnchoMovilDp:F0} dp");
+                ComprobarAcciones(ficha);
                 ComprobarCentrado(areas.Lugar);
                 // El marcador de la ficha abierta no lo oculta la píldora aunque el centrado lo deje debajo
                 Debug.Log($"PriceMap: con la ficha abierta, marcador de Clínica Areas visible {areas.Visible} en {areas.ZonaDp}");

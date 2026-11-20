@@ -571,6 +571,58 @@ MonoBehaviour:
     m_Localized: "No reconozco esta ubicaci\xF3n. Prueba a copiar el enlace completo."
     m_Metadata:
       m_Items: []
+  - m_Id: 916635375362051
+    m_Localized: Coche
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362052
+    m_Localized: A pie
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362053
+    m_Localized: Ir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362054
+    m_Localized: 'Ir a {0}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362055
+    m_Localized: Ir a este punto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362056
+    m_Localized: '{0} min'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362057
+    m_Localized: "…"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362058
+    m_Localized: "—"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362059
+    m_Localized: '{0}, {1} minutos'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362060
+    m_Localized: '{0}, 1 minuto'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362061
+    m_Localized: '{0}, sin tiempo'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362062
+    m_Localized: '{0}, calculando el tiempo'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362063
+    m_Localized: '{0}, seleccionado'
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

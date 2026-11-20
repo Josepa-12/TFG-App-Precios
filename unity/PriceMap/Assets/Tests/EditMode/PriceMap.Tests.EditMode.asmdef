@@ -9,6 +9,7 @@
         "PriceMap.Adaptadores.Datos",
         "PriceMap.Adaptadores.Gps",
         "PriceMap.Adaptadores.Busqueda",
+        "PriceMap.Adaptadores.Rutas",
         "PriceMap.Adaptadores.Sistema",
         "PriceMap.UI",
         "PriceMap.Arranque",

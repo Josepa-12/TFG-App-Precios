@@ -294,7 +294,10 @@ namespace PriceMap.Tests.EditMode
             var hoja = pantalla.Ficha.Hoja;
             var acciones = hoja.Q("fila-acciones");
             Assert.IsNotNull(acciones);
-            Assert.AreEqual(0, acciones.childCount, "Vacía hasta que otras épicas la rellenen (FR-10).");
+            // Historia 2.6: la fila lleva los modos e Ir, ocultos sin servicio de rutas (PruebasRutas)
+            Assert.AreEqual(1, acciones.childCount);
+            Assert.AreSame(pantalla.Ficha.Acciones, acciones[0]);
+            Assert.IsFalse(pantalla.Ficha.AccionesVisibles, "Sin servicio de rutas no se ve nada (FR-10).");
             Assert.AreEqual(hoja.IndexOf(hoja.Q("ficha-cabecera")) + 1, hoja.IndexOf(acciones), "Justo bajo la cabecera.");
             Assert.Less(hoja.IndexOf(acciones), hoja.IndexOf(pantalla.Ficha.Contenido));
         }

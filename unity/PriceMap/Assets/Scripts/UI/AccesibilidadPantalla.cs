@@ -326,12 +326,17 @@ namespace PriceMap.UI
         /// <summary>
         /// Vuelve a leer la etiqueta de ese control y la pone en su nodo ya existente, sin rehacer la jerarquía ni
         /// mover el foco de TalkBack. Si el control no tiene nodo (sin lector, oculto o en modal), no hace nada.
+        /// Si el control tiene estado seleccionado (p. ej. los modos de la ficha, historia 2.6), también lo relee.
         /// </summary>
         internal void RefrescarEtiqueta(VisualElement elemento)
         {
             if (elemento == null || !nodosControles.TryGetValue(elemento, out var nodo)) return;
             var control = controles.Find(c => c.elemento == elemento);
-            if (control != null) nodo.label = control.etiqueta();
+            if (control == null) return;
+            nodo.label = control.etiqueta();
+            // Solo el bit de seleccionado: las demás banderas del nodo se quedan como estaban
+            if (control.seleccionado != null)
+                nodo.state = Seleccionado(control) ? nodo.state | AccessibilityState.Selected : nodo.state & ~AccessibilityState.Selected;
         }
 
         /// <summary>Construye la jerarquía con los controles visibles y la activa si el lector está encendido.</summary>

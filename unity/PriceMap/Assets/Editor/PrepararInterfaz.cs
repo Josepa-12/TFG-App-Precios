@@ -165,6 +165,19 @@ namespace PriceMap.EditorTools
             [ClavesTexto.BuscadorAnuncioPunto] = "{0}, {1}",
             [ClavesTexto.BuscadorComprobandoEnlace] = "Comprobando el enlace…",
             [ClavesTexto.BuscadorEnlaceNoReconocido] = "No reconozco esta ubicación. Prueba a copiar el enlace completo.",
+            [ClavesTexto.FichaModoCoche] = "Coche",
+            [ClavesTexto.FichaModoPie] = "A pie",
+            [ClavesTexto.FichaIr] = "Ir",
+            [ClavesTexto.FichaIrA] = "Ir a {0}",
+            [ClavesTexto.FichaIrPunto] = "Ir a este punto",
+            [ClavesTexto.FichaMinutos] = "{0} min",
+            [ClavesTexto.FichaCalculando] = "…",
+            [ClavesTexto.FichaSinTiempo] = "—",
+            [ClavesTexto.FichaAnuncioMinutos] = "{0}, {1} minutos",
+            [ClavesTexto.FichaAnuncioMinuto] = "{0}, 1 minuto",
+            [ClavesTexto.FichaAnuncioSinTiempo] = "{0}, sin tiempo",
+            [ClavesTexto.FichaAnuncioCalculando] = "{0}, calculando el tiempo",
+            [ClavesTexto.FichaModoElegido] = "{0}, seleccionado",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

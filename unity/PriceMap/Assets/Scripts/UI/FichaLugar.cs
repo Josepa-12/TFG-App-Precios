@@ -38,8 +38,14 @@ namespace PriceMap.UI
         /// <summary>Dirección; oculta si el lugar no la tiene.</summary>
         public Label Direccion { get; }
         public BotonRedondo BotonCerrar { get; }
-        /// <summary>Fila de acciones bajo la cabecera (FR-10): vacía en la épica 1, su sitio en el árbol es fijo.</summary>
+        /// <summary>Fila de acciones bajo la cabecera (FR-10): su sitio en el árbol es fijo, fuera del contenido.</summary>
         public VisualElement FilaAcciones { get; }
+        /// <summary>
+        /// Modos (coche y a pie) con sus minutos y el botón Ir (historia 2.6). Oculta hasta que PantallaMapa tiene
+        /// rutas (MostrarAcciones).
+        /// </summary>
+        public FilaAcciones Acciones { get; }
+        public bool AccionesVisibles => Acciones.style.display != DisplayStyle.None;
         public ScrollView Contenido { get; }
         /// <summary>Hueco bajo el contenido con el alto de la barra de gestos (zona segura inferior).</summary>
         public VisualElement HuecoInferior { get; }
@@ -110,6 +116,9 @@ namespace PriceMap.UI
 
             FilaAcciones = Nuevo("fila-acciones", "ficha__acciones");
             Hoja.Add(FilaAcciones);
+            Acciones = new FilaAcciones(this.textos);
+            FilaAcciones.Add(Acciones);
+            MostrarAcciones(false);
 
             // Sin barras de desplazamiento (no hay tema por defecto de Unity que las dibuje): se arrastra con el dedo
             Contenido = new ScrollView(ScrollViewMode.Vertical)
@@ -145,6 +154,7 @@ namespace PriceMap.UI
             Tipo.text = Textos.Formatear(textos(ClavesTexto.FichaTipo), lugar.Tipo, textos(ClavePlantilla(lugar.Plantilla)));
             Direccion.text = lugar.Direccion;
             Direccion.style.display = string.IsNullOrWhiteSpace(lugar.Direccion) ? DisplayStyle.None : DisplayStyle.Flex;
+            Acciones.Reiniciar(Textos.Formatear(textos(ClavesTexto.FichaIrA), lugar.Nombre));
 
             // Los textos de la ficha anterior desaparecen: su tamaño base ya no hace falta (EscalaFuente)
             EscalaFuente.Olvidar(Contenido);
@@ -222,6 +232,7 @@ namespace PriceMap.UI
             filas.Clear();
             SinPrecio = null;
             PonerLineaDireccion(buscando, null);
+            Acciones.Reiniciar(textos(ClavesTexto.FichaIrPunto));
             Contenido.scrollOffset = Vector2.zero;
             Mostrar(true);
         }
@@ -323,6 +334,9 @@ namespace PriceMap.UI
         public void TocarFuera() => Cerrar();
 
         void Cerrar() => alCerrar?.Invoke();
+
+        /// <summary>Enseña u oculta la fila de modos e Ir (historia 2.6): sin servicio de rutas, la fila queda vacía.</summary>
+        public void MostrarAcciones(bool visible) => Acciones.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
 
         public void Mostrar(bool abierta)
         {

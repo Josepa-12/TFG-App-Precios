@@ -758,10 +758,113 @@
     background-color: var(--color-surface-2);
 }
 
-/* Fila de acciones: vacía y sin alto hasta que otras épicas la rellenen (FR-10) */
+/* Fila de acciones (FR-10): bajo la cabecera, fuera del contenido, siempre a la vista. Sin rutas, vacía y sin alto */
 .ficha__acciones {
     flex-direction: row;
     flex-shrink: 0;
+}
+
+/* Modos e Ir (historia 2.6; maqueta key-ficha-lugar .actions): dos modos de 48 dp con borde de control y el botón
+   primario Ir de 52 dp (flex 1,2), separados 8 dp */
+.acciones {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 0;
+    align-items: center;
+    margin: var(--espacio-3) var(--espacio-4) 0 var(--espacio-4);
+}
+
+.acciones__modo {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-height: var(--zona-tactil-min);
+    margin-right: var(--espacio-2);
+    padding: var(--espacio-1) var(--espacio-1);
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radio-md);
+    border-width: 1.5px;
+    border-color: var(--color-control-edge);
+    background-color: var(--color-surface);
+    color: var(--color-text);
+}
+
+.acciones__modo:active {
+    background-color: var(--color-surface-2);
+}
+
+.acciones__modo--elegido {
+    border-color: var(--color-accent);
+    background-color: var(--color-surface-2);
+    color: var(--color-accent-text);
+}
+
+.acciones__modo:focus {
+    border-width: 2px;
+    border-color: var(--color-focus);
+}
+
+.acciones__modo-linea {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.acciones__modo-icono {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    margin-right: var(--espacio-1);
+}
+
+.acciones__modo-nombre,
+.acciones__modo-tiempo {
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-center;
+}
+
+.acciones__modo-nombre {
+    color: var(--color-text);
+}
+
+.acciones__modo--elegido .acciones__modo-nombre {
+    color: var(--color-accent-text);
+}
+
+.acciones__modo-tiempo {
+    color: var(--color-muted);
+}
+
+.acciones__modo--elegido .acciones__modo-tiempo {
+    color: var(--color-accent-text);
+}
+
+.acciones__ir {
+    flex-grow: 1.2;
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-height: 52px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 var(--espacio-4);
+    border-radius: var(--radio-md);
+    border-width: 2px;
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+}
+
+/* Sobre el acento, el foco no se vería con su mismo color */
+.acciones__ir:focus {
+    border-color: var(--color-text);
+}
+
+.acciones__ir-texto {
+    margin: 0;
+    padding: 0;
+    color: var(--color-accent-ink);
+    -unity-text-align: middle-center;
 }
 
 .ficha__contenido {

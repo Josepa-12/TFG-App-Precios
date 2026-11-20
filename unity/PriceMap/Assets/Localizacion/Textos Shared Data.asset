@@ -563,6 +563,58 @@ MonoBehaviour:
     m_Key: buscador.enlace.noreconocido
     m_Metadata:
       m_Items: []
+  - m_Id: 916635375362051
+    m_Key: ficha.modo.coche
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362052
+    m_Key: ficha.modo.pie
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362053
+    m_Key: ficha.ir
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362054
+    m_Key: ficha.ir.a
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362055
+    m_Key: ficha.ir.punto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362056
+    m_Key: ficha.minutos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362057
+    m_Key: ficha.calculando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362058
+    m_Key: ficha.sintiempo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362059
+    m_Key: ficha.anuncio.minutos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362060
+    m_Key: ficha.anuncio.minuto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362061
+    m_Key: ficha.anuncio.sintiempo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362062
+    m_Key: ficha.anuncio.calculando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362063
+    m_Key: ficha.modo.elegido
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
