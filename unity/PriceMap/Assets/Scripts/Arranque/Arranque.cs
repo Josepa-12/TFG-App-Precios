@@ -60,17 +60,46 @@ namespace PriceMap.Arranque
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
+
+            // Ubicaciones y textos compartidos con la app (historia 2.5, parte 3): al arrancar y al volver delante
+            compartida = new EntradaCompartidaAndroid();
+            PasarCompartido(compartida, pantallaMapa);
+        }
+
+        IEntradaCompartida compartida;
+
+        /// <summary>Lo compartido con la app y aún no leído va al buscador de la pantalla. Sin nada, nada.</summary>
+        internal static void PasarCompartido(IEntradaCompartida entrada, PantallaMapa pantalla)
+        {
+            if (entrada == null || pantalla == null) return;
+            string texto = entrada.Tomar();
+            if (texto != null) pantalla.RecibirCompartido(texto);
         }
 
         // GPS solo con la app delante (NFR-3): se apagan ubicación y brújula en segundo plano y se encienden al volver
         // Al volver delante (OnApplicationFocus, que llega también tras la pausa), la pantalla relee los ajustes de
         // accesibilidad que pudieron cambiar en Ajustes: una sola lectura por vuelta
-        void OnApplicationPause(bool enPausa) => AlPausar(ubicacion, enPausa);
+        void OnApplicationPause(bool enPausa)
+        {
+            AlPausar(ubicacion, enPausa);
+            // Con pantalla partida puede llegar onNewIntent sin cambio de foco: también al salir de la pausa
+            AlVolverDelante(compartida, pantallaMapa, delante: !enPausa, activo: enabled);
+        }
 
         void OnApplicationFocus(bool conFoco)
         {
             AlCambiarFoco(ubicacion, conFoco);
             if (conFoco && enabled && pantallaMapa != null) pantallaMapa.LeerAccesibilidadSistema();
+            AlVolverDelante(compartida, pantallaMapa, delante: conFoco, activo: enabled);
+        }
+
+        /// <summary>
+        /// Con la app delante y el Arranque activo, lo compartido con la app ya abierta (onNewIntent) va al buscador.
+        /// </summary>
+        internal static void AlVolverDelante(IEntradaCompartida entrada, PantallaMapa pantalla, bool delante, bool activo)
+        {
+            if (!delante || !activo) return;
+            PasarCompartido(entrada, pantalla);
         }
 
         /// <summary>Lo que hace OnApplicationPause: en pausa se detiene; al salir de ella se reanuda.</summary>

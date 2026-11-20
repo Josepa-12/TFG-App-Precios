@@ -833,6 +833,7 @@ namespace PriceMap.Arranque
 
                 yield return Direcciones(buscador);
                 yield return Enlace(buscador);
+                yield return Compartido(buscador);
             }
             finally
             {
@@ -923,6 +924,32 @@ namespace PriceMap.Arranque
                 pantalla.CerrarFicha();
                 yield return new WaitForSeconds(0.5f);
             }
+            pantalla.BorrarBusqueda();
+            yield return null;
+        }
+
+        /// <summary>
+        /// Historia 2.5 (parte 3), captura "compartido" (tema claro): llega un <c>geo:</c> compartido con la app (como
+        /// «Abrir con» desde otra app) con la hoja plegada. Comprueba que el enlace queda en el campo y que se abre sola
+        /// la ficha de punto libre en su coordenada (y se cierra).
+        /// </summary>
+        IEnumerator Compartido(HojaBuscador buscador)
+        {
+            const string geo = "geo:36.7781,-6.3515?q=36.7781,-6.3515(Plaza%20del%20Cabildo)"; // como llega de Android
+            var esperado = new Coordenada(36.7781, -6.3515);
+            buscador.Plegar();
+            yield return null;
+            pantalla.RecibirCompartido(geo);
+            yield return new WaitForSeconds(1f);
+            yield return new WaitForEndOfFrame();
+            if (buscador.Campo.value != geo) Debug.LogError($"PriceMap: lo compartido no está en el campo (\"{buscador.Campo.value}\").");
+            if (pantalla.PuntoAbierto != esperado) Debug.LogError($"PriceMap: lo compartido no ha abierto la ficha del punto ({pantalla.PuntoAbierto}).");
+            else Debug.Log("PriceMap: geo: compartido abre la ficha de punto libre en " + esperado + ".");
+            if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+            yield return Capturar("compartido");
+            yield return new WaitForSeconds(1f);
+            pantalla.CerrarFicha();
+            yield return new WaitForSeconds(0.5f);
             pantalla.BorrarBusqueda();
             yield return null;
         }

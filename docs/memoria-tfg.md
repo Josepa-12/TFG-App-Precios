@@ -842,6 +842,22 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
       - Se descartaron otros formatos (grados, minutos y segundos, OpenStreetMap, rutas), que no los pide el spec.
     - **Comprobación:** pasan 771 pruebas (las nuevas cubren cada fila de la matriz, los casos raros del analizador, el resolutor y la pantalla con un resolutor falso). En la captura de PC `enlace`, la única fila es «Ir a este punto» con «36,7781, -6,3515»; el registro no tiene errores.
     - **Pendiente:** probar en el móvil a pegar un enlace de Google Maps, también el corto de «Compartir». Hay que ver a qué URL lleva hoy el corto: si es una URL sin coordenadas (solo el nombre del sitio), habrá que leerla de otra forma. También hay que dejar sitio a la «X» del campo cuando el texto es largo.
+  - *Historia 2.5 (parte 3): compartir una ubicación con PriceMap (20/11/2026).*
+    - **Motivo:** quien recibía una ubicación en WhatsApp o la veía en Google Maps tenía que copiarla y pegarla en el buscador; PriceMap no salía en «Compartir» ni abría los enlaces `geo:` (FR17).
+    - **Decisiones del autor:** una ubicación compartida que se reconoce abre sola la ficha de punto libre (al momento o al resolverse el enlace corto), como si se tocara «Ir a este punto»; si el usuario cambia el texto antes, ya no se abre. Si no se reconoce, el mensaje queda en la hoja. No se registran los enlaces `https` de Google Maps en «Abrir con»: desde Android 12 el sistema no se los ofrecería a PriceMap.
+    - **Solución:**
+      - Al generar el proyecto de Android (`CompartirAndroid`), la actividad de Unity gana dos filtros: «Compartir» con texto (`SEND` + `text/plain`) y «Abrir con» para `geo:` (`VIEW`). Sin duplicarlos y sin actividad propia: la de Unity ya es `singleTask` y guarda el último intent.
+      - Un plugin Java mínimo (`PuenteCompartir.tomar`) lee el texto compartido o la URI `geo:` del intent y lo consume, para que al volver a la app no se repita; un intent que viene de la lista de recientes no cuenta. Lo llama un puerto nuevo (`IEntradaCompartida`) desde el arranque y al volver la app delante.
+      - Al campo va solo el enlace si lo hay (Google Maps lo pone detrás del nombre y la dirección del sitio) o el texto en una línea, de 200 caracteres como mucho. Después pasa por todo lo de la parte 2: analizador, enlace corto y mensaje de no reconocido. Un texto cualquiera se busca como uno escrito.
+      - Se cierra la ficha abierta y se abre la hoja del buscador del todo (con TalkBack, modal y con el foco en el campo, y se anuncia lo que se ve). Si está a la vista la explicación o el aviso de ubicación (primer arranque), se espera a que se cierren. No se guarda nada.
+    - **Revisión (tres revisores en paralelo):** cuatro arreglos.
+      - Si el enlace corto se resuelve cuando el usuario ya ha abierto otra ficha, se queda la suya.
+      - Lo compartido también se lee al salir de la pausa (pantalla partida), con un método que ahora tiene prueba.
+      - Las pruebas del primer arranque hacen correr el `Update` real, que es el que aplica lo pendiente.
+      - Se corrigió un comentario.
+      - Quedan para después: comprobar en el móvil que lo compartido no vuelve tras matar el proceso, y que un `geo:0,0?q=dirección` busque la dirección.
+    - **Comprobación:** pasan 797 pruebas (26 nuevas: los filtros del manifiesto, el texto para el campo y cada fila de la matriz en la pantalla real con un resolutor falso). La APK compila y su manifiesto final lleva los dos filtros. En la captura de PC `compartido`, un `geo:` que llega con la hoja plegada deja el enlace en el campo y abre solo la ficha del punto, con la dirección real de Photon («Calle Carmen Viejo»).
+    - **Pendiente:** probar en el móvil a compartir desde Google Maps (un sitio y una chincheta) y desde WhatsApp (ubicación y enlace), abrir un `geo:` y volver a la app sin compartir.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

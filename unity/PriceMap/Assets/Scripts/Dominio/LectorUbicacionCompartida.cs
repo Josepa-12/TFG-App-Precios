@@ -95,6 +95,30 @@ namespace PriceMap.Dominio
             return conEsquema ? m.Value : "https://" + m.Value;
         }
 
+        /// <summary>Largo máximo del texto compartido que va al campo del buscador (sin enlace).</summary>
+        public const int LargoMaximoCompartido = 200;
+
+        static readonly Regex Espacios = new Regex(@"\s+", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// Lo que va al campo del buscador cuando otra app comparte un texto con PriceMap (historia 2.5, parte 3): si
+        /// lleva un enlace, solo el enlace (Google Maps lo pone detrás del nombre y la dirección del sitio); si no, el
+        /// texto en una línea (saltos y espacios seguidos → un espacio), recortado a 200 caracteres. Null si está vacío.
+        /// </summary>
+        public static string TextoCompartido(string texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto)) return null;
+            string enlace = ExtraerEnlace(texto);
+            if (enlace != null) return enlace;
+            string linea = Espacios.Replace(texto, " ").Trim();
+            if (linea.Length > LargoMaximoCompartido)
+            {
+                int largo = char.IsHighSurrogate(linea[LargoMaximoCompartido - 1]) ? LargoMaximoCompartido - 1 : LargoMaximoCompartido;
+                linea = linea.Substring(0, largo).TrimEnd(); // sin partir un emoji
+            }
+            return linea.Length > 0 ? linea : null;
+        }
+
         static Coordenada? LeerEnlace(string enlace)
         {
             string url = Descodificar(enlace);

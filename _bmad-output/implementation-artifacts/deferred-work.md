@@ -190,3 +190,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5b-pegar-enlaces-o-coordenadas.md`
   summary: En el campo del buscador, un texto largo (un enlace pegado) pasa por debajo de la «X» de borrar; dejarle sitio a la derecha al texto.
   evidence: Se ve en la captura de PC `enlace` (20/11/2026). El campo y la X son de la 2.3; no es un fallo de esta historia.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5c-compartir-con-pricemap.md`
+  summary: Probar en el móvil `PuenteCompartir.tomar`: lo compartido se aplica una vez, no vuelve al volver a la app ni al abrirla desde recientes, y tampoco tras matar el proceso en segundo plano y volver con el icono (la actividad recreada podría traer el intent original). Si vuelve, marcar el intent como leído de otra forma.
+  evidence: Sin verificar (maybe-false, medium si es cierto). Las pruebas EditMode usan una entrada falsa; el consumo con `setIntent(new Intent())` no sobrevive a la recreación de la actividad.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5c-compartir-con-pricemap.md`
+  summary: Que un `geo:0,0?q=Calle Ancha 3` (lo que mandan contactos y calendario al abrir una dirección) busque esa dirección en vez de dar «No reconozco esta ubicación».
+  evidence: Hoy el analizador de la parte 2 lo trata como enlace sin coordenadas (prueba «geo sin coordenadas»); cambiarlo es una decisión de producto.

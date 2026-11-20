@@ -469,6 +469,7 @@ namespace PriceMap.UI
         public void Buscar(string texto)
         {
             if (buscador == null) return;
+            if (abrirSolo != null && texto != abrirSolo) abrirSolo = null; // lo compartido ha cambiado: ya no se abre solo
             if (cercaActiva)
             {
                 // Escribir quita la categoría (historia 2.4): vuelve la búsqueda de la 2.3
@@ -587,9 +588,14 @@ namespace PriceMap.UI
                     enlaceLocales = Array.Empty<ResultadoBusqueda>();
                     mensajeEnlace = Textos.T(ClavesTexto.BuscadorEnlaceNoReconocido);
                 }
-                if (cercaActiva || texto != buscador.Campo.value) return;
+                if (cercaActiva || texto != buscador.Campo.value)
+                {
+                    if (abrirSolo == texto) abrirSolo = null;
+                    return;
+                }
                 localesActuales = enlaceLocales;
                 PintarResultados(arriba: false, moverFoco: false); // llega sola: el foco de TalkBack no se mueve
+                AbrirSiToca(); // compartido con la app (parte 3): se abre su ficha
             }
             catch (Exception e)
             {
@@ -614,6 +620,70 @@ namespace PriceMap.UI
             peticionEnlace = null;
             cts.Cancel();
             cts.Dispose();
+        }
+
+        // ───────────────────────── Compartido con PriceMap (historia 2.5, parte 3) ─────────────────────────
+
+        string compartidoPendiente; // texto para el campo que espera a que se cierre la explicación o el aviso de ubicación
+        string abrirSolo;           // texto compartido cuya ficha de punto se abre sola al reconocerse (null: ninguno)
+
+        /// <summary>Hay algo compartido esperando a que se cierre la ventana de ubicación.</summary>
+        public bool CompartidoPendiente => compartidoPendiente != null;
+
+        /// <summary>
+        /// Lo que otra app ha compartido con PriceMap (texto o enlace <c>geo:</c>; lo pasa el Arranque al arrancar y al
+        /// volver delante). Va al campo del buscador como si se hubiera pegado (parte 2): solo el enlace si lo lleva o el
+        /// texto en una línea de 200 caracteres como mucho. Se cierra la ficha y se abre la hoja; si es una ubicación
+        /// reconocida, su ficha de punto libre se abre sola (al momento o al resolverse el enlace corto). Con la
+        /// explicación o el aviso de ubicación a la vista, espera a que se cierren. Vacío: nada. Nada se guarda.
+        /// </summary>
+        public void RecibirCompartido(string texto)
+        {
+            string campo = LectorUbicacionCompartida.TextoCompartido(texto);
+            if (campo == null || buscador == null) return;
+            compartidoPendiente = campo;
+            AplicarCompartidoPendiente();
+        }
+
+        /// <summary>
+        /// Aplica lo compartido si ya se puede (sin ventana de ubicación a la vista). Lo llama Update en cada fotograma.
+        /// Devuelve true si lo ha aplicado.
+        /// </summary>
+        public bool AplicarCompartidoPendiente()
+        {
+            if (compartidoPendiente == null || buscador == null || ModalUbicacionAbierta) return false;
+            string texto = compartidoPendiente;
+            compartidoPendiente = null;
+            CerrarFicha(); // vuelve la cápsula
+            OlvidarEnlace(); // el mismo enlace compartido otra vez se lee de nuevo (un corto que falló se reintenta)
+            abrirSolo = texto;
+            bool yaAbierta = BuscadorAbierto && modalBuscador; // entonces Buscar ya anuncia lo que se ve
+            // Primero el texto (quita la lista "cerca" si la había), luego la hoja
+            if (buscador.Campo.value == texto) Buscar(texto); else buscador.Escribir(texto);
+            AbrirBuscadorConLector(); // hoja abierta del todo; con TalkBack, modal y el foco en el campo
+            if (!yaAbierta)
+            {
+                // La hoja acaba de abrirse: se repinta (sin pedir nada otra vez) para que TalkBack anuncie lo que se ve
+                ultimosResultados = null;
+                Buscar(texto);
+            }
+            AbrirSiToca();
+            return true;
+        }
+
+        /// <summary>
+        /// Si lo compartido sigue en el campo y es una ubicación ya reconocida, abre su ficha de punto libre (como
+        /// «Ir a este punto»). Mientras se resuelve el enlace corto espera; si no se reconoce, el mensaje queda en la hoja.
+        /// </summary>
+        void AbrirSiToca()
+        {
+            if (abrirSolo == null || buscador == null) return;
+            if (cercaActiva || abrirSolo != buscador.Campo.value || abrirSolo != textoEnlace) { abrirSolo = null; return; }
+            if (peticionEnlace != null) return; // se abrirá al llegar la respuesta (ResolverEnlace)
+            abrirSolo = null;
+            if (FichaAbierta) return; // el usuario ya ha abierto otra ficha mientras se resolvía: se queda la suya
+            if (enlaceLocales != null && enlaceLocales.Count == 1 && enlaceLocales[0].Tipo == TipoResultado.Coordenada)
+                ElegirResultado(enlaceLocales[0]);
         }
 
         /// <summary>
@@ -1453,6 +1523,7 @@ namespace PriceMap.UI
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.Escape)) Atras();
+            if (compartidoPendiente != null) AplicarCompartidoPendiente(); // al cerrarse la ventana de ubicación
         }
 
         static IEnumerable<(Lugar, ResumenLugar)> ConResumen(ServicioLugares lugares, DateTime ahora)
