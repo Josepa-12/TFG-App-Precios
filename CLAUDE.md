@@ -33,3 +33,23 @@ Tras build de PC: borrar `Assets/AddressableAssetsData/link.xml` (y su `.meta`) 
 - BMAD: planificación en `_bmad-output/planning-artifacts/` (epics.md, prd, architecture, ux); historias en `_bmad-output/implementation-artifacts/spec-*.md`; estado en `sprint-status.yaml`; pendientes en `deferred-work.md`.
 - Memoria del TFG: `docs/memoria-tfg.md` (actualizar tras cada avance).
 - No commitear sin revisión del usuario.
+
+## Forma de trabajar (preferencias del dueño del proyecto)
+- **Historias:** una a una con `bmad-build`. Las Open Questions de cada spec se preguntan una a una (opción recomendada primero); resueltas, se implementa y revisa sin parar. Parar y avisar al cerrar cada épica. Subagentes permitidos (implementación y revisiones). Los specs de más de ~1.600 tokens se suelen partir (2.6 → 2.6a, 2.6b…).
+- **BMAD completo:** no saltar ningún paso de un flujo, aunque se pida ir rápido (rápido = menos preguntas, no menos pasos).
+- **Commits:** commit de seguridad en cuanto una historia está implementada y ha pasado la revisión de código de BMAD; el usuario lo revisa después (si pide cambios, otro commit). Un commit por historia o parte. Push a `origin/unity` solo cuando lo pida; `main` no se toca.
+- **Cambios visuales:** enseñar antes una maqueta (página Artifact); al cerrar cada historia, una página con las capturas reales de la build de PC (claro y oscuro, tamaño móvil) y una lista corta de cambios.
+- **Al explicar:** opciones con palabras sencillas, en español.
+- **Memoria del TFG:** actualizar `docs/memoria-tfg.md` (capítulo, marcas [Redactado]/[Parcial]/[Pendiente], fecha y anexo de decisiones) tras cada decisión o avance.
+- **Nombre:** la app es **PriceMap** (`com.pricemap.app`); `PrecioLocal.*` solo en namespaces internos, no renombrar sin preguntar. Mapa OSM/OpenFreeMap, sin Cesium.
+
+## Trucos del entorno
+- Unity por lotes solo con el editor cerrado; las clases del editor con su namespace completo (`PriceMap.EditorTools.ConfigurarAndroid.CompilarPcPruebas`).
+- La captura de PC (`PriceMap.exe -captura`) se queda en pausa si la ventana pierde el foco: lanzarla con `timeout` y repetir si se cuelga.
+- Pruebas que llamen a `MapaVectorial.Update` deben poner `sombras = false` (si no, escriben `shadowDistance` en `ProjectSettings/QualitySettings.asset`).
+
+## Estado (20/11/2026)
+- Hechas: épica 1 entera; 2.1–2.5; 2.6 partes 1 y 2a (`560617c`, 869/869 pruebas). Sprint 2-6 en `review`.
+- **Siguiente:** 2.6 parte 2b (sin conexión: ruta aproximada por las calles de las teselas guardadas, opción A, y toast); descrita en `deferred-work.md`. Luego 2.7–2.9.
+- Decidido: los textos de maniobra de Valhalla se aceptan en forma de usted («Gire a la derecha…»).
+- Pendientes abiertos: pruebas en un móvil real (TalkBack, arrastre, rutas reales por calles de sentido único); Photon no encuentra «calle ancha 10». Épicas 3+ necesitan el proyecto de Firebase y `google-services.json` (spec 3.2).
