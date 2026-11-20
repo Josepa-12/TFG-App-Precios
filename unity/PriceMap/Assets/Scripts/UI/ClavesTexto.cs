@@ -220,8 +220,18 @@ namespace PriceMap.UI
         /// <summary>TalkBack del título con la localidad: {0} título, {1} localidad ("Calle Ancha, 10, Sanlúcar de Barrameda").</summary>
         public const string PuntoAnuncio = "punto.anuncio";
 
+        /// <summary>Enlaces y coordenadas pegados en el buscador (historia 2.5, parte 2): la fila ("Ir a este punto").</summary>
+        public const string BuscadorIrAPunto = "buscador.enlace.ir";
+        /// <summary>TalkBack de esa fila: {0} "Ir a este punto", {1} coordenadas ("Ir a este punto, 36,7781, -6,3515").</summary>
+        public const string BuscadorAnuncioPunto = "buscador.enlace.anuncio";
+        /// <summary>En el sitio de "No hay resultados" mientras se resuelve un enlace corto.</summary>
+        public const string BuscadorComprobandoEnlace = "buscador.enlace.comprobando";
+        /// <summary>En el sitio de "No hay resultados" si el enlace no se reconoce (o el corto no se puede resolver).</summary>
+        public const string BuscadorEnlaceNoReconocido = "buscador.enlace.noreconocido";
+
         public static readonly string[] Todas =
         {
+            BuscadorIrAPunto, BuscadorAnuncioPunto, BuscadorComprobandoEnlace, BuscadorEnlaceNoReconocido,
             PuntoTipo, PuntoCoordenadas, PuntoCalleNumero, PuntoBuscando, PuntoAnuncio,
             BuscadorCercaCategoria, BuscadorCercaTitulo, BuscadorCercaDesdeCentro, BuscadorCercaVacio, BuscadorQuitarCategoria,
             PildoraQuitarCategoria, BuscadorCercaJuntar,

@@ -2,7 +2,8 @@
 title: 'Historia 2.5 (parte 2): pegar un enlace o unas coordenadas en el buscador'
 type: 'feature'
 created: '2026-11-20'
-status: 'draft'
+status: 'done'
+baseline_commit: '019959de128d6cd0551828cc0b4b54e661810748'
 route: 'dispatch'
 review_loop_iteration: 0
 context: ['{project-root}/_bmad-output/implementation-artifacts/epic-2-context.md']
@@ -72,11 +73,11 @@ Rutas bajo `unity/PriceMap/Assets/Scripts` salvo otra indicación.
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `LectorUbicacionCompartida` y sus pruebas.
-- [ ] `IResolutorEnlaces` + `ResolutorEnlacesWeb` + Arranque.
-- [ ] Resultado `Coordenada`, `FilaResultado`, `PantallaMapa` (buscar, elegir, mensaje) y TalkBack.
-- [ ] Textos, Localization y captura «enlace».
-- [ ] Pruebas de pantalla: filas de la matriz.
+- [x] `LectorUbicacionCompartida` y sus pruebas.
+- [x] `IResolutorEnlaces` + `ResolutorEnlacesWeb` + Arranque.
+- [x] Resultado `Coordenada`, `FilaResultado`, `PantallaMapa` (buscar, elegir, mensaje) y TalkBack.
+- [x] Textos, Localization y captura «enlace».
+- [x] Pruebas de pantalla: filas de la matriz.
 
 **Acceptance Criteria:**
 - Dada la suite EditMode, cuando se ejecuta, entonces pasan todas.
@@ -87,6 +88,28 @@ Rutas bajo `unity/PriceMap/Assets/Scripts` salvo otra indicación.
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Hallazgo (capa) | Veredicto | Evidencia | Ruta |
+|---|---|---|---|---|
+| 1 | Ninguna prueba comprueba que `Componer` lleve el resolutor a la pantalla (verification-gap) | medium | `PruebasArranque` nunca pasaba `resolutorEnlaces`; las pruebas de pantalla llamaban a `Inicializar` directamente | patch: `ComponerEntregaElResolutorDeEnlacesAlBuscador` |
+| 2 | El bucle de saltos de `ResolutorEnlacesWeb` no tiene pruebas (verification-gap, blind) | medium | Solo se probaba `Absoluta`; `Siguiente` era estático con red | patch: constructor `internal` con el salto + 5 pruebas sin red |
+| 3 | Pasar de una coordenada a otra no tiene prueba de anuncio (verification-gap) | low | Las pruebas de TalkBack solo cubrían 0→1 y 0→0 | patch: `TalkBack_OtraCoordenadaSeAnunciaOtraVez` |
+| 4 | Enlaces de mapas sin `https://` no se extraen; un corto sin esquema se pedía con el texto entero (verification-gap, blind, edge) | medium | `Enlace` solo casaba `https?://`/`geo:`; `ExtraerEnlace(...) ?? texto.Trim()` mandaba «Bar maps.app.goo.gl/x» | patch: `Enlace` acepta dominios de mapas sin esquema y les pone `https://` |
+| 5 | `EsEnlaceCorto` miraba el texto suelto, no el servidor (blind) | low | `IndexOf` en todo el texto: «https://ejemplo.com/x maps.app.goo.gl» pedía ejemplo.com | patch: comprueba el servidor del primer enlace |
+| 6 | Un corto con `http://` falla en Android (blind, edge) | low | Unity bloquea http en claro por defecto | patch: `ConHttps` antes de cada salto |
+| 7 | La URL resuelta va al registro en la versión de publicación (blind) | low | `Debug.Log("… URL final " + r.Valor)` sin condición | patch: la URL solo con `Debug.isDebugBuild` |
+| 8 | Aserción con `||` que pasa siempre (blind) | low | `BuscarDireccionVisible || geo.Busquedas.Contains("zzzz")` | patch: `CollectionAssert.Contains(geo.Busquedas, "zzzz")` |
+| 9 | «1,5 2,5» se toma por coordenadas (edge) | low | `Sueltas` aceptaba un decimal | patch: dos decimales al menos |
+| 10 | Con «cerca» activa y el campo vacío, el enlace pendiente no se olvida (edge) | low | `Buscar("")` volvía antes de `OlvidarEnlace` | patch: `OlvidarEnlace()` en esa rama |
+| 11 | Cortos que resuelven a URL sin coordenadas (`?q=Nombre&ftid=`, `/maps/place/Nombre/data=…1s0x…`) o con `/maps/search/lat,+lng` (blind, edge) | maybe-false (medium si es cierto) | Depende de lo que devuelva Google hoy; sin red no se comprueba | defer |
+| 12 | Coordenadas en grados/minutos/segundos o con etiqueta delante (blind) | low | Formatos fuera de los fijados en el spec; añadirlos es otra rama de análisis | rechazado |
+| 13 | Enlaces de OSM, `dir/?destination=`, `center=`, `!2d!3d` (blind, edge) | low | Poco frecuentes al compartir; añaden ramas | rechazado |
+| 14 | El mensaje aconseja «copiar el enlace completo» ante una web cualquiera (blind) | low | El texto y la regla `http` los fija el spec | rechazado (cambiaría el spec) |
+| 15 | Etiqueta TalkBack con comas decimales difícil de oír (blind) | low | La etiqueta la fija el spec | rechazado (cambiaría el spec) |
+| 16 | Sin tiempo máximo total al resolver (5 × tiempo por salto) (blind) | low | Lo normal son 1–2 saltos; añadir un plazo global es más lógica | rechazado |
+| 17 | La distancia de `DeCoordenada` no se enseña (blind) | false | No causa ningún fallo; el campo es parte del resultado común | rechazado |
+| 18 | `Assert.Ignore`/`Inconclusive` en la prueba del doble toque (blind) | false | Misma pauta que todas las suites de TalkBack: limitación del editor | rechazado |
+| 19 | Sprint y pendientes sin actualizar (blind) | false | Se actualizan al cerrar la historia (paso 5) | rechazado |
 
 ## Verification
 

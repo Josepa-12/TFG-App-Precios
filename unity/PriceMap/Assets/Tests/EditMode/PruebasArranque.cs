@@ -179,6 +179,53 @@ namespace PriceMap.Tests.EditMode
             finally { Object.DestroyImmediate(conInterfaz); }
         }
 
+        /// <summary>Resolutor falso: apunta cada enlace y lo deja pendiente.</summary>
+        class ResolutorFalso : IResolutorEnlaces
+        {
+            public readonly List<string> Urls = new List<string>();
+            public System.Threading.Tasks.Task<Resultado<string>> Resolver(string url, System.Threading.CancellationToken ct)
+            {
+                Urls.Add(url);
+                return new System.Threading.Tasks.TaskCompletionSource<Resultado<string>>().Task;
+            }
+        }
+
+        /// <summary>
+        /// Historia 2.5, parte 2: Componer pasa el resolutor de enlaces cortos hasta la pantalla con interfaz de verdad
+        /// (como Arranque.Start): un enlace corto pegado en el buscador le llega.
+        /// </summary>
+        [Test]
+        public void ComponerEntregaElResolutorDeEnlacesAlBuscador()
+        {
+            var conInterfaz = new GameObject("Pantalla con interfaz");
+            Textos.Forzados = c => PrepararInterfaz.TextosEs[c];
+            try
+            {
+                conInterfaz.SetActive(false);
+                var documento = conInterfaz.AddComponent<UIDocument>();
+                documento.panelSettings = AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/UI/PanelSettings.asset");
+                documento.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml");
+                var conUi = conInterfaz.AddComponent<PantallaMapa>();
+                conInterfaz.SetActive(true);
+                Assert.IsNotNull(documento.rootVisualElement?.Q("raiz"), "El UIDocument no ha creado el árbol de la interfaz.");
+
+                var resolutor = new ResolutorFalso();
+                Assert.IsTrue(Arranque.Arranque.Componer(new MapaFalso(), conUi, NuevoTema(), Lugares(), Filtro(), Ahora,
+                    resolutorEnlaces: resolutor));
+                conUi.Buscador.Medir(800f);
+                conUi.Buscador.Abrir();
+                conUi.Buscador.Escribir("https://maps.app.goo.gl/abc");
+
+                CollectionAssert.AreEqual(new[] { "https://maps.app.goo.gl/abc" }, resolutor.Urls);
+                Assert.AreEqual(PrepararInterfaz.TextosEs[ClavesTexto.BuscadorComprobandoEnlace], conUi.Buscador.SinResultados.text);
+            }
+            finally
+            {
+                Textos.Forzados = null;
+                Object.DestroyImmediate(conInterfaz);
+            }
+        }
+
         [Test]
         public void SinServicioDeLugaresAvisaYNoLanzaExcepcion()
         {

@@ -38,18 +38,30 @@ namespace PriceMap.UI
             Icono.AddToClassList("buscador__resultado-icono");
             Icono.AddToClassList(resultado.Tipo == TipoResultado.Lugar ? "buscador__resultado-icono--lugar"
                 : resultado.Tipo == TipoResultado.Direccion ? "buscador__resultado-icono--direccion"
+                : resultado.Tipo == TipoResultado.Coordenada ? ClaseIconoCoordenada
                 : "buscador__resultado-icono--" + HojaBuscador.Nombre(resultado.Categoria));
             string glifo = GlifoDe(resultado);
             Glifo = new VisualElement { name = "buscador-resultado-glifo", pickingMode = PickingMode.Ignore };
             Glifo.AddToClassList("buscador__resultado-glifo");
-            Glifo.generateVisualContent += mgc => IconosLugar.Dibujar(mgc.painter2D, glifo, Glifo.contentRect, Glifo.resolvedStyle.color);
+            if (glifo == GlifoChincheta)
+            {
+                // La chincheta en negativo (maqueta del 20/11/2026): la gota del color del glifo y su centro del color
+                // del círculo
+                Glifo.AddToClassList("buscador__resultado-glifo--chincheta");
+                Glifo.generateVisualContent += mgc =>
+                    ChinchetaPunto.Dibujar(mgc, Glifo.contentRect, Glifo.resolvedStyle.color, Icono.resolvedStyle.backgroundColor, 0f);
+            }
+            else
+                Glifo.generateVisualContent += mgc => IconosLugar.Dibujar(mgc.painter2D, glifo, Glifo.contentRect, Glifo.resolvedStyle.color);
             Glifo.RegisterCallback<GeometryChangedEvent>(_ => Glifo.MarkDirtyRepaint());
             Icono.Add(Glifo);
             Add(Icono);
 
             var textosFila = new VisualElement { name = "buscador-resultado-textos", pickingMode = PickingMode.Ignore };
             textosFila.AddToClassList("buscador__resultado-textos");
-            Nombre = Etiqueta(resultado.Nombre, "buscador-resultado-nombre", "buscador__resultado-nombre", "t-label");
+            bool coordenada = resultado.Tipo == TipoResultado.Coordenada;
+            string nombre = coordenada ? textos(ClavesTexto.BuscadorIrAPunto) : resultado.Nombre;
+            Nombre = Etiqueta(nombre, "buscador-resultado-nombre", "buscador__resultado-nombre", "t-label");
             textosFila.Add(Nombre);
             string tipo = TipoDe(resultado, textos);
             string distancia = FormatoDistancia.Texto(resultado.Metros);
@@ -66,7 +78,10 @@ namespace PriceMap.UI
             }
 
             string localidad = resultado.Direccion?.Localidad;
-            Anuncio = resultado.Tipo == TipoResultado.Direccion
+            Anuncio = coordenada
+                // "Ir a este punto, 36,7781, -6,3515"
+                ? Textos.Formatear(textos(ClavesTexto.BuscadorAnuncioPunto), nombre, Detalle.text)
+                : resultado.Tipo == TipoResultado.Direccion
                 // "Calle Ancha 10, Dirección, Sanlúcar de Barrameda, a 1,2 km" (sin localidad: "…, Dirección, a 1,2 km")
                 ? string.IsNullOrEmpty(localidad)
                     ? Textos.Formatear(textos(ClavesTexto.BuscadorAnuncioResultado), resultado.Nombre, Mayuscula(tipo), distancia)
@@ -79,18 +94,29 @@ namespace PriceMap.UI
         /// <summary>Vuelve a dibujar el glifo (el color cambia con el tema).</summary>
         public void Repintar() => Glifo.MarkDirtyRepaint();
 
-        /// <summary>Glifo del tipo de negocio (lugares), de la categoría (puntos de interés) o el pin (direcciones).</summary>
+        /// <summary>Clase del círculo de «Ir a este punto» (historia 2.5, parte 2).</summary>
+        public const string ClaseIconoCoordenada = "buscador__resultado-icono--coordenada";
+        /// <summary>Lo que da GlifoDe para «Ir a este punto»: no es de IconosLugar, se dibuja la gota de ChinchetaPunto.</summary>
+        public const string GlifoChincheta = "chincheta";
+
+        /// <summary>
+        /// Glifo del tipo de negocio (lugares), de la categoría (puntos de interés), el pin (direcciones) o la chincheta
+        /// (coordenadas, historia 2.5, parte 2).
+        /// </summary>
         public static string GlifoDe(ResultadoBusqueda r) =>
             r.Tipo == TipoResultado.Lugar ? IconosLugar.GlifoDe(r.Lugar.Tipo)
             : r.Tipo == TipoResultado.Direccion ? IconosLugar.Generico
+            : r.Tipo == TipoResultado.Coordenada ? GlifoChincheta
             : IconosLugar.GlifoDe(r.Categoria);
 
         /// <summary>
         /// Segunda línea: "Clínica privada · 350 m" en lugares y puntos; en las direcciones (historia 2.3, parte 2)
-        /// "Dirección · Sanlúcar de Barrameda · a 1,2 km" (sin localidad, "Dirección · a 1,2 km").
+        /// "Dirección · Sanlúcar de Barrameda · a 1,2 km" (sin localidad, "Dirección · a 1,2 km"); en «Ir a este
+        /// punto» (historia 2.5, parte 2), sus coordenadas como en la ficha ("36,7781, -6,3515").
         /// </summary>
         public static string DetalleDe(ResultadoBusqueda r, string tipo, string distancia, Func<string, string> textos)
         {
+            if (r.Tipo == TipoResultado.Coordenada) return FichaLugar.TextoCoordenadas(r.Posicion, textos);
             string formato = textos(ClavesTexto.BuscadorDetalle);
             if (r.Tipo != TipoResultado.Direccion) return Textos.Formatear(formato, Mayuscula(tipo), distancia);
             string localidad = r.Direccion?.Localidad;
@@ -106,6 +132,7 @@ namespace PriceMap.UI
         {
             if (r.Tipo == TipoResultado.Lugar) return r.Lugar.Tipo;
             if (r.Tipo == TipoResultado.Direccion) return textos(ClavesTexto.BuscadorDireccion).ToLowerInvariant();
+            if (r.Tipo == TipoResultado.Coordenada) return "";
             var clave = r.SanidadPublica ? ClavesTexto.PoiSanidadPublica : TextosPuntos.ClaveCategoria(r.Categoria);
             return clave != null ? textos(clave) : "";
         }

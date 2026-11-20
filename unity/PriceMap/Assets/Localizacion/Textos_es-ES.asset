@@ -555,6 +555,22 @@ MonoBehaviour:
     m_Localized: '{0}, {1}'
     m_Metadata:
       m_Items: []
+  - m_Id: 916635350196224
+    m_Localized: Ir a este punto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362048
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362049
+    m_Localized: "Comprobando el enlace\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 916635375362050
+    m_Localized: "No reconozco esta ubicaci\xF3n. Prueba a copiar el enlace completo."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

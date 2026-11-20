@@ -469,8 +469,10 @@ namespace PriceMap.UI
         /// <param name="sinConexion">Las direcciones han fallado: se ve "Las direcciones necesitan conexión".</param>
         /// <param name="ofrecerDireccion">Se puede "Buscar como dirección": el botón sale si no hay ninguna fila.</param>
         /// <param name="arriba">Devolver la lista arriba (falso al añadir solo direcciones).</param>
+        /// <param name="mensaje">Texto sin filas en lugar de "No hay resultados" (historia 2.5, parte 2: "Comprobando el
+        /// enlace…" o el de enlace no reconocido); con él no se ofrece "Buscar como dirección".</param>
         public void MostrarResultados(IReadOnlyList<ResultadoBusqueda> resultados, IReadOnlyList<ResultadoBusqueda> direcciones = null,
-            bool sinConexion = false, bool ofrecerDireccion = false, bool arriba = true)
+            bool sinConexion = false, bool ofrecerDireccion = false, bool arriba = true, string mensaje = null)
         {
             // Mismos locales (llegan solo direcciones): sus filas se quedan, para no perder el foco de TalkBack ni la
             // pulsación; solo se cambian las de direcciones, que van detrás
@@ -492,7 +494,7 @@ namespace PriceMap.UI
             }
             DireccionesVisibles = 0;
             MostrandoCerca = false;
-            SinResultados.text = textos(ClavesTexto.BuscadorSinResultados);
+            SinResultados.text = mensaje ?? textos(ClavesTexto.BuscadorSinResultados);
             MostrandoResultados = EnBusqueda;
             if (MostrandoResultados)
             {
@@ -507,7 +509,7 @@ namespace PriceMap.UI
                         if (AnadirFila(r)) DireccionesVisibles++;
             }
             SinResultadosVisible = MostrandoResultados && filas.Count == 0;
-            BuscarDireccionVisible = SinResultadosVisible && ofrecerDireccion;
+            BuscarDireccionVisible = SinResultadosVisible && ofrecerDireccion && mensaje == null;
             AvisoDireccionesVisible = MostrandoResultados && sinConexion;
             PonerVisibilidad(MostrandoResultados);
             if (arriba) Panel.scrollOffset = Vector2.zero;

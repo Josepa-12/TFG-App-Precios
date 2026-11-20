@@ -1358,6 +1358,16 @@
 .buscador__resultado-icono--direccion { background-color: var(--color-surface-2); }
 .buscador__resultado-icono--direccion .buscador__resultado-glifo { color: var(--color-text); }
 
+/* «Ir a este punto» (historia 2.5, parte 2; maqueta del 20/11/2026): la chincheta en negativo, el círculo del color de
+   la chincheta y la gota del de su detalle (claro: círculo azul marino y gota blanca; oscuro, al revés). La gota
+   guarda la proporción de la chincheta (34 × 44) */
+.buscador__resultado-icono--coordenada { background-color: var(--color-chincheta); }
+.buscador__resultado-icono--coordenada .buscador__resultado-glifo { color: var(--color-chincheta-detalle); }
+.buscador__resultado-glifo--chincheta {
+    width: 15px;
+    height: 19px;
+}
+
 /* "No hay resultados" y, a su lado, "Buscar como dirección" (baja de línea si no cabe) */
 .buscador__fila-sin-resultados {
     flex-direction: row;

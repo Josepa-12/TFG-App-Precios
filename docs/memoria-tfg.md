@@ -824,6 +824,24 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
       Quedan para el móvil: si Photon da calles lejanas al pulsar en el río o el pinar, y una vibración al soltar la chincheta.
     - **Comprobación:** pasan 684 pruebas (30 nuevas, una por fila de la matriz y las de Photon y del puerto real). En la captura de PC `punto`, la chincheta y la ficha salen con «Punto en el mapa» y la dirección real de Photon («Calle Carmen Viejo»); el registro no tiene errores.
     - **Pendiente:** probar en el móvil a mantener pulsado, arrastrar sin querer, usar dos dedos y quitar los datos.
+  - *Historia 2.5 (parte 2): pegar un enlace o unas coordenadas en el buscador (20/11/2026).*
+    - **Motivo:** si a alguien le mandan una ubicación (un enlace de Google Maps por WhatsApp, unas coordenadas), no podía abrirla en PriceMap (FR17).
+    - **Decisiones del autor:** el mensaje de enlace no reconocido va dentro de la hoja, en el sitio de «No hay resultados», y se queda mientras siga el texto (sin aviso flotante). Mientras se resuelve un enlace corto se lee «Comprobando el enlace…» en ese mismo sitio. Icono de la fila: la chincheta en negativo, aprobado en maqueta.
+    - **Solución:**
+      - Un analizador puro del dominio (`LectorUbicacionCompartida`) reconoce enlaces de Google Maps (`?q=`, `@lat,lng`, `!3d…!4d…`, que gana, `ll=`, `query=`), Apple Maps (`ll=`, `q=`), `geo:` (con `?q=`, que gana) y coordenadas sueltas con punto o coma decimal, y comprueba los rangos. Las sueltas tienen que llevar decimales, para no confundir una búsqueda como «10 20».
+      - Los enlaces cortos (`maps.app.goo.gl`, `goo.gl/maps`) se resuelven con un puerto nuevo (`IResolutorEnlaces`); el adaptador web lee la cabecera `Location` sin seguirla sola, hasta 5 saltos, y para en cuanto la URL deja de ser corta (así no llega a la página de Google, que en Europa manda al aviso de cookies). Cambiar el texto cancela la petición y una respuesta tardía no pinta nada.
+      - Con un enlace o coordenadas reconocidos, la única fila es «Ir a este punto» con las coordenadas de subtítulo, y no se buscan lugares ni direcciones. Tocarla abre la ficha de punto libre de la parte 1. Si parece un enlace y no se reconoce (o el corto falla), se lee «No reconozco esta ubicación. Prueba a copiar el enlace completo.».
+      - TalkBack: la fila es un botón «Ir a este punto, 36,7781, -6,3515» y se anuncia «1 resultado»; el mensaje de no reconocido y «Comprobando el enlace…» también se anuncian.
+    - **Revisión (tres revisores en paralelo):** se arreglaron diez cosas.
+      - Los enlaces de mapas pegados sin `https://` (`maps.app.goo.gl/…`, `www.google.com/maps/…`) se reconocen y se les pone `https://`.
+      - El enlace corto se reconoce por su servidor, no por aparecer en el texto. Uno con `http://` se pide con `https://`, porque Android no deja http en claro.
+      - «1,5 2,5» ya no se toma por coordenadas: hacen falta dos decimales.
+      - La URL compartida solo se escribe en el registro en las builds de desarrollo.
+      - Con la lista «cerca» abierta y el campo vacío, el enlace pendiente se olvida.
+      - Pruebas nuevas: el bucle de saltos del resolutor (sin red, con un salto falso), el paso del resolutor desde el arranque hasta el buscador y el anuncio de TalkBack al cambiar de coordenada. También se corrigió una prueba que pasaba siempre.
+      - Se descartaron otros formatos (grados, minutos y segundos, OpenStreetMap, rutas), que no los pide el spec.
+    - **Comprobación:** pasan 771 pruebas (las nuevas cubren cada fila de la matriz, los casos raros del analizador, el resolutor y la pantalla con un resolutor falso). En la captura de PC `enlace`, la única fila es «Ir a este punto» con «36,7781, -6,3515»; el registro no tiene errores.
+    - **Pendiente:** probar en el móvil a pegar un enlace de Google Maps, también el corto de «Compartir». Hay que ver a qué URL lleva hoy el corto: si es una URL sin coordenadas (solo el nombre del sitio), habrá que leerla de otra forma. También hay que dejar sitio a la «X» del campo cuando el texto es largo.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**

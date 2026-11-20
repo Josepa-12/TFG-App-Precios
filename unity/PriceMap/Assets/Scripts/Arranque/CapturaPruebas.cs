@@ -832,6 +832,7 @@ namespace PriceMap.Arranque
                 if (buscador.Campo.value != "" || buscador.MostrandoResultados) Debug.LogError("PriceMap: la X no ha vaciado la búsqueda.");
 
                 yield return Direcciones(buscador);
+                yield return Enlace(buscador);
             }
             finally
             {
@@ -882,6 +883,48 @@ namespace PriceMap.Arranque
             pantalla.BorrarBusqueda();
             yield return null;
             if (pantalla.Direcciones.Pendiente) Debug.LogError("PriceMap: la X no ha cancelado la petición de direcciones.");
+        }
+
+        /// <summary>
+        /// Historia 2.5 (parte 2), captura "enlace" (tema claro): un enlace de Google Maps con @lat,lng pegado en el
+        /// campo. Comprueba que la única fila es «Ir a este punto» con sus coordenadas y que no se piden direcciones;
+        /// al tocarla se abre la ficha de punto libre en esa coordenada (y se cierra).
+        /// </summary>
+        IEnumerator Enlace(HojaBuscador buscador)
+        {
+            const string enlace = "https://www.google.com/maps/place/Plaza+del+Cabildo/@36.7781,-6.3515,17z";
+            var esperado = new Coordenada(36.7781, -6.3515);
+            buscador.Abrir();
+            buscador.Campo.value = enlace;
+            yield return new WaitForSeconds(1f);
+            yield return new WaitForEndOfFrame();
+            var filas = buscador.Filas;
+            Debug.Log($"PriceMap: enlace pegado da {filas.Count} filas: " +
+                      string.Join("; ", filas.Select(f => $"{f.Nombre.text} | {f.Detalle.text} | TalkBack \"{f.Anuncio}\"")));
+            if (filas.Count != 1 || filas[0].Resultado.Tipo != TipoResultado.Coordenada)
+                Debug.LogError("PriceMap: el enlace pegado no da una sola fila «Ir a este punto».");
+            else
+            {
+                if (filas[0].Nombre.text != Textos.T(ClavesTexto.BuscadorIrAPunto) || filas[0].Detalle.text != "36,7781, -6,3515")
+                    Debug.LogError($"PriceMap: la fila del enlace dice \"{filas[0].Nombre.text}\" / \"{filas[0].Detalle.text}\".");
+                if (filas[0].Resultado.Posicion != esperado) Debug.LogError($"PriceMap: el enlace se ha leído como {filas[0].Resultado.Posicion}.");
+            }
+            if (pantalla.Direcciones != null && pantalla.Direcciones.Pendiente) Debug.LogError("PriceMap: con un enlace se han pedido direcciones.");
+            if (buscador.SinResultadosVisible || buscador.BuscarDireccionVisible) Debug.LogError("PriceMap: con el enlace se ve el texto sin resultados.");
+            if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+            yield return Capturar("enlace");
+            yield return new WaitForSeconds(1f);
+
+            if (filas.Count == 1)
+            {
+                pantalla.ElegirResultado(filas[0].Resultado);
+                yield return new WaitForSeconds(0.5f);
+                if (pantalla.PuntoAbierto != esperado) Debug.LogError("PriceMap: «Ir a este punto» no ha abierto la ficha del punto.");
+                pantalla.CerrarFicha();
+                yield return new WaitForSeconds(0.5f);
+            }
+            pantalla.BorrarBusqueda();
+            yield return null;
         }
 
         /// <summary>

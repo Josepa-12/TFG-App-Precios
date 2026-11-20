@@ -184,3 +184,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-5-ir-a-un-punto-libre-o-a-una-ubicacion-compartida.md`
   summary: Vibración corta al dispararse la pulsación larga (como hace Android), y probar en el móvil el gesto real (dedo quieto, temblor, dos dedos, ratón en PC).
   evidence: La entrada de `CamaraMapa` lee `Input` estático y no se puede probar en EditMode; la vibración no estaba en el spec.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5b-pegar-enlaces-o-coordenadas.md`
+  summary: Comprobar en el móvil a qué URL llevan hoy los enlaces cortos de «Compartir» de Google Maps (sitio con nombre y chincheta soltada). Si la primera URL larga no trae coordenadas (`?q=Nombre&ftid=…`, `/maps/place/Nombre/data=…!1s0x…`) o las trae como `/maps/search/36.778,+-6.351`, añadir esa forma al analizador o buscar el nombre con Photon.
+  evidence: Sin verificar (maybe-false, medium si es cierto). El resolutor para en la primera URL que no es corta y el analizador solo lee `@`, `!3d!4d`, `q=`/`ll=`/`query=` con coordenadas; la depuración muestra la URL final en el registro (`Debug.isDebugBuild`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-5b-pegar-enlaces-o-coordenadas.md`
+  summary: En el campo del buscador, un texto largo (un enlace pegado) pasa por debajo de la «X» de borrar; dejarle sitio a la derecha al texto.
+  evidence: Se ve en la captura de PC `enlace` (20/11/2026). El campo y la X son de la 2.3; no es un fallo de esta historia.

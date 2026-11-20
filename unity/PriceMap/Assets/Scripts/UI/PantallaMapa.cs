@@ -29,6 +29,7 @@ namespace PriceMap.UI
         ServicioCerca servicioCerca;
         BuscadorDirecciones direcciones;
         IGeocodificador geocodificador;      // dirección del punto libre (historia 2.5); null = solo coordenadas
+        IResolutorEnlaces resolutorEnlaces;  // enlaces cortos del buscador (historia 2.5, parte 2); null = no se reconocen
         ChinchetaPunto chincheta;
         CancellationTokenSource peticionPunto; // petición de la dirección del punto abierto; null si no hay ninguna
         VisualElement raiz, zonaSegura, zonaSeguraPrecios, zoom, velo, columnaControles;
@@ -66,25 +67,28 @@ namespace PriceMap.UI
         /// <param name="direcciones">Direcciones (historia 2.3, parte 2); sin él, el buscador no busca direcciones.</param>
         /// <param name="cerca">"Encuentra cerca" (historia 2.4); sin él, las listas de las categorías salen vacías.</param>
         /// <param name="geocodificador">Dirección del punto libre (historia 2.5); sin él, la ficha del punto se queda con las coordenadas.</param>
+        /// <param name="resolutorEnlaces">Enlaces cortos pegados en el buscador (historia 2.5, parte 2); sin él, no se reconocen.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
-            BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null)
+            BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
+            IResolutorEnlaces resolutorEnlaces = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador);
+                geocodificador, resolutorEnlaces);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
-            IGeocodificador geocodificador = null)
+            IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null)
         {
             this.mapa = mapa;
             this.geocodificador = geocodificador;
+            this.resolutorEnlaces = resolutorEnlaces;
             this.tema = tema;
             this.filtro = filtro;
             this.ubicacion = ubicacion;
@@ -444,6 +448,7 @@ namespace PriceMap.UI
         // ───────────────────────── Búsqueda (historia 2.3) ─────────────────────────
 
         IReadOnlyList<ResultadoBusqueda> ultimosResultados; // lo último que se anunció (null sin búsqueda)
+        string ultimoVacio;                                 // y su texto sin filas (null si había filas)
         IReadOnlyList<ResultadoBusqueda> localesActuales;   // lugares y puntos del texto actual (null sin búsqueda)
         // Direcciones (historia 2.3, parte 2): texto del campo para el que se pidieron, su respuesta (null sin
         // respuesta buena: en la espera, con poco texto o tras un fallo) y si la última respuesta fue un fallo
@@ -467,17 +472,148 @@ namespace PriceMap.UI
             if (cercaActiva)
             {
                 // Escribir quita la categoría (historia 2.4): vuelve la búsqueda de la 2.3
-                if (string.IsNullOrEmpty(texto)) { PintarCerca(); return; }
+                if (string.IsNullOrEmpty(texto)) { OlvidarEnlace(); PintarCerca(); return; }
                 cercaActiva = false;
                 categoriaActiva = null;
                 AplicarCategoriaAlMapa(); // vuelven el filtro "Precios" y su píldora
             }
+            focoAlCampoPendiente = false; // al teclear, el foco ya está en el campo
+            // Historia 2.5, parte 2: un enlace de mapas o unas coordenadas no se buscan como lugares ni direcciones
+            if (buscador.EnBusqueda && LeerUbicacionCompartida(texto))
+            {
+                PintarResultados(arriba: true);
+                return;
+            }
+            OlvidarEnlace();
             IReadOnlyList<ResultadoBusqueda> resultados = null;
             if (busqueda != null && buscador.EnBusqueda) resultados = busqueda.Buscar(texto, PuntoCercania());
             localesActuales = resultados;
-            focoAlCampoPendiente = false; // al teclear, el foco ya está en el campo
             PedirDirecciones(texto);
             PintarResultados(arriba: true);
+        }
+
+        // ───────────────────────── Enlaces y coordenadas pegados (historia 2.5, parte 2) ─────────────────────────
+
+        string textoEnlace;                             // texto del campo tratado como enlace o coordenadas (null si no)
+        IReadOnlyList<ResultadoBusqueda> enlaceLocales; // su fila «Ir a este punto» (vacía mientras se resuelve o si falla)
+        string mensajeEnlace;                           // «Comprobando el enlace…» o el de no reconocido; null con la fila
+        CancellationTokenSource peticionEnlace;         // resolución del enlace corto en curso; null si no hay
+
+        /// <summary>El texto del campo es un enlace o unas coordenadas (reconocidos, resolviéndose o no reconocidos).</summary>
+        public bool EnEnlace => textoEnlace != null;
+
+        /// <summary>
+        /// Si el texto es un enlace de mapas o unas coordenadas, prepara su fila «Ir a este punto» (o «Comprobando el
+        /// enlace…» mientras se resuelve un enlace corto, o el mensaje de no reconocido) en localesActuales y cancela
+        /// las direcciones. Devuelve false si es un texto normal, que se busca como siempre.
+        /// </summary>
+        bool LeerUbicacionCompartida(string texto)
+        {
+            // Mismo texto (al volver a desplegar la hoja): se queda lo que había (también una resolución en camino)
+            if (texto == textoEnlace && enlaceLocales != null)
+            {
+                localesActuales = enlaceLocales;
+                return true;
+            }
+            var punto = LectorUbicacionCompartida.Leer(texto);
+            bool corto = punto == null && resolutorEnlaces != null && LectorUbicacionCompartida.EsEnlaceCorto(texto);
+            if (punto == null && !corto && !LectorUbicacionCompartida.PareceEnlace(texto)) return false;
+
+            CancelarEnlace();
+            textoEnlace = texto;
+            if (punto is Coordenada c)
+            {
+                enlaceLocales = new[] { ResultadoBusqueda.DeCoordenada(c, PuntoCercania().DistanciaMetros(c)) };
+                mensajeEnlace = null;
+            }
+            else
+            {
+                enlaceLocales = Array.Empty<ResultadoBusqueda>();
+                mensajeEnlace = Textos.T(corto ? ClavesTexto.BuscadorComprobandoEnlace : ClavesTexto.BuscadorEnlaceNoReconocido);
+            }
+            localesActuales = enlaceLocales;
+            // Con un enlace no se buscan direcciones
+            direcciones?.Cancelar();
+            consultaDirecciones = null;
+            direccionesActuales = null;
+            direccionesFallaron = false;
+            if (corto)
+            {
+                var cts = new CancellationTokenSource();
+                peticionEnlace = cts;
+                _ = ResolverEnlace(texto, LectorUbicacionCompartida.ExtraerEnlace(texto) ?? texto.Trim(), cts);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Resuelve el enlace corto y pinta «Ir a este punto» o el mensaje de no reconocido (también sin red). Una
+        /// respuesta tardía (el texto ha cambiado) no pinta nada. TalkBack: se anuncia sin mover el foco.
+        /// </summary>
+        async Task ResolverEnlace(string texto, string url, CancellationTokenSource cts)
+        {
+            Resultado<string> r;
+            try
+            {
+                r = await resolutorEnlaces.Resolver(url, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception e)
+            {
+                // El puerto no debería lanzar; si lo hace, es un fallo más: no se reconoce
+                r = Resultado<string>.Fallo(string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message);
+            }
+            // Cancelada (y ya liberada por CancelarEnlace): no se toca
+            if (cts.IsCancellationRequested || !ReferenceEquals(peticionEnlace, cts)) return;
+            peticionEnlace = null;
+            cts.Dispose();
+            if (buscador == null || texto != textoEnlace) return;
+            try
+            {
+                var punto = r.Ok ? LectorUbicacionCompartida.Leer(r.Valor) : null;
+                if (punto is Coordenada c)
+                {
+                    enlaceLocales = new[] { ResultadoBusqueda.DeCoordenada(c, PuntoCercania().DistanciaMetros(c)) };
+                    mensajeEnlace = null;
+                }
+                else
+                {
+                    // La URL lleva el sitio compartido: solo en las builds de desarrollo (FR17, nada se guarda)
+                    Debug.Log("PriceMap: enlace no reconocido ("
+                        + (r.Ok ? (Debug.isDebugBuild ? "URL final " + r.Valor : "URL final sin coordenadas") : r.Error) + ").");
+                    enlaceLocales = Array.Empty<ResultadoBusqueda>();
+                    mensajeEnlace = Textos.T(ClavesTexto.BuscadorEnlaceNoReconocido);
+                }
+                if (cercaActiva || texto != buscador.Campo.value) return;
+                localesActuales = enlaceLocales;
+                PintarResultados(arriba: false, moverFoco: false); // llega sola: el foco de TalkBack no se mueve
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e); // llega desde una tarea que nadie espera: sin esto el error se perdería
+            }
+        }
+
+        /// <summary>El texto ya no es un enlace: se olvida (y se cancela su resolución).</summary>
+        void OlvidarEnlace()
+        {
+            CancelarEnlace();
+            textoEnlace = null;
+            enlaceLocales = null;
+            mensajeEnlace = null;
+        }
+
+        /// <summary>Cancela la resolución del enlace corto: su respuesta ya no pintará nada.</summary>
+        void CancelarEnlace()
+        {
+            if (peticionEnlace == null) return;
+            var cts = peticionEnlace;
+            peticionEnlace = null;
+            cts.Cancel();
+            cts.Dispose();
         }
 
         /// <summary>
@@ -562,16 +698,24 @@ namespace PriceMap.UI
         /// TalkBack no se mueve (solo se anuncia).</param>
         void PintarResultados(bool arriba, bool moverFoco = true)
         {
-            bool ofrecer = direcciones != null && direccionesActuales == null;
-            buscador.MostrarResultados(localesActuales, direccionesActuales, direccionesFallaron, ofrecer, arriba);
+            // Con un enlace (historia 2.5, parte 2) ni direcciones ni "Buscar como dirección"; su mensaje va en el
+            // sitio de "No hay resultados"
+            bool enEnlace = EnEnlace;
+            bool ofrecer = !enEnlace && direcciones != null && direccionesActuales == null;
+            buscador.MostrarResultados(localesActuales, enEnlace ? null : direccionesActuales, !enEnlace && direccionesFallaron, ofrecer,
+                arriba, enEnlace ? mensajeEnlace : null);
 
             string anuncio = null;
             if (!buscador.MostrandoResultados) ultimosResultados = null;
             else if (BuscadorAbierto && modalBuscador) // solo cuenta como anunciado si de verdad se puede anunciar
             {
-                var actuales = Juntar(localesActuales, direccionesActuales);
-                if (ultimosResultados == null || !MismosResultados(ultimosResultados, actuales)) anuncio = AnuncioResultados(actuales.Count);
+                var actuales = Juntar(localesActuales, enEnlace ? null : direccionesActuales);
+                // Sin filas se anuncia lo que se ve ("No hay resultados", "Comprobando el enlace…" o el de no reconocido)
+                string vacio = actuales.Count == 0 ? buscador.SinResultados.text : null;
+                if (ultimosResultados == null || !MismosResultados(ultimosResultados, actuales) || vacio != ultimoVacio)
+                    anuncio = vacio ?? AnuncioResultados(actuales.Count);
                 ultimosResultados = actuales;
+                ultimoVacio = vacio;
                 if (buscador.AvisoDireccionesVisible && !avisoAnunciado)
                 {
                     string aviso = Textos.T(ClavesTexto.BuscadorDireccionesSinConexion);
@@ -607,7 +751,8 @@ namespace PriceMap.UI
         {
             if (a.Count != b.Count) return false;
             for (int i = 0; i < a.Count; i++)
-                if (a[i].Lugar != b[i].Lugar || a[i].Punto != b[i].Punto || a[i].Direccion != b[i].Direccion) return false;
+                if (a[i].Tipo != b[i].Tipo || a[i].Lugar != b[i].Lugar || a[i].Punto != b[i].Punto || a[i].Direccion != b[i].Direccion
+                    || (a[i].Tipo == TipoResultado.Coordenada && a[i].Posicion != b[i].Posicion)) return false;
             return true;
         }
 
@@ -646,11 +791,13 @@ namespace PriceMap.UI
         /// <summary>
         /// Toque en un resultado: un lugar abre su ficha (que centra el mapa y pliega la hoja); un punto de interés
         /// centra el mapa en él y pliega la hoja (su ficha llega en la 2.5); una dirección, igual que un punto.
+        /// «Ir a este punto» (historia 2.5, parte 2) abre la ficha de punto libre en su coordenada.
         /// </summary>
         public void ElegirResultado(ResultadoBusqueda resultado)
         {
             if (resultado == null || buscador == null || ModalUbicacionAbierta) return;
             if (resultado.Tipo == TipoResultado.Lugar) { AbrirFicha(resultado.Lugar); return; }
+            if (resultado.Tipo == TipoResultado.Coordenada) { AbrirPunto(resultado.Posicion); return; }
             mapa.Centrar(resultado.Posicion);
             PlegarBuscador();
         }
@@ -1325,6 +1472,7 @@ namespace PriceMap.UI
                 mapa.PulsacionLarga -= AlPulsarLargoMapa;
             }
             CancelarDireccionPunto();
+            CancelarEnlace();
             if (buscador != null)
             {
                 buscador.Desplegando -= AlDesplegarBuscador;

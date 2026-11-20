@@ -161,6 +161,10 @@ namespace PriceMap.EditorTools
             [ClavesTexto.PuntoCalleNumero] = "{0}, {1}",
             [ClavesTexto.PuntoBuscando] = "Buscando la dirección…",
             [ClavesTexto.PuntoAnuncio] = "{0}, {1}",
+            [ClavesTexto.BuscadorIrAPunto] = "Ir a este punto",
+            [ClavesTexto.BuscadorAnuncioPunto] = "{0}, {1}",
+            [ClavesTexto.BuscadorComprobandoEnlace] = "Comprobando el enlace…",
+            [ClavesTexto.BuscadorEnlaceNoReconocido] = "No reconozco esta ubicación. Prueba a copiar el enlace completo.",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

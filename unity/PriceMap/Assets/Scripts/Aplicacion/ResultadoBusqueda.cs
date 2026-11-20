@@ -4,13 +4,15 @@ namespace PriceMap.Aplicacion
 {
     /// <summary>
     /// De dónde sale un resultado del buscador: un lugar de la app, un punto de interés del mapa o una dirección del
-    /// geocodificador (historia 2.3, parte 2).
+    /// geocodificador (historia 2.3, parte 2) o la coordenada de un enlace o unas coordenadas pegados en el buscador
+    /// (historia 2.5, parte 2: «Ir a este punto»).
     /// </summary>
     public enum TipoResultado
     {
         Lugar,
         Punto,
         Direccion,
+        Coordenada,
     }
 
     /// <summary>
@@ -68,6 +70,13 @@ namespace PriceMap.Aplicacion
         public static ResultadoBusqueda DeDireccion(Direccion direccion, double metros) =>
             new ResultadoBusqueda(TipoResultado.Direccion, direccion.Nombre, direccion.Posicion, null, null, CategoriaPoi.Ninguna,
                 false, metros, 0, null, direccion);
+
+        /// <summary>
+        /// «Ir a este punto» (historia 2.5, parte 2): la coordenada de un enlace o de unas coordenadas pegadas. Sin
+        /// nombre (lo pone la fila) y sin dirección: la ficha de punto libre la pide a Photon.
+        /// </summary>
+        public static ResultadoBusqueda DeCoordenada(Coordenada posicion, double metros) =>
+            new ResultadoBusqueda(TipoResultado.Coordenada, "", posicion, null, null, CategoriaPoi.Ninguna, false, metros, 0, null);
 
         public override string ToString() => $"{Tipo} {Nombre} ({Puntuacion}, {Metros:F0} m)";
     }
