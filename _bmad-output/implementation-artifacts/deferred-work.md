@@ -205,3 +205,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6-ver-los-tiempos-y-calcular-la-ruta-mas-corta.md`
   summary: Probar el montaje del Arranque (Valhalla principal, OSRM de reserva, espera real) con una fábrica estática, junto con Photon y el resolutor de enlaces, que tampoco lo tienen.
   evidence: Sin verificar (maybe-false, medium si es cierto): ninguna prueba construye la rama que no es de captura.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6b-dibujar-la-ruta.md`
+  summary: Historia 2.6 (parte 2b): sin conexión (fallan Valhalla y OSRM), ruta aproximada calculada en el móvil por las calles de las teselas guardadas (grafo de la capa de calles de las MVT en caché, sin sentidos únicos), dibujada en un azul más suave, tarjeta de arriba «Ruta aproximada por las calles guardadas», valores con «≈», y un toast nuevo «Sin conexión: ruta aproximada» (DESIGN.md: arriba y centrado, fondo `text`, 3 s, anunciado por TalkBack). Si no hay calles guardadas que unan origen y destino, decidir qué se enseña.
+  evidence: El usuario eligió el 20/11/2026 la opción A (ruta por las calles guardadas) porque la recta atraviesa edificios; maqueta v2 aprobada (https://claude.ai/artifact/KnJ3R4DVbfBPPiQSVvwBTM).
