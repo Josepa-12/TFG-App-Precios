@@ -1139,6 +1139,8 @@
     flex-direction: row;
     align-items: center;
     min-height: var(--buscador-campo-alto);
+    min-width: 0;
+    overflow: hidden;
     padding: 0 var(--espacio-3);
     border-radius: var(--radio-buscador-campo);
     border-width: 2px;
@@ -1163,12 +1165,17 @@
 .buscador__texto {
     flex-grow: 1;
     flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0; /* un texto largo (un enlace pegado) no estira el campo: se recorta dentro, antes de la X */
+    overflow: hidden;
     margin: 0;
     padding: 0;
     color: var(--color-text);
 }
 
 .buscador__texto .unity-base-text-field__input {
+    min-width: 0;
+    overflow: hidden;
     margin: 0;
     padding: 0;
     border-width: 0;

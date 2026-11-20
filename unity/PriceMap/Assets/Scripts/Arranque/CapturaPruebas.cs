@@ -953,6 +953,11 @@ namespace PriceMap.Arranque
             }
             if (pantalla.Direcciones != null && pantalla.Direcciones.Pendiente) Debug.LogError("PriceMap: con un enlace se han pedido direcciones.");
             if (buscador.SinResultadosVisible || buscador.BuscarDireccionVisible) Debug.LogError("PriceMap: con el enlace se ve el texto sin resultados.");
+            // El enlace largo se recorta dentro del campo: el texto no llega a la X ni la X sale del campo
+            var caja = buscador.Campo.worldBound;
+            var equis = buscador.Borrar.worldBound;
+            Debug.Log($"PriceMap: campo del buscador x {caja.xMin:F0}–{caja.xMax:F0}, X {equis.xMin:F0}–{equis.xMax:F0}.");
+            if (caja.xMax > equis.xMin + 0.5f) Debug.LogError("PriceMap: el texto del buscador pasa por debajo de la X.");
             if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
             yield return Capturar("enlace");
             yield return new WaitForSeconds(1f);
