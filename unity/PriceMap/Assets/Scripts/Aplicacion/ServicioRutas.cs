@@ -63,24 +63,6 @@ namespace PriceMap.Aplicacion
         /// <summary>Última ruta llegada de ese modo para el destino actual; null si no ha llegado o falló.</summary>
         public Ruta Ultima(ModoViaje modo) => ultimas.TryGetValue(modo, out var r) ? r : null;
 
-        /// <summary>
-        /// Modo, destino y ruta que dejó elegidos el botón Ir (ElegirParaIr); la parte 2 la dibuja. Null hasta entonces.
-        /// </summary>
-        public ModoViaje? ModoElegido { get; private set; }
-        public Coordenada? DestinoElegido { get; private set; }
-        public Ruta RutaElegida { get; private set; }
-
-        /// <summary>
-        /// Ir con posición (parte 1): deja el modo, el destino y su ruta listos para dibujarla. Si la ruta aún no ha
-        /// llegado, se pone al llegar. Cancelar lo olvida.
-        /// </summary>
-        public void ElegirParaIr(ModoViaje modo, Coordenada destino)
-        {
-            ModoElegido = modo;
-            DestinoElegido = destino;
-            RutaElegida = Destino == destino ? Ultima(modo) : null;
-        }
-
         /// <summary>Pide coche y a pie a la vez para ese destino; cancela lo anterior.</summary>
         public void PedirTiempos(Coordenada origen, Coordenada destino)
         {
@@ -93,16 +75,12 @@ namespace PriceMap.Aplicacion
         }
 
         /// <summary>
-        /// Cancela los tiempos en curso (de ellos no llegará ningún aviso) y olvida lo elegido con Ir: la ficha se
-        /// cierra o cambia, y su ruta ya no se dibuja.
+        /// Cancela los tiempos en curso (de ellos no llegará ningún aviso): la ficha se cierra o cambia.
         /// </summary>
         public void Cancelar()
         {
             ultimas.Clear();
             Destino = null;
-            ModoElegido = null;
-            DestinoElegido = null;
-            RutaElegida = null;
             pendientes = 0;
             if (actual == null) return;
             var cts = actual;
@@ -131,8 +109,6 @@ namespace PriceMap.Aplicacion
             if (r.Ok && r.Valor != null)
             {
                 ultimas[modo] = r.Valor;
-                // Ir se pulsó antes de que llegara: la ruta del modo y destino elegidos queda lista para dibujarla
-                if (ModoElegido == modo && DestinoElegido == destino) RutaElegida = r.Valor;
             }
             TiempoCalculado?.Invoke(modo, destino, r);
         }

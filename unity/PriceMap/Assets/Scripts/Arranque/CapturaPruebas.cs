@@ -64,10 +64,54 @@ namespace PriceMap.Arranque
         }
 
         /// <summary>
-        /// Rutas fijas para la captura (historia 2.6): 4 min en coche y 12 a pie, como la maqueta; una recta entre
-        /// los dos puntos, sin red.
+        /// Rutas fijas para la captura (historia 2.6): 4 min en coche y 12 a pie, como la maqueta, sin red. De la Plaza
+        /// del Cabildo a Clínica Areas, por las calles de Sanlúcar con las maniobras en castellano (la forma y los
+        /// textos de una respuesta real de Valhalla del 20/11/2026, guardados aquí); a cualquier otro sitio, una recta.
         /// </summary>
         public static IRutas RutasFalsas() => new RutasCaptura();
+
+        /// <summary>Clínica Areas (datos base): destino de las rutas por calles de la captura.</summary>
+        static readonly Coordenada ClinicaAreas = new Coordenada(36.780143, -6.35088);
+
+        static Coordenada C(double lat, double lon) => new Coordenada(lat, lon);
+
+        // Valhalla, coche, "shortest": Calle Zarate, Regina, Santa Ana, Ancha, Las Cruces, Diego Benítez y Mar
+        static readonly Coordenada[] CalleCoche =
+        {
+            C(36.777913, -6.352773), C(36.778103, -6.352915), C(36.778279, -6.352559), C(36.778455, -6.352203),
+            C(36.778784, -6.351581), C(36.779015, -6.351277), C(36.779645, -6.351707), C(36.779638, -6.351752),
+            C(36.779445, -6.352160), C(36.779715, -6.352402), C(36.779977, -6.351978), C(36.780226, -6.351608),
+            C(36.780568, -6.351110), C(36.780269, -6.350727),
+        };
+
+        static readonly (TipoManiobra tipo, string texto, int punto, double metros)[] ManiobrasCoche =
+        {
+            (TipoManiobra.Salida, "Conduzca hacia el noroeste por Calle Zarate.", 0, 24),
+            (TipoManiobra.Derecha, "Gire a la derecha hacia Calle Regina.", 1, 178),
+            (TipoManiobra.Izquierda, "Gire a la izquierda hacia Calle Santa Ana.", 5, 80),
+            (TipoManiobra.Izquierda, "Gire a la izquierda hacia Calle Ancha.", 6, 46),
+            (TipoManiobra.Derecha, "Gire a la derecha hacia Calle Las Cruces.", 8, 37),
+            (TipoManiobra.Derecha, "Gire a la derecha hacia Calle Diego Benítez.", 9, 149),
+            (TipoManiobra.Derecha, "Gire a la derecha hacia Calle Mar.", 12, 47),
+            (TipoManiobra.Llegada, "Su destino está a la derecha.", 13, 0),
+        };
+
+        // Valhalla, a pie: Calle Zarate, Regina, Carril de San Diego y Santo Domingo
+        static readonly Coordenada[] CallePie =
+        {
+            C(36.777913, -6.352773), C(36.778103, -6.352915), C(36.778279, -6.352559), C(36.778455, -6.352203),
+            C(36.778784, -6.351581), C(36.779015, -6.351277), C(36.779246, -6.350842), C(36.779847, -6.351248),
+            C(36.780029, -6.350940), C(36.780106, -6.350837),
+        };
+
+        static readonly (TipoManiobra tipo, string texto, int punto, double metros)[] ManiobrasPie =
+        {
+            (TipoManiobra.Salida, "Camine hacia el noroeste por Calle Zarate.", 0, 24),
+            (TipoManiobra.Derecha, "Gire a la derecha hacia Calle Regina.", 1, 224),
+            (TipoManiobra.Izquierda, "Gire a la izquierda hacia Calle Carril de San Diego.", 6, 76),
+            (TipoManiobra.Derecha, "Gire a la derecha hacia Calle Santo Domingo.", 7, 46),
+            (TipoManiobra.Llegada, "Su destino está a la izquierda.", 9, 0),
+        };
 
         class RutasCaptura : IRutas
         {
@@ -75,7 +119,15 @@ namespace PriceMap.Arranque
                 System.Threading.CancellationToken ct)
             {
                 double segundos = modo == ModoViaje.APie ? 690 : 230;
-                var ruta = new Ruta(new[] { origen, destino }, origen.DistanciaMetros(destino), segundos, Array.Empty<Maniobra>());
+                Ruta ruta;
+                if (destino.DistanciaMetros(ClinicaAreas) < 5 && origen.DistanciaMetros(CalleCoche[0]) < 60)
+                {
+                    var puntos = modo == ModoViaje.APie ? CallePie : CalleCoche;
+                    var lista = modo == ModoViaje.APie ? ManiobrasPie : ManiobrasCoche;
+                    var maniobras = lista.Select(m => new Maniobra(m.tipo, m.texto, puntos[m.punto], m.metros)).ToArray();
+                    ruta = new Ruta(puntos, lista.Sum(m => m.metros), segundos, maniobras);
+                }
+                else ruta = new Ruta(new[] { origen, destino }, origen.DistanciaMetros(destino), segundos, Array.Empty<Maniobra>());
                 return System.Threading.Tasks.Task.FromResult(Resultado<Ruta>.Exito(ruta));
             }
         }
@@ -175,6 +227,7 @@ namespace PriceMap.Arranque
             yield return Busqueda();
             yield return Cerca();
             yield return Punto();
+            yield return Ruta();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -706,6 +759,95 @@ namespace PriceMap.Arranque
             Debug.Log($"PriceMap: tras el botón atrás, ficha abierta {pantalla.FichaAbierta}; chincheta visible {chincheta?.Visible ?? false}");
             if (pantalla.FichaAbierta || (chincheta != null && chincheta.Visible)) Debug.LogError("PriceMap: el botón atrás no ha cerrado el punto libre.");
             yield return new WaitForSeconds(0.5f);
+        }
+
+        /// <summary>
+        /// Historia 2.6 (parte 2a), capturas "ruta" (claro, coche) y "ruta-oscuro" (a pie): desde la ficha de Clínica
+        /// Areas, Ir dibuja la ruta por las calles (RutasFalsas), la encuadra y enseña las dos tarjetas. Comprueba que
+        /// la ruta entera cae entre las dos tarjetas y dentro de la pantalla, que no se ven la píldora, el botón de tema ni
+        /// la cápsula, y que el botón de ubicación queda encima de la tarjeta de abajo. La segunda reabre la ficha desde la
+        /// tarjeta, elige "A pie" e Ir. Al acabar, atrás quita la ruta; deja el tema y la preferencia como estaban.
+        /// </summary>
+        IEnumerator Ruta()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            if (lugar == null || pantalla.Rutas == null || pantalla.TarjetaRuta == null) { Debug.LogError("PriceMap: no se puede capturar la ruta."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var relojAntes = pantalla.RelojLocal;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return new WaitForSeconds(2f);
+                yield return new WaitForEndOfFrame();
+                ComprobarRuta("coche");
+                yield return Capturar("ruta");
+                yield return new WaitForSeconds(1f);
+
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                pantalla.TarjetaRuta.Tocar();
+                yield return new WaitForSeconds(1f);
+                if (!pantalla.FichaAbierta) Debug.LogError("PriceMap: tocar la tarjeta de la ruta no ha reabierto la ficha.");
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.APie);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return new WaitForSeconds(2f);
+                yield return new WaitForEndOfFrame();
+                ComprobarRuta("a pie");
+                yield return Capturar("ruta-oscuro");
+                yield return new WaitForSeconds(1f);
+                pantalla.Atras();
+                yield return null;
+                Debug.Log($"PriceMap: tras el botón atrás, ruta activa {pantalla.RutaActiva}; cápsula visible {pantalla.Buscador.Visible}");
+                if (pantalla.RutaActiva || !pantalla.Buscador.Visible) Debug.LogError("PriceMap: el botón atrás no ha quitado la ruta.");
+            }
+            finally
+            {
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>La ruta dibujada cabe entera entre las dos tarjetas y los controles son los de la ruta; Debug.LogError si no.</summary>
+        void ComprobarRuta(string caso)
+        {
+            var ruta = pantalla.RutaDibujada;
+            var arriba = pantalla.TarjetaManiobra;
+            var abajo = pantalla.TarjetaRuta;
+            float escala = pantalla.EscalaDp;
+            Debug.Log($"PriceMap: ruta ({caso}): {ruta?.Puntos.Count ?? 0} puntos; arriba \"{arriba.Principal.text}\" / \"{arriba.Siguiente.text}\" {arriba.worldBound}; " +
+                      $"abajo \"{abajo.Llegada.text} {abajo.RotuloLlegada.text} · {abajo.Minutos.text} {abajo.RotuloMinutos.text} · {abajo.Distancia.text} {abajo.RotuloDistancia.text}\" " +
+                      $"{abajo.worldBound}; TalkBack \"{arriba.Anuncio}\" y \"{abajo.Anuncio}\"; cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m");
+            if (ruta == null || ruta.Puntos.Count < 2) { Debug.LogError($"PriceMap: ruta ({caso}) sin dibujar."); return; }
+            if (escala <= 0f || abajo.resolvedStyle.display == DisplayStyle.None || arriba.resolvedStyle.display == DisplayStyle.None)
+            { Debug.LogError($"PriceMap: ruta ({caso}) sin las dos tarjetas a la vista."); return; }
+            float techo = arriba.worldBound.yMax / escala, suelo = abajo.worldBound.yMin / escala;
+            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+            foreach (var c in ruta.Puntos)
+            {
+                var p = mapa.Proyectar(c);
+                x0 = Mathf.Min(x0, p.X); y0 = Mathf.Min(y0, p.Y); x1 = Mathf.Max(x1, p.X); y1 = Mathf.Max(y1, p.Y);
+            }
+            Debug.Log($"PriceMap: ruta ({caso}) en pantalla x {x0:F0}–{x1:F0}, y {y0:F0}–{y1:F0} px; libre entre y {techo:F0} y {suelo:F0} px (ancho {Screen.width})");
+            if (y0 < techo || y1 > suelo || x0 < 0f || x1 > Screen.width) Debug.LogError($"PriceMap: la ruta ({caso}) no cabe entera entre las dos tarjetas.");
+            if (pantalla.Pildora != null && pantalla.Pildora.resolvedStyle.display != DisplayStyle.None && pantalla.Pildora.parent.resolvedStyle.display != DisplayStyle.None)
+                Debug.LogError($"PriceMap: con ruta ({caso}) se ve la píldora de precios.");
+            if (pantalla.BotonTema.parent.resolvedStyle.display != DisplayStyle.None) Debug.LogError($"PriceMap: con ruta ({caso}) se ve el botón de tema.");
+            if (pantalla.Buscador.Visible) Debug.LogError($"PriceMap: con ruta ({caso}) se ve la cápsula del buscador.");
+            var ubic = pantalla.BotonUbicacion?.worldBound;
+            if (ubic.HasValue)
+            {
+                Debug.Log($"PriceMap: con ruta ({caso}), botón de ubicación en {ubic.Value}");
+                if (ubic.Value.yMax > abajo.worldBound.yMin || ubic.Value.xMin > Screen.width * escala / 2f)
+                    Debug.LogError($"PriceMap: con ruta ({caso}) el botón de ubicación no queda abajo a la izquierda encima de la tarjeta.");
+            }
         }
 
         /// <summary>

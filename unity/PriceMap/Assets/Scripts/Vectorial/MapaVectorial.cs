@@ -287,6 +287,133 @@ namespace PriceMap.Vectorial
             return new Coordenada(g.lat, g.lon);
         }
 
+        // ───────────────────────── Ruta (historia 2.6, parte 2a) ─────────────────────────
+
+        /// <summary>Parte del ancho de la línea que es relleno: el resto es su borde, algo más oscuro, por los dos lados.</summary>
+        public const float ProporcionRellenoRuta = 0.78f;
+
+        Material mRuta, mRutaBorde;
+        TemaMapa temaRuta = (TemaMapa)(-1);
+        List<Vector3> puntosRuta;    // puntos de la ruta dibujada (en el mundo); null sin ruta
+        GameObject objetoRuta;       // cuelga del mapa (no de una tesela): no se libera con ellas
+        float anchoRuta;             // ancho (m) con el que se construyó la línea
+
+        /// <summary>Para las pruebas: el objeto de la línea (null sin ruta) y el ancho con el que se construyó.</summary>
+        internal GameObject ObjetoRuta => objetoRuta;
+        internal float AnchoRuta => anchoRuta;
+        internal Material MaterialRuta => mRuta;
+        internal Material MaterialBordeRuta => mRutaBorde;
+
+        /// <summary>Dibuja la ruta por esos puntos (sustituye a la anterior); con menos de dos puntos, la quita.</summary>
+        public void MostrarRuta(IReadOnlyList<Coordenada> puntos)
+        {
+            if (puntos == null || puntos.Count < 2) { QuitarRuta(); return; }
+            puntosRuta = new List<Vector3>(puntos.Count);
+            foreach (var c in puntos) puntosRuta.Add(Geo.ALocal(c.Latitud, c.Longitud));
+            ConstruirRuta();
+        }
+
+        /// <summary>Quita la línea de la ruta y libera su malla.</summary>
+        public void QuitarRuta()
+        {
+            puntosRuta = null;
+            anchoRuta = 0f;
+            DestruirObjetoRuta();
+        }
+
+        /// <summary>Encuadra los puntos en el rectángulo libre (px, origen arriba a la izquierda) con la cámara del mapa.</summary>
+        public void Encuadrar(IReadOnlyList<Coordenada> puntos, RectPantalla libre)
+        {
+            var c = Camara();
+            if (c == null || puntos == null || puntos.Count == 0 || !libre.Valido) return;
+            var mundo = new List<Vector3>(puntos.Count);
+            foreach (var p in puntos) mundo.Add(Geo.ALocal(p.Latitud, p.Longitud));
+            // Unity cuenta Y desde abajo: el borde de abajo del rectángulo es su yMin
+            c.Encuadrar(mundo, Rect.MinMaxRect(libre.Izquierda, Screen.height - libre.Abajo, libre.Derecha, Screen.height - libre.Arriba));
+        }
+
+        /// <summary>
+        /// Ancho de la línea (m): el de la calle (9 m) o, si con él se vería más fina de 6 dp, los metros que ocupan 6 dp
+        /// en el centro de la vista. Metros por píxel = 2 · distancia · tan(FOV / 2) / alto en px; 1 dp = dpi / 160 px
+        /// (sin dpi, 160).
+        /// </summary>
+        public static float AnchoRutaMetros(float distancia, float fovVerticalGrados, float altoPx, float dpi)
+        {
+            if (float.IsNaN(distancia) || float.IsInfinity(distancia) || distancia <= 0f || altoPx <= 0f || fovVerticalGrados <= 0f)
+                return ParametrosNegocio.RutaAnchoMetros;
+            float metrosPorPx = 2f * distancia * Mathf.Tan(fovVerticalGrados * 0.5f * Mathf.Deg2Rad) / altoPx;
+            float pxPorDp = (dpi > 0f ? dpi : 160f) / 160f;
+            return Mathf.Max(ParametrosNegocio.RutaAnchoMetros, ParametrosNegocio.RutaAnchoMinimoDp * pxPorDp * metrosPorPx);
+        }
+
+        /// <summary>True si el ancho nuevo se aleja más de un 10 % del aplicado (o no hay ninguno): hay que rehacer la línea.</summary>
+        public static bool RehacerRuta(float anchoAplicado, float anchoNuevo) =>
+            anchoAplicado <= 0f || Mathf.Abs(anchoNuevo - anchoAplicado) > ParametrosNegocio.RutaAnchoCambioRehacer * anchoAplicado;
+
+        // Ancho que toca con la cámara de ahora (sin cámara, el de la calle)
+        float AnchoRutaAhora()
+        {
+            var c = Camara();
+            if (c == null) return ParametrosNegocio.RutaAnchoMetros;
+            if (camaraUnity == null || camaraUnity.gameObject != c.gameObject) camaraUnity = c.GetComponent<Camera>();
+            if (camaraUnity == null) return ParametrosNegocio.RutaAnchoMetros;
+            return AnchoRutaMetros(c.distancia, camaraUnity.fieldOfView, camaraUnity.pixelHeight, Screen.dpi);
+        }
+
+        // Borde (más ancho, cola 1960) y relleno (cola 1970) encima de las calles; los edificios (después) la tapan
+        void ConstruirRuta()
+        {
+            DestruirObjetoRuta();
+            if (puntosRuta == null) return;
+            MaterialesRuta();
+            anchoRuta = AnchoRutaAhora();
+            var borde = new Malla();
+            var relleno = new Malla();
+            Linea(borde, puntosRuta, anchoRuta);
+            Linea(relleno, puntosRuta, anchoRuta * ProporcionRellenoRuta);
+            objetoRuta = new GameObject("Ruta");
+            objetoRuta.transform.SetParent(transform, false);
+            Pieza(objetoRuta.transform, "Borde de la ruta", borde, mRutaBorde, false);
+            Pieza(objetoRuta.transform, "Relleno de la ruta", relleno, mRuta, false);
+        }
+
+        void DestruirObjetoRuta()
+        {
+            if (objetoRuta == null) return;
+            foreach (var f in objetoRuta.GetComponentsInChildren<MeshFilter>(true))
+                if (f.sharedMesh != null) Destruir(f.sharedMesh);
+            Destruir(objetoRuta);
+            objetoRuta = null;
+        }
+
+        // Se crean al dibujar la primera ruta (puede llegar antes que Start, o sin Start en las pruebas)
+        void MaterialesRuta()
+        {
+            if (mRuta != null) return;
+            var plano = Shader.Find("PriceMap/PlanoPaleta");
+            Material Plano(string n, int cola)
+            {
+                var m = new Material(plano) { name = n, renderQueue = cola };
+                m.SetFloat("_ZWrite", 0f);
+                m.SetFloat("_ZTest", (float)CompareFunction.Always);
+                return m;
+            }
+            mRutaBorde = Plano("Borde de la ruta", 1960);
+            mRuta = Plano("Relleno de la ruta", 1970);
+            ColorearRuta();
+        }
+
+        void ColorearRuta()
+        {
+            temaRuta = tema;
+            var p = PaletaMapa.De(tema);
+            mRuta.color = p.ruta;
+            mRutaBorde.color = p.rutaBorde;
+        }
+
+        /// <summary>Para las pruebas: aplica ya el tema a la línea (en la app lo hace Update).</summary>
+        internal void ColorearRutaAhora() { if (mRuta != null) ColorearRuta(); }
+
         void RecomponerPuntos()
         {
             puntosInteres.Clear();
@@ -341,7 +468,9 @@ namespace PriceMap.Vectorial
         void Update()
         {
             if (mSuelo != null && tema != temaAplicado) AplicarTema(); // el tema puede llegar antes que Start
+            if (mRuta != null && tema != temaRuta) ColorearRuta();
             if (mSuelo != null) ActualizarTeselas();
+            if (puntosRuta != null && RehacerRuta(anchoRuta, AnchoRutaAhora())) ConstruirRuta();
             if (camara != null && sombras) QualitySettings.shadowDistance = Mathf.Clamp(camara.distancia * 2.2f, 250f, 5000f);
         }
 
@@ -532,24 +661,34 @@ namespace PriceMap.Vectorial
         // Cinta de ancho fijo con extremos y uniones redondeadas
         void Linea(Malla m, ElementoMVT e, float ext, Conversor aMundo, float ancho)
         {
-            float r = ancho / 2f;
+            var puntos = new List<Vector3>();
             foreach (var parte in e.partes)
             {
                 if (parte.Count < 2) continue;
-                Vector3 prev = aMundo(parte[0], ext);
-                Disco(m, prev, r);
-                for (int i = 1; i < parte.Count; i++)
-                {
-                    Vector3 p = aMundo(parte[i], ext);
-                    Vector3 d = p - prev;
-                    if (d.sqrMagnitude < 0.01f) continue;
-                    Vector3 n = new Vector3(-d.z, 0, d.x).normalized * r;
-                    int b = m.v.Count;
-                    m.v.Add(prev + n); m.v.Add(prev - n); m.v.Add(p - n); m.v.Add(p + n);
-                    m.t.Add(b); m.t.Add(b + 1); m.t.Add(b + 2); m.t.Add(b); m.t.Add(b + 2); m.t.Add(b + 3);
-                    Disco(m, p, r);
-                    prev = p;
-                }
+                puntos.Clear();
+                foreach (var p in parte) puntos.Add(aMundo(p, ext));
+                Linea(m, puntos, ancho);
+            }
+        }
+
+        // La misma cinta por puntos del mundo (calles de una tesela o la ruta)
+        static void Linea(Malla m, IList<Vector3> puntos, float ancho)
+        {
+            if (puntos == null || puntos.Count < 2) return;
+            float r = ancho / 2f;
+            Vector3 prev = puntos[0];
+            Disco(m, prev, r);
+            for (int i = 1; i < puntos.Count; i++)
+            {
+                Vector3 p = puntos[i];
+                Vector3 d = p - prev;
+                if (d.sqrMagnitude < 0.01f) continue;
+                Vector3 n = new Vector3(-d.z, 0, d.x).normalized * r;
+                int b = m.v.Count;
+                m.v.Add(prev + n); m.v.Add(prev - n); m.v.Add(p - n); m.v.Add(p + n);
+                m.t.Add(b); m.t.Add(b + 1); m.t.Add(b + 2); m.t.Add(b); m.t.Add(b + 2); m.t.Add(b + 3);
+                Disco(m, p, r);
+                prev = p;
             }
         }
 

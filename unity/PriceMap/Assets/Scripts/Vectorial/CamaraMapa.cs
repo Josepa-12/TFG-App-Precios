@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace PriceMap.Vectorial
@@ -260,5 +261,73 @@ namespace PriceMap.Vectorial
 
         /// <summary>Norte arriba (giro 0) sin cambiar el zoom ni la inclinación; al instante, como CentrarEn.</summary>
         public void OrientarNorte() { giro = 0f; Aplicar(); }
+
+        /// <summary>
+        /// Encuadre de la ruta (historia 2.6, parte 2a): deja todos los puntos dentro del rectángulo (px de la cámara, Y
+        /// desde abajo, como Input), al instante y sin cambiar giro ni inclinación. El pivote va al centro de los puntos;
+        /// la distancia es la más corta con la que la caja de los puntos proyectados cabe en el rectángulo (búsqueda
+        /// binaria entre los límites de la cámara: nunca pasa de 60–4000 m); después se desplaza, como CentrarEn con
+        /// objetivo, para llevar el centro de esa caja al centro del rectángulo. Con el mapa inclinado la perspectiva
+        /// cambia un poco al desplazarse, así que se repite unas veces. Si no caben ni a 4000 m, se queda a 4000 m.
+        /// </summary>
+        public void Encuadrar(IReadOnlyList<Vector3> puntos, Rect libre)
+        {
+            if (puntos == null || puntos.Count == 0 || libre.width <= 0f || libre.height <= 0f) return;
+            if (cam == null) cam = GetComponent<Camera>(); // en EditMode no se ejecuta Awake
+            if (cam == null) return;
+            Vector3 min = puntos[0], max = puntos[0];
+            foreach (var p in puntos) { min = Vector3.Min(min, p); max = Vector3.Max(max, p); }
+            pivote = new Vector3((min.x + max.x) / 2f, 0f, (min.z + max.z) / 2f);
+            Aplicar();
+            const int Vueltas = 3;
+            for (int v = 0; v < Vueltas; v++)
+            {
+                distancia = DistanciaQueCabe(puntos, libre);
+                Aplicar();
+                if (!CajaProyectada(puntos, out var caja)) return;
+                if (!PuntoSuelo(caja.center, out var enCaja) || !PuntoSuelo(libre.center, out var enLibre)) return;
+                pivote += enCaja - enLibre;
+                Aplicar();
+            }
+        }
+
+        /// <summary>Holgura del encuadre: la caja de los puntos ocupa como mucho el 97 % del rectángulo.</summary>
+        const float HolguraEncuadre = 0.97f;
+
+        // La distancia más corta (entre los límites) con la que la caja proyectada cabe en el tamaño del rectángulo
+        float DistanciaQueCabe(IReadOnlyList<Vector3> puntos, Rect libre)
+        {
+            float lo = distanciaMin, hi = distanciaMax;
+            if (!Cabe(hi, puntos, libre)) return hi;
+            if (Cabe(lo, puntos, libre)) return lo;
+            for (int i = 0; i < 30 && hi - lo > 0.5f; i++)
+            {
+                float medio = (lo + hi) / 2f;
+                if (Cabe(medio, puntos, libre)) hi = medio; else lo = medio;
+            }
+            return hi;
+        }
+
+        bool Cabe(float d, IReadOnlyList<Vector3> puntos, Rect libre)
+        {
+            distancia = d;
+            Aplicar();
+            return CajaProyectada(puntos, out var caja) &&
+                   caja.width <= libre.width * HolguraEncuadre && caja.height <= libre.height * HolguraEncuadre;
+        }
+
+        // Caja (px, Y desde abajo) de los puntos en pantalla; false si alguno queda detrás de la cámara
+        bool CajaProyectada(IReadOnlyList<Vector3> puntos, out Rect caja)
+        {
+            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+            foreach (var p in puntos)
+            {
+                var s = cam.WorldToScreenPoint(p);
+                if (s.z <= 0f) { caja = default; return false; }
+                x0 = Mathf.Min(x0, s.x); y0 = Mathf.Min(y0, s.y); x1 = Mathf.Max(x1, s.x); y1 = Mathf.Max(y1, s.y);
+            }
+            caja = Rect.MinMaxRect(x0, y0, x1, y1);
+            return true;
+        }
     }
 }

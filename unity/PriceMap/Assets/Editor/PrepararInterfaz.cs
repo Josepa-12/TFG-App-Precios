@@ -178,6 +178,17 @@ namespace PriceMap.EditorTools
             [ClavesTexto.FichaAnuncioSinTiempo] = "{0}, sin tiempo",
             [ClavesTexto.FichaAnuncioCalculando] = "{0}, calculando el tiempo",
             [ClavesTexto.FichaModoElegido] = "{0}, seleccionado",
+            [ClavesTexto.RutaCalculando] = "Calculando la ruta…",
+            [ClavesTexto.RutaFallo] = "No se ha podido calcular la ruta",
+            [ClavesTexto.RutaA] = "Ruta a {0}",
+            [ClavesTexto.RutaDespues] = "{0}. Después, {1}",
+            [ClavesTexto.RutaLlegada] = "Llegada",
+            [ClavesTexto.RutaMin] = "min",
+            [ClavesTexto.RutaAnuncio] = "Llegada {0}, {1} minutos, {2}",
+            [ClavesTexto.RutaAnuncioMinuto] = "Llegada {0}, 1 minuto, {1}",
+            [ClavesTexto.RutaAnuncioCalculando] = "Calculando la hora de llegada",
+            [ClavesTexto.RutaAnuncioFallo] = "Sin hora de llegada",
+            [ClavesTexto.RutaQuitar] = "Quitar ruta",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

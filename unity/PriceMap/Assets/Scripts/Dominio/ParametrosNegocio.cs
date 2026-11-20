@@ -23,5 +23,17 @@ namespace PriceMap.Dominio
         public const double RutaCacheMetros = 20.0;
         /// <summary>Minutos que vale una ruta guardada en la caché (solo en memoria).</summary>
         public const int RutaCacheMinutos = 2;
+
+        // Línea y encuadre de la ruta (historia 2.6, parte 2a; decisiones del 20/11/2026)
+        /// <summary>Ancho de la línea de la ruta en el suelo, con su borde (una calle de Sanlúcar), en metros.</summary>
+        public const float RutaAnchoMetros = 9f;
+        /// <summary>Ancho mínimo de la línea en pantalla (dp): al alejar, no se queda más fina.</summary>
+        public const float RutaAnchoMinimoDp = 6f;
+        /// <summary>Cambio relativo del ancho a partir del cual se rehace la línea al hacer zoom (10 %).</summary>
+        public const float RutaAnchoCambioRehacer = 0.10f;
+        /// <summary>Margen (dp) entre la ruta encuadrada y las tarjetas de arriba y de abajo.</summary>
+        public const float RutaEncuadreMargenDp = 16f;
+        /// <summary>Margen (dp) entre la ruta encuadrada y los lados de la pantalla.</summary>
+        public const float RutaEncuadreLadoDp = 32f;
     }
 }

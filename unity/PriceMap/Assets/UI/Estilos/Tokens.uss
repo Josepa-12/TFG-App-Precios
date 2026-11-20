@@ -108,6 +108,11 @@
        surface-2 en oscuro (prototipo .search) */
     --color-capsula: rgba(255, 255, 255, 0.90);
     --color-buscador-campo: #FFFFFF;
+    /* Tarjeta de acciones de la ruta (historia 2.6, parte 2a; maqueta v2 del 20/11/2026): text al 96 % con texto
+       blanco en claro; clara con texto bg en oscuro, para destacar sobre el mapa. -meta, la maniobra siguiente */
+    --color-tarjeta-maniobra: rgba(19, 35, 91, 0.96);
+    --color-tarjeta-maniobra-texto: #FFFFFF;
+    --color-tarjeta-maniobra-meta: #B8C4EA;
 
     /* Espaciado (4 / 8 / 12 / 16 / 24 / 32) */
     --espacio-1: 4px;
@@ -175,6 +180,11 @@
     --chip-glifo: 13px;
     --cerca-alto-min: 52px;
     --cerca-glifo: 22px;
+    /* Tarjetas de la ruta (historia 2.6, parte 2a): flecha de la maniobra (28 dp) y de la siguiente (20 dp), asa */
+    --maniobra-icono: 28px;
+    --maniobra-icono-siguiente: 20px;
+    --asa-ancho: 36px;
+    --asa-alto: 4px;
 
     -unity-font: url("../Fuentes/NunitoSans-Regular.ttf");
     color: var(--color-text);
@@ -239,6 +249,9 @@
     --color-poi-culto-texto: #AAAAB3;
     --color-capsula: #1A2238;        /* opaca en oscuro (surface) */
     --color-buscador-campo: #232D49; /* surface-2 */
+    --color-tarjeta-maniobra: #E6ECFA;
+    --color-tarjeta-maniobra-texto: #0F1424; /* bg oscuro */
+    --color-tarjeta-maniobra-meta: #3E4D78;
 }
 
 /* Tipografía: Varela Round para títulos, Nunito Sans para el resto (tamaños en dp, escalados a sp) */
@@ -252,4 +265,6 @@
 /* Título del menú "Precios" (prototipo .menu-title): 11 px, 800, espaciado 0,05 em = 0,55 px; mayúsculas desde el código */
 .t-titulo-menu { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 11px; letter-spacing: 0.55px; }
 .t-caption { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 12px; }
+/* Maniobra de la ruta (tarjeta de acciones, historia 2.6 parte 2a): 20 sp, 800 */
+.t-maniobra { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 20px; }
 .t-price { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 22px; }

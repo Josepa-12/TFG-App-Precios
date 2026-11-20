@@ -60,6 +60,18 @@ namespace PriceMap.UI
         bool porNavegacion; // la última activación del filtro llegó por teclado o mando (NavigationSubmitEvent)
         bool temaYaAnunciado;// el primer tema (al arrancar) no se anuncia: solo los cambios del usuario
 
+        // Ruta dibujada (historia 2.6, parte 2a)
+        VisualElement zonaSeguraRuta, pilaDerecha;
+        TarjetaManiobra tarjetaManiobra;
+        TarjetaRuta tarjetaRuta;
+        bool rutaActiva;                       // Ir pulsado y la ruta sin quitar (con tarjetas o con la ficha reabierta)
+        Ruta rutaDibujada;                     // la ruta que se ve; null mientras se calcula o si falló
+        ModoViaje modoRuta;
+        Lugar lugarRuta;                       // destino de la ruta para reabrir su ficha (o el punto libre)
+        Coordenada? puntoRuta;
+        string nombreRuta;                     // "Ruta a Clínica Areas" con una ruta sin textos de maniobra
+        CancellationTokenSource peticionRuta;  // petición de la ruta en curso; null si no hay ninguna
+
         /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
         /// <param name="filtro">Filtro "Precios"; sin él no hay píldora y se ven todos los lugares.</param>
@@ -132,12 +144,17 @@ namespace PriceMap.UI
             foreach (var columna in raiz.Query(className: "columna-controles").ToList()) SombraSuave.Poner(columna, conBorde: true);
 
             accesibilidad = new AccesibilidadPantalla(raiz);
+            // Con ruta, la tarjeta de acciones (arriba) es lo primero que lee TalkBack (historia 2.6, parte 2a)
+            if (this.rutas != null) CrearRuta();
             if (this.filtro != null) CrearFiltro(); // la píldora va arriba a la izquierda: primera en TalkBack
-            accesibilidad.Boton(botonTema, () => Textos.T(ClavesTexto.TemaCambiar), () => this.tema.Alternar(), ValorTema);
+            accesibilidad.Boton(botonTema, () => Textos.T(ClavesTexto.TemaCambiar), () => this.tema.Alternar(), ValorTema,
+                visible: () => !rutaActiva);
             if (botonUbicacion != null)
                 accesibilidad.Boton(botonUbicacion, () => Textos.T(ClaveBotonUbicacion()), TocarUbicacion);
             accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), () => this.mapa.Acercar(), visible: () => AccesibilidadPantalla.LectorActivo);
             accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), () => this.mapa.Alejar(), visible: () => AccesibilidadPantalla.LectorActivo);
+            // La tarjeta de la ruta (abajo) y su X, detrás de los botones del mapa
+            if (tarjetaRuta != null) DeclararTarjetaRutaEnTalkBack();
 
             // Puntos de interés de OpenStreetMap, por debajo de los marcadores de lugar
             var contenedorPuntos = raiz.Q("capa-puntos");
@@ -667,6 +684,7 @@ namespace PriceMap.UI
             string texto = compartidoPendiente;
             compartidoPendiente = null;
             CerrarFicha(); // vuelve la cápsula
+            QuitarRuta(); // con una ruta la cápsula está oculta y lo compartido se perdería
             OlvidarEnlace(); // el mismo enlace compartido otra vez se lee de nuevo (un corto que falló se reintenta)
             abrirSolo = texto;
             bool yaAbierta = BuscadorAbierto && modalBuscador; // entonces Buscar ya anuncia lo que se ve
@@ -1128,7 +1146,7 @@ namespace PriceMap.UI
         // La atribución (abajo a la derecha, en la zona segura) va encima de la cápsula plegada, no debajo
         void ColocarAtribucion()
         {
-            if (buscador == null || atribucion == null) return;
+            if (buscador == null || atribucion == null || rutaActiva) return; // con ruta, encima de su tarjeta (ColocarControlesRuta)
             atribucion.style.bottom = buscador.AltoCapsula + HojaBuscador.MargenAbajo + 8f;
         }
 
@@ -1183,6 +1201,7 @@ namespace PriceMap.UI
             if (ficha == null || lugar == null || ModalUbicacionAbierta) return;
             bool yaAbierta = PrepararFicha();
             ficha.Abrir(lugar, ahora);
+            ActualizarVistaRuta(); // con ruta, sus tarjetas se ocultan (la línea sigue)
             PedirTiempos();
             CentrarEnFicha(lugar.Posicion);
             // De una ficha a otra la hoja tiene medida, pero la del lugar anterior: al disponerse, se recentra
@@ -1250,6 +1269,7 @@ namespace PriceMap.UI
             if (ficha == null || ModalUbicacionAbierta) return;
             bool yaAbierta = PrepararFicha();
             ficha.AbrirPunto(punto, buscando: geocodificador != null);
+            ActualizarVistaRuta(); // con ruta, sus tarjetas se ocultan (la línea sigue)
             PedirTiempos();
             CentrarEnFicha(punto);
             if (yaAbierta) centrarPendiente = punto;
@@ -1271,6 +1291,15 @@ namespace PriceMap.UI
 
         /// <summary>Punto libre de la ficha abierta; null sin ficha o con la de un lugar.</summary>
         public Coordenada? PuntoAbierto => FichaAbierta ? ficha.Punto : null;
+
+        /// <summary>Dónde va la chincheta: el punto de la ficha abierta o, con la ficha cerrada, el destino de la ruta.</summary>
+        internal Coordenada? PuntoChincheta => FichaAbierta ? ficha.Punto : rutaActiva ? puntoRuta : null;
+
+        void ActualizarChincheta()
+        {
+            float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala > 0f ? ultimaEscala : 1f;
+            chincheta?.Actualizar(mapa, PuntoChincheta, escala);
+        }
 
         /// <summary>Chincheta del punto libre; null sin interfaz.</summary>
         public ChinchetaPunto Chincheta => chincheta;
@@ -1429,18 +1458,277 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Ir (historia 2.6, parte 1): sin posición hace lo del botón de ubicación (explicación del permiso o aviso);
-        /// con ella deja el modo elegido, el destino y su ruta listos para dibujarla (parte 2).
+        /// Ir (historia 2.6): sin posición hace lo del botón de ubicación (explicación del permiso o aviso). Con ella
+        /// (parte 2a) cierra la ficha, enseña las tarjetas con "Calculando la ruta…" y "…" y pide la ruta del modo
+        /// elegido desde la posición actual (ServicioRutas.Calcular: la caché vale si no se ha movido 20 m). Al llegar,
+        /// la línea, el encuadre y las tarjetas (DibujarRuta); si falla, el texto del fallo y "—", sin línea.
         /// </summary>
         public void Ir()
         {
-            if (rutas == null || ficha == null || !FichaAbierta) return;
+            if (rutas == null || ficha == null || !FichaAbierta || tarjetaManiobra == null) return;
             var destino = ficha.Posicion;
             if (!destino.HasValue) return;
-            if (ubicacion?.Posicion == null) { TocarUbicacion(); return; }
-            rutas.ElegirParaIr(ficha.Acciones.Elegido, destino.Value);
-            Debug.Log($"PriceMap: Ir en {ficha.Acciones.Elegido} a {destino.Value} " +
-                      (rutas.RutaElegida != null ? $"({rutas.RutaElegida.Minutos} min, {rutas.RutaElegida.Metros:F0} m)." : "(ruta aún sin calcular)."));
+            var origen = ubicacion?.Posicion;
+            if (origen == null) { TocarUbicacion(); return; }
+            var modo = ficha.Acciones.Elegido;
+            CancelarRuta();
+            rutaActiva = true;
+            rutaDibujada = null;
+            modoRuta = modo;
+            lugarRuta = ficha.Lugar;
+            puntoRuta = ficha.Punto;
+            nombreRuta = ficha.Lugar != null ? ficha.Lugar.Nombre : ficha.Titulo.text;
+            mapa.QuitarRuta(); // sin línea mientras llega la nueva
+            tarjetaManiobra.MostrarCalculando();
+            tarjetaRuta.MostrarCalculando();
+            CerrarFicha(); // con la ruta activa vuelven las tarjetas, no la cápsula
+            accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
+            accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
+            accesibilidad.PedirFoco(tarjetaManiobra);
+            Debug.Log($"PriceMap: Ir en {modo} de {origen.Value} a {destino.Value} ({nombreRuta}).");
+            var cts = new CancellationTokenSource();
+            peticionRuta = cts;
+            _ = PedirRuta(origen.Value, destino.Value, modo, cts);
+        }
+
+        /// <summary>
+        /// Pide la ruta y la dibuja al llegar. Una respuesta tardía (cancelada por otra ruta o por quitarla) no cambia
+        /// nada.
+        /// </summary>
+        async Task PedirRuta(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationTokenSource cts)
+        {
+            Resultado<Ruta> r;
+            try
+            {
+                r = await rutas.Calcular(origen, destino, modo, cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception e)
+            {
+                r = Resultado<Ruta>.Fallo(string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message);
+            }
+            if (cts.IsCancellationRequested || !ReferenceEquals(peticionRuta, cts)) return;
+            peticionRuta = null;
+            cts.Dispose();
+            try
+            {
+                if (r.Ok && r.Valor != null && r.Valor.Puntos.Count >= 2) DibujarRuta(r.Valor);
+                else FalloRuta(r.Ok ? "La ruta no tiene puntos." : r.Error);
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e); // llega desde una tarea que nadie espera: sin esto el error se perdería
+            }
+        }
+
+        /// <summary>La ruta ha llegado: línea, tarjetas y, con ellas a la vista, encuadre y foco en la de arriba.</summary>
+        void DibujarRuta(Ruta ruta)
+        {
+            rutaDibujada = ruta;
+            mapa.MostrarRuta(ruta.Puntos);
+            tarjetaManiobra.MostrarRuta(ruta, nombreRuta);
+            tarjetaRuta.MostrarRuta(ruta, RelojLocal());
+            Debug.Log($"PriceMap: ruta en {modoRuta}: {ruta.Puntos.Count} puntos, {ruta.Metros:F0} m, {ruta.Minutos} min; \"{tarjetaManiobra.Anuncio}\".");
+            accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
+            accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
+            if (!TarjetasRutaVisibles) return; // con la ficha reabierta se encuadra al cerrarla
+            EncuadrarRuta();
+            accesibilidad.PedirFoco(tarjetaManiobra);
+        }
+
+        /// <summary>Sin ruta (los dos servicios fallan): "No se ha podido calcular la ruta" y "—", sin línea.</summary>
+        void FalloRuta(string error)
+        {
+            Debug.Log($"PriceMap: sin ruta en {modoRuta} ({error}).");
+            rutaDibujada = null;
+            mapa.QuitarRuta();
+            tarjetaManiobra.MostrarFallo();
+            tarjetaRuta.MostrarFallo();
+            accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
+            accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
+            if (TarjetasRutaVisibles) accesibilidad.PedirFoco(tarjetaManiobra);
+        }
+
+        /// <summary>Cancela la petición de la ruta: su respuesta ya no llegará.</summary>
+        void CancelarRuta()
+        {
+            if (peticionRuta == null) return;
+            var cts = peticionRuta;
+            peticionRuta = null;
+            cts.Cancel();
+            cts.Dispose();
+        }
+
+        /// <summary>
+        /// Quitar ruta (la X o atrás): fuera la línea y las tarjetas; vuelven la píldora, los botones y la cápsula, y el
+        /// foco de TalkBack va a la cápsula.
+        /// </summary>
+        public void QuitarRuta()
+        {
+            if (!rutaActiva) return;
+            CancelarRuta();
+            rutaActiva = false;
+            rutaDibujada = null;
+            lugarRuta = null;
+            puntoRuta = null;
+            mapa.QuitarRuta();
+            if (!FichaAbierta) chincheta?.Actualizar(mapa, null, 1f); // la del punto de destino se va con la ruta
+            ActualizarVistaRuta();
+            if (!FichaAbierta) buscador?.Mostrar(true);
+            accesibilidad.Reconstruir();
+            if (!FichaAbierta && buscador != null) accesibilidad.PedirFoco(buscador);
+        }
+
+        /// <summary>
+        /// Tocar la tarjeta de la ruta: reabre la ficha del destino con el modo de la ruta elegido. Las tarjetas se
+        /// ocultan y la línea sigue; al cerrar la ficha vuelven. Otro modo e Ir en ella dan una ruta nueva.
+        /// </summary>
+        public void ReabrirFichaRuta()
+        {
+            if (!rutaActiva || FichaAbierta) return;
+            if (lugarRuta != null) AbrirFicha(lugarRuta);
+            else if (puntoRuta.HasValue) AbrirPunto(puntoRuta.Value);
+            else return;
+            if (!FichaAbierta) return;
+            ficha.Acciones.Elegir(modoRuta);
+            RefrescarAcciones();
+        }
+
+        /// <summary>Hay una ruta (calculándose, dibujada o fallida) sin quitar, con o sin la ficha reabierta.</summary>
+        public bool RutaActiva => rutaActiva;
+
+        /// <summary>La ruta dibujada; null sin ruta, mientras se calcula o si falló.</summary>
+        public Ruta RutaDibujada => rutaDibujada;
+
+        /// <summary>Las dos tarjetas de la ruta se ven (ruta activa y la ficha cerrada).</summary>
+        public bool TarjetasRutaVisibles => rutaActiva && !FichaAbierta;
+
+        /// <summary>Tarjeta de acciones (arriba) y de la ruta (abajo); null sin interfaz o sin servicio de rutas.</summary>
+        public TarjetaManiobra TarjetaManiobra => tarjetaManiobra;
+        public TarjetaRuta TarjetaRuta => tarjetaRuta;
+
+        /// <summary>Hora local para la llegada ("HH:mm"); por defecto DateTime.Now (las pruebas y la captura la fijan).</summary>
+        public Func<DateTime> RelojLocal { get; set; } = () => DateTime.Now;
+
+        /// <summary>Crea las dos tarjetas (ocultas) y declara la de arriba en TalkBack, la primera del recorrido.</summary>
+        void CrearRuta()
+        {
+            zonaSeguraRuta = raiz.Q("zona-segura-ruta");
+            pilaDerecha = raiz.Q("pila-derecha");
+            tarjetaManiobra = new TarjetaManiobra();
+            (zonaSeguraRuta ?? raiz).Add(tarjetaManiobra);
+            tarjetaRuta = new TarjetaRuta();
+            (raiz.Q("hueco-ruta") ?? raiz).Add(tarjetaRuta);
+            tarjetaRuta.Tocada += ReabrirFichaRuta;
+            tarjetaRuta.QuitarPulsado += QuitarRuta;
+            foreach (var t in new VisualElement[] { tarjetaManiobra, tarjetaRuta })
+                t.RegisterCallback<GeometryChangedEvent>(_ => AlMedirTarjetaRuta());
+            accesibilidad.Texto(tarjetaManiobra, () => tarjetaManiobra.Anuncio, () => TarjetasRutaVisibles);
+        }
+
+        void DeclararTarjetaRutaEnTalkBack()
+        {
+            accesibilidad.Boton(tarjetaRuta.Cuerpo, () => tarjetaRuta.Anuncio, ReabrirFichaRuta, visible: () => TarjetasRutaVisibles);
+            accesibilidad.Boton(tarjetaRuta.Quitar, () => Textos.T(ClavesTexto.RutaQuitar), QuitarRuta, visible: () => TarjetasRutaVisibles);
+        }
+
+        // Las tarjetas se han dispuesto (al mostrarse, o al cambiar sus textos o la fuente): la fuente escalada, el botón
+        // de ubicación y la atribución encima de la de abajo, y la ruta otra vez entre las dos
+        void AlMedirTarjetaRuta()
+        {
+            EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema);
+            ColocarControlesRuta();
+            if (rutaDibujada != null && TarjetasRutaVisibles) EncuadrarRuta();
+        }
+
+        /// <summary>
+        /// Tarjetas a la vista o no (ruta activa y sin ficha), la clase con-ruta (fuera píldora y tema), la cápsula
+        /// oculta con ruta y el botón de ubicación abajo a la izquierda.
+        /// </summary>
+        void ActualizarVistaRuta()
+        {
+            if (tarjetaManiobra == null) return;
+            var display = TarjetasRutaVisibles ? DisplayStyle.Flex : DisplayStyle.None;
+            tarjetaManiobra.style.display = display;
+            tarjetaRuta.style.display = display;
+            raiz.EnableInClassList(ClaseConRuta, rutaActiva);
+            if (rutaActiva) buscador?.Mostrar(false);
+            ColocarControlesRuta();
+        }
+
+        /// <summary>Clase de la raíz mientras hay ruta: oculta la píldora y el botón de tema (PantallaMapa.uss).</summary>
+        public const string ClaseConRuta = "con-ruta";
+
+        /// <summary>Alto supuesto (dp) de las tarjetas mientras no tienen medida: así el primer encuadre ya las deja libres.</summary>
+        public const float AltoSupuestoTarjetaManiobraDp = 120f, AltoSupuestoTarjetaRutaDp = 120f;
+
+        /// <summary>Separación (dp) entre la tarjeta de la ruta y el botón de ubicación o la atribución (--espacio-3).</summary>
+        const float EspacioSobreTarjetaDp = 12f;
+
+        // Con ruta, la columna (solo el botón de ubicación) va abajo a la izquierda y la atribución abajo a la derecha,
+        // las dos encima de la tarjeta de la ruta; sin ruta, a su sitio de siempre
+        void ColocarControlesRuta()
+        {
+            if (pilaDerecha == null) return;
+            if (!rutaActiva)
+            {
+                pilaDerecha.style.top = StyleKeyword.Null;
+                pilaDerecha.style.right = StyleKeyword.Null;
+                pilaDerecha.style.left = StyleKeyword.Null;
+                pilaDerecha.style.bottom = StyleKeyword.Null;
+                ColocarAtribucion();
+                return;
+            }
+            float alto = tarjetaRuta.layout.height;
+            if (float.IsNaN(alto) || alto <= 0f) alto = AltoSupuestoTarjetaRutaDp;
+            float seguraAbajo = zonaSegura != null && zonaSegura.style.bottom.keyword == StyleKeyword.Undefined
+                ? zonaSegura.style.bottom.value.value : 0f;
+            float abajo = alto - seguraAbajo + EspacioSobreTarjetaDp;
+            pilaDerecha.style.top = StyleKeyword.Auto;
+            pilaDerecha.style.right = StyleKeyword.Auto;
+            pilaDerecha.style.left = EspacioSobreTarjetaDp;
+            pilaDerecha.style.bottom = abajo;
+            if (atribucion != null) atribucion.style.bottom = abajo;
+        }
+
+        /// <summary>
+        /// Encuadra la ruta dibujada entre las dos tarjetas (16 dp de margen) y a 32 dp de los lados (ZonaEncuadre).
+        /// Sin medida de las tarjetas se suponen 120 dp cada una; al disponerse se vuelve a encuadrar (AlMedirTarjetaRuta).
+        /// </summary>
+        void EncuadrarRuta()
+        {
+            if (rutaDibujada == null) return;
+            float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala > 0f ? ultimaEscala : 1f;
+            mapa.Encuadrar(rutaDibujada.Puntos, ZonaEncuadre(Screen.width, Screen.height, escala,
+                BordeDp(tarjetaManiobra, abajo: true), BordeDp(tarjetaRuta, abajo: false)));
+        }
+
+        // Borde de abajo (o de arriba) de una tarjeta en dp del panel; null sin medida
+        static float? BordeDp(VisualElement tarjeta, bool abajo)
+        {
+            if (tarjeta == null || tarjeta.panel == null || tarjeta.resolvedStyle.display == DisplayStyle.None) return null;
+            var r = tarjeta.worldBound;
+            if (float.IsNaN(r.yMin) || float.IsNaN(r.height) || r.height <= 0f) return null;
+            return abajo ? r.yMax : r.yMin;
+        }
+
+        /// <summary>
+        /// Zona libre (px, origen arriba) donde se encuadra la ruta: de 16 dp bajo la tarjeta de arriba a 16 dp sobre la
+        /// de abajo y a 32 dp de los lados (ParametrosNegocio). escala = dp por px. Sin medida de una tarjeta, se supone
+        /// la de arriba hasta 16 + 120 dp y la de abajo de 120 dp. Si no quedara sitio, toda la pantalla menos los lados.
+        /// </summary>
+        public static RectPantalla ZonaEncuadre(float anchoPx, float altoPx, float escala, float? bordeArribaDp, float? bordeAbajoDp)
+        {
+            if (escala <= 0f) escala = 1f;
+            float altoDp = altoPx * escala;
+            float arribaDp = (bordeArribaDp ?? 16f + AltoSupuestoTarjetaManiobraDp) + ParametrosNegocio.RutaEncuadreMargenDp;
+            float abajoDp = (bordeAbajoDp ?? altoDp - AltoSupuestoTarjetaRutaDp) - ParametrosNegocio.RutaEncuadreMargenDp;
+            float lado = ParametrosNegocio.RutaEncuadreLadoDp / escala;
+            var zona = new RectPantalla(lado, arribaDp / escala, anchoPx - lado, abajoDp / escala);
+            return zona.Valido ? zona : new RectPantalla(lado, 0f, anchoPx - lado, altoPx);
         }
 
         /// <summary>Servicio de rutas que recibió al iniciarse (historia 2.6); null sin él.</summary>
@@ -1498,16 +1786,27 @@ namespace PriceMap.UI
             CancelarDireccionPunto();
             tiemposPedidos = false;
             rutas?.Cancelar(); // los tiempos pedidos se cancelan: una respuesta tardía no pinta nada
-            chincheta?.Actualizar(mapa, null, 1f); // la chincheta del punto libre se va con su ficha
+            // La chincheta del punto libre se va con su ficha, salvo que sea el destino de la ruta (historia 2.6, parte 2a)
+            if (rutaActiva && puntoRuta.HasValue) ActualizarChincheta();
+            else chincheta?.Actualizar(mapa, null, 1f);
             if (!FichaAbierta) return;
             ficha.Mostrar(false);
-            buscador?.Mostrar(true); // vuelve la cápsula
-            // TalkBack: fuera los nodos de la ficha, vuelve el mapa y el foco al marcador que la abrió, si se ve
+            // Vuelve la cápsula; con una ruta (historia 2.6, parte 2a), sus tarjetas, y la ruta otra vez entre ellas
+            if (rutaActiva) ActualizarVistaRuta();
+            else buscador?.Mostrar(true);
+            // TalkBack: fuera los nodos de la ficha, vuelve el mapa y el foco al marcador que la abrió, si se ve (con ruta,
+            // a la tarjeta de la ruta, que la reabrió)
             var marcador = marcadorFicha;
             marcadorFicha = null;
             if (capa != null) capa.Fijado = null;
             accesibilidad.QuitarControles(ficha);
             accesibilidad.Modal = false;
+            if (rutaActiva)
+            {
+                EncuadrarRuta();
+                accesibilidad.PedirFoco(tarjetaRuta.Cuerpo);
+                return;
+            }
             accesibilidad.PedirFoco(marcador != null && marcador.Visible ? marcador.Cuerpo : null);
         }
 
@@ -1535,7 +1834,7 @@ namespace PriceMap.UI
             // (con la explicación de la ubicación o la ficha abiertas, la píldora sale del recorrido modal)
             // Con una categoría (historia 2.4, parte 2) es el botón "Quitar categoría Salud", sin valor
             accesibilidad.Boton(pildora, EtiquetaPildora, PulsarPildora, () => categoriaMapa == null ? ValorFiltro() : "",
-                visible: () => !ModalUbicacionAbierta && !FichaAbierta && !BuscadorAbierto, enModal: true);
+                visible: () => !ModalUbicacionAbierta && !FichaAbierta && !BuscadorAbierto && !rutaActiva, enModal: true);
             foreach (var o in menu.Opciones)
             {
                 var opcion = o;
@@ -1622,7 +1921,8 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con la
-        /// hoja del buscador desplegada la pliega; con la ficha del lugar abierta la cierra; con el menú abierto lo
+        /// hoja del buscador desplegada la pliega; con la ficha del lugar abierta la cierra; con una ruta, la quita
+        /// (historia 2.6, parte 2a); con el menú abierto lo
         /// cierra sin cambiar el filtro. Si no, no hace nada (la app no sale: Input.backButtonLeavesApp sigue en
         /// false). Devuelve true si lo ha gestionado.
         /// </summary>
@@ -1633,6 +1933,7 @@ namespace PriceMap.UI
             if (BuscadorAbierto && cercaActiva) { QuitarCategoria(); return true; } // primero vuelven las categorías
             if (BuscadorAbierto) { PlegarBuscador(); return true; }
             if (FichaAbierta) { CerrarFicha(); return true; }
+            if (rutaActiva) { QuitarRuta(); return true; } // historia 2.6, parte 2a
             if (!MenuAbierto) return false;
             ConsumirNavegacion();
             Cerrar(enfocar: true, porNavegacion: true); // atrás es una tecla: el foco de teclado vuelve a la píldora
@@ -1663,6 +1964,12 @@ namespace PriceMap.UI
             }
             CancelarDireccionPunto();
             CancelarEnlace();
+            CancelarRuta();
+            if (tarjetaRuta != null)
+            {
+                tarjetaRuta.Tocada -= ReabrirFichaRuta;
+                tarjetaRuta.QuitarPulsado -= QuitarRuta;
+            }
             if (rutas != null)
             {
                 rutas.TiempoCalculado -= AlCalcularTiempo;
@@ -1802,6 +2109,8 @@ namespace PriceMap.UI
                 ficha?.RepintarGota();
                 chincheta?.Repintar();
                 buscador?.Repintar();
+                tarjetaManiobra?.Repintar();
+                tarjetaRuta?.Quitar.MarkDirtyRepaint();
             });
         }
 
@@ -1818,7 +2127,7 @@ namespace PriceMap.UI
             anchoAplicado = ancho;
             float escala = ancho / Screen.width; // píxeles de pantalla → dp del panel
             // La píldora va en su propia zona segura, encima del velo del menú: mismos márgenes
-            foreach (var zona in new[] { zonaSegura, zonaSeguraPrecios })
+            foreach (var zona in new[] { zonaSegura, zonaSeguraPrecios, zonaSeguraRuta })
             {
                 if (zona == null) continue;
                 zona.style.left = segura.xMin * escala;
@@ -1831,7 +2140,10 @@ namespace PriceMap.UI
             // El buscador está fuera de la zona segura: plegado va encima de la barra de gestos y abierto del todo,
             // 64 dp por debajo de la barra de estado
             buscador?.PonerZonaSegura((Screen.height - segura.yMax) * escala, segura.yMin * escala);
+            // La tarjeta de la ruta, como la hoja: hasta el borde, con su contenido encima de la barra de gestos
+            tarjetaRuta?.PonerMargenInferior(segura.yMin * escala);
             ColocarAtribucion();
+            ColocarControlesRuta();
         }
 
         readonly List<Lugar> lugaresVisibles = new List<Lugar>();
@@ -1851,6 +2163,8 @@ namespace PriceMap.UI
             Ocupar(columnaControles); // tema y ubicación
             if (zoom != null && zoom.ClassListContains("visible")) Ocupar(zoom);
             Ocupar(buscador); // la cápsula (o lo que cubre la hoja desplegada)
+            Ocupar(tarjetaManiobra); // las tarjetas de la ruta (ocultas sin ruta: no cuentan)
+            Ocupar(tarjetaRuta);
             return zonasOcupadas;
         }
 
@@ -1897,8 +2211,8 @@ namespace PriceMap.UI
             }
             // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
             if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, ubicacion.Posicion, ubicacion.Rumbo, escala);
-            // La chincheta del punto libre sigue a su coordenada mientras su ficha está abierta
-            if (chincheta != null && escala > 0f) chincheta.Actualizar(mapa, PuntoAbierto, escala);
+            // La chincheta del punto libre sigue a su coordenada mientras su ficha está abierta (o es el destino de la ruta)
+            if (chincheta != null && escala > 0f) chincheta.Actualizar(mapa, PuntoChincheta, escala);
             if (escala > 0f) ultimaEscala = escala;
             // La posición pasa a Activa con la ficha abierta: se piden sus tiempos (historia 2.6)
             if (rutas != null && !tiemposPedidos && FichaAbierta && ubicacion?.Posicion != null) PedirTiempos();

@@ -18,7 +18,7 @@ namespace PriceMap.Adaptadores.Rutas
 
         /// <summary>
         /// Cuerpo JSON de la petición: los dos puntos (origen con 5 decimales, destino con 6), el costing con
-        /// <c>shortest: true</c>, <c>language: es-ES</c>, <c>directions_type: maneuvers</c> y kilómetros.
+        /// <c>shortest: true</c>, <c>language: es-ES</c>, <c>directions_type: instructions</c> (con "maneuvers" Valhalla no da el texto de cada maniobra; comprobado el 20/11/2026) y kilómetros.
         /// </summary>
         public static string Cuerpo(Coordenada origen, Coordenada destino, ModoViaje modo)
         {
@@ -29,7 +29,7 @@ namespace PriceMap.Adaptadores.Rutas
                    + "\"costing\":\"" + c + "\","
                    + "\"costing_options\":{\"" + c + "\":{\"shortest\":true}},"
                    + "\"language\":\"es-ES\","
-                   + "\"directions_type\":\"maneuvers\","
+                   + "\"directions_type\":\"instructions\","
                    + "\"units\":\"kilometers\"}";
         }
 

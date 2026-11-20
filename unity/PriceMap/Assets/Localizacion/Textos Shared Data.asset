@@ -615,6 +615,50 @@ MonoBehaviour:
     m_Key: ficha.modo.elegido
     m_Metadata:
       m_Items: []
+  - m_Id: 1164695204519936
+    m_Key: ruta.calculando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074368
+    m_Key: ruta.fallo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074369
+    m_Key: ruta.a
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074370
+    m_Key: ruta.despues
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074371
+    m_Key: ruta.llegada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074372
+    m_Key: ruta.min
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074373
+    m_Key: ruta.anuncio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074374
+    m_Key: ruta.anuncio.minuto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074375
+    m_Key: ruta.anuncio.calculando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074376
+    m_Key: ruta.anuncio.fallo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074377
+    m_Key: ruta.quitar
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

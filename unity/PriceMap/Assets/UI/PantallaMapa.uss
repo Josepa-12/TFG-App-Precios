@@ -1522,3 +1522,171 @@
     color: var(--color-muted);
     white-space: normal;
 }
+
+/* ───────── Ruta (historia 2.6, parte 2a; maqueta v2 del 20/11/2026) ─────────
+   Mientras hay ruta (.con-ruta) se ocultan la píldora y el botón de tema; el de ubicación queda solo en su columna,
+   abajo a la izquierda encima de la tarjeta de la ruta (la posición la pone PantallaMapa). La cápsula la oculta el código. */
+.pm-raiz.con-ruta .hueco-precios {
+    display: none;
+}
+
+.pm-raiz.con-ruta #hueco-tema {
+    display: none;
+}
+
+.pm-raiz.con-ruta #boton-ubicacion {
+    border-top-width: 0;
+    border-top-left-radius: var(--radio-columna);
+    border-top-right-radius: var(--radio-columna);
+}
+
+.pm-raiz.con-ruta #boton-ubicacion:focus {
+    border-top-width: 2px;
+}
+
+.hueco-ruta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* Tarjeta de acciones arriba: text al 96 % (claro) o clara (oscuro), 16 dp desde arriba y 12 a los lados */
+.tarjeta-maniobra {
+    position: absolute;
+    top: var(--espacio-4);
+    left: var(--espacio-3);
+    right: var(--espacio-3);
+    padding: var(--espacio-3) var(--espacio-4);
+    border-radius: var(--radio-columna);
+    background-color: var(--color-tarjeta-maniobra);
+    color: var(--color-tarjeta-maniobra-texto);
+    display: none;
+}
+
+.tarjeta-maniobra__fila {
+    flex-direction: row;
+    align-items: center;
+}
+
+.tarjeta-maniobra__fila--siguiente {
+    margin-top: var(--espacio-2);
+    padding-top: var(--espacio-2);
+    border-top-width: 1px;
+    border-top-color: var(--color-tarjeta-maniobra-meta);
+    color: var(--color-tarjeta-maniobra-meta);
+}
+
+.tarjeta-maniobra__icono {
+    width: var(--maniobra-icono);
+    height: var(--maniobra-icono);
+    flex-shrink: 0;
+    margin-right: var(--espacio-3);
+    color: var(--color-tarjeta-maniobra-texto);
+}
+
+.tarjeta-maniobra__icono-siguiente {
+    width: var(--maniobra-icono-siguiente);
+    height: var(--maniobra-icono-siguiente);
+    flex-shrink: 0;
+    margin-left: 4px;
+    margin-right: 16px;
+    color: var(--color-tarjeta-maniobra-meta);
+}
+
+.tarjeta-maniobra__principal {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-tarjeta-maniobra-texto);
+}
+
+.tarjeta-maniobra__siguiente {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-tarjeta-maniobra-meta);
+}
+
+/* Tarjeta de la ruta abajo: de borde a borde, esquinas de hoja, llegada · minutos · distancia y la X de 48 dp */
+.tarjeta-ruta {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: var(--espacio-2) var(--espacio-4) var(--espacio-4) var(--espacio-4);
+    background-color: var(--color-surface);
+    border-top-left-radius: var(--radio-sheet);
+    border-top-right-radius: var(--radio-sheet);
+    border-top-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-color: var(--color-border);
+    display: none;
+}
+
+.tarjeta-ruta__asa {
+    width: var(--asa-ancho);
+    height: var(--asa-alto);
+    align-self: center;
+    margin-bottom: var(--espacio-2);
+    border-radius: 2px;
+    background-color: var(--color-border);
+}
+
+.tarjeta-ruta__fila {
+    flex-direction: row;
+    align-items: center;
+}
+
+.tarjeta-ruta__cuerpo {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--zona-tactil-min);
+    margin-right: var(--espacio-2);
+    padding: var(--espacio-1) 0;
+    border-radius: var(--radio-md);
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+}
+
+.tarjeta-ruta__cuerpo:active {
+    background-color: var(--color-surface-2);
+}
+
+.tarjeta-ruta__cuerpo:focus {
+    border-color: var(--color-focus);
+}
+
+.tarjeta-ruta__columna {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    align-items: center;
+}
+
+.tarjeta-ruta__valor {
+    margin: 0;
+    padding: 0;
+    color: var(--color-text);
+    -unity-text-align: middle-center;
+}
+
+.tarjeta-ruta__rotulo {
+    margin: 0;
+    padding: 0;
+    color: var(--color-muted);
+    -unity-text-align: middle-center;
+}
+
+.tarjeta-ruta__quitar {
+    flex-shrink: 0;
+    background-color: var(--color-surface);
+}

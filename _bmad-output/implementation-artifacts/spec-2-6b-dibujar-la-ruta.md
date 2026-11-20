@@ -2,7 +2,7 @@
 title: 'Historia 2.6 (parte 2a): Ir dibuja la ruta'
 type: 'feature'
 created: '2026-11-20'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '15b4b0d17352d48611f4bdc13711e598b85ab8f3'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -72,11 +72,11 @@ Rutas bajo `unity/PriceMap/Assets/Scripts` salvo otra indicación.
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `IMapa` + 15 falsos.
-- [ ] Línea en `MapaVectorial` (ancho, borde, tema, zoom) y `CamaraMapa.Encuadrar`, con pruebas de sus cálculos.
-- [ ] `TarjetaManiobra` y `TarjetaRuta` con textos y TalkBack.
-- [ ] `PantallaMapa`: Ir, calculando, fallo, quitar, reabrir, atrás, otro modo; ocultar y devolver controles; pruebas de la matriz.
-- [ ] Capturas «ruta» y «ruta-oscuro»; memoria del TFG.
+- [x] `IMapa` + 15 falsos.
+- [x] Línea en `MapaVectorial` (ancho, borde, tema, zoom) y `CamaraMapa.Encuadrar`, con pruebas de sus cálculos.
+- [x] `TarjetaManiobra` y `TarjetaRuta` con textos y TalkBack.
+- [x] `PantallaMapa`: Ir, calculando, fallo, quitar, reabrir, atrás, otro modo; ocultar y devolver controles; pruebas de la matriz.
+- [x] Capturas «ruta» y «ruta-oscuro»; memoria del TFG.
 
 **Acceptance Criteria:**
 - Dada la suite EditMode, cuando se ejecuta sin red, entonces pasan todas.
@@ -84,9 +84,41 @@ Rutas bajo `unity/PriceMap/Assets/Scripts` salvo otra indicación.
 
 ## Implementation Notes
 
+- Valhalla se pide ahora con `directions_type: instructions`: con `maneuvers` (parte 1) no devuelve el texto de las maniobras (comprobado con una petición real el 20/11/2026) y la tarjeta diría siempre «Ruta a…». Sus textos van en forma de usted («Gire a la derecha hacia Calle Regina»).
+- `ServicioRutas.ElegirParaIr` (parte 1) se ha borrado con sus pruebas: Ir pide la ruta con `Calcular` desde la posición actual (la caché de 20 m evita una petición nueva). Las pruebas de la parte 1 que suponían que Ir dejaba la ficha abierta se han sustituido.
+- Las tarjetas van debajo del velo del menú «Precios» en el árbol (con ruta no hay píldora ni menú).
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+Revisión del 20/11/2026 (blind, edge-case, verification-gap; diff desde `3bd917b`, ya que `0617b8e`/`3bd917b` no son de esta parte).
+
+| Hallazgo | Veredicto | Ruta | Evidencia |
+|---|---|---|---|
+| Compartir texto con ruta activa: la cápsula está oculta y `AbrirBuscadorConLector` sale | medium | patch | `AplicarCompartidoPendiente` no quita la ruta y `AbrirBuscadorConLector` exige `buscador.Visible` |
+| Ruta a un punto libre: `CerrarFicha` quita la chincheta y el destino queda sin marcador | medium | patch | `CerrarFicha` llama a `chincheta?.Actualizar(mapa, null, 1f)` y `Ir` cierra la ficha |
+| `PuntoLibre_IrYReabrir…` no comprueba que se ocultan las tarjetas | medium | patch | gap verificado: solo `Reabrir_LaFicha…` (por `AbrirFicha`) lo afirma |
+| Colocación de ubicación/atribución con ruta y su vuelta, sin prueba (blind + gap) | medium | patch | gap verificado: ninguna prueba lee `pila-derecha.style` |
+| `MapaVectorial.Update` (tema y zoom de la ruta) sin prueba | medium | patch | gap verificado: la prueba usa `ColorearRutaAhora` y `MostrarRuta` directos |
+| `MapaVectorial.Encuadrar` (inversión de Y) sin prueba | medium | patch | gap verificado: solo se prueba `CamaraMapa.Encuadrar` |
+| Contraste de los tokens nuevos y de la línea sin comprobar (NFR-4) | low | patch | `PruebasContraste` no los incluye; añadir es directo |
+| `SetGlobalColor` de fachada y sombra unidos en una línea | low | patch | formato accidental en `AplicarTema` |
+| `ElegirParaIr`/`*Elegido` muerto, con pruebas y CLAUDE.md que lo citan | low | patch | la pantalla ya no lo llama; borrarlo es directo |
+| Encuadre al cambiar de tamaño una tarjeta deshace el paseo del usuario (blind + edge) | low | rechazado | los textos no cambian con la ruta dibujada; solo área segura u orientación, raro, y el arreglo añade guardas |
+| `nombreRuta` puede ser el texto provisional del punto | low | rechazado | solo con OSRM e Ir durante la búsqueda inversa; raro |
+| Llegada y maniobra no se actualizan | low | rechazado | navegación y avance de maniobra son de la 2.7 (Never) |
+| Textos de Valhalla en usted y pruebas en tú | low | rechazado | los textos de prueba no cambian el comportamiento; se avisa al usuario |
+| Materiales sin destruir / `Shader.Find` nulo | false | rechazado | el mapa vive toda la app; el mismo shader ya lo usan los demás materiales |
+| Asa en la tarjeta sin arrastre | low | rechazado | viene de la maqueta aprobada |
+| Sin reintento tras el fallo | false | rechazado | el comportamiento ante el fallo lo fija el spec (la 2b lo cambia) |
+| «km» fijo, números mágicos, ruido en el asset de Localization | low | rechazado | cosméticos, no afectan al uso |
+| Atribución elevada con `buscador == null` | false | rechazado | en la app siempre hay buscador |
+| Zona de encuadre inválida en pantallas estrechas | false | rechazado | inalcanzable: ancho de pantalla ≫ 64 dp |
+| Primer encuadre sin el borde seguro de arriba | low | rechazado | se rehace al medirse las tarjetas en el mismo fotograma de disposición |
+| `HoraLlegada` con segundos infinitos | false | rechazado | Valhalla y OSRM dan segundos finitos |
+| Excepción en `DibujarRuta` deja estado a medias | maybe-false | rechazado | no se ha visto que `MostrarRuta` lance; sería low |
+| Línea por debajo de 6 dp lejos del centro o con < 10 % de cambio | low | rechazado | diseño fijado en el Code Map (centro de la vista y 10 %) |
 
 ## Verification
 

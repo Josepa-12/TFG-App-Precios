@@ -77,5 +77,20 @@ namespace PriceMap.Aplicacion
         /// null si cae por encima del horizonte o no hay cámara.
         /// </summary>
         Coordenada? Desproyectar(PuntoPantalla punto);
+
+        /// <summary>
+        /// Dibuja la línea de la ruta (historia 2.6, parte 2a) por esos puntos, en orden, cubriendo la calle: por encima
+        /// de las calles y por debajo de los edificios y de lo que dibuja la UI. Sustituye a la anterior.
+        /// </summary>
+        void MostrarRuta(IReadOnlyList<Coordenada> puntos);
+
+        /// <summary>Quita la línea de la ruta, si la hay.</summary>
+        void QuitarRuta();
+
+        /// <summary>
+        /// Mueve y acerca la vista al instante para que todos los puntos quepan en ese rectángulo de la pantalla (px,
+        /// origen arriba a la izquierda), sin cambiar el giro ni la inclinación y sin pasar los límites de la cámara.
+        /// </summary>
+        void Encuadrar(IReadOnlyList<Coordenada> puntos, RectPantalla libre);
     }
 }

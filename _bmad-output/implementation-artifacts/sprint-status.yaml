@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-17-2026 10:00
-last_updated: 11-20-2026 13:30
+last_updated: 11-20-2026 18:30
 project: TFG-App-Precios
 project_key: NOKEY
 tracking_system: file-system
@@ -52,7 +52,7 @@ development_status:
   2-3-buscar-lugares-puntos-de-interés-y-direcciones: review
   2-4-encuentra-cerca-por-categorías: done
   2-5-ir-a-un-punto-libre-o-a-una-ubicación-compartida: done
-  2-6-ver-los-tiempos-y-calcular-la-ruta-más-corta: in-progress
+  2-6-ver-los-tiempos-y-calcular-la-ruta-más-corta: review
   2-7-navegar-giro-a-giro: ready-for-dev
   2-8-indicaciones-por-voz: ready-for-dev
   2-9-llegar-y-terminar-la-ruta: ready-for-dev

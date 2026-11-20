@@ -25,6 +25,11 @@
             </ui:VisualElement>
             <ui:Label name="atribucion" class="atribucion t-caption" picking-mode="Ignore" />
         </ui:VisualElement>
+        <!-- Ruta (historia 2.6, parte 2a): la tarjeta de acciones arriba, en su zona segura (márgenes de PantallaMapa), y la
+             tarjeta de la ruta anclada abajo; debajo del velo del menú "Precios" (con ruta no hay píldora ni menú) y
+             de la ficha, que las tapa al reabrirla -->
+        <ui:VisualElement name="zona-segura-ruta" class="zona-segura" picking-mode="Ignore" />
+        <ui:VisualElement name="hueco-ruta" class="hueco-ruta" picking-mode="Ignore" />
         <!-- Velo transparente del menú "Precios": siempre está en el árbol, oculto; con el menú abierto cubre
              la pantalla entera (mapa, botones y marcadores), y tocarlo solo cierra el menú (PantallaMapa) -->
         <ui:VisualElement name="velo-menu" class="velo-menu" picking-mode="Ignore" />

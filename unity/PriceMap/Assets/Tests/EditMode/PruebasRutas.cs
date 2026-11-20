@@ -10,6 +10,7 @@ using PriceMap.Aplicacion;
 using PriceMap.Dominio;
 using PriceMap.EditorTools;
 using PriceMap.UI;
+using PriceMap.Vectorial;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Accessibility;
@@ -45,6 +46,19 @@ namespace PriceMap.Tests.EditMode
                 Tcs.TrySetResult(Resultado<Ruta>.Exito(new Ruta(new[] { Origen, Destino }, metros, segundos, null)));
 
             public void Fallar() => Tcs.TrySetResult(Resultado<Ruta>.Fallo("sin conexión"));
+
+            /// <summary>Respuesta de Valhalla: por tres puntos, con la salida, un giro y la llegada en castellano.</summary>
+            public void ResponderConManiobras(double segundos, double metros)
+            {
+                var medio = new Coordenada((Origen.Latitud + Destino.Latitud) / 2, Origen.Longitud);
+                var maniobras = new[]
+                {
+                    new Maniobra(TipoManiobra.Salida, "Sal hacia el norte por Calle Ancha.", Origen, 300),
+                    new Maniobra(TipoManiobra.Derecha, "Gira a la derecha en Calle Santo Domingo.", medio, 900),
+                    new Maniobra(TipoManiobra.Llegada, "Has llegado a tu destino.", Destino, 0),
+                };
+                Tcs.TrySetResult(Resultado<Ruta>.Exito(new Ruta(new[] { Origen, medio, Destino }, metros, segundos, maniobras)));
+            }
         }
 
         /// <summary>Servicio de rutas falso: cada petición queda pendiente hasta que la prueba responde.</summary>
@@ -117,7 +131,8 @@ namespace PriceMap.Tests.EditMode
             public void AplicarTema(Tema tema) { }
             public void Acercar() { }
             public void Alejar() { }
-            public PuntoPantalla Proyectar(Coordenada punto) => PuntoPantalla.Ninguno;
+            public Func<Coordenada, PuntoPantalla> proyectar;
+            public PuntoPantalla Proyectar(Coordenada punto) => proyectar?.Invoke(punto) ?? PuntoPantalla.Ninguno;
             public IReadOnlyList<PuntoInteres> PuntosInteres => Array.Empty<PuntoInteres>();
             public event Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
@@ -127,6 +142,13 @@ namespace PriceMap.Tests.EditMode
             public event Action<PuntoPantalla> Toque { add { } remove { } }
             public event Action<PuntoPantalla> PulsacionLarga { add => pulsacion += value; remove => pulsacion -= value; }
             public Coordenada? Desproyectar(PuntoPantalla punto) => suelo.TryGetValue((punto.X, punto.Y), out var c) ? c : (Coordenada?)null;
+            /// <summary>Línea que se ve ahora (null sin ruta), cuántas veces se ha dibujado y los encuadres pedidos.</summary>
+            public IReadOnlyList<Coordenada> linea;
+            public int dibujadas;
+            public readonly List<(IReadOnlyList<Coordenada> puntos, RectPantalla libre)> encuadres = new List<(IReadOnlyList<Coordenada>, RectPantalla)>();
+            public void MostrarRuta(IReadOnlyList<Coordenada> puntos) { linea = puntos; dibujadas++; }
+            public void QuitarRuta() => linea = null;
+            public void Encuadrar(IReadOnlyList<Coordenada> puntos, RectPantalla libre) => encuadres.Add((puntos, libre));
         }
 
         static ServicioLugares lugares;
@@ -202,9 +224,14 @@ namespace PriceMap.Tests.EditMode
             mapa = new MapaFalso();
             gps = new UbicacionFalsa { Estado = estado, Posicion = posicion };
             pantalla.Inicializar(mapa, tema, Lugares(), Ahora, arbol, filtro, new ServicioUbicacion(gps, prefs), rutas: conRutas ? servicio : null);
+            pantalla.RelojLocal = () => HoraLocal;
+            raizArbol = arbol.Q("raiz");
             tema.Iniciar();
             filtro.Iniciar();
         }
+
+        static readonly DateTime HoraLocal = new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+        VisualElement raizArbol;
 
         void CrearConPosicion() => Crear(EstadoUbicacion.Activa, Cabildo);
 
@@ -282,7 +309,7 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(
                 "{\"locations\":[{\"lat\":36.77791,\"lon\":-6.35281},{\"lat\":36.778141,\"lon\":-6.351481}]," +
                 "\"costing\":\"auto\",\"costing_options\":{\"auto\":{\"shortest\":true}},\"language\":\"es-ES\"," +
-                "\"directions_type\":\"maneuvers\",\"units\":\"kilometers\"}",
+                "\"directions_type\":\"instructions\",\"units\":\"kilometers\"}",
                 RutasValhalla.Cuerpo(OrigenExacto, DestinoExacto, ModoViaje.Coche),
                 "Origen con 5 decimales y destino con 6.");
             var aPie = RutasValhalla.Cuerpo(OrigenExacto, DestinoExacto, ModoViaje.APie);
@@ -528,59 +555,16 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Servicio_ElegirParaIrGuardaModoDestinoYRuta()
-        {
-            servicio.PedirTiempos(Cabildo, CalleAncha);
-            valhalla.De(ModoViaje.APie).Responder(900);
-            servicio.ElegirParaIr(ModoViaje.APie, CalleAncha);
-            Assert.AreEqual(ModoViaje.APie, servicio.ModoElegido);
-            Assert.AreEqual(CalleAncha, servicio.DestinoElegido);
-            Assert.AreEqual(15, servicio.RutaElegida.Minutos);
-            servicio.ElegirParaIr(ModoViaje.Coche, CalleAncha);
-            Assert.IsNull(servicio.RutaElegida, "El coche aún no ha llegado.");
-        }
-
-        [Test]
-        public void Servicio_IrAntesDeLaRutaLaRellenaAlLlegar()
-        {
-            servicio.PedirTiempos(Cabildo, CalleAncha);
-            servicio.ElegirParaIr(ModoViaje.APie, CalleAncha);
-            Assert.IsNull(servicio.RutaElegida);
-            valhalla.De(ModoViaje.Coche).Responder(330);
-            Assert.IsNull(servicio.RutaElegida, "La del otro modo no cuenta.");
-            valhalla.De(ModoViaje.APie).Responder(900);
-            Assert.AreEqual(15, servicio.RutaElegida.Minutos, "Llega después de Ir y queda elegida.");
-        }
-
-        [Test]
-        public void Servicio_CancelarOlvidaLoElegido()
-        {
-            servicio.PedirTiempos(Cabildo, CalleAncha);
-            valhalla.De(ModoViaje.Coche).Responder(330);
-            servicio.ElegirParaIr(ModoViaje.Coche, CalleAncha);
-            Assert.IsNotNull(servicio.RutaElegida);
-            servicio.Cancelar();
-            Assert.IsNull(servicio.ModoElegido);
-            Assert.IsNull(servicio.DestinoElegido);
-            Assert.IsNull(servicio.RutaElegida);
-
-            // Abrir otra ficha (PedirTiempos cancela) también lo olvida
-            servicio.ElegirParaIr(ModoViaje.Coche, CalleAncha);
-            servicio.PedirTiempos(Cabildo, Areas.Posicion);
-            Assert.IsNull(servicio.ModoElegido);
-        }
-
-        [Test]
-        public void CerrarLaFicha_OlvidaLoElegidoConIr()
+        public void CerrarLaFichaSinIr_NoHayRuta()
         {
             CrearConPosicion();
             pantalla.AbrirFicha(Areas);
             valhalla.De(ModoViaje.Coche).Responder(330);
-            Fila.PulsarIr();
-            Assert.IsNotNull(servicio.RutaElegida);
             pantalla.CerrarFicha();
-            Assert.IsNull(servicio.ModoElegido);
-            Assert.IsNull(servicio.RutaElegida, "La parte 2 no dibuja la ruta de una ficha cerrada.");
+            Assert.IsFalse(pantalla.RutaActiva);
+            Assert.IsNull(mapa.linea);
+            Assert.IsTrue(pantalla.Buscador.Visible, "Vuelve la cápsula, no las tarjetas.");
+            Assert.AreEqual(DisplayStyle.None, pantalla.TarjetaRuta.style.display.value);
         }
 
         // ───────────────────────── Fila de la ficha (matriz) ─────────────────────────
@@ -661,7 +645,8 @@ namespace PriceMap.Tests.EditMode
             Fila.PulsarIr();
             Assert.IsTrue(pantalla.ExplicacionAbierta, "Lo mismo que el botón de ubicación.");
             Assert.IsFalse(pantalla.FichaAbierta);
-            Assert.IsNull(servicio.ModoElegido);
+            Assert.IsFalse(pantalla.RutaActiva);
+            Assert.IsEmpty(valhalla.Peticiones);
         }
 
         [TestCase(EstadoUbicacion.Denegado)]
@@ -672,7 +657,8 @@ namespace PriceMap.Tests.EditMode
             pantalla.AbrirFicha(Areas);
             Fila.PulsarIr();
             Assert.IsTrue(pantalla.AvisoAbierto);
-            Assert.IsNull(servicio.ModoElegido);
+            Assert.IsFalse(pantalla.RutaActiva);
+            Assert.IsEmpty(valhalla.Peticiones);
         }
 
         [Test]
@@ -683,7 +669,8 @@ namespace PriceMap.Tests.EditMode
             Fila.PulsarIr();
             Assert.IsTrue(pantalla.FichaAbierta);
             Assert.IsFalse(pantalla.ModalUbicacionAbierta);
-            Assert.IsNull(servicio.ModoElegido);
+            Assert.IsFalse(pantalla.RutaActiva);
+            Assert.IsEmpty(valhalla.Peticiones);
         }
 
         [Test]
@@ -868,21 +855,6 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void IrConPosicion_DejaElModoYLaRutaElegidosSinCerrarLaFicha()
-        {
-            CrearConPosicion();
-            pantalla.AbrirFicha(Areas);
-            valhalla.De(ModoViaje.APie).Responder(900);
-            Fila.APie.Pulsar();
-            Fila.PulsarIr();
-            Assert.AreEqual(ModoViaje.APie, servicio.ModoElegido);
-            Assert.AreEqual(Areas.Posicion, servicio.DestinoElegido);
-            Assert.AreEqual(15, servicio.RutaElegida.Minutos);
-            Assert.IsTrue(pantalla.FichaAbierta, "Dibujar la ruta es la parte 2.");
-            Assert.IsFalse(pantalla.ModalUbicacionAbierta);
-        }
-
-        [Test]
         public void SinServicioDeRutas_LaFilaQuedaVaciaYFueraDeTalkBack()
         {
             Crear(EstadoUbicacion.Activa, Cabildo, conRutas: false);
@@ -926,6 +898,572 @@ namespace PriceMap.Tests.EditMode
                          ClavesTexto.FichaAnuncioCalculando, ClavesTexto.FichaModoElegido,
                      })
                 CollectionAssert.Contains(ClavesTexto.Todas, clave);
+        }
+
+        // ───────────────────────── Ir dibuja la ruta (parte 2a, matriz) ─────────────────────────
+
+        static readonly Coordenada CincuentaMetrosAlNorte = new Coordenada(36.77835, -6.3528);
+
+        TarjetaManiobra Arriba => pantalla.TarjetaManiobra;
+        TarjetaRuta Abajo => pantalla.TarjetaRuta;
+
+        static bool Visible(VisualElement e) => e.style.display.value == DisplayStyle.Flex;
+
+        /// <summary>Ficha de Clínica Areas abierta con posición e Ir pulsado en ese modo (coche por defecto).</summary>
+        void IrAAreas(ModoViaje modo = ModoViaje.Coche)
+        {
+            pantalla.AbrirFicha(Areas);
+            if (modo != Fila.Elegido) Fila.Boton(modo).Pulsar();
+            Fila.PulsarIr();
+        }
+
+        void ComprobarControlesDeRuta(bool conRuta)
+        {
+            Assert.AreEqual(conRuta, Visible(Arriba), "Tarjeta de arriba.");
+            Assert.AreEqual(conRuta, Visible(Abajo), "Tarjeta de abajo.");
+            Assert.AreEqual(conRuta, raizArbol.ClassListContains(PantallaMapa.ClaseConRuta), "Sin píldora ni tema con ruta.");
+            Assert.AreEqual(!conRuta, pantalla.Buscador.Visible, "La cápsula.");
+        }
+
+        [Test]
+        public void IrConRuta_CierraLaFichaDibujaEncuadraYEnsenaLasTarjetas()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            Assert.IsFalse(pantalla.FichaAbierta, "Ir cierra la ficha.");
+            Assert.IsTrue(pantalla.RutaActiva);
+            ComprobarControlesDeRuta(true);
+
+            var p = valhalla.De(ModoViaje.Coche);
+            Assert.AreEqual(Cabildo, p.Origen, "Desde la posición actual.");
+            Assert.AreEqual(Areas.Posicion, p.Destino);
+            p.ResponderConManiobras(240, 1200);
+
+            Assert.AreEqual(3, mapa.linea.Count, "La línea va por los puntos de la ruta.");
+            Assert.IsNotEmpty(mapa.encuadres, "La ruta se encuadra.");
+            Assert.AreSame(mapa.linea, mapa.encuadres.Last().puntos);
+            Assert.IsTrue(mapa.encuadres.Last().libre.Valido);
+            Assert.AreEqual("Sal hacia el norte por Calle Ancha", Arriba.Principal.text);
+            Assert.IsTrue(Visible(Arriba.FilaSiguiente));
+            Assert.AreEqual("Gira a la derecha en Calle Santo Domingo", Arriba.Siguiente.text);
+            Assert.AreEqual(TipoManiobra.Salida, Arriba.IconoPrincipal.Tipo);
+            Assert.AreEqual(TipoManiobra.Derecha, Arriba.IconoSiguiente.Tipo);
+            Assert.AreEqual("13:34", Abajo.Llegada.text);
+            Assert.AreEqual("Llegada", Abajo.RotuloLlegada.text);
+            Assert.AreEqual("4", Abajo.Minutos.text);
+            Assert.AreEqual("min", Abajo.RotuloMinutos.text);
+            Assert.AreEqual("1,2", Abajo.Distancia.text);
+            Assert.AreEqual("km", Abajo.RotuloDistancia.text);
+            var guardada = servicio.Calcular(Cabildo, Areas.Posicion, ModoViaje.Coche, CancellationToken.None);
+            Assert.IsTrue(guardada.IsCompleted, "La ruta queda en la caché.");
+            Assert.AreSame(pantalla.RutaDibujada, guardada.Result.Valor);
+        }
+
+        [Test]
+        public void IrAntesDeLaRuta_CalculandoYAlLlegarLineaYTarjetas()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            Assert.AreEqual("Calculando la ruta…", Arriba.Principal.text);
+            Assert.IsFalse(Visible(Arriba.FilaSiguiente));
+            Assert.AreEqual("…", Abajo.Llegada.text);
+            Assert.AreEqual("…", Abajo.Minutos.text);
+            Assert.AreEqual("…", Abajo.Distancia.text);
+            Assert.IsNull(mapa.linea, "Sin línea mientras llega.");
+            Assert.IsEmpty(mapa.encuadres);
+
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 950);
+            Assert.IsNotNull(mapa.linea);
+            Assert.AreEqual("950", Abajo.Distancia.text);
+            Assert.AreEqual("m", Abajo.RotuloDistancia.text);
+        }
+
+        [Test]
+        public void IrConLosMinutosYaCalculados_UsaLaCacheSinPedirNada()
+        {
+            CrearConPosicion();
+            pantalla.AbrirFicha(Areas);
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            valhalla.De(ModoViaje.APie).Responder(900);
+            gps.Posicion = new Coordenada(36.77799, -6.3528); // 10 m: la caché sigue valiendo
+            Fila.PulsarIr();
+            Assert.AreEqual(2, valhalla.Peticiones.Count, "Sin peticiones nuevas.");
+            Assert.IsNotNull(mapa.linea, "La ruta sale al momento.");
+            Assert.AreEqual("4", Abajo.Minutos.text);
+        }
+
+        [Test]
+        public void SeHaMovido_LaRutaSaleDeLaPosicionActual()
+        {
+            CrearConPosicion();
+            pantalla.AbrirFicha(Areas);
+            valhalla.De(ModoViaje.Coche).Responder(330);
+            valhalla.De(ModoViaje.APie).Responder(900);
+            gps.Posicion = CincuentaMetrosAlNorte;
+            Fila.PulsarIr();
+            Assert.AreEqual(3, valhalla.Peticiones.Count, "Más de 20 m: ruta nueva.");
+            Assert.AreEqual(CincuentaMetrosAlNorte, valhalla.De(ModoViaje.Coche).Origen);
+        }
+
+        [Test]
+        public void RutaDeOsrm_RutaAlDestinoSinSiguiente()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).Fallar();
+            osrm.De(ModoViaje.Coche).Responder(240, 1200); // sin textos de maniobra
+            Assert.AreEqual("Ruta a Clínica Areas", Arriba.Principal.text);
+            Assert.AreEqual("Ruta a Clínica Areas", Arriba.Anuncio);
+            Assert.IsFalse(Visible(Arriba.FilaSiguiente));
+            Assert.IsNotNull(mapa.linea);
+        }
+
+        [Test]
+        public void Falla_TextoDelFalloRayasYSinLinea()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).Fallar();
+            osrm.De(ModoViaje.Coche).Fallar();
+            Assert.AreEqual("No se ha podido calcular la ruta", Arriba.Principal.text);
+            Assert.IsFalse(Visible(Arriba.IconoPrincipal), "Sin flecha.");
+            Assert.AreEqual("—", Abajo.Llegada.text);
+            Assert.AreEqual("—", Abajo.Minutos.text);
+            Assert.AreEqual("—", Abajo.Distancia.text);
+            Assert.IsNull(mapa.linea);
+            Assert.IsNull(pantalla.RutaDibujada);
+            ComprobarControlesDeRuta(true);
+        }
+
+        [Test]
+        public void QuitarRuta_ConLaX()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            // Con ruta: el botón de ubicación abajo a la izquierda y la atribución, encima de la tarjeta (sin medida, 120 dp)
+            var pila = raizArbol.Q("pila-derecha");
+            var atribucion = raizArbol.Q("atribucion");
+            float encima = PantallaMapa.AltoSupuestoTarjetaRutaDp + 12f;
+            Assert.AreEqual(12f, pila.style.left.value.value, 0.01f);
+            Assert.AreEqual(encima, pila.style.bottom.value.value, 0.01f);
+            Assert.AreEqual(StyleKeyword.Auto, pila.style.top.keyword);
+            Assert.AreEqual(StyleKeyword.Auto, pila.style.right.keyword);
+            Assert.AreEqual(encima, atribucion.style.bottom.value.value, 0.01f);
+
+            Abajo.PulsarQuitar();
+            Assert.IsFalse(pantalla.RutaActiva);
+            Assert.IsNull(mapa.linea);
+            ComprobarControlesDeRuta(false);
+            // Sin ruta: la columna vuelve a su sitio (el de la USS) y la atribución, encima de la cápsula
+            Assert.AreEqual(StyleKeyword.Null, pila.style.left.keyword);
+            Assert.AreEqual(StyleKeyword.Null, pila.style.bottom.keyword);
+            Assert.AreEqual(StyleKeyword.Null, pila.style.top.keyword);
+            Assert.AreEqual(StyleKeyword.Null, pila.style.right.keyword);
+            Assert.AreEqual(pantalla.Buscador.AltoCapsula + HojaBuscador.MargenAbajo + 8f, atribucion.style.bottom.value.value, 0.01f);
+        }
+
+        [Test]
+        public void QuitarRuta_ConAtrasYSinDibujarLaQueLlegaTarde()
+        {
+            valhalla.IgnorarCancelacion = true;
+            CrearConPosicion();
+            IrAAreas();
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsFalse(pantalla.RutaActiva);
+            ComprobarControlesDeRuta(false);
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            Assert.IsNull(mapa.linea, "La respuesta tardía no dibuja nada.");
+            Assert.IsFalse(pantalla.Atras(), "Sin ruta, atrás ya no hace nada.");
+        }
+
+        [Test]
+        public void Reabrir_LaFichaTapaLasTarjetasYLaLineaSigue()
+        {
+            CrearConPosicion();
+            IrAAreas(ModoViaje.APie);
+            valhalla.De(ModoViaje.APie).ResponderConManiobras(900, 1100);
+            int encuadres = mapa.encuadres.Count;
+
+            Abajo.Tocar();
+            Assert.IsTrue(pantalla.FichaAbierta);
+            Assert.AreSame(Areas, Ficha.Lugar);
+            Assert.AreEqual(ModoViaje.APie, Fila.Elegido, "Con el modo de la ruta elegido.");
+            Assert.IsFalse(Visible(Arriba));
+            Assert.IsFalse(Visible(Abajo));
+            Assert.IsNotNull(mapa.linea, "La línea sigue.");
+            Assert.IsTrue(pantalla.RutaActiva);
+
+            pantalla.CerrarFicha();
+            ComprobarControlesDeRuta(true);
+            Assert.IsNotNull(mapa.linea);
+            Assert.Greater(mapa.encuadres.Count, encuadres, "Al volver, la ruta se encuadra otra vez.");
+
+            // Atrás con la ficha reabierta la cierra (vuelven las tarjetas); no quita la ruta
+            Abajo.Tocar();
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsTrue(pantalla.RutaActiva);
+            ComprobarControlesDeRuta(true);
+        }
+
+        [Test]
+        public void OtroModo_FichaReabiertaAPieEIrDaLaRutaAPie()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            Abajo.Tocar();
+            Fila.APie.Pulsar();
+            Fila.PulsarIr();
+            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.IsNull(mapa.linea, "La del coche se quita mientras llega la nueva.");
+            var p = valhalla.De(ModoViaje.APie);
+            p.ResponderConManiobras(900, 1100);
+            Assert.AreSame(p.Tcs.Task.Result.Valor, pantalla.RutaDibujada);
+            Assert.AreEqual("15", Abajo.Minutos.text);
+            ComprobarControlesDeRuta(true);
+        }
+
+        [Test]
+        public void PuntoLibre_IrYReabrirVuelvenAlPunto()
+        {
+            CrearConPosicion();
+            var px = new PuntoPantalla(100f, 200f, 300f);
+            mapa.suelo[(px.X, px.Y)] = CalleAncha;
+            pantalla.PulsarLargoMapa(px);
+            Fila.PulsarIr();
+            valhalla.De(ModoViaje.Coche).Responder(120, 300);
+            Assert.AreEqual("Ruta a 36,7781, -6,3515", Arriba.Principal.text);
+            // El destino conserva su chincheta con la ficha cerrada, como los lugares su marcador
+            mapa.proyectar = c => c == CalleAncha ? new PuntoPantalla(200f, 300f, 300f) : PuntoPantalla.Ninguno;
+            Assert.AreEqual(CalleAncha, pantalla.PuntoChincheta);
+            pantalla.Chincheta.Actualizar(mapa, pantalla.PuntoChincheta, Escala, 1000f, 2000f);
+            Assert.IsTrue(pantalla.Chincheta.Visible, "La chincheta del destino sigue.");
+
+            Abajo.Tocar();
+            Assert.AreEqual(CalleAncha, pantalla.PuntoAbierto);
+            Assert.IsFalse(Visible(Arriba), "Con la ficha del punto, las tarjetas se ocultan.");
+            Assert.IsFalse(Visible(Abajo));
+            pantalla.CerrarFicha();
+            ComprobarControlesDeRuta(true);
+            Assert.AreEqual(CalleAncha, pantalla.PuntoChincheta);
+
+            pantalla.QuitarRuta();
+            Assert.IsNull(pantalla.PuntoChincheta);
+            Assert.IsFalse(pantalla.Chincheta.Visible, "Al quitar la ruta se va la chincheta.");
+        }
+
+        [Test]
+        public void CompartirConRuta_QuitaLaRutaYAbreLaHoja()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.RecibirCompartido("farmacia de guardia");
+            Assert.IsFalse(pantalla.RutaActiva, "Lo compartido no se pierde detrás de la ruta.");
+            Assert.IsNull(mapa.linea);
+            Assert.IsTrue(pantalla.Buscador.Visible);
+            Assert.IsTrue(pantalla.Buscador.Abierta, "La hoja se abre con lo compartido.");
+            Assert.AreEqual("farmacia de guardia", pantalla.Buscador.Campo.value);
+        }
+
+        [Test]
+        public void TalkBack_TarjetaDeArribaPrimeroYLaDeAbajoComoBoton()
+        {
+            CrearConPosicion();
+            AccesibilidadPantalla.LectorForzado = () => false;
+            IrAAreas();
+            Assert.AreSame(Arriba, Acc.Enfocado, "Al pulsar Ir el foco va a la tarjeta de arriba.");
+            var calculando = Acc.Recorrido();
+            Assert.AreEqual("Calculando la ruta…", calculando[0], string.Join(" | ", calculando));
+            Assert.Contains("Calculando la hora de llegada", calculando);
+
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            Assert.AreSame(Arriba, Acc.Enfocado, "Al dibujarse la ruta, el foco va a la tarjeta de arriba.");
+            var recorrido = Acc.Recorrido();
+            Assert.AreEqual("Sal hacia el norte por Calle Ancha. Después, gira a la derecha en Calle Santo Domingo", recorrido[0],
+                string.Join(" | ", recorrido));
+            int llegada = recorrido.IndexOf("Llegada 13:34, 4 minutos, 1,2 km");
+            Assert.Greater(llegada, 0, string.Join(" | ", recorrido));
+            Assert.AreEqual("Quitar ruta", recorrido[llegada + 1]);
+            Assert.IsFalse(recorrido.Contains("Precios en el mapa"), "Sin píldora.");
+            Assert.IsFalse(recorrido.Contains("Cambiar tema"), "Sin botón de tema.");
+
+            // La de abajo es un botón que abre la ficha
+            pantalla.ReabrirFichaRuta();
+            Assert.IsTrue(pantalla.FichaAbierta);
+            Assert.IsFalse(Acc.Recorrido().Contains("Quitar ruta"), "Con la ficha, fuera las tarjetas.");
+            pantalla.CerrarFicha();
+            Assert.AreSame(Abajo.Cuerpo, Acc.Enfocado, "Al cerrar la ficha, el foco vuelve a la tarjeta que la abrió.");
+
+            pantalla.QuitarRuta();
+            var sinRuta = Acc.Recorrido();
+            Assert.Contains("Precios en el mapa", sinRuta);
+            Assert.Contains("Cambiar tema", sinRuta);
+            Assert.IsFalse(sinRuta.Any(e => e.StartsWith("Llegada") || e == "Quitar ruta"));
+        }
+
+        [Test]
+        public void TalkBack_UnMinutoYDistanciaEnMetros()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(45, 350);
+            Assert.AreEqual("Llegada 13:30, 1 minuto, 350 m", Abajo.Anuncio);
+        }
+
+        // ───────────────────────── Funciones puras de la ruta ─────────────────────────
+
+        [Test]
+        public void ZonaEncuadre_EntreLasTarjetasConSusMargenes()
+        {
+            // 412 × 915 dp en una pantalla de 824 × 1830 px (escala 0,5 dp por px)
+            var z = PantallaMapa.ZonaEncuadre(824f, 1830f, 0.5f, 120f, 800f);
+            Assert.AreEqual(64f, z.Izquierda, 1e-3f, "32 dp a la izquierda.");
+            Assert.AreEqual(824f - 64f, z.Derecha, 1e-3f, "32 dp a la derecha.");
+            Assert.AreEqual((120f + 16f) / 0.5f, z.Arriba, 1e-3f, "16 dp bajo la tarjeta de arriba.");
+            Assert.AreEqual((800f - 16f) / 0.5f, z.Abajo, 1e-3f, "16 dp sobre la tarjeta de abajo.");
+
+            // Sin medida, alto supuesto de las tarjetas
+            var s = PantallaMapa.ZonaEncuadre(824f, 1830f, 0.5f, null, null);
+            Assert.AreEqual((16f + PantallaMapa.AltoSupuestoTarjetaManiobraDp + 16f) / 0.5f, s.Arriba, 1e-3f);
+            Assert.AreEqual((915f - PantallaMapa.AltoSupuestoTarjetaRutaDp - 16f) / 0.5f, s.Abajo, 1e-3f);
+
+            // Sin sitio entre las tarjetas: toda la pantalla menos los lados
+            var sinSitio = PantallaMapa.ZonaEncuadre(824f, 1830f, 0.5f, 600f, 500f);
+            Assert.IsTrue(sinSitio.Valido);
+            Assert.AreEqual(0f, sinSitio.Arriba);
+            Assert.AreEqual(1830f, sinSitio.Abajo);
+        }
+
+        [Test]
+        public void AnchoDeLaLinea_NueveMetrosYNuncaMenosDeSeisDp()
+        {
+            Assert.AreEqual(9f, ParametrosNegocio.RutaAnchoMetros);
+            Assert.AreEqual(6f, ParametrosNegocio.RutaAnchoMinimoDp);
+            Assert.AreEqual(16f, ParametrosNegocio.RutaEncuadreMargenDp);
+            Assert.AreEqual(32f, ParametrosNegocio.RutaEncuadreLadoDp);
+            // Cerca: 6 dp son menos de 9 m, se queda la calle
+            Assert.AreEqual(9f, MapaVectorial.AnchoRutaMetros(300f, 60f, 1000f, 160f), 1e-4f);
+            // Lejos: 2 · 4000 · tan 30° / 1000 = 4,62 m por px; 6 dp a 160 dpi son 6 px → 27,7 m
+            float lejos = MapaVectorial.AnchoRutaMetros(4000f, 60f, 1000f, 160f);
+            Assert.AreEqual(6f * 2f * 4000f * Mathf.Tan(30f * Mathf.Deg2Rad) / 1000f, lejos, 1e-3f);
+            // A 480 dpi un dp son 3 px: el triple; sin dpi, como 160
+            Assert.AreEqual(lejos * 3f, MapaVectorial.AnchoRutaMetros(4000f, 60f, 1000f, 480f), 1e-2f);
+            Assert.AreEqual(lejos, MapaVectorial.AnchoRutaMetros(4000f, 60f, 1000f, 0f), 1e-3f);
+            // Se rehace al cambiar más de un 10 %
+            Assert.IsFalse(MapaVectorial.RehacerRuta(10f, 10.9f));
+            Assert.IsTrue(MapaVectorial.RehacerRuta(10f, 11.2f));
+            Assert.IsTrue(MapaVectorial.RehacerRuta(10f, 8.8f));
+            Assert.IsTrue(MapaVectorial.RehacerRuta(0f, 9f), "Sin línea aún.");
+        }
+
+        [Test]
+        public void TextosDeLasTarjetas()
+        {
+            Assert.AreEqual("Gira a la derecha en Calle Ancha", TarjetaManiobra.SinPunto("Gira a la derecha en Calle Ancha. "));
+            Assert.AreEqual("Sigue recto", TarjetaManiobra.SinPunto("Sigue recto"));
+            Assert.AreEqual("gira a la izquierda", TarjetaManiobra.Minuscula("Gira a la izquierda"));
+            Assert.AreEqual("13:34", TarjetaRuta.HoraLlegada(HoraLocal, 240));
+            Assert.AreEqual("00:03", TarjetaRuta.HoraLlegada(new DateTime(2026, 11, 20, 23, 58, 0), 300), "Pasada la medianoche.");
+            Assert.AreEqual(("950", "m"), TarjetaRuta.PartirDistancia(950));
+            Assert.AreEqual(("1,2", "km"), TarjetaRuta.PartirDistancia(1200));
+        }
+
+        [Test]
+        public void LosTextosDeLaRutaEstanEnLaTabla()
+        {
+            foreach (var clave in new[]
+                     {
+                         ClavesTexto.RutaCalculando, ClavesTexto.RutaFallo, ClavesTexto.RutaA, ClavesTexto.RutaDespues,
+                         ClavesTexto.RutaLlegada, ClavesTexto.RutaMin, ClavesTexto.RutaAnuncio, ClavesTexto.RutaAnuncioMinuto,
+                         ClavesTexto.RutaAnuncioCalculando, ClavesTexto.RutaAnuncioFallo, ClavesTexto.RutaQuitar,
+                     })
+                CollectionAssert.Contains(ClavesTexto.Todas, clave);
+        }
+
+        // ───────────────────────── Puerto real: línea y encuadre ─────────────────────────
+
+        [Test]
+        public void MapaVectorial_LineaConBordeColasTemaYQuitar()
+        {
+            double latAntes = Geo.LatitudOrigen, lonAntes = Geo.LongitudOrigen;
+            Geo.LatitudOrigen = 36.7779; Geo.LongitudOrigen = -6.3528;
+            var objCamara = new GameObject("Cámara de prueba", typeof(Camera));
+            var camara = objCamara.AddComponent<CamaraMapa>();
+            var objMapa = new GameObject("Mapa de prueba");
+            try
+            {
+                var real = objMapa.AddComponent<MapaVectorial>();
+                camara.distancia = 300f;
+                IMapa puerto = real;
+                puerto.MostrarRuta(new[] { Cabildo, CalleAncha, Areas.Posicion });
+                Assert.IsNotNull(real.ObjetoRuta);
+                Assert.AreSame(objMapa.transform, real.ObjetoRuta.transform.parent, "Cuelga del mapa, no de una tesela.");
+                Assert.AreEqual(2, real.ObjetoRuta.transform.childCount, "Borde y relleno.");
+                Assert.AreEqual(9f, real.AnchoRuta, 1e-3f, "Cerca, el ancho de la calle.");
+                Assert.AreEqual(1960, real.MaterialBordeRuta.renderQueue);
+                Assert.AreEqual(1970, real.MaterialRuta.renderQueue);
+                Assert.AreEqual((float)UnityEngine.Rendering.CompareFunction.Always, real.MaterialRuta.GetFloat("_ZTest"));
+                Assert.AreEqual(ColorHex("#2F5BEA"), real.MaterialRuta.color);
+                Assert.AreEqual(ColorHex("#1E3FB0"), real.MaterialBordeRuta.color);
+
+                puerto.AplicarTema(Tema.Oscuro);
+                real.ColorearRutaAhora();
+                Assert.AreEqual(ColorHex("#4C7DFF"), real.MaterialRuta.color);
+                Assert.AreEqual(ColorHex("#2F5BEA"), real.MaterialBordeRuta.color);
+
+                // Lejos, al menos 6 dp
+                camara.distancia = 4000f;
+                puerto.MostrarRuta(new[] { Cabildo, CalleAncha });
+                var cam = objCamara.GetComponent<Camera>();
+                Assert.AreEqual(MapaVectorial.AnchoRutaMetros(4000f, cam.fieldOfView, cam.pixelHeight, Screen.dpi), real.AnchoRuta, 1e-3f);
+                Assert.Greater(real.AnchoRuta, 9f);
+
+                puerto.QuitarRuta();
+                Assert.IsNull(real.ObjetoRuta);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(objMapa);
+                UnityEngine.Object.DestroyImmediate(objCamara);
+                Geo.LatitudOrigen = latAntes; Geo.LongitudOrigen = lonAntes;
+            }
+        }
+
+        static Color ColorHex(string hex) { ColorUtility.TryParseHtmlString(hex, out var c); return c; }
+
+        static void FotogramaDe(MapaVectorial m) =>
+            typeof(MapaVectorial).GetMethod("Update", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .Invoke(m, null);
+
+        [Test]
+        public void MapaVectorial_UpdateRecoloreaConElTemaYRehaceConElZoom()
+        {
+            double latAntes = Geo.LatitudOrigen, lonAntes = Geo.LongitudOrigen;
+            Geo.LatitudOrigen = 36.7779; Geo.LongitudOrigen = -6.3528;
+            var objCamara = new GameObject("Cámara de prueba", typeof(Camera));
+            var camara = objCamara.AddComponent<CamaraMapa>();
+            var objMapa = new GameObject("Mapa de prueba");
+            try
+            {
+                var real = objMapa.AddComponent<MapaVectorial>();
+                real.sombras = false; // Update no toca QualitySettings (se guardaría en el proyecto)
+                IMapa puerto = real;
+                camara.distancia = 300f;
+                puerto.MostrarRuta(new[] { Cabildo, CalleAncha });
+                FotogramaDe(real);
+                Assert.AreEqual(9f, real.AnchoRuta, 1e-3f);
+                var antes = real.ObjetoRuta;
+
+                puerto.AplicarTema(Tema.Oscuro);
+                FotogramaDe(real);
+                Assert.AreEqual(ColorHex("#4C7DFF"), real.MaterialRuta.color, "Update recolorea con el tema.");
+                Assert.AreEqual(ColorHex("#2F5BEA"), real.MaterialBordeRuta.color);
+                Assert.AreSame(antes, real.ObjetoRuta, "Cambiar el tema no rehace la línea.");
+
+                camara.distancia = 4000f;
+                FotogramaDe(real);
+                Assert.Greater(real.AnchoRuta, 9f, "Al alejar, la línea crece para no bajar de 6 dp.");
+                Assert.AreNotSame(antes, real.ObjetoRuta, "Se ha rehecho.");
+                var lejos = real.ObjetoRuta;
+                FotogramaDe(real);
+                Assert.AreSame(lejos, real.ObjetoRuta, "Sin cambio de zoom no se rehace.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(objMapa);
+                UnityEngine.Object.DestroyImmediate(objCamara);
+                Geo.LatitudOrigen = latAntes; Geo.LongitudOrigen = lonAntes;
+            }
+        }
+
+        [Test]
+        public void MapaVectorial_EncuadrarDejaLaRutaEnLaZonaLibre()
+        {
+            double latAntes = Geo.LatitudOrigen, lonAntes = Geo.LongitudOrigen;
+            Geo.LatitudOrigen = 36.7779; Geo.LongitudOrigen = -6.3528;
+            var objCamara = new GameObject("Cámara de prueba", typeof(Camera));
+            objCamara.AddComponent<CamaraMapa>();
+            var objMapa = new GameObject("Mapa de prueba");
+            try
+            {
+                IMapa puerto = objMapa.AddComponent<MapaVectorial>();
+                var cam = objCamara.GetComponent<Camera>();
+                float w = cam.pixelWidth, h = cam.pixelHeight, alto = Screen.height;
+                // Márgenes desiguales (origen arriba): poco arriba, mucho abajo y a la derecha; dentro de la imagen de la cámara
+                float techo = alto - h; // fila de arriba de la imagen de la cámara, contada desde arriba
+                var libre = new RectPantalla(w * 0.05f, techo + h * 0.1f, w * 0.7f, techo + h * 0.6f);
+                var ruta = new[] { Cabildo, CalleAncha, Areas.Posicion, new Coordenada(36.7760, -6.3560) };
+                puerto.Encuadrar(ruta, libre);
+                foreach (var c in ruta)
+                {
+                    var p = puerto.Proyectar(c);
+                    Assert.IsTrue(p.Delante);
+                    Assert.That(p.X >= libre.Izquierda - 1f && p.X <= libre.Derecha + 1f && p.Y >= libre.Arriba - 1f && p.Y <= libre.Abajo + 1f,
+                        $"{c} cae en {p}, fuera de {libre}");
+                }
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(objMapa);
+                UnityEngine.Object.DestroyImmediate(objCamara);
+                Geo.LatitudOrigen = latAntes; Geo.LongitudOrigen = lonAntes;
+            }
+        }
+
+        [TestCase(0f, 50f)]
+        [TestCase(-15f, 50f)]
+        [TestCase(40f, 70f)]
+        public void Encuadrar_TodosLosPuntosCabenEnElRectanguloSinGirarNiInclinar(float giro, float inclinacion)
+        {
+            var objCamara = new GameObject("Cámara de prueba", typeof(Camera));
+            try
+            {
+                var camara = objCamara.AddComponent<CamaraMapa>();
+                var cam = objCamara.GetComponent<Camera>();
+                camara.giro = giro; camara.inclinacion = inclinacion; camara.distancia = 900f;
+                float w = cam.pixelWidth, h = cam.pixelHeight;
+                // Zona libre: deja arriba y abajo sitio para las tarjetas
+                var libre = Rect.MinMaxRect(w * 0.08f, h * 0.15f, w * 0.92f, h * 0.8f);
+                var puntos = new List<Vector3>
+                {
+                    new Vector3(-150f, 0f, -300f), new Vector3(-150f, 0f, 20f), new Vector3(210f, 0f, 20f), new Vector3(210f, 0f, 260f),
+                };
+                camara.Encuadrar(puntos, libre);
+
+                Assert.AreEqual(giro, camara.giro, 1e-4f);
+                Assert.AreEqual(inclinacion, camara.inclinacion, 1e-4f);
+                float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+                foreach (var p in puntos)
+                {
+                    var s = cam.WorldToScreenPoint(p);
+                    Assert.Greater(s.z, 0f);
+                    Assert.That(libre.Contains(new Vector2(s.x, s.y)), $"{p} cae en {s}, fuera de {libre}");
+                    x0 = Mathf.Min(x0, s.x); y0 = Mathf.Min(y0, s.y); x1 = Mathf.Max(x1, s.x); y1 = Mathf.Max(y1, s.y);
+                }
+                // Lo más cerca posible: la caja llena el ancho o el alto de la zona
+                Assert.That((x1 - x0) / libre.width > 0.85f || (y1 - y0) / libre.height > 0.85f,
+                    $"caja {x1 - x0:F0}×{y1 - y0:F0} en {libre.width:F0}×{libre.height:F0}");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(objCamara); }
+        }
+
+        [Test]
+        public void Encuadrar_SinPasarLosLimitesDeLaCamara()
+        {
+            var objCamara = new GameObject("Cámara de prueba", typeof(Camera));
+            try
+            {
+                var camara = objCamara.AddComponent<CamaraMapa>();
+                var cam = objCamara.GetComponent<Camera>();
+                var libre = new Rect(0f, 0f, cam.pixelWidth, cam.pixelHeight);
+                camara.Encuadrar(new List<Vector3> { new Vector3(-40000f, 0f, 0f), new Vector3(40000f, 0f, 0f) }, libre);
+                Assert.AreEqual(camara.distanciaMax, camara.distancia, 1e-3f, "80 km no caben: se queda en el máximo.");
+                camara.Encuadrar(new List<Vector3> { new Vector3(10f, 0f, 10f), new Vector3(12f, 0f, 11f) }, libre);
+                Assert.AreEqual(camara.distanciaMin, camara.distancia, 1e-3f, "2 m: el mínimo.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(objCamara); }
         }
     }
 }

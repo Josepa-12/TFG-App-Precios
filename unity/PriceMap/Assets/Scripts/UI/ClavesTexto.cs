@@ -254,8 +254,33 @@ namespace PriceMap.UI
         /// <summary>Aviso de TalkBack al elegir otro modo: {0} su anuncio ("A pie, 15 minutos, seleccionado").</summary>
         public const string FichaModoElegido = "ficha.modo.elegido";
 
+        /// <summary>Tarjeta de arriba de la ruta (historia 2.6, parte 2a) mientras llega la ruta ("Calculando la ruta…").</summary>
+        public const string RutaCalculando = "ruta.calculando";
+        /// <summary>Tarjeta de arriba si no hay ruta ("No se ha podido calcular la ruta").</summary>
+        public const string RutaFallo = "ruta.fallo";
+        /// <summary>Tarjeta de arriba con una ruta sin textos de maniobra (OSRM): {0} destino ("Ruta a Clínica Areas").</summary>
+        public const string RutaA = "ruta.a";
+        /// <summary>TalkBack de la tarjeta de arriba: {0} maniobra, {1} la siguiente en minúscula ("… Después, gira a la derecha…").</summary>
+        public const string RutaDespues = "ruta.despues";
+        /// <summary>Tarjeta de abajo: rótulo bajo la hora ("Llegada").</summary>
+        public const string RutaLlegada = "ruta.llegada";
+        /// <summary>Tarjeta de abajo: rótulo bajo los minutos ("min").</summary>
+        public const string RutaMin = "ruta.min";
+        /// <summary>TalkBack de la tarjeta de abajo: {0} hora, {1} minutos, {2} distancia ("Llegada 13:34, 4 minutos, 1,2 km").</summary>
+        public const string RutaAnuncio = "ruta.anuncio";
+        /// <summary>Igual con 1 minuto: {0} hora, {1} distancia ("Llegada 13:34, 1 minuto, 350 m").</summary>
+        public const string RutaAnuncioMinuto = "ruta.anuncio.minuto";
+        /// <summary>TalkBack de la tarjeta de abajo mientras llega la ruta.</summary>
+        public const string RutaAnuncioCalculando = "ruta.anuncio.calculando";
+        /// <summary>TalkBack de la tarjeta de abajo si no hay ruta.</summary>
+        public const string RutaAnuncioFallo = "ruta.anuncio.fallo";
+        /// <summary>Botón X de la tarjeta de abajo ("Quitar ruta").</summary>
+        public const string RutaQuitar = "ruta.quitar";
+
         public static readonly string[] Todas =
         {
+            RutaCalculando, RutaFallo, RutaA, RutaDespues, RutaLlegada, RutaMin, RutaAnuncio, RutaAnuncioMinuto,
+            RutaAnuncioCalculando, RutaAnuncioFallo, RutaQuitar,
             FichaModoCoche, FichaModoPie, FichaIr, FichaIrA, FichaIrPunto, FichaMinutos, FichaCalculando, FichaSinTiempo,
             FichaAnuncioMinutos, FichaAnuncioMinuto, FichaAnuncioSinTiempo, FichaAnuncioCalculando, FichaModoElegido,
             BuscadorIrAPunto, BuscadorAnuncioPunto, BuscadorComprobandoEnlace, BuscadorEnlaceNoReconocido,

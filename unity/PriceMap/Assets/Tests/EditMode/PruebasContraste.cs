@@ -94,6 +94,30 @@ namespace PriceMap.Tests.EditMode
             }
         }
 
+        /// <summary>
+        /// Ruta (historia 2.6, parte 2a): los textos de la tarjeta de acciones (≥ 4,5:1) sobre ella, puesta encima de
+        /// cualquier color del mapa; la línea (relleno) ≥ 3:1 sobre las calles y el fondo; los textos de la tarjeta de
+        /// abajo sobre surface.
+        /// </summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LaRutaCumpleElContraste(bool oscuro)
+        {
+            var c = Tema(oscuro);
+            var p = PaletaMapa.De(oscuro ? TemaMapa.Oscuro : TemaMapa.Claro);
+            foreach (var (nombre, fondo) in new[] { ("fondo", p.fondo), ("agua", p.agua), ("verde", p.verde), ("calle", p.calle),
+                                                    ("calle menor", p.calleMenor), ("borde", p.borde), ("edificio", p.edificio), ("fachada", p.fachada) })
+            {
+                var tarjeta = Sobre(c["tarjeta-maniobra"], fondo);
+                Assert.GreaterOrEqual(Contraste(c["tarjeta-maniobra-texto"], tarjeta), 4.5f, $"maniobra sobre la tarjeta encima de {nombre}");
+                Assert.GreaterOrEqual(Contraste(c["tarjeta-maniobra-meta"], tarjeta), 4.5f, $"maniobra siguiente sobre la tarjeta encima de {nombre}");
+            }
+            foreach (var (nombre, fondo) in new[] { ("fondo", p.fondo), ("calle", p.calle), ("calle menor", p.calleMenor) })
+                Assert.GreaterOrEqual(Contraste(p.ruta, fondo), 3f, $"línea de la ruta sobre {nombre}");
+            Assert.GreaterOrEqual(Contraste(c["text"], c["surface"]), 4.5f, "valores de la tarjeta de la ruta");
+            Assert.GreaterOrEqual(Contraste(c["muted"], c["surface"]), 4.5f, "rótulos de la tarjeta de la ruta");
+        }
+
         /// <summary>El nombre de cada punto de interés se lee sobre el fondo del mapa de su tema (≥ 4,5:1).</summary>
         [TestCase(false)]
         [TestCase(true)]
