@@ -16,17 +16,17 @@ context:
 
 **Problem:** El dueño verificado no puede publicar sus precios (FR45, FR60, NFR-6).
 
-**Approach:** Editor de precios en el panel del negocio: lista de conceptos (agrupados por área) con su forma (fijo, desde, rango por persona, "a consultar"), importe, unidad y variantes (horario, día, tipo de cliente). Cada concepto es un documento en `lugares/<id>/declaraciones/<conceptoId>`. El Dominio ya trata `Declaracion` como fuente (1.3): se muestra como "Declarado por el negocio" hasta que manden los clientes (4.10).
+**Approach:** Editor de precios en el panel del negocio: conceptos (agrupados por área) con forma (fijo, desde, rango por persona, "a consultar"), importe, unidad y variantes (horario, día, tipo de cliente). Un documento por concepto en `lugares/<id>/declaraciones/<conceptoId>`. El Dominio ya trata `Declaracion` como fuente (1.3): "Declarado por el negocio" hasta que manden los clientes (4.10).
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Documento** `declaraciones/{conceptoId}`: `{area, nombre, unidad, forma, importeCent | minCent+maxCent | consultar: true, variantes: [{id, condicion: {tipo, desde, hasta, dias, tipoCliente}, forma, importeCent…}], actualizado}`.
-  - `conceptoId` = slug del nombre (AD-11); renombrar crea uno nuevo y deja de mostrar el viejo (se borra la declaración vieja; los aportes viejos siguen con su id).
-- **Validación** (`ValidarDeclaracion`, Dominio, pura): importes > 0 (NFR-6), `maxCent > minCent`, nombre 3–60, condición coherente (`desde` < `hasta` en horas; días no vacíos). Los errores van junto a su campo sin borrar lo demás.
-- **Condiciones** (FR60): reutilizan `CondicionVariante`/`TipoCondicion` del Dominio (1.3): franja horaria, días de la semana, tipo de cliente (texto corto, como "Jubilados").
+  - `conceptoId` = slug del nombre (AD-11); renombrar crea uno nuevo y borra la declaración vieja (deja de mostrarse; los aportes viejos siguen con su id).
+- **Validación** (`ValidarDeclaracion`, Dominio, pura): importes > 0 (NFR-6), `maxCent > minCent`, nombre 3–60, condición coherente (`desde` < `hasta` en horas; días no vacíos). Errores junto a su campo sin borrar lo demás.
+- **Condiciones** (FR60): reutilizan `CondicionVariante`/`TipoCondicion` (1.3): franja horaria, días de la semana, tipo de cliente (texto corto, p. ej. "Jubilados").
 - **Reglas:** escribir en `declaraciones` solo si `propiedad/<lugarId>.uid == request.auth.uid` y `estado == 'verificada'`; campos y tipos validados (importes enteros > 0); `actualizado == request.time`.
-- **Ficha:** las declaraciones se leen con listener y entran en `FuentesPrecio`; origen "Declarado por el negocio · 18/11/2026"; si el lugar tiene también precios web, manda lo declarado (decisión de la 1.3, comprobar `CalculadoraPrecio`).
+- **Ficha:** declaraciones leídas con listener, entran en `FuentesPrecio`; origen "Declarado por el negocio · 18/11/2026"; si también hay precios web, manda lo declarado (decisión de la 1.3, comprobar `CalculadoraPrecio`).
 - **Editor:** añadir, editar, borrar concepto (con confirmación); añadir variantes dentro del concepto; guardar por concepto. TalkBack en todos los campos.
 
 **Never:** sin importar precios desde la web automáticamente, sin editar locales no verificados.

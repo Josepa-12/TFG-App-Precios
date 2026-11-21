@@ -13,21 +13,21 @@ context:
 
 ## Intent
 
-**Problem:** El usuario tiene que mirar la ficha cada día para saber si un precio cambia (FR12, FR10, FR57).
+**Problem:** Para saber si un precio cambia hay que mirar la ficha cada día (FR12, FR10, FR57).
 
-**Approach:** Botón "Avísame si cambia" (o "Avísame cuando tenga precio") en la ficha. Guarda en `usuarios/<uid>/vigilados/<lugarId>` una huella del precio mostrado. Al abrir la app o volver a ella, `ServicioVigilancia` recalcula y, si la huella cambió, lanza una notificación local que abre la ficha. Lista en la ficha y en "Tu actividad" para desactivar.
+**Approach:** Botón "Avísame si cambia" en la ficha; guarda en `usuarios/<uid>/vigilados/<lugarId>` una huella del precio mostrado. Al abrir o volver a la app, `ServicioVigilancia` recalcula y, si la huella cambió, lanza una notificación local que abre la ficha. Se desactiva desde la ficha y "Tu actividad".
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Huella** (`HuellaPrecio`, Dominio, pura): texto estable con los precios mostrados de todos los conceptos y variantes del lugar (id + forma + céntimos), sin origen ni frescura. "Sin precio" = huella vacía.
-- **Guardado:** `{lugarId, huella, nombre, creado}`; por `ServicioLugares` (dueño de los avisos activados según AD-18). Sin cuenta: `ExigirCuenta`.
-- **Botón:** "Avísame si cambia" (con precio) o "Avísame cuando tenga precio" (sin precio); activado: "Te avisaremos" con estado seleccionado; tocar otra vez lo desactiva.
-- **Comprobación:** al arrancar y en `OnApplicationFocus(true)`, como mucho una vez cada 15 min; espera a tener los aportes del servidor (lectura `GetSnapshotAsync(Source.Server)` de los lugares vigilados; sin conexión no comprueba). Compara huellas; si cambió:
+- **Guardado:** `{lugarId, huella, nombre, creado}`, por `ServicioLugares` (dueño de los avisos activados, AD-18). Sin cuenta: `ExigirCuenta`.
+- **Botón:** "Avísame si cambia" (con precio) o "Avísame cuando tenga precio" (sin precio); activado: "Te avisaremos" con estado seleccionado; otro toque lo desactiva.
+- **Comprobación:** al arrancar y en `OnApplicationFocus(true)`, máximo una vez cada 15 min; lee del servidor (`GetSnapshotAsync(Source.Server)` de los lugares vigilados; sin conexión no comprueba). Si la huella cambió:
   - Notificación local inmediata "Cambió el precio en Clínica Areas" / "Clínica Areas ya tiene precio"; al tocarla abre la ficha.
   - Actualiza la huella guardada (para no repetir).
-- **Permisos:** sin permiso de notificaciones, en lugar de notificación se muestra un toast al volver y un punto en "Tu actividad".
-- **Lista:** en la ficha (estado del botón) y en "Tu actividad" un bloque "Avisos activos" con nombre y botón "Desactivar".
+- **Sin permiso de notificaciones:** toast al volver y punto en "Tu actividad".
+- **Lista:** en la ficha (estado del botón) y en "Tu actividad" bloque "Avisos activos" con nombre y botón "Desactivar".
 - **Reglas:** `usuarios/{uid}/vigilados/{lugarId}`: solo el dueño; campos exactos.
 - AD-7: sin push del servidor; solo comprobación al abrir o volver (Deferred de la arquitectura).
 

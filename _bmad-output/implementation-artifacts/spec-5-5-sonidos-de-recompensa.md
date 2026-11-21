@@ -15,19 +15,19 @@ context:
 
 **Problem:** La llegada, la pregunta y las monedas son silenciosas (FR53, UX-DR21).
 
-**Approach:** Un puerto `ISonidos` con tres sonidos cortos (llegada, pregunta, monedas) generados por código (síntesis simple, sin ficheros con licencia dudosa). Una burbuja de altavoz encima del botón € los silencia. El modo silencio del móvil siempre se respeta. Cada sonido va acompañado de un cambio visible y un anuncio.
+**Approach:** Puerto `ISonidos` con tres sonidos cortos generados por código (síntesis simple, sin ficheros de licencia dudosa). Burbuja de altavoz sobre el botón € para silenciarlos. Se respeta siempre el modo silencio del móvil. Cada sonido va con cambio visible y anuncio.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Sonidos** (`SintesisSonidos`, genera `AudioClip` en memoria al arrancar): llegada = dos notas ascendentes (≈ 300 ms); pregunta = una nota suave (≈ 200 ms); monedas = tres notas rápidas brillantes (≈ 350 ms). Volumen moderado, envolvente sin clics.
-- **Cuándo:** llegada (2.9 "Has llegado"), aparición de la pregunta (4.3/4.4 al abrir la hoja), monedas (4.11 en la pantalla de recompensa).
+- **Sonidos** (`SintesisSonidos`, `AudioClip` en memoria al arrancar): llegada = dos notas ascendentes (≈ 300 ms); pregunta = una nota suave (≈ 200 ms); monedas = tres notas rápidas brillantes (≈ 350 ms). Volumen moderado, envolvente sin clics.
+- **Cuándo:** llegada (2.9 "Has llegado"), pregunta (4.3/4.4 al abrir la hoja), monedas (4.11, pantalla de recompensa).
 - **Silencio:**
-  - Burbuja del altavoz (botón pequeño de 48 dp de zona táctil sobre el botón €): alterna sonidos; se guarda en `IPreferencias` (y en la nube con los ajustes, 3.6). TalkBack: "Sonidos, activados".
+  - Burbuja del altavoz (48 dp de zona táctil, sobre el botón €): alterna; se guarda en `IPreferencias` (y en la nube con los ajustes, 3.6). TalkBack: "Sonidos, activados".
   - Modo silencio o vibración del móvil (`AudioManager.getRingerMode()` por JNI): no suena.
   - Ajuste equivalente en Ajustes > Notificaciones o Apariencia ("Sonidos de la app").
-- **Siempre con señal visible y anuncio:** las tres situaciones ya tienen su cambio visible y anuncio de TalkBack en sus historias; aquí se comprueba que el sonido nunca es la única señal.
-- En PC y editor: `SonidosNulos` salvo en la captura.
+- **Nunca única señal:** las tres situaciones ya tienen cambio visible y anuncio TalkBack en sus historias; aquí se comprueba.
+- PC y editor: `SonidosNulos` salvo en la captura.
 
 **Never:** sin música de fondo, sin vibración (no está pedida).
 

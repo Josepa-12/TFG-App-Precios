@@ -16,20 +16,18 @@ context:
 
 **Problem:** Aportar no tiene recompensa (FR48, FR49, UX-DR11, UX-DR12).
 
-**Approach:** `ReglaRecompensa` (Dominio, pura) calcula monedas y XP del resultado de la pregunta. `ServicioProgreso` (dueño de monedas, XP y nivel, AD-18) las suma con incremento atómico cuando el aporte se confirma en el servidor. La pantalla de agradecimiento pasa a ser la de recompensa con la moneda "+N", la barra de XP y "Volver al mapa". El avatar muestra el nivel con el anillo de XP.
+**Approach:** `ReglaRecompensa` (Dominio, pura) calcula monedas y XP del resultado de la pregunta. `ServicioProgreso` (dueño de monedas, XP y nivel, AD-18) las suma con incremento atómico cuando el servidor confirma el aporte. El agradecimiento pasa a pantalla de recompensa; el avatar muestra nivel con anillo de XP.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Tabla** (`ParametrosNegocio`): confirmar +10 monedas/+15 XP; precio distinto +15/+20; pionero +25/+30; valorar +5/+10; extra por confirmar un precio "podría haber cambiado" +5 monedas y "antiguo" +10 monedas (solo al confirmar, no al dar otro precio).
-  - Tramo de hostelería: "confirmar" si el tramo se solapa con el rango mostrado, "distinto" si no.
-  - Valorar se suma a lo anterior.
-- **Nivel:** `nivel = 1 + xp / 150` (entero); progreso en el nivel = `xp % 150`.
-- **Escritura:** `FieldValue.Increment` en `usuarios/<uid>.monedas` y `.xp` (AD-18). Reglas: el cliente solo puede incrementar `monedas` y `xp` en un lote que incluya un aporte o valoración nuevo propio (`getAfter` de la copia privada con el mismo id de lote) y en cantidades que coincidan con la tabla (máximo +35 monedas/+40 XP por lote). Nunca restar desde aquí (la tienda es la 5.1).
-  - Ver la pregunta 1: la verificación exacta en reglas es compleja.
-- **Momento:** se suma cuando el lote del aporte se confirma (4.9). Sin conexión, la pantalla muestra lo que ganará con "Se sumará al enviarse".
+- **Tabla** (`ParametrosNegocio`), monedas/XP: confirmar +10/+15; precio distinto +15/+20; pionero +25/+30; valorar +5/+10 (se suma a lo anterior); extra al confirmar un precio "podría haber cambiado" +5 monedas, "antiguo" +10 monedas (solo al confirmar, no al dar otro precio).
+  - Tramo de hostelería: "confirmar" si se solapa con el rango mostrado, si no "distinto".
+- **Nivel:** `nivel = 1 + xp / 150` (entero); progreso = `xp % 150`.
+- **Escritura:** `FieldValue.Increment` en `usuarios/<uid>.monedas` y `.xp` (AD-18). Reglas: solo incrementar `monedas` y `xp` en un lote con un aporte o valoración nuevo propio (`getAfter` de la copia privada con el mismo id de lote) y en cantidades que cuadren con la tabla (máximo +35 monedas/+40 XP por lote; ver pregunta 1). Nunca restar desde aquí (tienda: 5.1).
+- **Momento:** se suma al confirmarse el lote (4.9). Sin conexión, la pantalla muestra lo que ganará con "Se sumará al enviarse".
 - **Pantalla de recompensa** (UX-DR11): moneda dibujada con "+N" que sube y se desvanece (sin animación con "reducir animaciones"), "+N XP", barra de XP del nivel, "¡Pionero!" si aplica, "¡Subes a nivel 3!" si sube, botón "Volver al mapa" (y "Ir a la tienda" en la 5.1). TalkBack: "Has ganado 10 monedas y 15 puntos de experiencia".
-- **Avatar con anillo** (UX-DR12): anillo circular alrededor del avatar con el progreso del nivel y el número de nivel en una insignia; en la cápsula y en el perfil. Sin cuenta o negocio, sin anillo.
+- **Avatar con anillo** (UX-DR12): anillo circular con el progreso del nivel y número de nivel en insignia; en la cápsula y en el perfil. Sin cuenta o negocio, sin anillo.
 - **Negocio:** nunca recibe recompensas.
 
 **Never:** sin tienda (5.1), sin sonido (5.5), sin insignias (5.3).
@@ -55,7 +53,7 @@ context:
 
 ## Open Questions
 
-1. **Verificación de las monedas en las reglas.** Comprobar en reglas que el incremento cuadra exactamente con la tabla obliga a repetir la tabla en `firestore.rules`. A) Reglas con tope por lote (+35/+40) y exigir aporte o valoración nuevos en el mismo lote (recomendado: protege de trampas gordas sin duplicar la tabla). B) Repetir la tabla exacta en reglas.
+1. **Verificación de monedas en reglas.** Cuadrar exactamente con la tabla obliga a repetirla en `firestore.rules`. A) Tope por lote (+35/+40) y exigir aporte o valoración nuevos en el mismo lote (recomendado: frena trampas gordas sin duplicar la tabla). B) Repetir la tabla exacta en reglas.
 
 ## Code Map
 

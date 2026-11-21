@@ -14,19 +14,19 @@ context:
 
 ## Intent
 
-**Problem:** En hostelería y ocio el cliente puede querer opinar, pero nunca obligado (FR28).
+**Problem:** En hostelería y ocio el cliente puede querer opinar, nunca obligado (FR28).
 
-**Approach:** Tras el aporte, en lugares de Hostelería y Ocio, un paso opcional `Valorar` con tres criterios de 1 a 5 estrellas y "Saltar". La valoración es anónima, se guarda en `lugares/<id>/valoraciones` en un lote con la marca de la visita.
+**Approach:** Tras el aporte, en Hostelería y Ocio, paso opcional `Valorar`: tres criterios de 1 a 5 estrellas y "Saltar". Anónima, en `lugares/<id>/valoraciones`, en lote con la marca de la visita.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Criterios** (`CriteriosValoracion`, Dominio): Hostelería → calidad, servicio, ambiente; Ocio → instalaciones, atención, calidad-precio; Servicio local → ninguno (el paso no aparece).
-- **UI:** tres filas con cinco estrellas vectoriales de 48 dp por zona táctil (dibujadas con `Painter2D`, no emoji); "Enviar valoración" activo cuando hay al menos un criterio puntuado; "Saltar" siempre.
-- **Guardado:** `lugares/<id>/valoraciones/<vid>` con exactamente `lugarId`, `criterios` (mapa criterio → 1..5, solo los puntuados) y `creado`; sin autor. En lote con `visitas/<vid>.valorada = true` (reglas: visita propia, < 24 h, `aporteHecho == true` y `valorada == false`). Id aleatorio, sin relación con el uid.
-- **Saltar** no escribe nada. Evento `Valorado` solo si se envía (recompensa +5/+10 en la 4.11).
-- **TalkBack:** cada criterio es un control ajustable "Calidad, 3 de 5 estrellas" (subir/bajar 1); además cada estrella es tocable.
-- La ficha no muestra valoraciones todavía (no hay FR para mostrarlas).
+- **Criterios** (`CriteriosValoracion`, Dominio): Hostelería → calidad, servicio, ambiente; Ocio → instalaciones, atención, calidad-precio; Servicio local → ninguno (sin paso).
+- **UI:** tres filas de cinco estrellas vectoriales, 48 dp de zona táctil cada una (`Painter2D`, no emoji); "Enviar valoración" activo con al menos un criterio puntuado; "Saltar" siempre.
+- **Guardado:** `lugares/<id>/valoraciones/<vid>` con exactamente `lugarId`, `criterios` (mapa criterio → 1..5, solo los puntuados) y `creado`; sin autor; id aleatorio, sin relación con el uid. En lote con `visitas/<vid>.valorada = true` (reglas: visita propia, < 24 h, `aporteHecho == true` y `valorada == false`).
+- **Saltar** no escribe nada. Evento `Valorado` solo al enviar (recompensa +5/+10 en la 4.11).
+- **TalkBack:** cada criterio es control ajustable "Calidad, 3 de 5 estrellas" (subir/bajar 1); cada estrella también es tocable.
+- La ficha no muestra valoraciones todavía (no hay FR).
 
 **Never:** sin comentarios de texto, sin valoración obligatoria.
 

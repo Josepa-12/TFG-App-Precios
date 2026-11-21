@@ -15,17 +15,17 @@ context:
 
 **Problem:** Todos los clientes pesan igual; la 7.1 necesita la reputación para el peso de los avisos (FR52, AD-14).
 
-**Approach:** `ReglaReputacion` (Dominio) da Nueva (< 5 aportes), Fiable (5–19) o Experta (≥ 20). Se guarda en `usuarios/<uid>.reputacion` junto al contador `aportes` (incremento atómico en el lote de cada aporte). El perfil la muestra junto al nivel.
+**Approach:** `ReglaReputacion` (Dominio): Nueva (< 5 aportes), Fiable (5–19), Experta (≥ 20). Se guarda en `usuarios/<uid>.reputacion` junto al contador `aportes`. El perfil la muestra junto al nivel.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Umbrales** en `ParametrosNegocio`: Fiable 5, Experta 20.
 - **Contador:** `usuarios/<uid>.aportes: Increment(1)` en el mismo lote que el aporte (4.9). Regla: solo +1 y solo si el lote crea una copia privada de aporte nueva.
-- **Reputación guardada:** `reputacion` ('nueva'|'fiable'|'experta') se actualiza por `ServicioProgreso` cuando cruza un umbral. Regla: el valor debe coincidir con `aportes` resultante (la regla puede calcularlo: comparaciones simples con 5 y 20). Así la 7.1 puede validar el peso del aviso contra `reputacion`.
-- **Perfil:** junto al nivel, etiqueta "Fiable" con icono (escudo) y texto; al tocar, explicación: "Tus avisos cuentan ×1,5. Llegarás a Experta con 20 aportes (te faltan 8)."
-- **Recompensa:** al subir de reputación, "¡Ahora eres Fiable!" en la pantalla de recompensa.
-- **Cuentas anteriores a esta historia:** las reglas no pueden contar documentos, así que el contador no se reconstruye (ver la pregunta 1).
+- **Reputación:** `reputacion` ('nueva'|'fiable'|'experta'), la actualiza `ServicioProgreso` al cruzar un umbral. Regla: debe coincidir con `aportes` resultante (comparaciones simples con 5 y 20); así la 7.1 valida el peso del aviso contra `reputacion`.
+- **Perfil:** junto al nivel, etiqueta "Fiable" con icono (escudo) y texto; al tocar: "Tus avisos cuentan ×1,5. Llegarás a Experta con 20 aportes (te faltan 8)."
+- **Recompensa:** al subir, "¡Ahora eres Fiable!".
+- **Cuentas anteriores:** las reglas no cuentan documentos; el contador no se reconstruye (ver pregunta 1).
 
 **Never:** sin bajar de reputación (no hay regla para ello).
 
@@ -44,7 +44,7 @@ context:
 
 ## Open Questions
 
-1. **Cuentas con aportes previos.** Las reglas no pueden contar documentos. A) Como la 4.x y la 5.4 se construyen seguidas antes de las pruebas con usuarios, no habrá cuentas con aportes previos: el contador nace en 0 al crear la cuenta (3.4) (recomendado). B) Migración manual por el administrador.
+1. **Cuentas con aportes previos.** A) No habrá: 4.x y 5.4 se construyen seguidas antes de las pruebas con usuarios; el contador nace en 0 al crear la cuenta (3.4) (recomendado). B) Migración manual por el administrador.
 
 ## Code Map
 

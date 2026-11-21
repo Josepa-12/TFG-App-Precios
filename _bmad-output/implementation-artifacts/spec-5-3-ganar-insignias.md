@@ -15,7 +15,7 @@ context:
 
 **Problem:** No hay metas más allá del nivel (FR51, UX-DR12).
 
-**Approach:** `ReglaInsignias` (Dominio, pura) decide qué insignias se ganan a partir de las estadísticas del cliente (aportes, lugares distintos, días con aporte, valoraciones). `ServicioProgreso` las añade a `usuarios/<uid>.insignias` tras cada aporte confirmado. Sección "Insignias" en el perfil con las ganadas y las bloqueadas.
+**Approach:** `ReglaInsignias` (Dominio, pura) decide las insignias ganadas desde las estadísticas del cliente (aportes, lugares distintos, días con aporte, valoraciones). `ServicioProgreso` las añade a `usuarios/<uid>.insignias` tras cada aporte confirmado. Sección "Insignias" en el perfil (ganadas y bloqueadas).
 
 ## Boundaries & Constraints
 
@@ -26,13 +26,13 @@ context:
   - `10-aportes`, `50-aportes`.
   - `racha-7`: aportes en 7 días naturales consecutivos (hora local).
   - `critico`: 10 valoraciones.
-- **Estadísticas:** se calculan desde la copia privada `usuarios/<uid>/aportes` y las valoraciones propias (la 4.8 guarda una marca `valorada` en la visita; el contador de valoraciones se incrementa en `usuarios/<uid>.valoraciones` en el mismo lote). La regla recibe la lista y "ahora".
-- **Guardado:** `insignias: ArrayUnion(id)` por `ServicioProgreso`. Reglas: solo añadir ids de la lista cerrada; nunca quitar. (La comprobación de que se merece queda en el cliente: ver la pregunta 1.)
-- **Al ganar:** en la pantalla de recompensa, "¡Nueva insignia: Explorador!" con su icono; TalkBack lo anuncia.
-- **Sección del perfil:** rejilla de 6 insignias con icono vectorial; ganadas a color con la fecha; no ganadas en gris con candado (y el texto "Bloqueada", no solo el color). Al tocar, hoja con nombre, cómo se gana y progreso ("3 de 5 lugares").
+- **Estadísticas:** desde la copia privada `usuarios/<uid>/aportes` y las valoraciones propias (la 4.8 marca `valorada` en la visita; el contador `usuarios/<uid>.valoraciones` se incrementa en el mismo lote). La regla recibe la lista y "ahora".
+- **Guardado:** `insignias: ArrayUnion(id)` por `ServicioProgreso`. Reglas: solo añadir ids de la lista cerrada; nunca quitar. (Si se merece lo comprueba el cliente: ver pregunta 1.)
+- **Al ganar:** en la recompensa, "¡Nueva insignia: Explorador!" con su icono; TalkBack lo anuncia.
+- **Perfil:** rejilla de 6 insignias con icono vectorial; ganadas a color con fecha; no ganadas en gris con candado y texto "Bloqueada" (no solo color). Al tocar, hoja con nombre, cómo se gana y progreso ("3 de 5 lugares").
 - Negocio o sin cuenta: sin insignias.
 
-**Never:** sin insignias secretas, sin recompensa en monedas por insignia (no está en FR48).
+**Never:** sin insignias secretas, sin monedas por insignia (no está en FR48).
 
 ## I/O & Edge-Case Matrix
 
@@ -53,7 +53,7 @@ context:
 
 ## Open Questions
 
-1. **¿Validar en el servidor que la insignia se merece?** Sin Cloud Functions, las reglas no pueden contar aportes. A) Solo lista cerrada en reglas; la condición la comprueba el cliente (recomendado para el TFG). B) Contadores en `usuarios/<uid>` validados en cada lote (más reglas y más riesgo de errores).
+1. **¿Validar en el servidor que la insignia se merece?** Sin Cloud Functions las reglas no pueden contar aportes. A) Solo lista cerrada en reglas; la condición la comprueba el cliente (recomendado para el TFG). B) Contadores en `usuarios/<uid>` validados en cada lote (más reglas, más riesgo de errores).
 
 ## Code Map
 

@@ -14,20 +14,20 @@ context:
 
 ## Intent
 
-**Problem:** La navegación no sabe cuándo se ha llegado ni libera el GPS al acabar (FR22, AD-19).
+**Problem:** La navegación no detecta la llegada ni libera el GPS al acabar (FR22, AD-19).
 
-**Approach:** `ServicioNavegacion` detecta la llegada (≤ 30 m del destino) y pasa al estado "Has llegado": tarjeta con "Terminar ruta" y cierre automático al minuto. Terminar (a mano, sola o con "Terminar" durante la ruta) para el servicio de GPS en segundo plano, quita la ruta y vuelve al mapa.
+**Approach:** `ServicioNavegacion` detecta la llegada y pasa a "Has llegado" (tarjeta con "Terminar ruta", cierre automático al minuto). Terminar (a mano, sola o con "Terminar" en ruta) para el GPS en segundo plano, quita la ruta y vuelve al mapa.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Llegada** (`ReglaNavegacion`): distancia en línea recta de la posición al destino ≤ 30 m (`ParametrosNegocio`). Solo una vez por ruta.
-- **Tarjeta "Has llegado"**: título "Has llegado a <destino>", botón "Terminar ruta" y texto "La ruta se cerrará en 1 minuto". TalkBack anuncia "Has llegado a <destino>. La ruta se cerrará en un minuto." como región en vivo. El foco va a "Terminar ruta".
-- **Cierre automático:** a los 60 s de llegar; un reloj inyectado ("ahora" del Arranque) para probarlo.
-- **Terminar** (cualquier motivo: `Llegada`, `Manual`, `Automatico`): `IUbicacion.TerminarRuta()` (notificación fuera), `IMapa.QuitarRuta()`, cámara a vista normal (sin inclinación de navegación), `Screen.sleepTimeout` restaurado, evento `RutaTerminada(motivo)`.
-- **Botón atrás** durante la navegación: pregunta "¿Terminar la ruta?" (Sí/No). Con "Has llegado": termina.
-- **Sin historial:** las direcciones y puntos libres navegados no se guardan en ningún sitio (FR17). Los lugares tampoco tienen historial en esta historia (los "frecuentes" de la épica 3 los calcula su servicio).
-- Si la app se cierra durante la ruta, el servicio nativo también se para (`onTaskRemoved` → `stopSelf`).
+- **Llegada** (`ReglaNavegacion`): distancia en línea recta al destino ≤ 30 m (`ParametrosNegocio`); una vez por ruta.
+- **Tarjeta:** título "Has llegado a <destino>", botón "Terminar ruta", texto "La ruta se cerrará en 1 minuto". TalkBack (región en vivo): "Has llegado a <destino>. La ruta se cerrará en un minuto."; foco a "Terminar ruta".
+- **Cierre automático** a los 60 s; reloj inyectado ("ahora" del Arranque) para probarlo.
+- **Terminar** (motivo `Llegada`, `Manual` o `Automatico`): `IUbicacion.TerminarRuta()` (fuera notificación), `IMapa.QuitarRuta()`, cámara normal (sin inclinación de navegación), `Screen.sleepTimeout` restaurado, evento `RutaTerminada(motivo)`.
+- **Botón atrás** navegando: pregunta "¿Terminar la ruta?" (Sí/No); en "Has llegado": termina.
+- **Sin historial** (FR17): direcciones y puntos libres navegados no se guardan; lugares tampoco aquí (los "frecuentes" de la épica 3 los calcula su servicio).
+- App cerrada en ruta → el servicio nativo se para (`onTaskRemoved` → `stopSelf`).
 
 **Never:** sin crear visitas (4.2), sin sonido de llegada (5.5).
 
@@ -50,16 +50,16 @@ context:
 
 - `Dominio/ReglaNavegacion.cs` (llegada), `ParametrosNegocio.cs` (30 m, 60 s).
 - `Aplicacion/ServicioNavegacion.cs`: estados `Navegando`/`Llegado`/`Terminada`, temporizador, evento.
-- Nuevo `UI/TarjetaLlegada.cs`; `UI/PantallaMapa.cs` (`Atras()`), confirmación modal reutilizando el patrón de `ExplicacionUbicacion`.
+- Nuevo `UI/TarjetaLlegada.cs`; `UI/PantallaMapa.cs` (`Atras()`), confirmación modal con el patrón de `ExplicacionUbicacion`.
 - `Plugins/Android/ServicioUbicacionRuta.java`: `onTaskRemoved`.
 - Tests: `PruebasNavegacion.cs` (llegada y cierre).
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Llegada y cierre automático en el Dominio/servicio con reloj inyectado.
+- [ ] Llegada y cierre automático en Dominio/servicio con reloj inyectado.
 - [ ] Tarjeta "Has llegado", anuncio y foco.
-- [ ] Terminar en todos sus caminos y confirmación con atrás.
+- [ ] Terminar por todos sus caminos y confirmación con atrás.
 - [ ] `onTaskRemoved` en el plugin.
 - [ ] Captura "llegada".
 

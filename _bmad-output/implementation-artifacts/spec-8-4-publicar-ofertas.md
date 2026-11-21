@@ -16,15 +16,15 @@ context:
 
 **Problem:** Los negocios no pueden anunciar ofertas, y el marcador no tiene la etiqueta "%" (FR46, FR3, UX-DR7, NFR-6).
 
-**Approach:** El dueño verificado publica ofertas (texto, precio opcional, fecha de fin) en `lugares/<id>/ofertas`. El Dominio decide si una oferta está vigente (no caducada y con menos de 3 avisos `oferta_caducada` posteriores). La ficha las muestra en un bloque "Ofertas" y el marcador lleva una etiqueta "%" mínima en su esquina.
+**Approach:** El dueño verificado publica ofertas (texto, precio opcional, fecha de fin) en `lugares/<id>/ofertas`. El Dominio decide la vigencia (no caducada y < 3 avisos `oferta_caducada` posteriores). Bloque "Ofertas" en la ficha y etiqueta "%" en la esquina del marcador.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Oferta** `ofertas/{autoId}`: `{texto (5–120), precioCent? (> 0), fin (fecha, ≥ hoy, ≤ hoy + 90 días), creado}`. Reglas: dueño verificado; `precioCent` entero > 0 si existe (negativo o 0 rechazado: NFR-6); inmutable salvo borrar por el dueño.
-- **Vigencia** (`ReglaOferta`, Dominio, pura): vigente si `ahora < fin` (fin del día local) y la suma de avisos `oferta_caducada` con ese `conceptoId` = `oferta:<ofertaId>` creados después de la oferta es < 3 (cuenta de avisos, no peso; FR46 habla de 3 avisos).
-- **Avisar caducada:** en la ficha, cada oferta tiene "¿Ya no está vigente?" que crea un aviso de la 7.1 con `tipo: oferta_caducada` y `conceptoId: oferta:<id>` (peso igual que la 7.1, aunque aquí se cuentan avisos).
-- **Ficha:** bloque "Ofertas" bajo la fila de acciones con texto, precio ("Por 9,90 €") y "Hasta el 30/11".
+- **Vigencia** (`ReglaOferta`, Dominio, pura): vigente si `ahora < fin` (fin del día local) y los avisos `oferta_caducada` con `conceptoId` = `oferta:<ofertaId>` creados después de la oferta son < 3 (cuenta de avisos, no peso; FR46 habla de 3 avisos).
+- **Avisar caducada:** cada oferta en la ficha tiene "¿Ya no está vigente?", que crea un aviso de la 7.1 con `tipo: oferta_caducada` y `conceptoId: oferta:<id>` (peso como en la 7.1, aunque aquí se cuentan avisos).
+- **Ficha:** bloque "Ofertas" bajo la fila de acciones: texto, precio ("Por 9,90 €") y "Hasta el 30/11".
 - **Marcador:** etiqueta "%" de 16 dp en la esquina superior derecha (color de acento con contraste; UX-DR7) si hay alguna oferta vigente. TalkBack del marcador añade "con oferta".
 - **Panel:** publicar y borrar ofertas propias (lista en el panel de la 8.5; el formulario se añade aquí).
 

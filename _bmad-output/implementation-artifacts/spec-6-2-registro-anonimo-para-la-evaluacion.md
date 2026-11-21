@@ -14,19 +14,19 @@ context:
 
 ## Intent
 
-**Problem:** Las métricas de la memoria (SM-2, SM-3, SM-4) necesitan datos de uso reales, registrados solo con consentimiento y sin identificar a nadie (FR59, AD-16).
+**Problem:** Las métricas de la memoria (SM-2, SM-3, SM-4) necesitan datos de uso reales, solo con consentimiento y sin identificar a nadie (FR59, AD-16).
 
-**Approach:** Un puerto `IRegistroEventos` con adaptador de Firestore que escribe en `evaluacion/<idAnonimo>/eventos`. El consentimiento se pide en la bienvenida (3.1) y se puede cambiar en Ajustes > Privacidad. Los servicios publican eventos de dominio y un único `ServicioEvaluacion` los traduce a la lista cerrada.
+**Approach:** Puerto `IRegistroEventos` con adaptador Firestore en `evaluacion/<idAnonimo>/eventos`. Consentimiento en la bienvenida (3.1), cambiable en Ajustes > Privacidad. Los servicios publican eventos de dominio y un único `ServicioEvaluacion` los traduce a la lista cerrada.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Id anónimo:** GUID por instalación en `IPreferencias` (`evaluacion.id`), sin relación con el uid; se genera al aceptar. Retirar el consentimiento deja de registrar (no borra lo ya enviado; ver la pregunta 1).
-- **Consentimiento:** casilla en el paso de permisos de la bienvenida (3.1) "Participar en la evaluación del TFG (anónimo)", desmarcada por defecto, con texto explicativo; y el mismo interruptor en Ajustes > Privacidad y ubicación. Sin consentimiento, `RegistroNulo`.
+- **Id anónimo:** GUID por instalación en `IPreferencias` (`evaluacion.id`), sin relación con el uid; se genera al aceptar. Retirar el consentimiento deja de registrar (no borra lo enviado; ver pregunta 1).
+- **Consentimiento:** casilla en el paso de permisos de la bienvenida (3.1) "Participar en la evaluación del TFG (anónimo)", desmarcada por defecto, con texto explicativo; mismo interruptor en Ajustes > Privacidad y ubicación. Sin consentimiento, `RegistroNulo`.
 - **Eventos** (lista cerrada, `snake_case`): `visita_verificada`, `pregunta_respondida`, `pregunta_aplazada`, `aporte_creado`, `confirmacion`, `compra_tienda`.
-  - Campos: `nombre`, `creado` (`ServerTimestamp`) y datos mínimos sin ubicación exacta ni uid: `plantilla` (para todos los que tienen lugar), `frescura` del precio mostrado en `confirmacion` y `aporte_creado` (para SM-4), `tipoAporte` en `aporte_creado`, `cosmeticoId` en `compra_tienda`. Nunca `lugarId` (permitiría reidentificar con la visita) — ver la pregunta 2.
+  - Campos: `nombre`, `creado` (`ServerTimestamp`) y datos mínimos sin ubicación exacta ni uid: `plantilla` (todos los que tienen lugar), `frescura` del precio mostrado en `confirmacion` y `aporte_creado` (SM-4), `tipoAporte` en `aporte_creado`, `cosmeticoId` en `compra_tienda`. Nunca `lugarId` (permitiría reidentificar con la visita; ver pregunta 2).
 - **Fuente única:** `ServicioEvaluacion` se suscribe a `VisitaCreada`, `PreguntaRespondida`, `PreguntaAplazada`, `AporteCreado`, `CompraTienda`; ningún otro módulo llama a `IRegistroEventos`.
-- **Reglas:** `evaluacion/{id}/eventos/{e}`: solo crear, con `nombre` en la lista, campos permitidos por evento y `creado == request.time`; lectura, update y delete denegados desde la app. No exige sesión (también participan usuarios sin cuenta).
+- **Reglas:** `evaluacion/{id}/eventos/{e}`: solo crear, `nombre` de la lista, campos permitidos por evento, `creado == request.time`; lectura, update y delete denegados desde la app. No exige sesión (participan también usuarios sin cuenta).
 - Sin conexión: cola de Firestore.
 
 **Never:** sin uid, sin coordenadas, sin `lugarId`, sin leer eventos desde la app.
@@ -49,8 +49,8 @@ context:
 
 ## Open Questions
 
-1. **Retirar el consentimiento.** A) Deja de registrar; lo enviado sigue (anónimo e irreconocible) y se explica en el texto (recomendado). B) Borrar lo enviado: la app no puede (no lee ni borra), lo haría el administrador con el id que el usuario le diera.
-2. **¿`lugarId` en los eventos?** A) No (recomendado, más privado; SM-2 a SM-4 no lo necesitan). B) Sí, para analizar por lugar.
+1. **Retirar el consentimiento.** A) Deja de registrar; lo enviado sigue (anónimo e irreconocible) y se explica en el texto (recomendado). B) Borrar lo enviado: la app no puede (no lee ni borra); lo haría el administrador con el id que le diera el usuario.
+2. **¿`lugarId` en los eventos?** A) No (recomendado: más privado; SM-2 a SM-4 no lo necesitan). B) Sí, para analizar por lugar.
 
 ## Code Map
 

@@ -14,22 +14,22 @@ context:
 
 ## Intent
 
-**Problem:** No se puede iniciar sesión, y las acciones que necesitan cuenta no tienen forma de pedirla (FR37, FR38, UX-DR14).
+**Problem:** No se puede iniciar sesión, y las acciones que necesitan cuenta no pueden pedirla (FR37, FR38, UX-DR14).
 
-**Approach:** Un puerto `ICuentas` con su adaptador de Firebase Auth y `ServicioCuentas`. La "hoja de cuenta" ofrece "Continuar con Google", "Con correo" (enlace mágico, sin contraseña) y "Ahora no". Un método `ServicioCuentas.ExigirCuenta(accion)` abre la hoja y, al entrar, repite la acción. Se añade el toast reutilizable (UX-DR15).
+**Approach:** Puerto `ICuentas` (adaptador Firebase Auth) y `ServicioCuentas`. "Hoja de cuenta" con "Continuar con Google", "Con correo" (enlace mágico) y "Ahora no". `ServicioCuentas.ExigirCuenta(accion)` abre la hoja y repite la acción al entrar. Toast reutilizable (UX-DR15).
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Google:** Credential Manager de Android (`GetGoogleIdOption`) por un plugin Java pequeño que devuelve el `idToken`; luego `GoogleAuthProvider.GetCredential(idToken, null)` y `SignInWithCredentialAsync`. El `webClientId` sale de `google-services.json` (`oauth_client` tipo 3).
-- **Correo sin contraseña:** "Con correo" pide el correo y envía un enlace (`SendSignInLinkToEmail` con `ActionCodeSettings`, `handleCodeInApp = true`, dominio de enlaces de Firebase Hosting gratuito `<proyecto>.firebaseapp.com`). El enlace abre la app (intent-filter del dominio) y completa `SignInWithEmailLinkAsync`. El correo pendiente se guarda en `IPreferencias` para completar el enlace. La app nunca gestiona contraseñas.
+- **Google:** Credential Manager (`GetGoogleIdOption`) por un plugin Java pequeño que devuelve el `idToken`; luego `GoogleAuthProvider.GetCredential(idToken, null)` y `SignInWithCredentialAsync`. `webClientId` de `google-services.json` (`oauth_client` tipo 3).
+- **Correo sin contraseña:** pide el correo y envía enlace (`SendSignInLinkToEmail`, `ActionCodeSettings` con `handleCodeInApp = true`, dominio gratuito de Firebase Hosting `<proyecto>.firebaseapp.com`). El enlace abre la app (intent-filter del dominio) y completa `SignInWithEmailLinkAsync`. Correo pendiente guardado en `IPreferencias`. La app nunca gestiona contraseñas.
 - **Sin cuenta:** "Ahora no" cierra la hoja; mapa, fichas, búsqueda y navegación funcionan (FR38).
-- **Acción pendiente:** `ExigirCuenta(Action alEntrar)`: con sesión ejecuta ya; sin sesión abre la hoja y ejecuta al entrar; si se cancela, no ejecuta nada. Solo una pendiente a la vez.
+- **`ExigirCuenta(Action alEntrar)`:** con sesión ejecuta ya; sin sesión abre la hoja y ejecuta al entrar; si se cancela, nada. Una pendiente a la vez.
 - **Estado observable:** `ServicioCuentas.Usuario` (uid, nombre, correo, foto) y evento `SesionCambiada`; la UI no ve Firebase.
-- **Errores:** sin conexión, cancelado, enlace caducado ("El enlace ha caducado. Te enviamos otro." con botón) y genérico "No se pudo iniciar sesión. Inténtalo de nuevo." con reintento. La app sigue usable sin cuenta (UX-DR16).
-- **Toast** (`UI/Toast.cs`): 3 s, abajo sobre la cápsula, región en vivo para TalkBack; nunca la única vía de información imprescindible (UX-DR15).
-- **Hoja de cuenta:** misma estética de hoja; foco al título; atrás la cierra = "Ahora no".
-- En PC/editor: `CuentasFalsas` para capturas y pruebas.
+- **Errores:** sin conexión; cancelado; enlace caducado ("El enlace ha caducado. Te enviamos otro." con botón); genérico "No se pudo iniciar sesión. Inténtalo de nuevo." con reintento. La app sigue usable sin cuenta (UX-DR16).
+- **Toast** (`UI/Toast.cs`): 3 s, abajo sobre la cápsula, región en vivo para TalkBack; nunca única vía de información imprescindible (UX-DR15).
+- **Hoja de cuenta:** estética de hoja; foco al título; atrás = "Ahora no".
+- PC/editor: `CuentasFalsas` para capturas y pruebas.
 
 **Never:** sin contraseñas, sin Facebook/Apple, sin elegir tipo de cuenta (3.4).
 
@@ -51,13 +51,13 @@ context:
 
 ## Open Questions
 
-1. **Correo: enlace o contraseña.** FR37 dice "sin contraseñas propias". A) Enlace mágico (recomendado). B) Correo y contraseña de Firebase (más sencillo de implementar, pero contradice FR37).
-2. **Tamaño.** A) Partir: parte 1 = puerto, servicio, Google, hoja, toast y `ExigirCuenta`; parte 2 = correo con enlace y errores (recomendado). B) Una sola.
+1. **Correo: enlace o contraseña** (FR37: "sin contraseñas propias"). A) Enlace mágico (recomendado). B) Correo y contraseña de Firebase (más sencillo, pero contradice FR37).
+2. **Tamaño.** A) Partir (recomendado): parte 1 = puerto, servicio, Google, hoja, toast y `ExigirCuenta`; parte 2 = correo con enlace y errores. B) Una sola.
 
 ## Code Map
 
 - Nuevos: `Aplicacion/ICuentas.cs`, `ServicioCuentas.cs`, `UsuarioCuenta.cs`; `Adaptadores/Firebase/CuentasFirebase.cs`; `Plugins/Android/InicioGoogle.java`; `UI/HojaCuenta.cs`, `UI/Toast.cs`.
-- Manifiesto: intent-filter del dominio de enlaces (`Editor/PermisosUbicacionAndroid.cs` o un post-proceso nuevo).
+- Manifiesto: intent-filter del dominio de enlaces (`Editor/PermisosUbicacionAndroid.cs` o post-proceso nuevo).
 - `Arranque/Arranque.cs`, `CapturaPruebas.cs` (captura "cuenta"), textos.
 - Tests: `PruebasCuentas.cs` con `ICuentas` falsa.
 

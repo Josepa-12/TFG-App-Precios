@@ -16,20 +16,20 @@ context:
 
 **Problem:** Si el precio no coincide, el cliente no puede decir cuánto pagó (FR25, UX-DR10, NFR-6).
 
-**Approach:** "No, fueron…" abre el paso `OtroPrecio` con una regla horizontal deslizable (1 € por marca), un número grande que se puede tocar para escribir con decimales, y chips con los precios ya aportados por otros para ese concepto. Enviar crea el aporte con el mismo lote de la 4.4.
+**Approach:** "No, fueron…" abre el paso `OtroPrecio`: regla horizontal deslizable (1 € por marca), número grande tocable para escribir con decimales y chips con precios ya aportados para ese concepto. Enviar crea el aporte con el lote de la 4.4.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Regla** (`ReglaPrecio`, control UI Toolkit propio): marcas cada 1 €, marca larga cada 5 € y número cada 10 €; empieza en el precio mostrado (o 10 € sin precio). Deslizar con inercia, encaja en el euro más cercano al soltar. Sin tope: el rango visible crece al acercarse al final.
-- **Número tocable:** abre un campo numérico (teclado decimal) que acepta "12,50" o "12.50". Al confirmar, la regla salta a ese valor (con céntimos).
-- **Validación** (`ValidarImporte`, Dominio, pura): > 0, máximo dos decimales, sin tope; "0" y negativos dan "El precio tiene que ser mayor que 0" junto al campo. Se guarda en céntimos enteros (AD-10).
-- **Precios aportados:** hasta 4 chips con los valores distintos más frecuentes de los aportes de ese concepto en los últimos 6 meses (lectura de `lugares/<id>/aportes` por `conceptoId`); tocar uno lo elige. Sin aportes, no hay chips.
-- **Envío:** botón "Enviar 12,50 €"; mismo lote que la 4.4 con forma fija (`importeCent`). Para "desde", se guarda como forma `desde` con `importeCent`. Evento `AporteCreado(tipo: distinto)`.
-- **TalkBack:** la regla es un control ajustable ("Precio, 12 euros, ajustable"): deslizar arriba/abajo sube o baja 1 €. El número es un botón "Escribir el precio".
+- **Regla** (`ReglaPrecio`, control UI Toolkit propio): marca cada 1 €, larga cada 5 €, número cada 10 €; empieza en el precio mostrado (o 10 € sin precio). Deslizar con inercia; al soltar encaja en el euro más cercano. Sin tope: el rango visible crece al acercarse al final.
+- **Número tocable:** campo numérico (teclado decimal) que acepta "12,50" o "12.50"; al confirmar, la regla salta a ese valor (con céntimos).
+- **Validación** (`ValidarImporte`, Dominio, pura): > 0, máx. dos decimales, sin tope; "0" y negativos → "El precio tiene que ser mayor que 0" junto al campo. Se guarda en céntimos enteros (AD-10).
+- **Precios aportados:** hasta 4 chips con los valores distintos más frecuentes de los aportes del concepto en los últimos 6 meses (lectura de `lugares/<id>/aportes` por `conceptoId`); tocar uno lo elige; sin aportes, sin chips.
+- **Envío:** botón "Enviar 12,50 €"; lote de la 4.4 con forma fija (`importeCent`); "desde" se guarda como forma `desde` con `importeCent`. Evento `AporteCreado(tipo: distinto)`.
+- **TalkBack:** la regla es control ajustable ("Precio, 12 euros, ajustable"), deslizar arriba/abajo = ±1 €; el número es botón "Escribir el precio".
 - "Atrás" vuelve a "¿Te costó X €?".
 
-**Never:** sin tramos (4.6, hostelería no pasa por aquí), sin moneda distinta del euro.
+**Never:** sin tramos (4.6; hostelería no pasa por aquí), sin moneda distinta del euro.
 
 ## I/O & Edge-Case Matrix
 

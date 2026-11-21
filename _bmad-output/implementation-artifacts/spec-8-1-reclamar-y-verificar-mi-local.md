@@ -16,20 +16,20 @@ context:
 
 **Problem:** Un dueño no puede demostrar que el local es suyo (FR43, FR10).
 
-**Approach:** Un script del administrador siembra `contactosLugares/<id>` con el correo público de cada lugar. En la ficha, "¿Es tu negocio?" (o "Reclamar este local" con cuenta de negocio) crea `propiedad/<lugarId>`. Si el correo verificado de la cuenta coincide con el contacto, las reglas aceptan la propiedad como verificada; si no, queda pendiente de aprobación manual en la consola de Firebase.
+**Approach:** Script del administrador siembra `contactosLugares/<id>` con el correo público de cada lugar. En la ficha, "¿Es tu negocio?" (o "Reclamar este local" con cuenta de negocio) crea `propiedad/<lugarId>`: verificada si el correo verificado de la cuenta coincide con el contacto; si no, pendiente de aprobación manual en la consola de Firebase.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Sembrado** (`firebase/sembrar/`, Node + Admin SDK): lee los datos base (`unity/PriceMap/Assets/Datos/Resources/*.json`), extrae `email` (de OSM o de la web, el campo que ya tengan los datos o una tabla `contactos.json` mantenida a mano) y escribe `contactosLugares/<id> = {email}` en minúsculas. Idempotente. Reglas: lectura solo de un documento concreto (`get`, no `list`) por usuarios con sesión; escritura denegada a la app.
-- **Verificación del correo:** la cuenta debe tener `email_verified` (Google lo da; con enlace de correo también). Para cambiar a otro correo, "Reenviar enlace" envía un enlace de verificación al correo nuevo (`SendEmailVerificationBeforeUpdatingEmail`); si caduca, se puede pedir otro (UX-DR16).
+- **Sembrado** (`firebase/sembrar/`, Node + Admin SDK): lee los datos base (`unity/PriceMap/Assets/Datos/Resources/*.json`), extrae `email` (de OSM o de la web: el campo que ya tengan los datos o una tabla `contactos.json` a mano) y escribe `contactosLugares/<id> = {email}` en minúsculas. Idempotente. Reglas: solo `get` de un documento (no `list`) con sesión; escritura denegada a la app.
+- **Correo verificado:** la cuenta necesita `email_verified` (Google lo da; enlace de correo también). Para cambiar a otro correo, "Reenviar enlace" envía verificación al correo nuevo (`SendEmailVerificationBeforeUpdatingEmail`); si caduca, se pide otro (UX-DR16).
 - **Propiedad** `propiedad/{lugarId}`: `{uid, estado: 'verificada'|'pendiente', creado}`.
-  - Crear con `estado: verificada` solo si `request.auth.token.email_verified == true` y `request.auth.token.email.lower() == get(contactosLugares/lugarId).data.email` y el usuario es negocio.
-  - Crear con `estado: pendiente` siempre que no exista propiedad (un solo reclamante a la vez).
-  - El dueño pendiente puede pasar a verificada (update) si ahora cumple la condición. Solo el administrador (consola) aprueba manualmente.
-- **Cuenta no negocio:** "¿Es tu negocio?" explica que hace falta una cuenta de negocio y ofrece cerrar sesión y crear otra (el tipo no cambia, 3.4).
-- **Mensajes:** verificada → "¡Listo! Ya puedes gestionar Clínica Areas." Pendiente por correo distinto → "Tu correo no coincide con el del local (c***@clinicaareas.es). Usa ese correo o espera la revisión manual." Sin correo público → "Revisaremos tu solicitud a mano en unos días."
-- La ficha de un lugar con propiedad verificada no muestra "¿Es tu negocio?".
+  - Crear `estado: verificada` solo si `request.auth.token.email_verified == true`, `request.auth.token.email.lower() == get(contactosLugares/lugarId).data.email` y el usuario es negocio.
+  - Crear `estado: pendiente` siempre que no exista propiedad (un solo reclamante a la vez).
+  - El dueño pendiente puede pasar a verificada (update) si ahora cumple la condición. Aprobación manual solo por el administrador (consola).
+- **Cuenta no negocio:** "¿Es tu negocio?" explica que hace falta cuenta de negocio y ofrece cerrar sesión y crear otra (el tipo no cambia, 3.4).
+- **Mensajes:** verificada → "¡Listo! Ya puedes gestionar Clínica Areas." Correo distinto → "Tu correo no coincide con el del local (c***@clinicaareas.es). Usa ese correo o espera la revisión manual." Sin correo público → "Revisaremos tu solicitud a mano en unos días."
+- Con propiedad verificada, la ficha no muestra "¿Es tu negocio?".
 
 **Never:** sin verificación por SMS ni por carta, sin panel web de administración.
 
@@ -51,7 +51,7 @@ context:
 
 ## Open Questions
 
-1. **De dónde salen los correos.** Los datos base pueden no tenerlos. A) Tabla `firebase/sembrar/contactos.json` rellenada a mano con los que se conozcan (recomendado). B) Extraerlos automáticamente de OSM (`contact:email`/`email`) en el exportador de datos.
+1. **De dónde salen los correos** (los datos base pueden no tenerlos). A) Tabla `firebase/sembrar/contactos.json` a mano con los conocidos (recomendado). B) Extraerlos automáticamente de OSM (`contact:email`/`email`) en el exportador de datos.
 
 ## Code Map
 

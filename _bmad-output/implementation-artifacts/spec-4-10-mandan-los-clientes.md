@@ -14,25 +14,25 @@ context:
 
 ## Intent
 
-**Problem:** `CalculadoraPrecio` (1.3) solo conoce la web y lo declarado; los aportes de los clientes no cambian el precio mostrado (FR31, FR32, AD-3).
+**Problem:** `CalculadoraPrecio` (1.3) solo conoce web y declarado; los aportes no cambian el precio mostrado (FR31, FR32, AD-3).
 
-**Approach:** Ampliar el Dominio: con al menos 3 aportes en los últimos 6 meses de un concepto o variante, el precio de los clientes sustituye al de la web o al declarado, con origen "según N clientes". El valor sale de estadísticos según la forma. Todo puro, con pruebas EditMode, y nunca se guarda.
+**Approach:** Ampliar el Dominio: con ≥ 3 aportes en 6 meses de un concepto o variante, el precio de clientes sustituye al de web o declarado, con origen "según N clientes". Valor por estadísticos según la forma. Puro, con pruebas EditMode; nunca se guarda.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Ventana:** aportes con `creado` en los últimos 183 días respecto a "ahora" (`ParametrosNegocio.VentanaAportesDias`).
 - **Umbral:** ≥ 3 aportes en la ventana (`ParametrosNegocio.MinAportesClientes`).
-- **Estadísticos** (`Estadisticos`, Dominio, puro, sobre céntimos enteros):
-  - Fijo: mediana de `importeCent` (con número par, media de los dos centrales redondeada al céntimo).
-  - Rango: percentil 25 de `minCent` y percentil 75 de `maxCent` (tramos abiertos: `maxCent` null cuenta como `minCent` para el percentil 75 y, si el resultado es un tramo abierto, se muestra "más de 50 €").
-  - Desde: percentil 15 de `importeCent` (en el rango 10–20 que pide FR31).
-  - Percentiles con interpolación lineal (método "R-7"), redondeo al céntimo.
-- **Formatos de redondeo para mostrar:** los de `FormatoPrecio` (1.8); el Dominio da céntimos.
-- **Origen:** `TipoOrigen.Clientes` con `N` y la fecha del aporte más reciente; la ficha: "Según 4 clientes · 12/11/2026".
-- **Frescura:** con el aporte más reciente como última confirmación (FR33).
-- **Variantes:** se aplica por variante con sus aportes (`conceptoId` = `concepto@variante`).
-- **Menos de 3:** manda la web o lo declarado como hoy; los aportes no cambian ni el precio ni la frescura de la fuente oficial (ver la pregunta 1).
+- **Estadísticos** (`Estadisticos`, Dominio, puro, céntimos enteros):
+  - Fijo: mediana de `importeCent` (par: media de los dos centrales redondeada al céntimo).
+  - Rango: P25 de `minCent` y P75 de `maxCent` (`maxCent` null cuenta como `minCent` para el P75; si el resultado es tramo abierto, se muestra "más de 50 €").
+  - Desde: P15 de `importeCent` (en el rango 10–20 que pide FR31).
+  - Percentiles con interpolación lineal ("R-7"), redondeo al céntimo.
+- **Formato para mostrar:** el de `FormatoPrecio` (1.8); el Dominio da céntimos.
+- **Origen:** `TipoOrigen.Clientes` con `N` y fecha del aporte más reciente; ficha: "Según 4 clientes · 12/11/2026".
+- **Frescura:** el aporte más reciente es la última confirmación (FR33).
+- **Variantes:** por variante con sus aportes (`conceptoId` = `concepto@variante`).
+- **Menos de 3:** manda web o declarado como hoy; los aportes no cambian precio ni frescura de la fuente oficial (ver pregunta 1).
 - **Nunca se guarda** el precio calculado (prueba de que el adaptador no escribe campos de precio en `lugares`).
 
 **Never:** sin medias ponderadas por reputación (no está en los requisitos).
@@ -54,8 +54,8 @@ context:
 
 ## Open Questions
 
-1. **Con 1 o 2 aportes, ¿cuentan para la frescura?** A) No: mientras no manden los clientes, la frescura es la de la fuente oficial (recomendado: sencillo y coherente con "origen"). B) Sí: un aporte que coincide renueva la fecha.
-2. **Redondeo de rangos.** A) Al céntimo, como sale del cálculo (recomendado: exacto y probado). B) Al euro más cercano para que se lea mejor ("10–23 €").
+1. **Con 1 o 2 aportes, ¿cuentan para la frescura?** A) No: hasta que manden los clientes, frescura de la fuente oficial (recomendado: sencillo y coherente con "origen"). B) Sí: un aporte que coincide renueva la fecha.
+2. **Redondeo de rangos.** A) Al céntimo, tal cual sale (recomendado: exacto y probado). B) Al euro más cercano para leerse mejor ("10–23 €").
 
 ## Code Map
 

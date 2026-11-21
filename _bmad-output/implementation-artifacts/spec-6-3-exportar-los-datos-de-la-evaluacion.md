@@ -14,20 +14,20 @@ context:
 
 ## Intent
 
-**Problem:** Los eventos de `evaluacion/` no se pueden leer desde la app; el autor necesita sacarlos para calcular las métricas de la memoria (FR59).
+**Problem:** Los eventos de `evaluacion/` no se leen desde la app; el autor necesita sacarlos para las métricas de la memoria (FR59).
 
-**Approach:** Un script de Node del administrador en `firebase/exportar/` que usa el Admin SDK con una clave de cuenta de servicio (que el usuario descarga y no se versiona), lee `evaluacion/*/eventos` y genera un CSV por participante y un resumen con SM-2, SM-3 y SM-4. Lógica de cálculo separada en un módulo puro con pruebas.
+**Approach:** Script Node del administrador en `firebase/exportar/` con Admin SDK y clave de cuenta de servicio (la descarga el usuario; no se versiona). Lee `evaluacion/*/eventos` y genera un CSV por participante y un resumen con SM-2, SM-3 y SM-4. Cálculo en módulo puro con pruebas.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Uso:** `node exportar.js --clave <ruta.json> --salida <carpeta> [--desde AAAA-MM-DD] [--hasta AAAA-MM-DD]`. También funciona contra el emulador (`FIRESTORE_EMULATOR_HOST`).
+- **Uso:** `node exportar.js --clave <ruta.json> --salida <carpeta> [--desde AAAA-MM-DD] [--hasta AAAA-MM-DD]`. También contra el emulador (`FIRESTORE_EMULATOR_HOST`).
 - **CSV por participante:** `participante-<id8>.csv` con `fecha_iso,nombre,plantilla,frescura,tipoAporte,cosmeticoId` (UTF-8 con BOM para Excel, separador `;`).
 - **Resumen** `resumen.csv` y `resumen.md`:
   - SM-2 tasa de aporte = `aporte_creado` / `visita_verificada` (global y por participante).
   - SM-3 uso de la tienda = participantes con ≥ 1 `compra_tienda` / participantes, y compras por participante.
   - SM-4 proporción "al día" = `confirmacion` + `aporte_creado` con `frescura: al-dia` / total con frescura.
-  - Número de participantes, eventos por tipo y rango de fechas.
+  - Nº de participantes, eventos por tipo y rango de fechas.
 - **Módulo puro** `metricas.js` (entrada: lista de eventos; salida: métricas) con pruebas `node --test`.
 - **Seguridad:** la clave nunca se sube (`.gitignore`: `firebase/exportar/*.json` salvo `package.json`); el LEEME explica cómo descargarla.
 - Sin conexión a nada más que Firestore.

@@ -16,22 +16,22 @@ context:
 
 **Problem:** Un negocio que no está en los datos base no puede aparecer en el mapa (FR44, AD-11).
 
-**Approach:** Formulario de alta para cuentas de negocio: nombre, tipo (agrupado por plantilla), ubicación (dirección con Photon o mi posición actual, ajustable arrastrando una chincheta) y correo del local. Crea `lugares/alta:<autoId>` y `propiedad/alta:<autoId>` pendiente en un lote. `ServicioLugares` mezcla los lugares dados de alta con los empaquetados y aparecen en el mapa con el logo de su tipo.
+**Approach:** Formulario de alta para cuentas de negocio. Crea `lugares/alta:<autoId>` y `propiedad/alta:<autoId>` pendiente en un lote. `ServicioLugares` mezcla los dados de alta con los empaquetados; salen en el mapa con el logo de su tipo.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Formulario:**
   - Nombre: 3–60 caracteres.
-  - Tipo: lista de los tipos existentes en `IconosLugar`, agrupados por plantilla (Servicio local, Hostelería, Ocio). Sin tipos nuevos.
+  - Tipo: tipos existentes en `IconosLugar`, agrupados por plantilla (Servicio local, Hostelería, Ocio). Sin tipos nuevos.
   - Ubicación: buscador de dirección (2.3) o "Usar mi posición"; minimapa con chincheta arrastrable.
   - Dirección (texto, de Photon o escrita).
   - Correo del local (validación de formato).
   - Errores junto a cada campo; nada se borra al fallar (NFR-6 en espíritu).
-- **Documento** `lugares/alta:<autoId>`: `{nombre, tipo, plantilla, lat, lon, direccion, email, dueno: uid, creado}`. Reglas: solo negocios, `dueno == uid`, campos exactos, `plantilla` coherente con `tipo` (lista en reglas), coordenadas dentro del área de Sanlúcar ampliada, un alta como máximo por cuenta (`usuarios/<uid>.altas` incrementado en el lote, ≤ 1; ver la pregunta 1).
-- **Propiedad:** en el mismo lote, `propiedad/alta:<autoId>` pendiente (8.1). No hay contacto sembrado y el correo del alta lo escribe el propio dueño, así que no prueba nada: la propiedad queda pendiente hasta la aprobación manual.
-- **Mapa:** `IRepositorioLugares` gana una fuente de Firestore (listener de `lugares` con id `alta:*`) mezclada con los JSON; visibles para todos con el logo de su tipo y sin precio, con la etiqueta "Pendiente de verificar" en la ficha mientras la propiedad esté pendiente.
-- **Sin conexión:** el alta se encola y se ve ya en el mapa del dueño.
+- **Documento** `lugares/alta:<autoId>`: `{nombre, tipo, plantilla, lat, lon, direccion, email, dueno: uid, creado}`. Reglas: solo negocios, `dueno == uid`, campos exactos, `plantilla` coherente con `tipo` (lista en reglas), coordenadas dentro del área de Sanlúcar ampliada, máximo un alta por cuenta (`usuarios/<uid>.altas` incrementado en el lote, ≤ 1; ver pregunta 1).
+- **Propiedad:** en el mismo lote, `propiedad/alta:<autoId>` pendiente (8.1). Sin contacto sembrado y con el correo escrito por el propio dueño no prueba nada: pendiente hasta aprobación manual.
+- **Mapa:** `IRepositorioLugares` gana una fuente Firestore (listener de `lugares` con id `alta:*`) mezclada con los JSON; visibles para todos con el logo de su tipo y sin precio; en la ficha, "Pendiente de verificar" mientras la propiedad esté pendiente.
+- **Sin conexión:** el alta se encola y ya se ve en el mapa del dueño.
 
 **Never:** sin editar ni borrar lugares de los datos base, sin fotos.
 
@@ -66,7 +66,7 @@ context:
 **Execution:**
 - [ ] Validación del formulario (pura) y pruebas.
 - [ ] Lote de alta y reglas.
-- [ ] Mezcla de lugares de alta en el repositorio y en el mapa.
+- [ ] Mezcla de lugares de alta en repositorio y mapa.
 - [ ] Pantalla de alta y etiqueta en la ficha.
 
 **Acceptance Criteria:**

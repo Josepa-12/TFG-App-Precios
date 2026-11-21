@@ -14,23 +14,23 @@ context:
 
 ## Intent
 
-**Problem:** La 1.7 solo explica la ubicación. Falta la bienvenida con el aviso de privacidad y el consentimiento explícito de ubicación y notificaciones (FR41, UX-DR16).
+**Problem:** La 1.7 solo explica la ubicación. Faltan bienvenida, aviso de privacidad y consentimiento explícito de ubicación y notificaciones (FR41, UX-DR16).
 
-**Approach:** Una pantalla de bienvenida a pantalla completa antes del mapa, solo en el primer arranque, con tres pasos: qué es PriceMap, privacidad (qué datos se usan y para qué) y permisos (ubicación y notificaciones, cada uno con "Permitir" y "Ahora no"). Sustituye a la `ExplicacionUbicacion` del primer arranque de la 1.7, que se queda solo para el botón de ubicación.
+**Approach:** Bienvenida a pantalla completa antes del mapa, solo en el primer arranque, en tres pasos: qué es PriceMap, privacidad, permisos. Sustituye a la `ExplicacionUbicacion` del primer arranque (1.7), que queda solo para el botón de ubicación.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Pasos** (con "Siguiente" y puntos de progreso; atrás vuelve al paso anterior):
+- **Pasos** ("Siguiente", puntos de progreso; atrás = paso anterior):
   1. "Precios reales de Sanlúcar, en el mapa" y una frase sobre aportar al llegar.
-  2. Privacidad: ubicación solo con la app abierta y durante una ruta; aportes anónimos; cuenta opcional; enlace "Leer el aviso completo" que abre el texto completo dentro de la app (sin web).
-  3. Permisos: tarjeta de ubicación y tarjeta de notificaciones, cada una con su explicación y "Permitir"/"Ahora no". Después, "Empezar".
-- El consentimiento a la evaluación del TFG se añade en este paso en la 6.2 (se deja el hueco en el diseño, sin casilla todavía).
-- **Notificaciones:** en Android 13+ pide `POST_NOTIFICATIONS`; en versiones anteriores se da por concedido. Por un puerto `IPermisos` (o ampliando `IUbicacion` y un nuevo `INotificaciones`), nunca desde la UI.
-- **Guardado:** `IPreferencias` guarda `bienvenida.vista = 1` y las elecciones; al volver a abrir va directa al mapa. Si el usuario cierra la app a mitad, la bienvenida vuelve a salir.
-- **Rechazo:** la app funciona con lo permitido. El texto "Puedes activarlo después en Ajustes" se muestra al pulsar "Ahora no"; la sección real de Ajustes es la 3.5.
-- **Accesibilidad:** cada paso con su título como primer foco, modal, letra al 200 % sin cortes (desplazamiento), 48 dp.
-- Textos por Localization, con el tono de Voice and Tone (tuteo, frases cortas).
+  2. Privacidad: ubicación solo con la app abierta y durante una ruta; aportes anónimos; cuenta opcional; enlace "Leer el aviso completo" con el texto dentro de la app (sin web).
+  3. Permisos: tarjetas de ubicación y de notificaciones, cada una con explicación y "Permitir"/"Ahora no". Después, "Empezar".
+- Hueco en el diseño del paso 3 para el consentimiento a la evaluación del TFG (6.2), sin casilla todavía.
+- **Notificaciones:** Android 13+ pide `POST_NOTIFICATIONS`; anteriores = concedido. Por puerto (`IPermisos`, o ampliar `IUbicacion` + nuevo `INotificaciones`), nunca desde la UI.
+- **Guardado:** `IPreferencias` guarda `bienvenida.vista = 1` y las elecciones; luego mapa directo. Cerrar a mitad → la bienvenida vuelve a salir.
+- **Rechazo:** la app funciona con lo permitido; "Ahora no" muestra "Puedes activarlo después en Ajustes" (Ajustes real = 3.5).
+- **Accesibilidad:** título de cada paso como primer foco, modal, letra al 200 % sin cortes (desplazamiento), 48 dp.
+- Textos por Localization, tono de Voice and Tone (tuteo, frases cortas).
 
 **Never:** sin cuenta en la bienvenida (3.3), sin consentimiento de evaluación todavía (6.2).
 
@@ -52,10 +52,10 @@ context:
 
 ## Code Map
 
-- Nuevos: `UI/PantallaBienvenida.cs` + `Assets/UI/PantallaBienvenida.uxml/.uss`; `Aplicacion/INotificaciones.cs` (permiso por ahora; programar llega en la 4.3); `Aplicacion/ServicioBienvenida.cs`.
+- Nuevos: `UI/PantallaBienvenida.cs` + `Assets/UI/PantallaBienvenida.uxml/.uss`; `Aplicacion/INotificaciones.cs` (solo permiso; programar llega en la 4.3); `Aplicacion/ServicioBienvenida.cs`.
 - `Adaptadores/Sistema/`: permiso de notificaciones.
-- `UI/PantallaMapa.cs` y `UI/ExplicacionUbicacion.cs`: el primer arranque ya no muestra la explicación.
-- `Arranque/Arranque.cs`: decide bienvenida o mapa. `CapturaPruebas.cs`: capturas "bienvenida-1..3".
+- `UI/PantallaMapa.cs` y `UI/ExplicacionUbicacion.cs`: sin explicación en el primer arranque.
+- `Arranque/Arranque.cs`: bienvenida o mapa. `CapturaPruebas.cs`: capturas "bienvenida-1..3".
 - Tests: `PruebasBienvenida.cs`.
 
 ## Tasks & Acceptance

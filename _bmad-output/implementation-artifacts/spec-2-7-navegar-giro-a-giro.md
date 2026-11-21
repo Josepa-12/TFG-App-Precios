@@ -15,27 +15,27 @@ context:
 
 ## Intent
 
-**Problem:** Ir dibuja la ruta (2.6) pero no guía. El usuario necesita la siguiente maniobra, el tiempo restante y el recálculo si se desvía (FR19, FR20).
+**Problem:** Ir dibuja la ruta (2.6) pero no guía: falta siguiente maniobra, tiempo restante y recálculo al desviarse (FR19, FR20).
 
-**Approach:** `ServicioNavegacion` (Aplicación) recibe posiciones de `IUbicacion`, proyecta la posición sobre la ruta, calcula la siguiente maniobra, la distancia a ella y el tiempo restante, y decide recalcular. Arranca el GPS de ruta de la 2.1 con la notificación "Navegando a <destino> · N min". La UI muestra un panel de maniobra arriba y el tiempo abajo; la posición es flecha en coche y círculo con cono a pie.
+**Approach:** `ServicioNavegacion` (Aplicación) recibe posiciones de `IUbicacion`, las proyecta sobre la ruta, calcula siguiente maniobra, distancia a ella y tiempo restante, y decide recalcular. Arranca el GPS de ruta (2.1). UI: panel de maniobra arriba, tiempo abajo.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Seguimiento** (Dominio, puro, `ReglaNavegacion`):
-  - Proyección de la posición al segmento más cercano de la ruta (metros, con `Geo` equivalente en `double` en el Dominio: equirrectangular local).
-  - Distancia restante = resto de la ruta desde el punto proyectado; tiempo restante = duración total × (restante / total).
-  - Siguiente maniobra = primera cuya posición en la ruta está por delante del punto proyectado.
-  - Desvío: distancia a la ruta > 40 m durante > 5 s seguidos → recalcular (`ParametrosNegocio`).
-- **Recálculo:** pide una ruta nueva desde la posición actual; la anterior se sigue mostrando hasta tener la nueva. Mientras se recalcula, no se lanza otro. Si falla, se reintenta a los 10 s.
-- **Panel de maniobra:** icono vectorial del giro (recto, izquierda, derecha, ligeramente, rotonda con salida, llegar), texto en castellano ("Gira a la derecha por Calle Ancha") y distancia ("en 120 m"). Abajo: tiempo restante, distancia y hora estimada de llegada, y botón "Terminar".
-- **Cámara:** sigue al usuario con el rumbo de la marcha arriba (coche) o el de la brújula (a pie), inclinación 45°. Si el usuario mueve el mapa, deja de seguir y aparece "Volver a centrar".
-- **Posición:** en coche, flecha `#2F5BEA` con borde blanco orientada al rumbo GPS (si velocidad > 1 m/s; si no, el último); a pie, círculo con cono de la 1.7 (FR20, UX-DR8).
-- **GPS en segundo plano:** al empezar, `IUbicacion.IniciarRuta("Navegando a <destino> · N min")`; la notificación se actualiza cuando cambian los minutos. Al terminar (2.9) se para.
-- **Sin señal GPS** (sin posición nueva en 10 s): posición atenuada, aviso "Buscando señal GPS" y sin recálculo hasta recuperarla (UX-DR16).
-- **TalkBack:** el panel de maniobra es región en vivo y anuncia cada maniobra nueva; "Terminar ruta" es botón.
-- **Eventos para la épica 4:** `ServicioNavegacion` publica `RutaIniciada(destino)`, `TiempoRestanteCambiado(segundos)` y `RutaTerminada(motivo)` (AD-9).
-- Pantalla encendida durante la navegación con la app delante (`Screen.sleepTimeout = NeverSleep`), y se restaura al terminar.
+- **Seguimiento** (`ReglaNavegacion`, Dominio, pura):
+  - Proyección al segmento más cercano de la ruta, en metros (equivalente de `Geo` en `double` en el Dominio: equirrectangular local).
+  - Distancia restante = resto de ruta desde el punto proyectado; tiempo restante = duración total × (restante / total).
+  - Siguiente maniobra = primera por delante del punto proyectado.
+  - Desvío: > 40 m de la ruta durante > 5 s seguidos → recalcular (`ParametrosNegocio`).
+- **Recálculo:** ruta nueva desde la posición actual; la vieja se ve hasta tener la nueva; uno solo a la vez; si falla, reintento a los 10 s.
+- **Panel de maniobra:** icono vectorial (recto, izquierda, derecha, ligeramente, rotonda con salida, llegar), texto ("Gira a la derecha por Calle Ancha") y distancia ("en 120 m"). Abajo: tiempo restante, distancia, hora estimada de llegada y botón "Terminar".
+- **Cámara:** sigue al usuario, arriba el rumbo de la marcha (coche) o de la brújula (a pie), inclinación 45°. Si el usuario mueve el mapa, deja de seguir y sale "Volver a centrar".
+- **Posición:** coche = flecha `#2F5BEA` con borde blanco orientada al rumbo GPS (si velocidad > 1 m/s; si no, el último); a pie = círculo con cono de la 1.7 (FR20, UX-DR8).
+- **GPS en segundo plano:** al empezar, `IUbicacion.IniciarRuta("Navegando a <destino> · N min")`; notificación actualizada al cambiar los minutos; se para al terminar (2.9).
+- **Sin señal GPS** (10 s sin posición nueva): posición atenuada, aviso "Buscando señal GPS", sin recálculo hasta recuperarla (UX-DR16).
+- **TalkBack:** panel de maniobra = región en vivo, anuncia cada maniobra nueva; "Terminar ruta" es botón.
+- **Eventos para la épica 4** (AD-9): `RutaIniciada(destino)`, `TiempoRestanteCambiado(segundos)`, `RutaTerminada(motivo)`.
+- Pantalla encendida con la app delante (`Screen.sleepTimeout = NeverSleep`), restaurada al terminar.
 
 **Never:** sin voz (2.8), sin llegada (2.9), sin crear visitas (4.2).
 
@@ -57,7 +57,7 @@ context:
 
 ## Open Questions
 
-1. **Tamaño.** A) Partir: parte 1 = `ReglaNavegacion`, servicio, recálculo y eventos; parte 2 = panel, cámara, flecha y sin señal (recomendado). B) Una sola.
+1. **Tamaño.** A) Partir (recomendado): parte 1 = `ReglaNavegacion`, servicio, recálculo y eventos; parte 2 = panel, cámara, flecha y sin señal. B) Una sola.
 
 ## Code Map
 
@@ -74,7 +74,7 @@ context:
 - [ ] `ServicioNavegacion` con recálculo, eventos y notificación.
 - [ ] Panel de maniobra, barra inferior, "Volver a centrar".
 - [ ] Flecha en coche; sin señal.
-- [ ] Captura "navegacion" con una ruta y posición simuladas.
+- [ ] Captura "navegacion" con ruta y posición simuladas.
 
 **Acceptance Criteria:**
 - Dada la suite EditMode, cuando se ejecuta, entonces cada fila de la matriz pasa con ubicación y rutas falsas.

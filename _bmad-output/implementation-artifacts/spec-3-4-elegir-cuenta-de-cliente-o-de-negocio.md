@@ -16,18 +16,18 @@ context:
 
 **Problem:** Todas las cuentas son iguales; un negocio no debe aportar como cliente ni tener monedas (FR39).
 
-**Approach:** En el primer inicio de sesión (sin `usuarios/<uid>.tipo`), una pantalla pregunta "¿Cómo vas a usar PriceMap?" con Cliente y Negocio. El tipo se guarda en `usuarios/<uid>.tipo` y es inmutable. `ServicioCuentas` expone `TipoCuenta` y la UI oculta lo que no corresponde. Las reglas impiden cambiarlo y dejan preparada la función `esCliente()` para las épicas 4 y 7.
+**Approach:** Primer inicio de sesión (sin `usuarios/<uid>.tipo`): pantalla "¿Cómo vas a usar PriceMap?" con Cliente y Negocio. Tipo guardado en `usuarios/<uid>.tipo`, inmutable. `ServicioCuentas` expone `TipoCuenta`; la UI oculta lo que no toca. Reglas impiden cambiarlo; `esCliente()` preparada para las épicas 4 y 7.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Dominio:** `TipoCuenta` (Cliente, Negocio).
-- **Pantalla de elección:** dos tarjetas grandes con icono y una frase ("Cliente: descubre precios y gana monedas aportando." / "Negocio: gestiona los precios de tu local."); "Continuar" activo al elegir; aviso "No podrás cambiarlo después." No se puede saltar: atrás cierra sesión y vuelve sin cuenta.
-- **Guardado:** `usuarios/<uid>` se crea con `tipo`, `creado` (`ServerTimestamp`) y, si es cliente, `monedas: 0`, `xp: 0`. Con actualización por campo (merge), nunca sobrescribir (AD-18).
-- **Reglas:** crear `usuarios/<uid>` solo el propio uid, con `tipo` en ['cliente','negocio']; `tipo` no se puede modificar después; un cliente no puede fijar `monedas`/`xp` distintos de 0 al crear. Funciones `esCliente()` y `esNegocio()` que leen el documento del usuario.
-- **Negocio en la app:** sin botón €, sin tienda ni monedas en el perfil, sin preguntas de llegada (esto lo aplican las historias que añaden esas piezas consultando `TipoCuenta`; aquí se deja el estado y una prueba de que `ServicioCuentas.EsCliente` es falso).
-- Si el documento ya tiene tipo (otro móvil), no se pregunta.
-- Sin conexión en el primer inicio: la escritura queda en la cola de Firestore y la app sigue con el tipo elegido.
+- **Pantalla:** dos tarjetas grandes con icono y frase ("Cliente: descubre precios y gana monedas aportando." / "Negocio: gestiona los precios de tu local."); "Continuar" activo al elegir; aviso "No podrás cambiarlo después." No se salta: atrás cierra sesión y vuelve sin cuenta.
+- **Guardado:** `usuarios/<uid>` con `tipo`, `creado` (`ServerTimestamp`) y, si cliente, `monedas: 0`, `xp: 0`. Por campo (merge), nunca sobrescribir (AD-18).
+- **Reglas:** crear `usuarios/<uid>` solo el propio uid, `tipo` en ['cliente','negocio']; `tipo` no modificable; un cliente no puede crear con `monedas`/`xp` ≠ 0. Funciones `esCliente()` y `esNegocio()` que leen el documento del usuario.
+- **Negocio en la app:** sin botón €, sin tienda ni monedas en el perfil, sin preguntas de llegada — lo aplican las historias de esas piezas consultando `TipoCuenta`; aquí solo el estado y una prueba de que `ServicioCuentas.EsCliente` es falso.
+- Documento ya con tipo (otro móvil): no se pregunta.
+- Sin conexión en el primer inicio: escritura en la cola de Firestore; la app sigue con el tipo elegido.
 
 **Never:** sin cambio de tipo, sin cuentas mixtas.
 

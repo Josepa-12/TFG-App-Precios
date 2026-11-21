@@ -14,24 +14,24 @@ context:
 
 ## Intent
 
-**Problem:** La app no tiene servidor. Las épicas 3 a 9 necesitan Firebase (Auth y Firestore) con persistencia sin conexión y reglas que protejan los datos de cada usuario (AD-2, AD-5, AD-6, AD-7, AD-8, NFR-8).
+**Problem:** La app no tiene servidor. Las épicas 3–9 necesitan Firebase (Auth y Firestore) con persistencia sin conexión y reglas que protejan los datos de cada usuario (AD-2, AD-5, AD-6, AD-7, AD-8, NFR-8).
 
-**Approach:** Instalar el Firebase Unity SDK (Auth y Firestore) y crear el adaptador `PriceMap.Adaptadores.Firebase`, el único ensamblado que lo referencia. Activar la persistencia de Firestore. Versionar `firebase/firestore.rules` con la regla base de `usuarios/<uid>` y probarla con el emulador y un arnés de Node.
+**Approach:** Firebase Unity SDK (Auth, Firestore) tras el adaptador `PriceMap.Adaptadores.Firebase`, con persistencia activada. `firebase/firestore.rules` versionado con la regla base de `usuarios/<uid>`, probado con emulador y arnés de Node.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Requisitos previos del usuario** (no los puede hacer el agente): crear el proyecto de Firebase en plan Spark, registrar la app Android `com.pricemap.app` con la huella SHA-1 del keystore de depuración/publicación, activar Auth (Google y correo con enlace) y Firestore, y dejar `google-services.json` en `unity/PriceMap/Assets/`. El agente prepara todo lo demás y documenta los pasos en `firebase/LEEME.md`.
-- **SDK:** paquetes `com.google.firebase.app`, `.auth` y `.firestore` 14.1.0 (o la última compatible con 6000.3) como `.tgz` locales en `unity/PriceMap/Packages/` referenciados por ruta en `manifest.json`. Resolver dependencias de Android con EDM4U.
-- **Ensamblado** `PriceMap.Adaptadores.Firebase`: referencia Firebase, Aplicación y Dominio. Ningún otro ensamblado referencia Firebase (prueba que recorre los `.asmdef`).
-- **Inicio:** `FirebaseApp.CheckAndFixDependenciesAsync` en el Arranque; si falla (por ejemplo, en PC sin `google-services.json`), la app sigue sin cuenta y sin servidor, con un log `PriceMap:`.
-- **Persistencia:** `FirebaseFirestore.Settings.PersistenceEnabled = true` con caché ilimitada razonable (100 MB). Es el único almacén local de datos dinámicos (AD-8).
-- **Reglas base** (`firebase/firestore.rules`): por defecto, todo denegado; `usuarios/{uid}` y sus subcolecciones: lectura y escritura solo si `request.auth.uid == uid`. Las demás colecciones las abren sus historias.
-- **Pruebas de reglas:** `firebase/pruebas/` con `@firebase/rules-unit-testing` y el emulador (`firebase emulators:exec`): propio permitido, ajeno denegado, sin sesión denegado.
-- **Configuración:** `firebase/firebase.json` y `.firebaserc` con el id del proyecto como marcador (`PRICEMAP_PROJECT_ID`) que el usuario rellena.
-- `google-services.json` no se sube a git si el usuario lo prefiere (preguntar al revisar); el `.gitignore` lo deja preparado.
+- **Requisitos previos del usuario** (el agente no puede): proyecto de Firebase en plan Spark; app Android `com.pricemap.app` con la SHA-1 del keystore de depuración/publicación; activar Auth (Google y correo con enlace) y Firestore; `google-services.json` en `unity/PriceMap/Assets/`. El agente prepara lo demás y documenta los pasos en `firebase/LEEME.md`.
+- **SDK:** `com.google.firebase.app`, `.auth`, `.firestore` 14.1.0 (o la última compatible con 6000.3), `.tgz` locales en `unity/PriceMap/Packages/` referenciados por ruta en `manifest.json`. Dependencias Android con EDM4U.
+- **Ensamblado** `PriceMap.Adaptadores.Firebase` → Firebase, Aplicación, Dominio. Ningún otro referencia Firebase (prueba que recorre los `.asmdef`).
+- **Inicio:** `FirebaseApp.CheckAndFixDependenciesAsync` en el Arranque; si falla (p. ej. PC sin `google-services.json`), sigue sin cuenta ni servidor, con log `PriceMap:`.
+- **Persistencia:** `FirebaseFirestore.Settings.PersistenceEnabled = true`, caché ilimitada razonable (100 MB). Único almacén local de datos dinámicos (AD-8).
+- **Reglas base** (`firebase/firestore.rules`): todo denegado por defecto; `usuarios/{uid}` y subcolecciones: lectura/escritura solo si `request.auth.uid == uid`. Las demás colecciones las abren sus historias.
+- **Pruebas de reglas:** `firebase/pruebas/` con `@firebase/rules-unit-testing` y emulador (`firebase emulators:exec`): propio permitido, ajeno denegado, sin sesión denegado.
+- **Configuración:** `firebase/firebase.json` y `.firebaserc` con marcador `PRICEMAP_PROJECT_ID` que rellena el usuario.
+- `google-services.json` fuera de git si el usuario lo prefiere (preguntar al revisar); `.gitignore` preparado.
 
-**Never:** sin Cloud Functions, sin Storage, sin plan Blaze (AD-7); ninguna capa fuera del adaptador usa Firebase.
+**Never:** sin Cloud Functions, Storage ni plan Blaze (AD-7); nada fuera del adaptador usa Firebase.
 
 ## I/O & Edge-Case Matrix
 
@@ -50,14 +50,14 @@ context:
 
 ## Open Questions
 
-1. **Requisitos previos.** Esta historia se bloquea sin el proyecto de Firebase. A) El agente deja todo preparado (adaptador que compila con el SDK, reglas, pruebas con emulador) y el usuario solo añade `google-services.json` (recomendado). B) Esperar a que el usuario cree el proyecto antes de empezar.
-2. **¿Emulador disponible?** Necesita Node y Java. Si no hay Java, las pruebas de reglas quedan en `deferred-work`.
+1. **Requisitos previos** (sin proyecto de Firebase la historia se bloquea). A) El agente deja todo preparado (adaptador que compila con el SDK, reglas, pruebas con emulador) y el usuario solo añade `google-services.json` (recomendado). B) Esperar a que el usuario cree el proyecto.
+2. **¿Emulador disponible?** Necesita Node y Java. Sin Java, las pruebas de reglas van a `deferred-work`.
 
 ## Code Map
 
 - Nuevos: `Scripts/Adaptadores/Firebase/` (asmdef, `InicioFirebase.cs`, `AlmacenFirestore.cs` base con `Resultado<T>`).
 - `Packages/manifest.json` (paquetes locales), `Assets/Plugins/Android/` (dependencias EDM4U).
-- `Arranque/Arranque.cs`: inicio de Firebase asíncrono sin bloquear el mapa.
+- `Arranque/Arranque.cs`: inicio asíncrono de Firebase sin bloquear el mapa.
 - `firebase/`: `firestore.rules`, `firebase.json`, `.firebaserc`, `pruebas/` (package.json, reglas.test.js), `LEEME.md`.
 - Tests: `PruebasCapas.cs` (ningún asmdef fuera del adaptador referencia Firebase).
 

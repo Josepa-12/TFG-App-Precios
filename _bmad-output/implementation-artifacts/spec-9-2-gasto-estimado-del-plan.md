@@ -16,22 +16,22 @@ context:
 
 **Problem:** El plan no dice cuánto va a costar la tarde (FR55, AD-10).
 
-**Approach:** `CalculadoraPlan` (Dominio, pura) suma en céntimos el precio mostrado de lo que se usará en cada parada según la plantilla y la forma: hostelería como rango × personas, entradas y servicios × personas, pistas y aparcamientos una vez por grupo. El total es un rango (mínimo–máximo) con avisos de paradas sin precio y de precios "desde". La tarjeta lo muestra abajo.
+**Approach:** `CalculadoraPlan` (Dominio, pura) suma en céntimos el precio mostrado de lo que se usará en cada parada según plantilla y forma. Total como rango (mín.–máx.) con avisos de paradas sin precio y de precios "desde", abajo en la tarjeta.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Por parada:**
-  - Conceptos elegidos o, si no hay elección, el primero del lugar (o el de forma rango en hostelería).
-  - Hostelería (rango por persona): [min × personas, max × personas]; tramo abierto (máx. null) → el máximo queda abierto y el total se marca "o más".
+  - Conceptos elegidos o, sin elección, el primero del lugar (o el de forma rango en hostelería).
+  - Hostelería (rango por persona): [min × personas, max × personas]; tramo abierto (máx. null) → máximo abierto y total marcado "o más".
   - Por persona (entradas, servicios, unidad "persona"/"sesión"): importe × personas en mín. y máx.
   - Por grupo (unidad "pista", "hora de pista", "aparcamiento" o concepto marcado en los datos como `porGrupo`): importe una vez.
-  - "Desde X": suma X al mínimo y al máximo, y marca la parada como "desde" (el total es mínimo).
-  - "Consultar" o sin precio: no suma; la parada se marca "sin precio".
-- **Total:** "Entre 45 y 80 €" o "45 €" si mín = máx; con avisos: "No incluye 1 parada sin precio" y "Algunos precios son 'desde'" (FR55). Formato es-ES de `FormatoPrecio`.
-- **Variantes:** usa la variante vigente a la hora actual (no se planifica la hora en esta versión).
-- **Precio usado:** el mismo que la ficha (web, declarado o clientes), calculado al leer; nunca se guarda (AD-3), salvo el último total mostrado para el modo sin conexión de la 9.3 (en `IPreferencias`, local).
-- **Unidad "por grupo":** se decide con una tabla en `ParametrosNegocio` de unidades por grupo (ver la pregunta 1).
+  - "Desde X": suma X a mín. y máx. y marca la parada "desde" (el total es mínimo).
+  - "Consultar" o sin precio: no suma; parada marcada "sin precio".
+- **Total:** "Entre 45 y 80 €" o "45 €" si mín = máx; avisos "No incluye 1 parada sin precio" y "Algunos precios son 'desde'" (FR55). Formato es-ES de `FormatoPrecio`.
+- **Variantes:** la vigente a la hora actual (no se planifica la hora en esta versión).
+- **Precio usado:** el de la ficha (web, declarado o clientes), calculado al leer; nunca se guarda (AD-3), salvo el último total mostrado para el modo sin conexión de la 9.3 (local, en `IPreferencias`).
+- **"Por grupo":** tabla de unidades en `ParametrosNegocio` (ver pregunta 1).
 - Prueba EditMode de cada fila (AD-14).
 
 **Never:** sin propinas ni transporte en el gasto.
@@ -54,7 +54,7 @@ context:
 
 ## Open Questions
 
-1. **¿Cómo se sabe que un concepto es "por grupo"?** A) Por la unidad del concepto (lista en `ParametrosNegocio`: "pista", "hora de pista", "aparcamiento", "reserva") (recomendado). B) Un campo nuevo `porGrupo` en los datos y en las declaraciones.
+1. **¿Cómo se sabe que un concepto es "por grupo"?** A) Por su unidad (lista en `ParametrosNegocio`: "pista", "hora de pista", "aparcamiento", "reserva") (recomendado). B) Campo nuevo `porGrupo` en los datos y en las declaraciones.
 
 ## Code Map
 

@@ -16,15 +16,15 @@ context:
 
 **Problem:** Los avisos no tienen efecto visible y nadie confirma el precio dudoso (FR35, AD-3).
 
-**Approach:** El Dominio calcula "en revisión" al leer: los avisos de un concepto posteriores al último aporte suman 3 puntos de peso o más. La ficha muestra la etiqueta "En revisión" con una explicación. La pregunta de llegada, en un lugar con un precio en revisión, pide confirmar ese concepto primero. Confirmar o aportar otro cierra la revisión (porque el aporte nuevo deja los avisos anteriores fuera del cálculo).
+**Approach:** El Dominio calcula "en revisión" al leer (avisos del concepto posteriores al último aporte con peso ≥ 3). La ficha muestra "En revisión" con explicación. La pregunta de llegada pide confirmar ese concepto primero. Confirmar o aportar otro cierra la revisión (el aporte nuevo deja los avisos anteriores fuera del cálculo).
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Regla** (`ReglaRevision`, Dominio, pura): para un concepto (o variante), `suma(peso de avisos con creado > fecha del último aporte del concepto)` ≥ 3 (`ParametrosNegocio`) → en revisión. Avisos `*` (cerrado) cuentan para todos los conceptos del lugar. Avisos `oferta_caducada` no cuentan aquí. Sin aportes, cuentan todos los avisos de los últimos 6 meses.
-- **Nunca se guarda** (AD-3): los avisos se leen con listeners como los aportes (4.9) y se pasan al Dominio.
+- **Regla** (`ReglaRevision`, Dominio, pura): por concepto (o variante), `suma(peso de avisos con creado > fecha del último aporte del concepto)` ≥ 3 (`ParametrosNegocio`) → en revisión. Avisos `*` (cerrado) cuentan para todos los conceptos del lugar; `oferta_caducada` no cuenta aquí. Sin aportes, cuentan todos los avisos de los últimos 6 meses.
+- **Nunca se guarda** (AD-3): avisos leídos con listeners como los aportes (4.9) y pasados al Dominio.
 - **Ficha:** etiqueta "En revisión" (color de aviso + icono + texto, no solo color) junto al precio; al tocarla: "Varios clientes dicen que este precio ha cambiado. Si vas, confírmalo y ganarás monedas." Si es por "cerrado", la cabecera muestra "Puede que haya cerrado".
-- **Pregunta de llegada** (`FlujoPregunta`): si algún concepto del lugar está en revisión, el paso `QueUsaste` lo propone el primero con la etiqueta "En revisión" y el paso `TeCosto` dice "¿Sigue costando X €?". Confirmar = aporte con el mismo valor (cierra la revisión); otro precio = aporte nuevo.
+- **Pregunta de llegada** (`FlujoPregunta`): si algún concepto está en revisión, `QueUsaste` lo propone el primero con la etiqueta "En revisión" y `TeCosto` dice "¿Sigue costando X €?". Confirmar = aporte con el mismo valor (cierra la revisión); otro precio = aporte nuevo.
 - **Cálculo** con pruebas EditMode (AD-14).
 - El marcador del mapa no cambia (no está en DESIGN).
 

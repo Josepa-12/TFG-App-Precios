@@ -14,25 +14,25 @@ context:
 
 ## Intent
 
-**Problem:** No se pueden guardar sitios favoritos y los ajustes se pierden al cambiar de móvil (FR10, FR17, FR40).
+**Problem:** No se pueden guardar favoritos y los ajustes se pierden al cambiar de móvil (FR10, FR17, FR40).
 
-**Approach:** Botón de corazón en la fila de acciones de la ficha (lugar y punto libre). Los favoritos se guardan en `usuarios/<uid>/favoritos/<id>` y aparecen en la hoja del buscador. Los ajustes se sincronizan en `usuarios/<uid>.ajustes` con actualizaciones por campo. Cada servicio escribe solo sus campos (AD-18).
+**Approach:** Corazón en la fila de acciones de la ficha (lugar y punto libre). Favoritos en `usuarios/<uid>/favoritos/<id>`, visibles en la hoja del buscador. Ajustes sincronizados en `usuarios/<uid>.ajustes` por campo; cada servicio escribe solo sus campos (AD-18).
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Favorito de lugar:** id = id del lugar; `{tipo: 'lugar', lugarId, creado}`.
-- **Favorito de punto libre:** al pulsar el corazón se pide un nombre ("Casa de mamá", obligatorio, máx. 40 caracteres); id `punto:<autoId>`; `{tipo: 'punto', nombre, lat, lon, direccion, creado}`.
-- **Sin cuenta:** el corazón usa `ExigirCuenta` (3.3) y, al entrar, guarda el favorito.
-- **Quitar:** tocar el corazón lleno lo quita (sin confirmación, con toast "Quitado de favoritos" y "Deshacer" durante 3 s).
-- **Hoja del buscador:** sección "Favoritos" antes de las categorías, con icono, nombre y distancia; tocar abre la ficha. Sin favoritos, la sección no aparece.
-- **Ajustes en la nube:** `ServicioCuentas` (dueño de `ajustes`, según AD-18) sube cada cambio con `Update("ajustes.<clave>", valor)`; al entrar en otro móvil, la nube manda sobre lo local.
-- **Observación:** `ServicioLugares` expone `Favoritos` y `FavoritosCambiados` a partir de un listener de Firestore (que con persistencia funciona sin conexión).
+- **Favorito de punto libre:** al pulsar se pide nombre ("Casa de mamá", obligatorio, máx. 40 caracteres); id `punto:<autoId>`; `{tipo: 'punto', nombre, lat, lon, direccion, creado}`.
+- **Sin cuenta:** el corazón usa `ExigirCuenta` (3.3) y guarda al entrar.
+- **Quitar:** tocar el corazón lleno, sin confirmación; toast "Quitado de favoritos" con "Deshacer" 3 s.
+- **Hoja del buscador:** sección "Favoritos" antes de las categorías (icono, nombre, distancia); tocar abre la ficha; sin favoritos, no aparece.
+- **Ajustes en la nube:** `ServicioCuentas` (dueño de `ajustes`, AD-18) sube cada cambio con `Update("ajustes.<clave>", valor)`; al entrar en otro móvil, la nube manda sobre lo local.
+- **Observación:** `ServicioLugares` expone `Favoritos` y `FavoritosCambiados` desde un listener de Firestore (funciona sin conexión gracias a la persistencia).
 - **Reglas:** `usuarios/{uid}/favoritos/{id}`: solo el dueño; campos permitidos según `tipo`; `nombre` ≤ 40.
 - **Sin conexión:** añadir y quitar funcionan y se sincronizan después (cola de Firestore).
 - TalkBack: "Guardar en favoritos, botón" / "Quitar de favoritos, botón, seleccionado".
 
-**Never:** sin listas de favoritos con carpetas, sin compartir favoritos, sin corazón en los marcadores del mapa (no está en DESIGN).
+**Never:** sin carpetas de favoritos, sin compartirlos, sin corazón en los marcadores del mapa (no está en DESIGN).
 
 ## I/O & Edge-Case Matrix
 

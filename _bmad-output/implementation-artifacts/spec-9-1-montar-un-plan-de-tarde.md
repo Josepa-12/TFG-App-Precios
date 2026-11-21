@@ -15,17 +15,17 @@ context:
 
 **Problem:** No se puede organizar una salida con varios sitios (FR54, FR10, UX-DR13).
 
-**Approach:** "Añadir al plan" en la fila de acciones de la ficha añade el lugar como parada. Aparece un botón "Plan" en el mapa que abre la tarjeta del plan: paradas ordenables (arrastrando o con "Subir"/"Bajar"), quitar, número de personas (1 por defecto) y qué se usará en cada parada. `ServicioPlan` es el dueño del campo `usuarios/<uid>.plan` (AD-18).
+**Approach:** "Añadir al plan" en la fila de acciones de la ficha añade el lugar como parada. Botón "Plan" en el mapa abre la tarjeta del plan (paradas ordenables, quitar, personas, qué se usará). `ServicioPlan` es dueño de `usuarios/<uid>.plan` (AD-18).
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Modelo** (`Plan`, Dominio): `personas` (1–20), lista ordenada de `Parada` (`lugarId`, lista de `conceptoId` elegidos, opcional). Un solo plan por usuario. Máximo 8 paradas. Un lugar no se repite.
-- **Guardado:** `usuarios/<uid>.plan` como mapa completo del plan con actualización por campo (`Update("plan", …)`, AD-18). Sin cuenta: `ExigirCuenta`. Negocio: sin plan.
+- **Modelo** (`Plan`, Dominio): `personas` (1–20, 1 por defecto), lista ordenada de `Parada` (`lugarId`, lista opcional de `conceptoId` elegidos). Un plan por usuario; máximo 8 paradas; un lugar no se repite.
+- **Guardado:** `usuarios/<uid>.plan` como mapa completo con actualización por campo (`Update("plan", …)`, AD-18). Sin cuenta: `ExigirCuenta`. Negocio: sin plan.
 - **Ficha:** "Añadir al plan" / "En tu plan" (seleccionado; tocar lo quita). Toast "Añadido al plan · Ver plan".
-- **Botón "Plan"** en el mapa (pila izquierda bajo la píldora) solo si el plan tiene paradas, con el número de paradas.
-- **Tarjeta del plan** (UX-DR13): hoja con título "Tu plan", selector de personas (− / +, 48 dp), lista de paradas con número, nombre, tipo y precio resumido; asa para arrastrar; "Subir"/"Bajar" visibles en cada fila (alternativa sin arrastre, y las que usa TalkBack); "Quitar"; "¿Qué usarás?" despliega los conceptos del lugar con casillas. "Vaciar plan" con confirmación.
-- **Mapa:** las paradas se marcan con su número encima del marcador mientras la tarjeta está abierta.
+- **Botón "Plan"** en el mapa (pila izquierda bajo la píldora), solo con paradas, con su número.
+- **Tarjeta del plan** (UX-DR13): hoja "Tu plan"; selector de personas (− / +, 48 dp); paradas con número, nombre, tipo y precio resumido; asa para arrastrar; "Subir"/"Bajar" visibles en cada fila (alternativa sin arrastre, las que usa TalkBack); "Quitar"; "¿Qué usarás?" despliega los conceptos del lugar con casillas. "Vaciar plan" con confirmación.
+- **Mapa:** con la tarjeta abierta, cada parada muestra su número encima del marcador.
 - **Sin conexión:** cambios en la cola de Firestore.
 - TalkBack: "Parada 2 de 4, Bar Pepe" con acciones Subir/Bajar/Quitar.
 

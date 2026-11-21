@@ -15,20 +15,20 @@ context:
 
 ## Intent
 
-**Problem:** Con el plan hecho, el usuario tiene que buscar cada parada a mano (FR56).
+**Problem:** Con el plan hecho, hay que buscar cada parada a mano (FR56).
 
-**Approach:** "Empezar ruta" en la tarjeta del plan inicia la navegación (2.7) hacia la primera parada. Al terminar la ruta de una parada (llegada o "Terminar"), se ofrece la siguiente con "Ir a la siguiente: Bar Pepe" y se abre su ruta. Cada parada con precios crea su visita como cualquier ruta (4.2), porque usa el mismo `ServicioNavegacion`.
+**Approach:** "Empezar ruta" en la tarjeta del plan inicia la navegación (2.7) a la primera parada. Al terminar cada una (llegada o "Terminar"), se ofrece la siguiente. Cada parada con precios crea su visita como cualquier ruta (4.2), porque usa el mismo `ServicioNavegacion`.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Estado del recorrido** (`RecorridoPlan`, Aplicación): parada actual, paradas hechas; se guarda en `IPreferencias` para retomarlo si se cierra la app ("Continuar el plan: parada 2 de 4").
-- **Entre paradas:** al terminar la ruta de una parada, tarjeta "Parada 1 hecha" con "Ir a la siguiente: <nombre>" (botón principal) y "Terminar el plan". Sin pulsar nada, se queda ahí (no arranca sola la siguiente).
-- **Saltar:** en la tarjeta del plan durante el recorrido, "Saltar esta parada".
-- **Fin:** tras la última, "¡Plan terminado!" y el plan se conserva (el usuario lo vacía si quiere).
-- **Modo de viaje:** el elegido en la fila de acciones (2.6) para todo el recorrido; se puede cambiar entre paradas.
-- **Visitas:** sin código especial; la integración se comprueba con una prueba que encadena navegación falsa y `ServicioVisitas`.
-- **Sin conexión** (UX-DR16): al abrir el plan se ve el último gasto calculado guardado (9.2) y "Empezar ruta" usa la ruta aproximada de la 2.6 con su aviso.
+- **Estado del recorrido** (`RecorridoPlan`, Aplicación): parada actual y hechas; en `IPreferencias` para retomar si se cierra la app ("Continuar el plan: parada 2 de 4").
+- **Entre paradas:** tarjeta "Parada 1 hecha" con "Ir a la siguiente: <nombre>" (botón principal, abre su ruta) y "Terminar el plan". Sin pulsar nada se queda ahí (no arranca sola la siguiente).
+- **Saltar:** "Saltar esta parada" en la tarjeta del plan durante el recorrido.
+- **Fin:** tras la última, "¡Plan terminado!"; el plan se conserva (el usuario lo vacía si quiere).
+- **Modo de viaje:** el de la fila de acciones (2.6) para todo el recorrido; cambiable entre paradas.
+- **Visitas:** sin código especial; prueba de integración que encadena navegación falsa y `ServicioVisitas`.
+- **Sin conexión** (UX-DR16): al abrir el plan, último gasto guardado (9.2); "Empezar ruta" usa la ruta aproximada de la 2.6 con su aviso.
 - TalkBack: la tarjeta entre paradas toma el foco y se anuncia.
 
 **Never:** sin optimizar el orden automáticamente (lo decide el usuario).

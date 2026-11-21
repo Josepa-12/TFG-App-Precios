@@ -17,21 +17,20 @@ context:
 
 **Problem:** La navegación no deja constancia de que el cliente fue a un lugar, y sin visita no se puede aportar (FR22, AD-9).
 
-**Approach:** `ServicioVisitas` (Aplicación), el único que crea visitas, escucha los eventos de `ServicioNavegacion` (`RutaIniciada`, `TiempoRestanteCambiado`, `RutaTerminada`). Cuando una ruta hacia un lugar con plantilla de precio llega a ≤ 5 min restantes, crea la visita verificada en `usuarios/<uid>/visitas/<lugarId>_<AAAAMMDD>` por un puerto `IVisitas`. Como mucho una por ruta.
+**Approach:** `ServicioVisitas` (Aplicación), único que crea visitas, escucha `RutaIniciada`, `TiempoRestanteCambiado` y `RutaTerminada` de `ServicioNavegacion`. Ruta a un lugar con plantilla de precio y ≤ 5 min restantes → visita verificada en `usuarios/<uid>/visitas/<lugarId>_<AAAAMMDD>` por el puerto `IVisitas`. Máx. una por ruta.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Regla pura** (`ReglaVisita`, Dominio): crea si destino es lugar con `Plantilla` de precio (no centro sanitario público, no punto libre ni dirección), cliente con sesión, tiempo restante ≤ 300 s (`ParametrosNegocio`) y aún no creada en esta ruta.
-- **Persistencia:** la escritura va a la cola de Firestore; con la app cerrada justo después, Firestore la envía al volver (persistencia). Además, `ServicioVisitas` guarda en `IPreferencias` la visita pendiente de escribir por si el proceso muere antes de que Firestore la guarde en disco, y la reintenta al arrancar.
-- **Fecha del id:** día local de "ahora" (AD-12). Si ya existe la visita del día (otra ruta), no se crea otra y no es error.
-- **Terminar antes:** una vez creada, terminar la ruta o cerrar la app no la deshace.
-- **Más de 5 min:** terminar la ruta antes de llegar a 5 min no crea nada.
-- **Negocio o sin cuenta:** no se crea visita y no se muestra ningún aviso.
-- **Eventos de salida:** `VisitaCreada(visita)` para la 4.3 y para la 6.2 (`visita_verificada`).
-- **Navegación sin dependencias:** `ServicioNavegacion` no conoce `ServicioVisitas`; el Arranque los conecta (AD-9).
+- **`ReglaVisita`** (Dominio, pura): crea si el destino es lugar con `Plantilla` de precio (no centro sanitario público, ni punto libre ni dirección), cliente con sesión, restante ≤ 300 s (`ParametrosNegocio`) y aún no creada en esta ruta.
+- **Persistencia:** escritura en la cola de Firestore (si la app se cierra justo después, se envía al volver). Además, `ServicioVisitas` guarda en `IPreferencias` la visita pendiente por si el proceso muere antes de que Firestore la guarde en disco, y la reintenta al arrancar.
+- **Fecha del id:** día local de "ahora" (AD-12). Si ya existe la del día (otra ruta), no se crea otra y no es error.
+- Creada, ni terminar la ruta ni cerrar la app la deshace. Terminar antes de 5 min restantes no crea nada.
+- **Negocio o sin cuenta:** sin visita y sin aviso.
+- **Evento de salida:** `VisitaCreada(visita)` para la 4.3 y la 6.2 (`visita_verificada`).
+- `ServicioNavegacion` no conoce `ServicioVisitas`; los conecta el Arranque (AD-9).
 
-**Never:** sin notificación ni pregunta (4.3), ninguna otra clase crea o descarta visitas.
+**Never:** sin notificación ni pregunta (4.3); ninguna otra clase crea o descarta visitas.
 
 ## I/O & Edge-Case Matrix
 

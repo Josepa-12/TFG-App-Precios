@@ -16,7 +16,7 @@ context:
 
 **Problem:** Si un precio está mal, nadie puede avisar (FR34, FR10).
 
-**Approach:** En la ficha, "¿Algún precio está mal?" (fila de acciones o al pie de los conceptos) abre una hoja: elegir el concepto (o "todo el negocio"), y el motivo: "El precio ha cambiado", "Ya no se ofrece este servicio" o "El negocio ha cerrado". Se crea un aviso anónimo en `lugares/<id>/avisos` con peso según la reputación (×1, ×1,5, ×2). Las reglas validan el peso contra `usuarios/<uid>.reputacion`.
+**Approach:** En la ficha, "¿Algún precio está mal?" (fila de acciones o al pie de los conceptos) abre una hoja: concepto (o "todo el negocio") y motivo: "El precio ha cambiado", "Ya no se ofrece este servicio" o "El negocio ha cerrado". Aviso anónimo en `lugares/<id>/avisos` con peso por reputación, validado en reglas contra `usuarios/<uid>.reputacion`.
 
 ## Boundaries & Constraints
 

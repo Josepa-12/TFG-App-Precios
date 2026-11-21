@@ -14,20 +14,20 @@ context:
 
 ## Intent
 
-**Problem:** Sin conexión, el lote del aporte no puede validarse en el servidor, y los demás usuarios no ven los aportes nuevos porque la ficha solo lee los datos empaquetados (FR36, AD-8, NFR-2).
+**Problem:** Sin conexión el lote del aporte no se valida en el servidor, y los demás no ven aportes nuevos porque la ficha solo lee datos empaquetados (FR36, AD-8, NFR-2).
 
-**Approach:** Todos los aportes (4.4–4.7) usan un único método de lote. Sin conexión, el lote queda en la cola de Firestore y la recompensa se muestra "pendiente de enviar"; al sincronizar se confirma con un toast, o se avisa si el servidor lo rechazó. `ServicioLugares` escucha en tiempo real los aportes de los lugares visibles o abiertos para que la ficha se actualice en menos de 1 minuto.
+**Approach:** Todos los aportes (4.4–4.7) usan un único método de lote. Sin conexión queda en la cola de Firestore y la recompensa sale "pendiente de enviar"; al sincronizar, toast de confirmación o de rechazo. `ServicioLugares` escucha en tiempo real los aportes de lugares visibles o abiertos: la ficha se actualiza en < 1 min.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Un solo camino:** `IAportes.CrearEnLote(Aporte, Visita, ConceptoNuevo?, Valoracion?)`; ninguna otra ruta escribe aportes. Prueba que recorre los usos.
-- **Sin conexión:** `WriteBatch.CommitAsync` no se espera para mostrar la pantalla final; el servicio guarda el estado "enviando" y lo resuelve cuando el `Task` termina (Firestore lo completa al reconectar, incluso tras reiniciar la app gracias a la persistencia).
-  - Mientras: la recompensa se ve con el texto "Se enviará cuando tengas conexión" (UX-DR16).
+- **Sin conexión:** no se espera `WriteBatch.CommitAsync` para mostrar la pantalla final; el servicio guarda el estado "enviando" y lo resuelve al terminar el `Task` (Firestore lo completa al reconectar, también tras reiniciar gracias a la persistencia).
+  - Mientras: recompensa con "Se enviará cuando tengas conexión" (UX-DR16).
   - Al completarse: toast "Tu precio ya está publicado" (UX-DR15).
-  - Si el servidor lo rechaza (visita caducada): toast "No se pudo publicar tu precio: la visita ha caducado" y las monedas no se suman (la 4.11 suma tras la confirmación).
-- **Tras reiniciar la app sin conexión:** el `Task` se pierde; al arrancar, `ServicioAportes` comprueba con un listener de `usuarios/<uid>/aportes` con `SnapshotMetadata.HasPendingWrites` cuáles siguen pendientes y espera a que dejen de estarlo.
-- **Lectura en tiempo real:** `IRepositorioAportes.Escuchar(lugarId)` con listener de `lugares/<id>/aportes` (solo últimos 6 meses) para la ficha abierta y para los lugares visibles, con un máximo de 30 listeners activos; los aportes se mezclan con las fuentes del Dominio (`FuentesPrecio`) y el precio se recalcula al leer (AD-3). La regla de cálculo es la 4.10.
+  - Rechazo del servidor (visita caducada): toast "No se pudo publicar tu precio: la visita ha caducado"; sin monedas (la 4.11 suma tras la confirmación).
+- **Reinicio sin conexión:** el `Task` se pierde; al arrancar, `ServicioAportes` mira con un listener de `usuarios/<uid>/aportes` y `SnapshotMetadata.HasPendingWrites` cuáles siguen pendientes y espera a que dejen de estarlo.
+- **Tiempo real:** `IRepositorioAportes.Escuchar(lugarId)`, listener de `lugares/<id>/aportes` (solo últimos 6 meses) para la ficha abierta y los lugares visibles, máximo 30 listeners activos; los aportes se mezclan con las fuentes del Dominio (`FuentesPrecio`) y el precio se recalcula al leer (AD-3). Regla de cálculo: 4.10.
 - **Anonimato:** la parte pública nunca incluye datos del autor (prueba con el lote real).
 
 **Never:** sin cola propia fuera de Firestore (AD-8), sin guardar el precio calculado.

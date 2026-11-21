@@ -15,24 +15,24 @@ context:
 
 ## Intent
 
-**Problem:** La hoja de pregunta (4.3) está vacía. El cliente tiene que poder decir en pocos toques si fue y si el precio era el que decía la app (FR24, FR30, FR60).
+**Problem:** La hoja de pregunta (4.3) está vacía. El cliente debe poder decir en pocos toques si fue y si el precio era el de la app (FR24, FR30, FR60).
 
-**Approach:** Una máquina de pasos pura (`FlujoPregunta`, Dominio) decide la secuencia: "¿Has ido?" → "¿Qué usaste?" (solo con varios conceptos o variantes) → "¿Te costó X €?". "Sí" crea la confirmación con un lote atómico (aporte público, `aporteHecho` y copia privada) por `ServicioAportes` y el puerto `IAportes`. Termina con un agradecimiento (la recompensa es la 4.11).
+**Approach:** Máquina de pasos pura (`FlujoPregunta`, Dominio): "¿Has ido?" → "¿Qué usaste?" (solo con varios conceptos o variantes) → "¿Te costó X €?". "Sí" crea la confirmación en un lote atómico (aporte público, `aporteHecho`, copia privada) vía `ServicioAportes` y el puerto `IAportes`. Termina con agradecimiento (la recompensa es la 4.11).
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Pasos** (`PasoPregunta`): `HasIdo`, `QueUsaste`, `TeCosto`, `Gracias`. Las ramas de las 4.5 a 4.8 (otro precio, tramos, pionero, valoración) se añaden como pasos nuevos de la misma máquina.
+- **Pasos** (`PasoPregunta`): `HasIdo`, `QueUsaste`, `TeCosto`, `Gracias`. Las ramas de 4.5–4.8 (otro precio, tramos, pionero, valoración) serán pasos nuevos de la misma máquina.
   - "¿Has ido?": Sí / No. "No" descarta la visita (`estado: descartada`) y cierra con "Gracias por decírnoslo".
-  - "¿Qué usaste?": lista de conceptos del lugar con su precio; cada concepto con variantes se despliega en sus variantes ("Sesión · con bono"). Si solo hay un concepto sin variantes, el paso se salta.
-  - "¿Te costó X €?": X es el precio mostrado (forma fija: "90 €"; "desde 40 €": "¿Te costó 40 €?"). "Sí" confirma; "No, fueron…" lleva al paso `OtroPrecio` de la 4.5 (ver la pregunta 1).
-- **Confirmación = aporte:** con el valor del precio mostrado (`importeCent`, forma del concepto) en un lote: `lugares/<id>/aportes/<aid>`, `usuarios/<uid>/aportes/<aid>` (+ `visitaId`) y `visitas/<vid>.aporteHecho = true`, `estado: respondida` (reglas de la 4.1).
-- **"Atrás"** en cada paso vuelve al anterior; en el primero, cierra como "Más tarde". **"Más tarde"** deja la visita en pendientes. El botón atrás de Android = "Atrás".
+  - "¿Qué usaste?": conceptos del lugar con su precio; los que tienen variantes se despliegan ("Sesión · con bono"). Un solo concepto sin variantes → se salta.
+  - "¿Te costó X €?": X = precio mostrado (fijo: "90 €"; "desde 40 €" → "¿Te costó 40 €?"). "Sí" confirma; "No, fueron…" → paso `OtroPrecio` (4.5; pregunta 1).
+- **Confirmación = aporte** con el valor mostrado (`importeCent`, forma del concepto), en un lote: `lugares/<id>/aportes/<aid>`, `usuarios/<uid>/aportes/<aid>` (+ `visitaId`) y `visitas/<vid>.aporteHecho = true`, `estado: respondida` (reglas 4.1).
+- **"Atrás"** vuelve al paso anterior; en el primero = "Más tarde". **"Más tarde"** deja la visita en pendientes. Atrás de Android = "Atrás".
 - **Eventos:** `PreguntaRespondida`, `PreguntaAplazada`, `AporteCreado(tipo: confirmacion)` (para 4.11 y 6.2).
-- **TalkBack:** cada paso con su título como primer foco; botones con nombre; la lista de conceptos con "seleccionado".
-- **Errores:** si el lote falla por reglas (visita caducada), mensaje "Esta visita ya no admite respuestas" y se descarta; sin conexión se encola (4.9 lo completa).
+- **TalkBack:** título de cada paso como primer foco; botones con nombre; lista de conceptos con "seleccionado".
+- **Errores:** lote rechazado por reglas (visita caducada) → "Esta visita ya no admite respuestas" y se descarta; sin conexión se encola (lo completa la 4.9).
 
-**Never:** sin regla de precio (4.5), sin tramos (4.6), sin pionero (4.7), sin valoración (4.8), sin monedas (4.11).
+**Never:** sin regla de precio (4.5), tramos (4.6), pionero (4.7), valoración (4.8) ni monedas (4.11).
 
 ## I/O & Edge-Case Matrix
 
@@ -52,7 +52,7 @@ context:
 
 ## Open Questions
 
-1. **"No, fueron…" antes de la 4.5.** A) Implementar 4.4 y 4.5 seguidas y no publicar nada entre medias, así el botón ya lleva a la regla (recomendado). B) Ocultar el botón hasta la 4.5.
+1. **"No, fueron…" antes de la 4.5.** A) Hacer 4.4 y 4.5 seguidas sin publicar entre medias, así el botón ya lleva a la regla (recomendado). B) Ocultar el botón hasta la 4.5.
 
 ## Code Map
 

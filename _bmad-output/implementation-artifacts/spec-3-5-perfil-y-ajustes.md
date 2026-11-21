@@ -14,25 +14,25 @@ context:
 
 ## Intent
 
-**Problem:** El avatar de la cápsula no hace nada y no hay ajustes, ni forma de cerrar sesión o borrar la cuenta (FR42, FR58, UX-DR19).
+**Problem:** El avatar de la cápsula no hace nada; no hay ajustes ni forma de cerrar sesión o borrar la cuenta (FR42, FR58, UX-DR19).
 
-**Approach:** Tocar el avatar abre el perfil (hoja a pantalla casi completa): sin cuenta, una invitación a entrar; con cuenta, nombre, correo y una lista de secciones que las siguientes épicas amplían (Tienda, Actividad, Insignias). Ajustes es una pantalla con siete secciones. Se implementan aquí los ajustes que ya existen (tema, voz, reducir animaciones, ubicación, notificaciones) y "Cerrar sesión" y "Borrar cuenta".
+**Approach:** El avatar abre el perfil (hoja casi a pantalla completa): sin cuenta, invitación a entrar; con cuenta, nombre, correo y secciones que amplían las épicas siguientes (Tienda, Actividad, Insignias). Ajustes: pantalla con siete secciones; aquí solo los ajustes que ya existen (tema, voz, reducir animaciones, ubicación, notificaciones), "Cerrar sesión" y "Borrar cuenta".
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Perfil:** cabecera con avatar (inicial o foto de Google), nombre y correo; zona reservada para nivel y reputación (4.11, 5.4); lista de entradas registrables (`EntradaPerfil` con orden, icono, texto, acción) para que cada épica añada la suya sin tocar el perfil. Negocio: entrada "Mi negocio" reservada para la 8.5.
+- **Perfil:** cabecera con avatar (inicial o foto de Google), nombre y correo; zona reservada para nivel y reputación (4.11, 5.4); entradas registrables (`EntradaPerfil`: orden, icono, texto, acción) para que cada épica añada la suya sin tocar el perfil. Negocio: entrada "Mi negocio" reservada (8.5).
 - **Ajustes** (FR58), en este orden:
   - Apariencia: tema Sistema/Claro/Oscuro (amplía `ServicioTema`).
   - Navegación y voz: modo por defecto (coche/a pie) e "Indicaciones por voz" (2.8).
-  - Notificaciones: estado del permiso y botón "Abrir ajustes del móvil".
-  - Privacidad y ubicación: estado del permiso de ubicación con "Abrir Ajustes"; aviso de privacidad completo (el de la 3.1); hueco para la evaluación (6.2).
-  - Accesibilidad: "Reducir animaciones" (Sistema/Sí/No): quita transiciones de hojas y el movimiento suave de cámara (UX-DR19).
-  - Idioma: "Español" (único) con texto "Más idiomas próximamente".
+  - Notificaciones: estado del permiso y "Abrir ajustes del móvil".
+  - Privacidad y ubicación: estado del permiso con "Abrir Ajustes"; aviso de privacidad completo (3.1); hueco para la evaluación (6.2).
+  - Accesibilidad: "Reducir animaciones" (Sistema/Sí/No): sin transiciones de hojas ni movimiento suave de cámara (UX-DR19).
+  - Idioma: "Español" (único), "Más idiomas próximamente".
   - Ayuda: versión de la app y contacto.
-- **Cerrar sesión:** confirmación "¿Cerrar sesión?"; vuelve al uso sin cuenta; los datos locales de Firestore de ese usuario se limpian (`ClearPersistenceAsync` tras `Terminate`, o al menos cerrar sesión).
-- **Borrar cuenta** en dos pasos: 1) explica qué se borra (cuenta, progreso, favoritos, ajustes en la nube) y qué no (aportes públicos anónimos, que no se pueden atribuir); 2) confirmación escribiendo "BORRAR" o botón rojo final. Se borran `usuarios/<uid>` y sus subcolecciones conocidas y después el usuario de Auth (`DeleteAsync`; si pide reautenticación reciente, se vuelve a pedir el inicio de sesión).
-- **Ajustes locales** en `IPreferencias`; se suben a la nube en la 3.6.
+- **Cerrar sesión:** confirmación "¿Cerrar sesión?"; uso sin cuenta; limpiar datos locales de Firestore del usuario (`ClearPersistenceAsync` tras `Terminate`, o al menos cerrar sesión).
+- **Borrar cuenta**, dos pasos: 1) qué se borra (cuenta, progreso, favoritos, ajustes en la nube) y qué no (aportes públicos anónimos, no atribuibles); 2) confirmar escribiendo "BORRAR" o botón rojo final. Se borran `usuarios/<uid>` y sus subcolecciones conocidas, luego el usuario de Auth (`DeleteAsync`; si exige reautenticación reciente, se pide entrar de nuevo).
+- **Ajustes locales** en `IPreferencias` (a la nube en la 3.6).
 - TalkBack: cada ajuste con nombre, rol y estado ("Reducir animaciones, interruptor, activado").
 
 **Never:** sin tienda, actividad ni insignias (llegan con sus épicas).
@@ -55,12 +55,12 @@ context:
 
 ## Open Questions
 
-1. **Tamaño.** A) Partir: parte 1 = perfil y ajustes; parte 2 = cerrar sesión y borrar cuenta (recomendado). B) Una sola.
+1. **Tamaño.** A) Partir (recomendado): parte 1 = perfil y ajustes; parte 2 = cerrar sesión y borrar cuenta. B) Una sola.
 
 ## Code Map
 
 - Nuevos: `UI/PantallaPerfil.cs`, `UI/PantallaAjustes.cs` (+ uxml/uss), `UI/EntradaPerfil.cs`, `Aplicacion/ServicioAjustes.cs`.
-- `Aplicacion/ServicioTema.cs` (modo Sistema/Claro/Oscuro), `ServicioCuentas.cs` (cerrar, borrar), `Adaptadores/Firebase/CuentasFirebase.cs`.
+- `Aplicacion/ServicioTema.cs` (Sistema/Claro/Oscuro), `ServicioCuentas.cs` (cerrar, borrar), `Adaptadores/Firebase/CuentasFirebase.cs`.
 - `UI/CapsulaBuscador.cs` (avatar), `UI/HojaBuscador.cs` y `Vectorial/CamaraMapa.cs` (reducir animaciones).
 - `firebase/firestore.rules` (borrar lo propio). Tests: `PruebasPerfil.cs`, `PruebasAjustes.cs`.
 

@@ -14,25 +14,24 @@ context:
 
 ## Intent
 
-**Problem:** Antes de dejar aportar, el servidor tiene que garantizar que solo aporta quien visitó el sitio, una vez, sin dejar rastro del autor en la parte pública y sin poder modificar nada después (AD-4, AD-6, AD-17, FR30, FR39).
+**Problem:** Antes de dejar aportar, el servidor debe garantizar que solo aporta quien visitó el sitio, una vez, sin rastro del autor en lo público y sin poder modificar nada después (AD-4, AD-6, AD-17, FR30, FR39).
 
-**Approach:** Ampliar `firebase/firestore.rules` con visitas, aportes públicos y copia privada, y probar cada caso con el emulador. Solo reglas y pruebas: la app las usa desde la 4.2.
+**Approach:** Ampliar `firebase/firestore.rules` con visitas, aportes públicos y copia privada, y probar cada caso con el emulador. Solo reglas y pruebas; la app las usa desde la 4.2.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Visita** `usuarios/{uid}/visitas/{visitaId}`:
-  - `visitaId` = `<lugarId>_<AAAAMMDD>` (validado con regex y con `lugarId` del documento).
-  - Campos exactos: `lugarId`, `creado` (= `request.time`), `aporteHecho` (= false al crear), `estado` ('nueva'|'pendiente'|'respondida'|'descartada').
-  - Solo la crea un cliente (`esCliente()` de la 3.4). Solo se puede actualizar `aporteHecho` (false → true, únicamente en el lote del aporte) y `estado`.
+  - `visitaId` = `<lugarId>_<AAAAMMDD>` (validado con regex y con el `lugarId` del documento).
+  - Campos exactos: `lugarId`, `creado` (= `request.time`), `aporteHecho` (false al crear), `estado` ('nueva'|'pendiente'|'respondida'|'descartada').
+  - Solo la crea un cliente (`esCliente()`, 3.4). Solo se actualizan `aporteHecho` (false → true, únicamente en el lote del aporte) y `estado`.
 - **Aporte público** `lugares/{lugarId}/aportes/{aporteId}`:
-  - Campos exactos: `lugarId`, `conceptoId`, `forma` ('fijo'|'rango'|'desde'), `importeCent` (int > 0) o `minCent` (int > 0) y `maxCent` (int > `minCent` o null solo en el tramo abierto), `creado` (= `request.time`). Cualquier otro campo se rechaza; ningún dato del autor.
-  - Solo se crea en un lote con la copia privada del mismo `aporteId`. La regla del público usa el uid de quien escribe (`request.auth.uid`) sin guardarlo: comprueba con `getAfter` que existe `usuarios/{uid}/aportes/{aporteId}` con los mismos `lugarId`, `conceptoId` y valores (ver la pregunta 1).
-- **Copia privada y visita:** la regla de la copia privada lee su `visitaId` y comprueba con `get`/`getAfter` que esa visita es del mismo usuario y lugar, se creó hace < 24 h, tenía `aporteHecho == false` antes del lote y pasa a `true` en el mismo lote.
-- **Copia privada** `usuarios/{uid}/aportes/{aporteId}`: los mismos campos más `visitaId`; solo el dueño; solo crear.
+  - Campos exactos: `lugarId`, `conceptoId`, `forma` ('fijo'|'rango'|'desde'), `importeCent` (int > 0) o `minCent` (int > 0) y `maxCent` (int > `minCent`, o null solo en el tramo abierto), `creado` (= `request.time`). Cualquier otro campo se rechaza; ningún dato del autor.
+  - Solo en un lote con la copia privada del mismo `aporteId`: la regla usa `request.auth.uid` sin guardarlo y comprueba con `getAfter` que existe `usuarios/{uid}/aportes/{aporteId}` con los mismos `lugarId`, `conceptoId` y valores (pregunta 1).
+- **Copia privada** `usuarios/{uid}/aportes/{aporteId}`: mismos campos + `visitaId`; solo el dueño; solo crear. Su regla lee `visitaId` y comprueba con `get`/`getAfter` que la visita es del mismo usuario y lugar, tiene < 24 h, tenía `aporteHecho == false` antes del lote y pasa a `true` en el mismo lote.
 - **Inmutables:** update y delete denegados en aportes públicos y privados (AD-4).
-- **Lectura:** aportes públicos legibles por cualquiera (incluso sin sesión); privados solo el dueño.
-- **Pruebas** en `firebase/pruebas/aportes.test.js`, una por caso de la matriz.
+- **Lectura:** públicos, cualquiera (incluso sin sesión); privados, solo el dueño.
+- **Pruebas** en `firebase/pruebas/aportes.test.js`, una por fila de la matriz.
 
 **Never:** sin campos de autor en lo público, sin Cloud Functions.
 
@@ -58,7 +57,7 @@ context:
 
 ## Open Questions
 
-1. **Cómo ligar el aporte público con la visita sin uid.** La propuesta usa el mismo `aporteId` en público y privado; la regla del público mira la copia privada del que escribe (`request.auth.uid`). El id es aleatorio, así que no revela al autor. A) Así (recomendado). B) Guardar un hash del uid en el público (contradice AD-17).
+1. **Ligar el aporte público con la visita sin uid.** Propuesta: mismo `aporteId` en público y privado; la regla del público mira la copia privada de `request.auth.uid`. El id es aleatorio, no revela al autor. A) Así (recomendado). B) Hash del uid en el público (contradice AD-17).
 
 ## Code Map
 

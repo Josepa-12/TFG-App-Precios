@@ -16,18 +16,18 @@ context:
 
 **Problem:** La visita existe pero nadie pregunta por ella (FR23, FR29).
 
-**Approach:** `ServicioVisitas` programa una notificación local a +1 h con el id de la visita (Mobile Notifications). Al tocarla se abre la pregunta de esa visita, aunque la app estuviera cerrada. Si a esa hora hay una ruta o otra pregunta abierta, la visita pasa a pendientes. Un botón € redondo en el mapa con punto rojo retoma las pendientes. La pregunta en sí es la 4.4: aquí se abre una hoja "Pregunta" con el nombre del lugar y "Más tarde".
+**Approach:** `ServicioVisitas` programa una notificación local a +1 h con el id de la visita (Mobile Notifications); al tocarla se abre la pregunta de esa visita, aunque la app estuviera cerrada. Con ruta u otra pregunta abierta a esa hora, la visita pasa a pendientes. Botón € redondo en el mapa con punto rojo para retomarlas. La pregunta en sí es la 4.4: aquí, hoja "Pregunta" con el nombre del lugar y "Más tarde".
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Paquete** `com.unity.mobile.notifications` (2.3.2 o la compatible); adaptador `PriceMap.Adaptadores.Notificaciones` con el puerto `INotificaciones` (ampliando el de la 3.1): `Programar(id, titulo, texto, cuando, datos)`, `Cancelar(id)`, evento `NotificacionAbierta(datos)`, y `PermisoConcedido`.
-- **Texto:** "¿Qué tal en Clínica Areas?" / "Cuéntanos cuánto pagaste y gana monedas." Canal "Preguntas" con importancia por defecto.
-- **Al tocarla:** si la app estaba cerrada, se lee la intención inicial (`GetLastNotificationIntent`) tras el arranque; `ServicioVisitas` recibe `NotificacionAbierta(visitaId)` y abre la pregunta salvo que haya ruta o pregunta abierta (entonces pendiente).
-- **Hora llegada sin tocarla:** las visitas cuyo `creado + 1 h` ya pasó y siguen `nueva` pasan a `pendiente` al abrir o volver a la app.
-- **Notificaciones denegadas:** la visita va directa a pendientes, sin programar nada (UX-DR16).
-- **Botón €** (UX-DR6): `BotonRedondo` con icono € en la pila derecha; punto rojo si hay pendientes (además del color, con número para no depender del color); desactivado sin pendientes, con TalkBack "Preguntas pendientes, 2" o "Sin preguntas pendientes, desactivado". Solo para clientes con sesión.
-- **Una pendiente:** abre su pregunta. **Varias:** lista para elegir (nombre, fecha "hoy 17:30"). Pendientes caducan a las 24 h de la visita (regla de la 4.1) y desaparecen.
+- **Paquete** `com.unity.mobile.notifications` (2.3.2 o la compatible); adaptador `PriceMap.Adaptadores.Notificaciones`; puerto `INotificaciones` (amplía el de la 3.1): `Programar(id, titulo, texto, cuando, datos)`, `Cancelar(id)`, evento `NotificacionAbierta(datos)`, `PermisoConcedido`.
+- **Texto:** "¿Qué tal en Clínica Areas?" / "Cuéntanos cuánto pagaste y gana monedas." Canal "Preguntas", importancia por defecto.
+- **Al tocarla:** con la app cerrada, se lee la intención inicial (`GetLastNotificationIntent`) tras el arranque; `ServicioVisitas` recibe `NotificacionAbierta(visitaId)` y abre la pregunta salvo ruta o pregunta abierta (→ pendiente).
+- **Sin tocarla:** visitas con `creado + 1 h` pasado y aún `nueva` → `pendiente` al abrir o volver a la app.
+- **Notificaciones denegadas:** directa a pendientes, sin programar (UX-DR16).
+- **Botón €** (UX-DR6): `BotonRedondo` con icono € en la pila derecha; con pendientes, punto rojo con número (no depender solo del color); sin pendientes, desactivado. TalkBack "Preguntas pendientes, 2" / "Sin preguntas pendientes, desactivado". Solo clientes con sesión.
+- **Una pendiente:** abre su pregunta. **Varias:** lista para elegir (nombre, fecha "hoy 17:30"). Caducan a las 24 h de la visita (regla 4.1) y desaparecen.
 - **Estado observable:** `ServicioVisitas.Pendientes`, `PreguntaAbierta`, eventos.
 - Al responder o descartar, se cancela la notificación si aún no ha saltado.
 

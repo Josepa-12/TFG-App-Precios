@@ -16,25 +16,24 @@ context:
 
 **Problem:** Equipar un cosmético no cambia nada en el mapa (FR50, UX-DR8).
 
-**Approach:** `MarcadorPosicion` (círculo, cono y flecha) y la línea de ruta leen el estilo equipado de `ServicioProgreso.Equipados` y cambian al momento. Los estilos se definen como tokens de DESIGN.md.
+**Approach:** `MarcadorPosicion` (círculo, cono y flecha) y la línea de ruta leen el estilo equipado de `ServicioProgreso.Equipados` y cambian al momento. Estilos como tokens de DESIGN.md.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Estilos de posición** (`EstiloPosicion`, en la UI, valores desde USS):
-  - Clásica: círculo `#2F5BEA` con borde blanco y cono translúcido (1.7).
+- **Estilos de posición** (`EstiloPosicion`, UI, valores desde USS):
+  - Clásica: círculo `#2F5BEA`, borde blanco, cono translúcido (1.7).
   - Dorada: relleno degradado dorado, borde blanco, cono dorado.
   - Neón: relleno cian intenso con halo exterior (anillo translúcido de 8 dp) y cono cian.
   - La flecha de navegación (2.7) usa los mismos colores.
-- **Estilos de ruta** (`EstiloRuta`, pasado a `IMapa.MostrarRuta`):
+- **Estilos de ruta** (`EstiloRuta`, pasado a `IMapa.MostrarRuta`), en la malla de `LineaRuta` (2.6) con UV a lo largo para los guiones:
   - Clásica: línea continua `--color-route`.
-  - Discontinua: guiones de 12 dp con huecos de 8 dp.
+  - Discontinua: guiones de 12 dp, huecos de 8 dp.
   - Dorada: línea dorada con borde oscuro de 2 dp.
-  - Implementados en la malla de `LineaRuta` (2.6) con UV a lo largo para los guiones.
-- **Cambio al momento:** al equipar, el marcador y la ruta activa se repintan sin reiniciar la navegación.
-- **Contraste:** cada estilo con contraste suficiente sobre el mapa claro y oscuro (prueba en `PruebasContraste` contra los colores de fondo del mapa, ≥ 3:1 para elementos gráficos).
+- **Al equipar:** marcador y ruta activa se repintan sin reiniciar la navegación.
+- **Contraste:** cada estilo ≥ 3:1 (elementos gráficos) sobre los fondos del mapa claro y oscuro (prueba en `PruebasContraste`).
 - Sin cuenta o negocio: siempre clásicos.
-- Los tokens nuevos se añaden a `Tokens.uss` y a DESIGN.md si faltan (avisando en el spec si se cambia DESIGN).
+- Tokens nuevos a `Tokens.uss` y a DESIGN.md si faltan (avisando en el spec si se cambia DESIGN).
 
 **Never:** sin animaciones de los cosméticos con "reducir animaciones" (el halo neón no pulsa).
 

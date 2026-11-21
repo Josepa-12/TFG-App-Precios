@@ -13,19 +13,19 @@ context:
 
 ## Intent
 
-**Problem:** El cliente no puede ver lo que tiene pendiente ni lo que ha aportado (FR57).
+**Problem:** El cliente no ve lo que tiene pendiente ni lo que ha aportado (FR57).
 
-**Approach:** Sección "Tu actividad" del perfil con cuatro bloques: visitas pendientes, mis aportes (desde la copia privada), favoritos e insignias. Solo lectura de los servicios existentes; la UI no ve Firestore (AD-15). Los avisos activos (7.3) se añaden después como quinto bloque.
+**Approach:** Sección "Tu actividad" del perfil con cuatro bloques: visitas pendientes, mis aportes (copia privada), favoritos e insignias. Solo lectura de servicios existentes; la UI no ve Firestore (AD-15). Los avisos activos (7.3) se añaden luego como quinto bloque.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Pendientes:** lugar, fecha ("hoy 17:30", "ayer") y botón "Responder" que abre su pregunta (4.3).
-- **Mis aportes:** lugar, concepto, valor formateado ("40 €", "10–20 € por persona"), fecha y tipo (confirmación, otro precio, pionero). Más recientes primero; carga por páginas de 20.
-- **Favoritos:** los de la 3.6, tocar abre la ficha.
+- **Mis aportes:** lugar, concepto, valor formateado ("40 €", "10–20 € por persona"), fecha y tipo (confirmación, otro precio, pionero). Más recientes primero; páginas de 20.
+- **Favoritos:** los de la 3.6; tocar abre la ficha.
 - **Insignias:** resumen "2 de 6" con acceso a la sección de la 5.3.
-- **Vacío** (UX-DR16, UX-DR20): sin aportes, "Aún no has aportado precios. Navega a un sitio con la app y te preguntaremos al llegar." Cada bloque vacío con su propio texto corto.
-- **Sin conexión:** muestra lo que tenga la caché de Firestore.
+- **Vacío** (UX-DR16, UX-DR20): sin aportes, "Aún no has aportado precios. Navega a un sitio con la app y te preguntaremos al llegar." Cada bloque vacío con su texto corto.
+- **Sin conexión:** lo que tenga la caché de Firestore.
 - TalkBack: cada bloque con encabezado; cada fila con su texto completo.
 - Negocio: no ve esta sección (ve su panel, 8.5).
 

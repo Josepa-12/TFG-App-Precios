@@ -14,20 +14,20 @@ context:
 
 ## Intent
 
-**Problem:** En bares y restaurantes no hay un precio único que confirmar; proponer un número sesga la respuesta (FR26).
+**Problem:** En bares y restaurantes no hay precio único que confirmar; proponer un número sesga (FR26).
 
-**Approach:** En lugares de plantilla Hostelería, el paso del precio es `Tramo`: cinco opciones de gasto por persona sin ningún precio propuesto. Se guarda como rango `minCent`/`maxCent` con el mismo lote.
+**Approach:** En plantilla Hostelería el paso del precio es `Tramo`: cinco opciones de gasto por persona, sin precio propuesto. Se guarda como rango `minCent`/`maxCent` en el mismo lote.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Tramos** (`TramosHosteleria`, Dominio, en `ParametrosNegocio`): menos de 10 € [1, 1000], 10–20 [1000, 2000], 20–30 [2000, 3000], 30–50 [3000, 5000], más de 50 [5000, null].
-  - "Menos de 10 €" se guarda con `minCent: 1` (las reglas exigen > 0) y `maxCent: 1000`.
-  - "Más de 50 €" con `maxCent: null` (la regla de la 4.1 lo permite solo si `minCent == 5000`).
-- **Flujo:** para Hostelería, `FlujoPregunta` va HasIdo → Tramo (sin QueUsaste ni TeCosto). El aporte usa el concepto de gasto por persona del lugar (`conceptoId` del concepto de forma rango; si no lo hay, `gasto/persona`).
+  - "Menos de 10 €": `minCent: 1` (las reglas exigen > 0).
+  - "Más de 50 €": `maxCent: null` (la regla de la 4.1 lo permite solo si `minCent == 5000`).
+- **Flujo:** Hostelería → `FlujoPregunta` HasIdo → Tramo (sin QueUsaste ni TeCosto). `conceptoId` = concepto de forma rango del lugar; si no hay, `gasto/persona`.
 - **UI:** título "¿Cuánto gastaste por persona?"; cinco botones de 48 dp en columna con el texto del tramo; ninguno preseleccionado; sin mostrar el precio actual.
 - **TalkBack:** grupo de opciones; cada una "De 10 a 20 euros por persona".
-- Evento `AporteCreado(tipo: tramo)`; en la 4.11 cuenta como "confirmar" si el tramo contiene el rango mostrado y como "distinto" si no.
+- Evento `AporteCreado(tipo: tramo)`; en la 4.11 cuenta como "confirmar" si el tramo contiene el rango mostrado, si no "distinto".
 
 **Never:** sin regla deslizable en hostelería, sin precio sugerido.
 
@@ -54,9 +54,9 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Tramos en el Dominio y en el flujo.
+- [ ] Tramos en Dominio y flujo.
 - [ ] Paso de UI con TalkBack.
-- [ ] Ajuste de reglas para el tramo abierto y su prueba.
+- [ ] Reglas del tramo abierto y su prueba.
 - [ ] Pruebas de la matriz.
 
 **Acceptance Criteria:**

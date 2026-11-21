@@ -16,7 +16,7 @@ context:
 
 **Problem:** Las monedas no sirven para nada (FR50, UX-DR12).
 
-**Approach:** Sección "Tienda" en el perfil (entrada registrable de la 3.5) y botón "Ir a la tienda" en la pantalla de recompensa. Catálogo fijo en el Dominio con cosméticos de posición y de ruta. `ServicioProgreso` compra (resta con incremento atómico negativo y añade a `compras`) y equipa (`equipados.posicion` / `equipados.ruta`).
+**Approach:** Sección "Tienda" en el perfil (entrada registrable de la 3.5) y botón "Ir a la tienda" en la recompensa. Catálogo fijo en el Dominio (cosméticos de posición y de ruta). `ServicioProgreso` compra (incremento atómico negativo + añadir a `compras`) y equipa (`equipados.posicion` / `equipados.ruta`).
 
 ## Boundaries & Constraints
 
@@ -27,9 +27,9 @@ context:
   - Comprado: botón "Equipar".
   - No comprado y alcanza: "Comprar · 150".
   - No alcanza: botón desactivado con "Te faltan N monedas" (UX-DR16).
-- **Compra:** confirmación "¿Comprar Dorada por 150 monedas?"; un lote con `monedas: Increment(-150)` y `compras: ArrayUnion('posicion/dorada')`. Reglas: el decremento debe ser exactamente el precio del catálogo (tabla de precios repetida en reglas, son 4 valores), el id no estaba en `compras` y `monedas` resultante ≥ 0.
+- **Compra:** confirmación "¿Comprar Dorada por 150 monedas?"; un lote con `monedas: Increment(-150)` y `compras: ArrayUnion('posicion/dorada')`. Reglas: decremento = precio exacto del catálogo (tabla repetida en reglas, 4 valores), id no presente en `compras`, `monedas` resultante ≥ 0.
 - **Equipar:** `equipados.posicion = id` solo si está en `compras` o es gratis (regla).
-- **Saldo en la cabecera** de la tienda; se actualiza al instante (estado local optimista y confirmación del servidor; si se rechaza, se revierte con un toast).
+- **Saldo en la cabecera**, al instante (estado local optimista + confirmación del servidor; si se rechaza, se revierte con toast).
 - Evento `CompraTienda(id)` para la 6.2.
 - **Negocio o sin cuenta:** no ve la tienda.
 - TalkBack: "Dorada, cosmético de posición, 150 monedas, te faltan 40 monedas, desactivado".
@@ -62,7 +62,7 @@ context:
 
 **Execution:**
 - [ ] Catálogo y estados de tarjeta (pura) con pruebas.
-- [ ] Compra y equipar en el servicio y adaptador.
+- [ ] Compra y equipar en servicio y adaptador.
 - [ ] Reglas y pruebas de emulador.
 - [ ] Pantalla de tienda y accesos; captura "tienda".
 

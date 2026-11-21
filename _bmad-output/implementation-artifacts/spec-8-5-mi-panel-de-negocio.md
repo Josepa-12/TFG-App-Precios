@@ -15,14 +15,14 @@ context:
 
 **Problem:** El dueño no ve el estado de sus precios ni lo que dicen los clientes (FR47, UX-DR16).
 
-**Approach:** "Mi negocio" en el perfil de una cuenta de negocio (entrada reservada en la 3.5) abre el panel: el local, cada precio con su estado (declarado, según N clientes, en revisión, sin precio), los avisos recibidos y las ofertas, con accesos al editor (8.3) y a publicar ofertas (8.4). Sin verificar, explica qué falta y no deja editar.
+**Approach:** "Mi negocio" en el perfil de cuenta de negocio (entrada reservada en la 3.5) abre el panel: local, precios con su estado, avisos recibidos y ofertas, con accesos al editor (8.3) y a publicar ofertas (8.4). Sin verificar, explica qué falta y no deja editar.
 
 ## Boundaries & Constraints
 
 **Always:**
 - **Cabecera:** nombre, tipo y dirección del local; estado de la propiedad ("Verificado" / "Pendiente de verificar").
 - **Precios:** por concepto, el precio mostrado (calculado por el Dominio como en la ficha) y su estado: "Declarado por ti", "Según 4 clientes", "Publicado en su web", "En revisión" (con el número de puntos) o "Sin precio". Frescura con su punto.
-- **Avisos recibidos:** lista agrupada por concepto con tipo y fecha ("El precio ha cambiado · hace 2 días"), sin datos de quién avisó. Los de los últimos 6 meses.
+- **Avisos recibidos:** agrupados por concepto con tipo y fecha ("El precio ha cambiado · hace 2 días"), sin datos de quién avisó. Últimos 6 meses.
 - **Ofertas:** vigentes y caducadas, con "Borrar".
 - **Acciones:** "Editar precios" (8.3) y "Publicar oferta" (8.4).
 - **Sin verificar** (UX-DR16): "Para gestionar tu local, confirma el enlace que enviamos a tu correo o espera la revisión manual." con "Reenviar enlace" (8.1). Sin acciones de edición.
