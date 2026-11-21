@@ -294,6 +294,7 @@ namespace PriceMap.Vectorial
 
         Material mRuta, mRutaBorde;
         TemaMapa temaRuta = (TemaMapa)(-1);
+        bool rutaAproximada;         // ruta aproximada sin conexión (parte 2b): colores más suaves
         List<Vector3> puntosRuta;    // puntos de la ruta dibujada (en el mundo); null sin ruta
         GameObject objetoRuta;       // cuelga del mapa (no de una tesela): no se libera con ellas
         float anchoRuta;             // ancho (m) con el que se construyó la línea
@@ -303,14 +304,20 @@ namespace PriceMap.Vectorial
         internal float AnchoRuta => anchoRuta;
         internal Material MaterialRuta => mRuta;
         internal Material MaterialBordeRuta => mRutaBorde;
+        internal bool RutaAproximada => rutaAproximada;
 
-        /// <summary>Dibuja la ruta por esos puntos (sustituye a la anterior); con menos de dos puntos, la quita.</summary>
-        public void MostrarRuta(IReadOnlyList<Coordenada> puntos)
+        /// <summary>
+        /// Dibuja la ruta por esos puntos (sustituye a la anterior); con menos de dos puntos, la quita. La aproximada
+        /// (parte 2b) es la misma línea con los colores suaves de su tema.
+        /// </summary>
+        public void MostrarRuta(IReadOnlyList<Coordenada> puntos, bool aproximada = false)
         {
             if (puntos == null || puntos.Count < 2) { QuitarRuta(); return; }
+            rutaAproximada = aproximada;
             puntosRuta = new List<Vector3>(puntos.Count);
             foreach (var c in puntos) puntosRuta.Add(Geo.ALocal(c.Latitud, c.Longitud));
             ConstruirRuta();
+            ColorearRuta();
         }
 
         /// <summary>Quita la línea de la ruta y libera su malla.</summary>
@@ -407,8 +414,8 @@ namespace PriceMap.Vectorial
         {
             temaRuta = tema;
             var p = PaletaMapa.De(tema);
-            mRuta.color = p.ruta;
-            mRutaBorde.color = p.rutaBorde;
+            mRuta.color = rutaAproximada ? p.rutaAproximada : p.ruta;
+            mRutaBorde.color = rutaAproximada ? p.rutaAproximadaBorde : p.rutaBorde;
         }
 
         /// <summary>Para las pruebas: aplica ya el tema a la línea (en la app lo hace Update).</summary>

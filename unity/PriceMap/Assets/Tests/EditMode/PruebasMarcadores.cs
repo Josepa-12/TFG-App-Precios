@@ -45,7 +45,7 @@ namespace PriceMap.Tests.EditMode
             public event System.Action<PuntoPantalla> Toque { add { } remove { } }
             public event System.Action<PuntoPantalla> PulsacionLarga { add { } remove { } }
             public Coordenada? Desproyectar(PuntoPantalla punto) => null;
-            public void MostrarRuta(IReadOnlyList<Coordenada> puntos) { }
+            public void MostrarRuta(IReadOnlyList<Coordenada> puntos, bool aproximada = false) { }
             public void QuitarRuta() { }
             public void Encuadrar(IReadOnlyList<Coordenada> puntos, RectPantalla libre) { }
         }

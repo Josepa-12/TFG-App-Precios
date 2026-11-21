@@ -80,9 +80,10 @@ namespace PriceMap.Aplicacion
 
         /// <summary>
         /// Dibuja la línea de la ruta (historia 2.6, parte 2a) por esos puntos, en orden, cubriendo la calle: por encima
-        /// de las calles y por debajo de los edificios y de lo que dibuja la UI. Sustituye a la anterior.
+        /// de las calles y por debajo de los edificios y de lo que dibuja la UI. Sustituye a la anterior. La aproximada
+        /// (sin conexión, parte 2b) va en los colores más suaves de la ruta aproximada de su tema.
         /// </summary>
-        void MostrarRuta(IReadOnlyList<Coordenada> puntos);
+        void MostrarRuta(IReadOnlyList<Coordenada> puntos, bool aproximada = false);
 
         /// <summary>Quita la línea de la ruta, si la hay.</summary>
         void QuitarRuta();

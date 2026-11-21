@@ -64,6 +64,7 @@ namespace PriceMap.UI
         VisualElement zonaSeguraRuta, pilaDerecha;
         TarjetaManiobra tarjetaManiobra;
         TarjetaRuta tarjetaRuta;
+        Toast toast;                         // avisos breves (parte 2b: bajo la tarjeta de la ruta)
         bool rutaActiva;                       // Ir pulsado y la ruta sin quitar (con tarjetas o con la ficha reabierta)
         Ruta rutaDibujada;                     // la ruta que se ve; null mientras se calcula o si falló
         ModoViaje modoRuta;
@@ -1429,7 +1430,7 @@ namespace PriceMap.UI
             try
             {
                 if (ficha == null || !FichaAbierta || ficha.Posicion != destino) return;
-                if (r.Ok && r.Valor != null) ficha.Acciones.PonerMinutos(modo, r.Valor.Minutos);
+                if (r.Ok && r.Valor != null) ficha.Acciones.PonerMinutos(modo, r.Valor.Minutos, r.Valor.Aproximada);
                 else
                 {
                     Debug.Log($"PriceMap: sin tiempo en {modo} ({r.Error}).");
@@ -1524,22 +1525,55 @@ namespace PriceMap.UI
             }
         }
 
-        /// <summary>La ruta ha llegado: línea, tarjetas y, con ellas a la vista, encuadre y foco en la de arriba.</summary>
+        /// <summary>
+        /// La ruta ha llegado: línea, tarjetas y, con ellas a la vista, encuadre y foco en la de arriba. La aproximada
+        /// (sin conexión, parte 2b) va con la línea suave y el toast "Sin conexión: ruta aproximada", que TalkBack anuncia.
+        /// </summary>
         void DibujarRuta(Ruta ruta)
         {
             rutaDibujada = ruta;
-            mapa.MostrarRuta(ruta.Puntos);
+            mapa.MostrarRuta(ruta.Puntos, ruta.Aproximada);
             tarjetaManiobra.MostrarRuta(ruta, nombreRuta);
             tarjetaRuta.MostrarRuta(ruta, RelojLocal());
             Debug.Log($"PriceMap: ruta en {modoRuta}: {ruta.Puntos.Count} puntos, {ruta.Metros:F0} m, {ruta.Minutos} min; \"{tarjetaManiobra.Anuncio}\".");
             accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
             accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
-            if (!TarjetasRutaVisibles) return; // con la ficha reabierta se encuadra al cerrarla
-            EncuadrarRuta();
-            accesibilidad.PedirFoco(tarjetaManiobra);
+            if (TarjetasRutaVisibles) // con la ficha reabierta se encuadra al cerrarla
+            {
+                EncuadrarRuta();
+                accesibilidad.PedirFoco(tarjetaManiobra);
+            }
+            // Solo con las tarjetas a la vista: con la ficha reabierta (modal) no se tapa ni se anuncia dentro de ella
+            if (ruta.Aproximada && TarjetasRutaVisibles) MostrarToast(Textos.T(ClavesTexto.ToastRutaAproximada));
         }
 
-        /// <summary>Sin ruta (los dos servicios fallan): "No se ha podido calcular la ruta" y "—", sin línea.</summary>
+        /// <summary>
+        /// Enseña el toast bajo la tarjeta de arriba durante 3 s y TalkBack lo anuncia (después de llevar el foco).
+        /// </summary>
+        void MostrarToast(string texto)
+        {
+            if (toast == null) return;
+            ColocarToast();
+            toast.Mostrar(texto);
+            AccesibilidadPantalla.Anunciar(texto);
+        }
+
+        /// <summary>Separación (dp) entre la tarjeta de arriba y el toast (--espacio-3).</summary>
+        const float EspacioBajoTarjetaDp = 12f;
+
+        // El toast va 12 dp bajo la tarjeta de arriba (sin medida, bajo los 16 + 120 dp supuestos)
+        void ColocarToast()
+        {
+            if (toast == null || tarjetaManiobra == null) return;
+            var l = tarjetaManiobra.layout;
+            float abajo = !float.IsNaN(l.yMax) && l.height > 0f ? l.yMax : 16f + AltoSupuestoTarjetaManiobraDp;
+            toast.Colocar(abajo + EspacioBajoTarjetaDp);
+        }
+
+        /// <summary>
+        /// Sin ruta (fallan los servicios y, si la hay, la aproximada): "No se ha podido calcular la ruta" y "—", sin
+        /// línea. Con servicio de ruta aproximada, además el toast "Sin conexión: no hay calles guardadas para esta ruta".
+        /// </summary>
         void FalloRuta(string error)
         {
             Debug.Log($"PriceMap: sin ruta en {modoRuta} ({error}).");
@@ -1550,6 +1584,7 @@ namespace PriceMap.UI
             accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
             accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
             if (TarjetasRutaVisibles) accesibilidad.PedirFoco(tarjetaManiobra);
+            if (rutas != null && rutas.ConRutaAproximada && TarjetasRutaVisibles) MostrarToast(Textos.T(ClavesTexto.ToastSinCalles));
         }
 
         /// <summary>Cancela la petición de la ruta: su respuesta ya no llegará.</summary>
@@ -1574,6 +1609,7 @@ namespace PriceMap.UI
             rutaDibujada = null;
             lugarRuta = null;
             puntoRuta = null;
+            toast?.Ocultar();
             mapa.QuitarRuta();
             if (!FichaAbierta) chincheta?.Actualizar(mapa, null, 1f); // la del punto de destino se va con la ruta
             ActualizarVistaRuta();
@@ -1589,6 +1625,7 @@ namespace PriceMap.UI
         public void ReabrirFichaRuta()
         {
             if (!rutaActiva || FichaAbierta) return;
+            toast?.Ocultar(); // no se queda encima de la ficha
             if (lugarRuta != null) AbrirFicha(lugarRuta);
             else if (puntoRuta.HasValue) AbrirPunto(puntoRuta.Value);
             else return;
@@ -1609,6 +1646,8 @@ namespace PriceMap.UI
         /// <summary>Tarjeta de acciones (arriba) y de la ruta (abajo); null sin interfaz o sin servicio de rutas.</summary>
         public TarjetaManiobra TarjetaManiobra => tarjetaManiobra;
         public TarjetaRuta TarjetaRuta => tarjetaRuta;
+        /// <summary>Aviso breve (toast) de la pantalla; null sin interfaz o sin servicio de rutas.</summary>
+        public Toast Toast => toast;
 
         /// <summary>Hora local para la llegada ("HH:mm"); por defecto DateTime.Now (las pruebas y la captura la fijan).</summary>
         public Func<DateTime> RelojLocal { get; set; } = () => DateTime.Now;
@@ -1624,6 +1663,8 @@ namespace PriceMap.UI
             (raiz.Q("hueco-ruta") ?? raiz).Add(tarjetaRuta);
             tarjetaRuta.Tocada += ReabrirFichaRuta;
             tarjetaRuta.QuitarPulsado += QuitarRuta;
+            toast = new Toast();
+            (zonaSeguraRuta ?? raiz).Add(toast);
             foreach (var t in new VisualElement[] { tarjetaManiobra, tarjetaRuta })
                 t.RegisterCallback<GeometryChangedEvent>(_ => AlMedirTarjetaRuta());
             accesibilidad.Texto(tarjetaManiobra, () => tarjetaManiobra.Anuncio, () => TarjetasRutaVisibles);
@@ -1641,6 +1682,7 @@ namespace PriceMap.UI
         {
             EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema);
             ColocarControlesRuta();
+            ColocarToast();
             if (rutaDibujada != null && TarjetasRutaVisibles) EncuadrarRuta();
         }
 

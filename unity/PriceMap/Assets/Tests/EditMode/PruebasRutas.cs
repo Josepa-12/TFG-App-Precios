@@ -146,7 +146,8 @@ namespace PriceMap.Tests.EditMode
             public IReadOnlyList<Coordenada> linea;
             public int dibujadas;
             public readonly List<(IReadOnlyList<Coordenada> puntos, RectPantalla libre)> encuadres = new List<(IReadOnlyList<Coordenada>, RectPantalla)>();
-            public void MostrarRuta(IReadOnlyList<Coordenada> puntos) { linea = puntos; dibujadas++; }
+            public bool aproximada;
+            public void MostrarRuta(IReadOnlyList<Coordenada> puntos, bool aproximada = false) { linea = puntos; dibujadas++; this.aproximada = aproximada; }
             public void QuitarRuta() => linea = null;
             public void Encuadrar(IReadOnlyList<Coordenada> puntos, RectPantalla libre) => encuadres.Add((puntos, libre));
         }

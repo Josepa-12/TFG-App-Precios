@@ -1552,6 +1552,27 @@
     bottom: 0;
 }
 
+/* Toast (DESIGN.md: fondo text, texto bg, 12 dp de radio, centrado; historia 2.6, parte 2b). La pantalla fija su top
+   (bajo la tarjeta de la ruta); sin animación */
+.toast {
+    position: absolute;
+    top: var(--espacio-4);
+    left: 0;
+    right: 0;
+    align-items: center;
+    display: none;
+}
+
+.toast__texto {
+    max-width: 90%;
+    padding: var(--espacio-2) var(--espacio-4);
+    border-radius: var(--radio-toast);
+    background-color: var(--color-toast);
+    color: var(--color-toast-texto);
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
 /* Tarjeta de acciones arriba: text al 96 % (claro) o clara (oscuro), 16 dp desde arriba y 12 a los lados */
 .tarjeta-maniobra {
     position: absolute;

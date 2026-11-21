@@ -67,10 +67,16 @@ namespace PriceMap.UI
 
         /// <summary>
         /// La ruta llegada: la primera maniobra con texto y la siguiente con texto (sin el punto final de Valhalla); sin
-        /// ninguna (OSRM), "Ruta a {destino}".
+        /// ninguna (OSRM), "Ruta a {destino}". La aproximada (sin conexión, parte 2b), "Ruta aproximada por las calles
+        /// guardadas", sin siguiente.
         /// </summary>
         public void MostrarRuta(Ruta ruta, string destino)
         {
+            if (ruta != null && ruta.Aproximada)
+            {
+                Poner(TipoManiobra.Recto, true, textos(ClavesTexto.RutaAproximada), null, TipoManiobra.Otra);
+                return;
+            }
             int i = SiguienteConTexto(ruta, 0);
             if (i < 0)
             {

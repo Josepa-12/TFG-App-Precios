@@ -113,11 +113,16 @@ namespace PriceMap.Arranque
             (TipoManiobra.Llegada, "Su destino está a la izquierda.", 9, 0),
         };
 
+        /// <summary>Solo en la captura "ruta-aproximada": las rutas falsas fallan como sin conexión.</summary>
+        static bool sinConexion;
+
         class RutasCaptura : IRutas
         {
             public System.Threading.Tasks.Task<Resultado<Ruta>> Calcular(Coordenada origen, Coordenada destino, ModoViaje modo,
                 System.Threading.CancellationToken ct)
             {
+                if (sinConexion)
+                    return System.Threading.Tasks.Task.FromResult(Resultado<Ruta>.Fallo("Sin conexión (captura)."));
                 double segundos = modo == ModoViaje.APie ? 690 : 230;
                 Ruta ruta;
                 if (destino.DistanciaMetros(ClinicaAreas) < 5 && origen.DistanciaMetros(CalleCoche[0]) < 60)
@@ -228,6 +233,7 @@ namespace PriceMap.Arranque
             yield return Cerca();
             yield return Punto();
             yield return Ruta();
+            yield return RutaAproximada();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -813,6 +819,96 @@ namespace PriceMap.Arranque
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             }
             yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>
+        /// Historia 2.6 (parte 2b), capturas "ruta-aproximada" (claro, coche) y "ruta-aproximada-oscuro" (a pie): las
+        /// rutas falsas fallan como sin conexión y la ruta sale de las calles de las teselas ya guardadas
+        /// (RutasCallesGuardadas). Comprueba que es aproximada, que va por las calles (más de dos puntos), que las
+        /// tarjetas llevan "≈", que el toast se ve bajo la tarjeta de arriba y lo que dice TalkBack. Vacía antes la
+        /// caché (si no, saldría la ruta de la captura anterior) y al acabar devuelve la conexión, el tema y la preferencia.
+        /// </summary>
+        IEnumerator RutaAproximada()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            if (lugar == null || pantalla.Rutas == null || pantalla.TarjetaRuta == null) { Debug.LogError("PriceMap: no se puede capturar la ruta aproximada."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var relojAntes = pantalla.RelojLocal;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+            sinConexion = true;
+            pantalla.Rutas.VaciarCache();
+            var anuncios = new List<string>();
+            void Anotar(string t) => anuncios.Add(t);
+            AccesibilidadPantalla.AnuncioPedido += Anotar;
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(2f);
+                var fila = pantalla.Ficha.Acciones;
+                Debug.Log($"PriceMap: ficha sin conexión: coche \"{fila.Coche.Tiempo.text}\" ({fila.Anuncio(ModoViaje.Coche)}), a pie \"{fila.APie.Tiempo.text}\" ({fila.Anuncio(ModoViaje.APie)})");
+                if (!fila.Coche.Aproximados || !fila.APie.Aproximados) Debug.LogError("PriceMap: sin conexión la ficha no da los minutos aproximados.");
+                fila.PulsarIr();
+                yield return EsperarRuta();
+                ComprobarRuta("aproximada, coche");
+                ComprobarAproximada("coche", anuncios);
+                yield return Capturar("ruta-aproximada");
+                yield return new WaitForSeconds(3.5f); // se va el toast
+
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                pantalla.TarjetaRuta.Tocar();
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.APie);
+                anuncios.Clear();
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarRuta();
+                ComprobarRuta("aproximada, a pie");
+                ComprobarAproximada("a pie", anuncios);
+                yield return Capturar("ruta-aproximada-oscuro");
+                yield return new WaitForSeconds(1f);
+            }
+            finally
+            {
+                AccesibilidadPantalla.AnuncioPedido -= Anotar;
+                sinConexion = false;
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            yield return new WaitForSeconds(1f);
+        }
+
+        // Hasta que llega la ruta (o el fallo), como mucho 20 s; luego un fotograma para que se disponga
+        IEnumerator EsperarRuta()
+        {
+            float limite = Time.realtimeSinceStartup + 20f;
+            while (pantalla.RutaDibujada == null && pantalla.TarjetaRuta.Minutos.text == Textos.T(ClavesTexto.FichaCalculando) &&
+                   Time.realtimeSinceStartup < limite)
+                yield return null;
+            yield return null;
+            yield return new WaitForEndOfFrame();
+        }
+
+        /// <summary>La ruta es la aproximada, va por las calles, las tarjetas llevan "≈" y el toast se ve bajo la de arriba.</summary>
+        void ComprobarAproximada(string caso, List<string> anuncios)
+        {
+            var ruta = pantalla.RutaDibujada;
+            var toast = pantalla.Toast;
+            var arriba = pantalla.TarjetaManiobra;
+            var abajo = pantalla.TarjetaRuta;
+            Debug.Log($"PriceMap: ruta aproximada ({caso}): {ruta?.Puntos.Count ?? 0} puntos, {ruta?.Metros ?? 0:F0} m, {ruta?.Minutos ?? 0} min; " +
+                      $"toast \"{toast?.Texto.text}\" visible {toast?.Visible} en {toast?.Texto.worldBound}; anuncios: {string.Join(" | ", anuncios)}");
+            if (ruta == null || !ruta.Aproximada) { Debug.LogError($"PriceMap: sin conexión no ha salido la ruta aproximada ({caso})."); return; }
+            if (ruta.Puntos.Count <= 2) Debug.LogError($"PriceMap: la ruta aproximada ({caso}) no va por las calles.");
+            if (arriba.Principal.text != Textos.T(ClavesTexto.RutaAproximada)) Debug.LogError($"PriceMap: la tarjeta de arriba ({caso}) no dice que la ruta es aproximada.");
+            if (!abajo.Llegada.text.StartsWith("≈") || !abajo.Minutos.text.StartsWith("≈") || !abajo.Distancia.text.StartsWith("≈"))
+                Debug.LogError($"PriceMap: la tarjeta de abajo ({caso}) no lleva «≈».");
+            if (toast == null || !toast.Visible) { Debug.LogError($"PriceMap: no se ve el toast ({caso})."); return; }
+            if (toast.Texto.worldBound.yMin < arriba.worldBound.yMax) Debug.LogError($"PriceMap: el toast ({caso}) no queda bajo la tarjeta de arriba.");
+            if (!anuncios.Contains(Textos.T(ClavesTexto.ToastRutaAproximada))) Debug.LogError($"PriceMap: TalkBack no anuncia el toast ({caso}).");
         }
 
         /// <summary>La ruta dibujada cabe entera entre las dos tarjetas y los controles son los de la ruta; Debug.LogError si no.</summary>

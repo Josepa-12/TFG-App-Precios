@@ -106,3 +106,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6b-dibujar-la-ruta.md`
   summary: Historia 2.6 (parte 2b): sin conexión (fallan Valhalla y OSRM), ruta aproximada calculada en el móvil por las calles de las teselas guardadas (grafo de la capa de calles de las MVT en caché, sin sentidos únicos), dibujada en un azul más suave, tarjeta de arriba «Ruta aproximada por las calles guardadas», valores con «≈», y un toast nuevo «Sin conexión: ruta aproximada» (DESIGN.md: arriba y centrado, fondo `text`, 3 s, anunciado por TalkBack). Si no hay calles guardadas que unan origen y destino, decidir qué se enseña.
   evidence: El usuario eligió el 20/11/2026 la opción A (ruta por las calles guardadas) porque la recta atraviesa edificios; maqueta v2 aprobada (https://claude.ai/artifact/KnJ3R4DVbfBPPiQSVvwBTM).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6c-ruta-aproximada-sin-conexion.md`
+  summary: Probar que la composición real (rama que no es de captura) da a la pantalla un `ServicioRutas` con `ConRutaAproximada` (servicio local de calles guardadas).
+  evidence: Revisión de la 2.6c (verification gap). El servicio se crea en `Arranque.Start`, fuera de `Componer`; quitar `local: callesGuardadas` no rompe ninguna prueba. Mismo hueco que Valhalla/OSRM (pendiente de la 1.4/2.6).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6c-ruta-aproximada-sin-conexion.md`
+  summary: Sin red, con una conexión que se cuelga en vez de fallar, «Calculando la ruta…» puede durar 16–24 s (8 s de Valhalla, 8 de OSRM y 8 de la local en serie); estudiar ir antes a la local con errores de red o `Application.internetReachability`.
+  evidence: Revisión de la 2.6c (blind + edge, medium). `ServicioRutas.Calcular` usa `ConLimite` con 8 s en los tres; en modo avión los fallos suelen ser inmediatos.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-6c-ruta-aproximada-sin-conexion.md`
+  summary: Medir en un móvil el peor caso de la ruta aproximada (5×5 teselas, unión de extremos y A*) frente al límite de 8 s; si no cabe, límite propio para la local o límite al tamaño del grafo.
+  evidence: Sin verificar (maybe-false, medium si es cierto). Solo se ha medido en PC (563 m y 371 m); pasado el límite saldría el toast «no hay calles guardadas».

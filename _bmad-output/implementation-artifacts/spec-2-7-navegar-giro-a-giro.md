@@ -58,6 +58,7 @@ context:
 ## Open Questions
 
 1. **Tamaño.** A) Partir (recomendado): parte 1 = `ReglaNavegacion`, servicio, recálculo y eventos; parte 2 = panel, cámara, flecha y sin señal. B) Una sola.
+2. **Flecha a pie** (pedido del usuario el 21/11/2026: «cuando esté andando quiero la flecha en vez del círculo»). Cambia «a pie = círculo con cono» de Boundaries y la fila «A pie» de la matriz. Falta concretar: A) solo navegando a pie, flecha orientada al rumbo de la marcha y, por debajo de 1 m/s, a la brújula (recomendado). B) También fuera de ruta, siempre que el usuario se mueva (cambia la 1.7).
 
 ## Code Map
 

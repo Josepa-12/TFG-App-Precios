@@ -659,6 +659,42 @@ MonoBehaviour:
     m_Key: ruta.quitar
     m_Metadata:
       m_Items: []
+  - m_Id: 1164695238074378
+    m_Key: ruta.aproximada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074379
+    m_Key: ruta.valor.aprox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074380
+    m_Key: ruta.anuncio.aprox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074381
+    m_Key: ruta.anuncio.aprox.minuto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074382
+    m_Key: ficha.minutos.aprox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074383
+    m_Key: ficha.anuncio.minutos.aprox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074384
+    m_Key: ficha.anuncio.minuto.aprox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074385
+    m_Key: toast.ruta.aproximada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074386
+    m_Key: toast.ruta.sincalles
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

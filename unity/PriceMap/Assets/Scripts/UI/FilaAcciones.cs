@@ -87,11 +87,13 @@ namespace PriceMap.UI
 
         public void PonerCalculando(ModoViaje modo) => Boton(modo).Poner(EstadoTiempo.Calculando, 0, textos);
         public void PonerSinTiempo(ModoViaje modo) => Boton(modo).Poner(EstadoTiempo.SinTiempo, 0, textos);
-        public void PonerMinutos(ModoViaje modo, int minutos) => Boton(modo).Poner(EstadoTiempo.Minutos, Math.Max(1, minutos), textos);
+        /// <summary>Minutos de la ruta de ese modo; aproximados (sin conexión, parte 2b), "≈ 4 min".</summary>
+        public void PonerMinutos(ModoViaje modo, int minutos, bool aproximados = false) =>
+            Boton(modo).Poner(EstadoTiempo.Minutos, Math.Max(1, minutos), textos, aproximados);
 
         /// <summary>
         /// Lo que lee TalkBack en un modo: "Coche, 6 minutos", "A pie, 1 minuto", "Coche, sin tiempo" o "Coche,
-        /// calculando el tiempo". "Seleccionado" lo añade el estado del nodo.
+        /// calculando el tiempo"; aproximados, "Coche, unos 4 minutos". "Seleccionado" lo añade el estado del nodo.
         /// </summary>
         public string Anuncio(ModoViaje modo)
         {
@@ -99,6 +101,10 @@ namespace PriceMap.UI
             string nombre = b.Nombre.text;
             switch (b.Estado)
             {
+                case EstadoTiempo.Minutos when b.Aproximados:
+                    return b.Minutos == 1
+                        ? Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutoAprox), nombre)
+                        : Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutosAprox), nombre, b.Minutos);
                 case EstadoTiempo.Minutos:
                     return b.Minutos == 1
                         ? Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinuto), nombre)
@@ -129,6 +135,8 @@ namespace PriceMap.UI
         public Label Tiempo { get; }
         public EstadoTiempo Estado { get; private set; }
         public int Minutos { get; private set; }
+        /// <summary>Los minutos son de la ruta aproximada (sin conexión, parte 2b).</summary>
+        public bool Aproximados { get; private set; }
 
         public bool Elegido
         {
@@ -172,12 +180,14 @@ namespace PriceMap.UI
 
         public void Pulsar() => alPulsar?.Invoke();
 
-        internal void Poner(EstadoTiempo estado, int minutos, Func<string, string> textos)
+        internal void Poner(EstadoTiempo estado, int minutos, Func<string, string> textos, bool aproximados = false)
         {
             Estado = estado;
             Minutos = estado == EstadoTiempo.Minutos ? minutos : 0;
+            Aproximados = estado == EstadoTiempo.Minutos && aproximados;
             Tiempo.text = estado switch
             {
+                EstadoTiempo.Minutos when Aproximados => Textos.Formatear(textos(ClavesTexto.FichaMinutosAprox), minutos),
                 EstadoTiempo.Minutos => Textos.Formatear(textos(ClavesTexto.FichaMinutos), minutos),
                 EstadoTiempo.Calculando => textos(ClavesTexto.FichaCalculando),
                 _ => textos(ClavesTexto.FichaSinTiempo),

@@ -35,5 +35,17 @@ namespace PriceMap.Dominio
         public const float RutaEncuadreMargenDp = 16f;
         /// <summary>Margen (dp) entre la ruta encuadrada y los lados de la pantalla.</summary>
         public const float RutaEncuadreLadoDp = 32f;
+
+        // Ruta aproximada sin conexión (historia 2.6, parte 2b; decisiones del 20 y 21/11/2026)
+        /// <summary>Velocidad (km/h) con la que se calcula el tiempo de la ruta aproximada en coche.</summary>
+        public const double RutaAproximadaCocheKmh = 30.0;
+        /// <summary>Velocidad (km/h) con la que se calcula el tiempo de la ruta aproximada a pie.</summary>
+        public const double RutaAproximadaPieKmh = 5.0;
+        /// <summary>Metros a los que un extremo suelto de una calle se une a otra (cruces sin vértice común).</summary>
+        public const double RutaAproximadaUnionMetros = 5.0;
+        /// <summary>Metros máximos del origen o del destino a la calle guardada más cercana.</summary>
+        public const double RutaAproximadaCalleMetros = 300.0;
+        /// <summary>Teselas por lado, como mucho, que se leen para la ruta aproximada (5 × 5).</summary>
+        public const int RutaAproximadaTeselasLado = 5;
     }
 }

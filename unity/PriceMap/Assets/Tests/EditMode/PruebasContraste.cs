@@ -118,6 +118,32 @@ namespace PriceMap.Tests.EditMode
             Assert.GreaterOrEqual(Contraste(c["muted"], c["surface"]), 4.5f, "rótulos de la tarjeta de la ruta");
         }
 
+        /// <summary>
+        /// Ruta aproximada (historia 2.6, parte 2b; colores del 21/11/2026): la línea se distingue (≥ 3:1) de las calles y
+        /// del fondo por su relleno o por su borde (en claro el relleno es suave y lo marca el borde; en oscuro, al revés),
+        /// es distinta de la ruta normal, y el toast (fondo text, texto bg) se lee (≥ 4,5:1) y destaca sobre el mapa.
+        /// </summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LaRutaAproximadaYElToastCumplenElContraste(bool oscuro)
+        {
+            var c = Tema(oscuro);
+            var p = PaletaMapa.De(oscuro ? TemaMapa.Oscuro : TemaMapa.Claro);
+            Assert.AreEqual(oscuro ? "6F86C9" : "8FA3E6", ColorUtility.ToHtmlStringRGB(p.rutaAproximada));
+            Assert.AreEqual(oscuro ? "44599A" : "5F78C9", ColorUtility.ToHtmlStringRGB(p.rutaAproximadaBorde));
+            Assert.AreNotEqual(p.ruta, p.rutaAproximada, "Se distingue de la ruta normal.");
+            foreach (var (nombre, fondo) in new[] { ("fondo", p.fondo), ("calle", p.calle), ("calle menor", p.calleMenor) })
+            {
+                float linea = Mathf.Max(Contraste(p.rutaAproximada, fondo), Contraste(p.rutaAproximadaBorde, fondo));
+                Assert.GreaterOrEqual(linea, 3f, $"línea de la ruta aproximada sobre {nombre}");
+            }
+            Assert.AreEqual(ColorUtility.ToHtmlStringRGB(c["text"]), ColorUtility.ToHtmlStringRGB(c["toast"]), "Fondo del toast: text.");
+            Assert.AreEqual(ColorUtility.ToHtmlStringRGB(c["bg"]), ColorUtility.ToHtmlStringRGB(c["toast-texto"]), "Texto del toast: bg.");
+            Assert.GreaterOrEqual(Contraste(c["toast-texto"], c["toast"]), 4.5f, "texto del toast");
+            foreach (var (nombre, fondo) in new[] { ("fondo", p.fondo), ("calle", p.calle), ("edificio", p.edificio) })
+                Assert.GreaterOrEqual(Contraste(c["toast"], fondo), 3f, $"toast sobre {nombre}");
+        }
+
         /// <summary>El nombre de cada punto de interés se lee sobre el fondo del mapa de su tema (≥ 4,5:1).</summary>
         [TestCase(false)]
         [TestCase(true)]

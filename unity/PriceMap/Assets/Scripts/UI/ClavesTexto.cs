@@ -277,10 +277,32 @@ namespace PriceMap.UI
         /// <summary>Botón X de la tarjeta de abajo ("Quitar ruta").</summary>
         public const string RutaQuitar = "ruta.quitar";
 
+        // Ruta aproximada sin conexión (historia 2.6, parte 2b)
+        /// <summary>Tarjeta de arriba con la ruta aproximada ("Ruta aproximada por las calles guardadas").</summary>
+        public const string RutaAproximada = "ruta.aproximada";
+        /// <summary>Valor aproximado de la tarjeta de abajo: {0} el valor ("≈ 13:34", "≈ 4", "≈ 1,2").</summary>
+        public const string RutaValorAprox = "ruta.valor.aprox";
+        /// <summary>TalkBack de la tarjeta de abajo aproximada: {0} hora, {1} minutos, {2} distancia.</summary>
+        public const string RutaAnuncioAprox = "ruta.anuncio.aprox";
+        /// <summary>Igual con 1 minuto: {0} hora, {1} distancia.</summary>
+        public const string RutaAnuncioAproxMinuto = "ruta.anuncio.aprox.minuto";
+        /// <summary>Minutos aproximados bajo el modo: {0} minutos ("≈ 4 min").</summary>
+        public const string FichaMinutosAprox = "ficha.minutos.aprox";
+        /// <summary>TalkBack de un modo con minutos aproximados: {0} nombre, {1} minutos ("Coche, unos 4 minutos").</summary>
+        public const string FichaAnuncioMinutosAprox = "ficha.anuncio.minutos.aprox";
+        /// <summary>Igual con 1 minuto: {0} nombre ("A pie, alrededor de 1 minuto").</summary>
+        public const string FichaAnuncioMinutoAprox = "ficha.anuncio.minuto.aprox";
+        /// <summary>Toast al llegar la ruta aproximada ("Sin conexión: ruta aproximada").</summary>
+        public const string ToastRutaAproximada = "toast.ruta.aproximada";
+        /// <summary>Toast sin ruta aproximada ("Sin conexión: no hay calles guardadas para esta ruta").</summary>
+        public const string ToastSinCalles = "toast.ruta.sincalles";
+
         public static readonly string[] Todas =
         {
             RutaCalculando, RutaFallo, RutaA, RutaDespues, RutaLlegada, RutaMin, RutaAnuncio, RutaAnuncioMinuto,
             RutaAnuncioCalculando, RutaAnuncioFallo, RutaQuitar,
+            RutaAproximada, RutaValorAprox, RutaAnuncioAprox, RutaAnuncioAproxMinuto, FichaMinutosAprox,
+            FichaAnuncioMinutosAprox, FichaAnuncioMinutoAprox, ToastRutaAproximada, ToastSinCalles,
             FichaModoCoche, FichaModoPie, FichaIr, FichaIrA, FichaIrPunto, FichaMinutos, FichaCalculando, FichaSinTiempo,
             FichaAnuncioMinutos, FichaAnuncioMinuto, FichaAnuncioSinTiempo, FichaAnuncioCalculando, FichaModoElegido,
             BuscadorIrAPunto, BuscadorAnuncioPunto, BuscadorComprobandoEnlace, BuscadorEnlaceNoReconocido,

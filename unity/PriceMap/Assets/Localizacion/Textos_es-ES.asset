@@ -667,6 +667,42 @@ MonoBehaviour:
     m_Localized: Quitar ruta
     m_Metadata:
       m_Items: []
+  - m_Id: 1164695238074378
+    m_Localized: "Ruta aproximada por las calles guardadas"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074379
+    m_Localized: "≈ {0}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074380
+    m_Localized: "Ruta aproximada. Llegada hacia las {0}, unos {1} minutos, unos {2}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074381
+    m_Localized: "Ruta aproximada. Llegada hacia las {0}, alrededor de 1 minuto, unos {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074382
+    m_Localized: "≈ {0} min"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074383
+    m_Localized: "{0}, unos {1} minutos"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074384
+    m_Localized: "{0}, alrededor de 1 minuto"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074385
+    m_Localized: "Sin conexión: ruta aproximada"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1164695238074386
+    m_Localized: "Sin conexión: no hay calles guardadas para esta ruta"
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

@@ -189,6 +189,15 @@ namespace PriceMap.EditorTools
             [ClavesTexto.RutaAnuncioCalculando] = "Calculando la hora de llegada",
             [ClavesTexto.RutaAnuncioFallo] = "Sin hora de llegada",
             [ClavesTexto.RutaQuitar] = "Quitar ruta",
+            [ClavesTexto.RutaAproximada] = "Ruta aproximada por las calles guardadas",
+            [ClavesTexto.RutaValorAprox] = "≈ {0}",
+            [ClavesTexto.RutaAnuncioAprox] = "Ruta aproximada. Llegada hacia las {0}, unos {1} minutos, unos {2}",
+            [ClavesTexto.RutaAnuncioAproxMinuto] = "Ruta aproximada. Llegada hacia las {0}, alrededor de 1 minuto, unos {1}",
+            [ClavesTexto.FichaMinutosAprox] = "≈ {0} min",
+            [ClavesTexto.FichaAnuncioMinutosAprox] = "{0}, unos {1} minutos",
+            [ClavesTexto.FichaAnuncioMinutoAprox] = "{0}, alrededor de 1 minuto",
+            [ClavesTexto.ToastRutaAproximada] = "Sin conexión: ruta aproximada",
+            [ClavesTexto.ToastSinCalles] = "Sin conexión: no hay calles guardadas para esta ruta",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

@@ -56,10 +56,13 @@ namespace PriceMap.Arranque
             // Enlaces cortos pegados en el buscador (historia 2.5, parte 2): se siguen sus redirecciones
             var resolutor = new ResolutorEnlacesWeb();
             // Tiempos e Ir de la ficha (historia 2.6): Valhalla y, si falla o tarda 8 s, OSRM. La captura de pruebas
-            // usa rutas falsas para no depender de la red
+            // usa rutas falsas para no depender de la red. Sin conexión (los dos caen), la ruta aproximada por las calles
+            // de las teselas guardadas (parte 2b); la captura usa la misma, con las teselas de Sanlúcar ya en disco
+            var callesGuardadas = new RutasCallesGuardadas(Application.persistentDataPath,
+                mapa != null ? mapa.zoom : RutasCallesGuardadas.Zoom); // el zoom con el que el mapa guarda las teselas
             var rutas = CapturaPruebas.SePide()
-                ? new ServicioRutas(CapturaPruebas.RutasFalsas(), null, Task.Delay)
-                : new ServicioRutas(new RutasValhalla(), new RutasOsrm(), Task.Delay);
+                ? new ServicioRutas(CapturaPruebas.RutasFalsas(), null, Task.Delay, local: callesGuardadas)
+                : new ServicioRutas(new RutasValhalla(), new RutasOsrm(), Task.Delay, local: callesGuardadas);
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas))
             { enabled = false; return; }

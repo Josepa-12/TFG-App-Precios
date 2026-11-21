@@ -10,7 +10,9 @@ namespace PriceMap.Aplicacion
     /// Rutas y tiempos de la ficha (historia 2.6; FR7, FR10, FR18). Calcular pregunta al servicio principal
     /// (Valhalla) y, si falla o tarda más de 8 s, al de reserva (OSRM); si los dos fallan, devuelve el fallo. Las
     /// rutas buenas se guardan en una caché en memoria durante 2 min, y valen mientras el origen no se mueva más de
-    /// 20 m y el destino y el modo sean los mismos (ParametrosNegocio).
+    /// 20 m y el destino y el modo sean los mismos (ParametrosNegocio). Si los dos fallan y hay servicio local (parte 2b:
+    /// las calles guardadas, sin red), se le pide la ruta aproximada; esa no se guarda en la caché, para que al volver la
+    /// red la siguiente petición vaya a los servicios.
     ///
     /// PedirTiempos pide coche y a pie a la vez y avisa de cada uno (TiempoCalculado). Cada petición, y Cancelar,
     /// cancela las anteriores: de ellas no llega ningún aviso. Se usa desde el hilo principal (la UI).
@@ -24,6 +26,7 @@ namespace PriceMap.Aplicacion
 
         readonly IRutas principal;
         readonly IRutas reserva;
+        readonly IRutas local;
         readonly Func<TimeSpan, CancellationToken, Task> esperar;
         readonly Func<DateTime> reloj;
         readonly List<Guardada> cache = new List<Guardada>();
@@ -46,13 +49,22 @@ namespace PriceMap.Aplicacion
         /// <param name="reserva">Servicio de reserva (OSRM); null si no hay.</param>
         /// <param name="esperar">Espera cancelable (en la app, Task.Delay); las pruebas pasan una controlada.</param>
         /// <param name="reloj">Hora actual para la caché (por defecto, DateTime.UtcNow).</param>
-        public ServicioRutas(IRutas principal, IRutas reserva, Func<TimeSpan, CancellationToken, Task> esperar, Func<DateTime> reloj = null)
+        /// <param name="local">Ruta aproximada por las calles guardadas si fallan los dos (parte 2b); null si no hay.</param>
+        public ServicioRutas(IRutas principal, IRutas reserva, Func<TimeSpan, CancellationToken, Task> esperar, Func<DateTime> reloj = null,
+            IRutas local = null)
         {
+            this.local = local;
             this.principal = principal ?? throw new ArgumentNullException(nameof(principal));
             this.reserva = reserva;
             this.esperar = esperar ?? throw new ArgumentNullException(nameof(esperar));
             this.reloj = reloj ?? (() => DateTime.UtcNow);
         }
+
+        /// <summary>
+        /// Hay servicio de ruta aproximada (parte 2b): un fallo de Calcular quiere decir que tampoco hay calles guardadas
+        /// que unan el origen y el destino.
+        /// </summary>
+        public bool ConRutaAproximada => local != null;
 
         /// <summary>Hay tiempos pedidos sin respuesta.</summary>
         public bool Pendiente => actual != null && pendientes > 0;
@@ -114,8 +126,8 @@ namespace PriceMap.Aplicacion
         }
 
         /// <summary>
-        /// La ruta más corta en ese modo: de la caché, del principal o del de reserva. Fallo si ninguno la da; cancelar
-        /// termina en OperationCanceledException.
+        /// La ruta más corta en ese modo: de la caché, del principal o del de reserva y, si los dos fallan, la aproximada
+        /// del servicio local (sin guardarla). Fallo si ninguno la da; cancelar termina en OperationCanceledException.
         /// </summary>
         public async Task<Resultado<Ruta>> Calcular(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
         {
@@ -131,8 +143,16 @@ namespace PriceMap.Aplicacion
             }
             ct.ThrowIfCancellationRequested();
             if (r.Ok && r.Valor == null) r = Resultado<Ruta>.Fallo("El servicio de rutas no ha dado ninguna ruta.");
-            if (r.Ok) Guardar(origen, destino, modo, r.Valor);
-            return r;
+            if (r.Ok)
+            {
+                Guardar(origen, destino, modo, r.Valor);
+                return r;
+            }
+            if (local == null) return r;
+            var r3 = await ConLimite(local, origen, destino, modo, ct);
+            ct.ThrowIfCancellationRequested();
+            if (r3.Ok && r3.Valor != null) return r3; // la aproximada no va a la caché
+            return Resultado<Ruta>.Fallo(r.Error + " Calles guardadas: " + (r3.Ok ? "sin ruta." : r3.Error));
         }
 
         /// <summary>Pregunta a un servicio con el tiempo máximo; pasado, o si lanza, es un fallo.</summary>
@@ -197,6 +217,9 @@ namespace PriceMap.Aplicacion
 
         /// <summary>Rutas guardadas en la caché (para las pruebas).</summary>
         public int EnCache => cache.Count;
+
+        /// <summary>Vacía la caché (la captura de PC, para que la ruta sin red no salga de una guardada antes).</summary>
+        public void VaciarCache() => cache.Clear();
 
         static string Mensaje(Exception e) => string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message;
     }

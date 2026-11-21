@@ -99,12 +99,25 @@ namespace PriceMap.UI
             Anuncio = textos(ClavesTexto.RutaAnuncioFallo);
         }
 
-        /// <summary>La ruta llegada, con la hora local de ahora para la llegada.</summary>
+        /// <summary>
+        /// La ruta llegada, con la hora local de ahora para la llegada. La aproximada (parte 2b) lleva "≈" en los tres
+        /// valores y TalkBack dice "Ruta aproximada. Llegada hacia las 13:34, unos 4 minutos, unos 1,2 km".
+        /// </summary>
         public void MostrarRuta(Ruta ruta, DateTime ahoraLocal)
         {
             string hora = HoraLlegada(ahoraLocal, ruta.Segundos);
             var (valor, unidad) = PartirDistancia(ruta.Metros);
             int minutos = ruta.Minutos;
+            if (ruta.Aproximada)
+            {
+                string Aprox(string v) => Textos.Formatear(textos(ClavesTexto.RutaValorAprox), v);
+                Poner(Aprox(hora), Aprox(minutos.ToString(CultureInfo.InvariantCulture)), Aprox(valor), unidad);
+                string aprox = FormatoDistancia.Texto(ruta.Metros).Replace(' ', ' ');
+                Anuncio = minutos == 1
+                    ? Textos.Formatear(textos(ClavesTexto.RutaAnuncioAproxMinuto), hora, aprox)
+                    : Textos.Formatear(textos(ClavesTexto.RutaAnuncioAprox), hora, minutos, aprox);
+                return;
+            }
             Poner(hora, minutos.ToString(CultureInfo.InvariantCulture), valor, unidad);
             string distancia = FormatoDistancia.Texto(ruta.Metros).Replace(' ', ' ');
             Anuncio = minutos == 1

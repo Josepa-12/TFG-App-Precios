@@ -113,6 +113,9 @@
     --color-tarjeta-maniobra: rgba(19, 35, 91, 0.96);
     --color-tarjeta-maniobra-texto: #FFFFFF;
     --color-tarjeta-maniobra-meta: #B8C4EA;
+    /* Toast (DESIGN.md · Toast; historia 2.6, parte 2b): fondo text, texto bg, para contrastar con todo */
+    --color-toast: #13235B;
+    --color-toast-texto: #F3F5FB;
 
     /* Espaciado (4 / 8 / 12 / 16 / 24 / 32) */
     --espacio-1: 4px;
@@ -137,6 +140,7 @@
     --radio-posicion-punto: 9px;   /* 18 / 2 */
     --radio-poi-icono: 12px;       /* 24 / 2 */
     --radio-frescura-punto: 4.5px; /* 9 / 2 */
+    --radio-toast: 12px;     /* toast (DESIGN.md) */
     --radio-columna: 16px;   /* columna de controles (prototipo .ctrl-stack) */
     --radio-opcion: 12px;    /* opciones del menú "Precios" (prototipo .cat-menu button) */
 
@@ -252,6 +256,8 @@
     --color-tarjeta-maniobra: #E6ECFA;
     --color-tarjeta-maniobra-texto: #0F1424; /* bg oscuro */
     --color-tarjeta-maniobra-meta: #3E4D78;
+    --color-toast: #E6ECFA;        /* text oscuro */
+    --color-toast-texto: #0F1424;  /* bg oscuro */
 }
 
 /* Tipografía: Varela Round para títulos, Nunito Sans para el resto (tamaños en dp, escalados a sp) */
