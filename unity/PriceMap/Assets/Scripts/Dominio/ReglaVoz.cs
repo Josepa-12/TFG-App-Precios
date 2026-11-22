@@ -82,6 +82,13 @@ namespace PriceMap.Dominio
         }
 
         /// <summary>
+        /// Apunta este estado sin decir nada (historia 2.8, parte 2): la maniobra de ahora cuenta como avisada a su distancia
+        /// de ahora y lo que ya ha pasado (el intermedio o el del momento) como dicho. Es lo que haría Avisar con todas las
+        /// indicaciones, sin frase. Para las posiciones viejas que llegan de golpe al volver de una pausa de Unity.
+        /// </summary>
+        public void Sincronizar(EstadoNavegacion estado) => _ = Avisar(estado, ModoVoz.Todo);
+
+        /// <summary>
         /// La maniobra que toca: la siguiente del estado y, si es la salida (al empezar, aún sin pasar), la de después. La
         /// salida que queda atrás no cambia la maniobra que toca: no se repite el aviso.
         /// </summary>

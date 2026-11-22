@@ -16,7 +16,10 @@ namespace PriceMap.Aplicacion
         readonly ServicioNavegacion navegacion;
         readonly IVoz voz;
         readonly IPreferencias preferencias;
+        readonly Func<DateTime> reloj;
         ReglaVoz regla; // null sin ruta
+        DateTime calladaHasta = DateTime.MinValue; // tras Reanudar, hasta aquí solo se apunta (Sincronizar)
+        bool reanudada; // Reanudar sin estado nuevo aún: el segundo empieza con el primero
 
         /// <summary>Lo que dice la voz; el guardado o, la primera vez, todas las indicaciones.</summary>
         public ModoVoz Modo { get; private set; }
@@ -24,13 +27,20 @@ namespace PriceMap.Aplicacion
         /// <summary>El usuario ha elegido otro modo.</summary>
         public event Action<ModoVoz> ModoCambiado;
 
-        public ServicioVoz(ServicioNavegacion navegacion, IVoz voz, IPreferencias preferencias)
+        /// <param name="reloj">La hora de ahora (para el silencio de Reanudar); sin él, DateTime.UtcNow.</param>
+        public ServicioVoz(ServicioNavegacion navegacion, IVoz voz, IPreferencias preferencias, Func<DateTime> reloj = null)
         {
+            this.reloj = reloj ?? (() => DateTime.UtcNow);
             this.navegacion = navegacion ?? throw new ArgumentNullException(nameof(navegacion));
             this.voz = voz ?? throw new ArgumentNullException(nameof(voz));
             this.preferencias = preferencias ?? throw new ArgumentNullException(nameof(preferencias));
             Modo = ReglaVoz.DeClave(preferencias.Leer(ClavePreferencia));
-            navegacion.RutaIniciada += _ => regla = new ReglaVoz(this.navegacion.Modo);
+            navegacion.RutaIniciada += _ =>
+            {
+                regla = new ReglaVoz(this.navegacion.Modo);
+                reanudada = false; // una ruta nueva no trae avisos viejos: su primer aviso se dice
+                calladaHasta = DateTime.MinValue;
+            };
             navegacion.Actualizado += AlActualizar;
             navegacion.RutaCambiada += () => regla?.Reiniciar();
             navegacion.RutaTerminada += _ => { regla = null; Callar(); };
@@ -46,11 +56,25 @@ namespace PriceMap.Aplicacion
             ModoCambiado?.Invoke(modo);
         }
 
+        /// <summary>
+        /// Unity vuelve de una pausa real (historia 2.8, parte 2: el sistema la pausó aunque se navegaba): desde el primer
+        /// estado nuevo (el fotograma en que llegan de golpe las posiciones guardadas, que tras una pausa larga puede tardar
+        /// más de 1 s) y durante 1 s (ParametrosNegocio.VozSilencioAlVolverSegundos) no se habla; esos estados solo se
+        /// apuntan como dichos, así no se dicen avisos viejos. Una ruta nueva lo anula. Lo llama el Arranque.
+        /// </summary>
+        public void Reanudar() => reanudada = true;
+
         void AlActualizar()
         {
+            if (reanudada)
+            {
+                reanudada = false;
+                calladaHasta = reloj().AddSeconds(ParametrosNegocio.VozSilencioAlVolverSegundos);
+            }
             if (regla == null || !navegacion.Activa) return;
             // Fuera de la ruta la distancia sale de la ruta vieja: no se dice nada (tras el recálculo, de cero)
             if (navegacion.Estado == null || navegacion.Estado.FueraDeRuta) return;
+            if (reloj() < calladaHasta) { regla.Sincronizar(navegacion.Estado); return; }
             string frase = regla.Avisar(navegacion.Estado, Modo);
             if (string.IsNullOrWhiteSpace(frase)) return;
             try { voz.Hablar(frase); }

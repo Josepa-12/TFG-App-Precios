@@ -551,6 +551,113 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual("nada", prefs.Leer(ServicioVoz.ClavePreferencia));
         }
 
+        // ───────────────────────── Pausa forzada (historia 2.8, parte 2) ─────────────────────────
+
+        [Test]
+        public void Regla_Sincronizar_ApuntaSinDecirYLuegoSigue()
+        {
+            var regla = new ReglaVoz(ModoViaje.Coche);
+            var giro = Derecha(M(1000, 0));
+            regla.Sincronizar(Estado(giro, 820));
+            Assert.IsNull(regla.Avisar(Estado(giro, 810), ModoVoz.Todo), "La de ahora cuenta como dicha a su distancia.");
+            Assert.AreEqual("En 300 metros, gire a la derecha por Calle Ancha.", regla.Avisar(Estado(giro, 290), ModoVoz.Todo),
+                "Se dijo a 820 m: el intermedio sigue tocando.");
+            regla.Sincronizar(Estado(giro, 39));
+            Assert.IsNull(regla.Avisar(Estado(giro, 30), ModoVoz.Todo), "El del momento ya pasó: no se dice tarde.");
+        }
+
+        [Test]
+        public void Regla_Sincronizar_DentroDelIntermedioNoLoDiceDespues()
+        {
+            var regla = new ReglaVoz(ModoViaje.Coche);
+            var giro = Derecha(M(1000, 0));
+            regla.Sincronizar(Estado(giro, 250));
+            Assert.IsNull(regla.Avisar(Estado(giro, 240), ModoVoz.Todo));
+            Assert.AreEqual("Gire a la derecha.", regla.Avisar(Estado(giro, 39), ModoVoz.Todo), "El del momento, a su hora.");
+        }
+
+        [Test]
+        public void Servicio_Reanudar_UnSegundoSinHablarYDespuesALaHora()
+        {
+            var reloj = Ahora;
+            vozFalsa = new VozFalsa();
+            voz = new ServicioVoz(nav, vozFalsa, prefs, () => reloj);
+            Empezar();
+            Assert.AreEqual(1, vozFalsa.Dicho.Count);
+            // Unity vuelve de una pausa real: las posiciones guardadas llegan de golpe
+            voz.Reanudar();
+            gps.Mover(M(690, 0));
+            gps.Mover(M(710, 0)); // cruza los 300 m: aviso viejo
+            reloj = reloj.AddSeconds(0.9);
+            gps.Mover(M(720, 0));
+            Assert.AreEqual(1, vozFalsa.Dicho.Count, "Durante 1 s no habla: " + string.Join(" | ", vozFalsa.Dicho));
+            reloj = reloj.AddSeconds(0.2);
+            gps.Mover(M(730, 0));
+            Assert.AreEqual(1, vozFalsa.Dicho.Count, "El intermedio ya se dio por dicho.");
+            gps.Mover(M(961, 0));
+            Assert.AreEqual("Gire a la derecha.", vozFalsa.Dicho.Last(), "Pasado el segundo, el del momento a su hora.");
+            Assert.AreEqual(2, vozFalsa.Dicho.Count);
+        }
+
+        [Test]
+        public void Servicio_Reanudar_ElSegundoEmpiezaConLaPrimeraActualizacion()
+        {
+            var reloj = Ahora;
+            vozFalsa = new VozFalsa();
+            voz = new ServicioVoz(nav, vozFalsa, prefs, () => reloj);
+            Empezar();
+            voz.Reanudar();
+            reloj = reloj.AddSeconds(2); // pausa larga: el primer fotograma llega tarde
+            gps.Mover(M(690, 0));
+            gps.Mover(M(710, 0)); // aviso viejo del intermedio
+            gps.Mover(M(961, 0)); // y del momento
+            Assert.AreEqual(1, vozFalsa.Dicho.Count, "Siguen callados: " + string.Join(" | ", vozFalsa.Dicho));
+        }
+
+        [Test]
+        public void Servicio_Reanudar_UnaRutaNuevaJustoDespuesDiceSuPrimerAviso()
+        {
+            var reloj = Ahora;
+            vozFalsa = new VozFalsa();
+            voz = new ServicioVoz(nav, vozFalsa, prefs, () => reloj);
+            voz.Reanudar();
+            Empezar();
+            CollectionAssert.AreEqual(new[] { "En 800 metros, gire a la derecha por Calle Ancha." }, vozFalsa.Dicho);
+        }
+
+        [Test]
+        public void Arranque_AlVolverDeLaPausaCallaLoViejo_YAlPausarNo()
+        {
+            int fotogramas = Application.targetFrameRate;
+            try
+            {
+                var reloj = Ahora;
+                vozFalsa = new VozFalsa();
+                voz = new ServicioVoz(nav, vozFalsa, prefs, () => reloj);
+                Empezar();
+                Arranque.Arranque.AlVolverDePausa(voz, null, enPausa: true);
+                gps.Mover(M(690, 0));
+                gps.Mover(M(710, 0));
+                Assert.AreEqual("En 300 metros, gire a la derecha por Calle Ancha.", vozFalsa.Dicho.Last(), "Al pausar no se calla.");
+                Arranque.Arranque.AlVolverDePausa(voz, null, enPausa: false);
+                gps.Mover(M(961, 0)); // aviso viejo del momento
+                Assert.AreEqual(2, vozFalsa.Dicho.Count, "Al volver, callado: " + string.Join(" | ", vozFalsa.Dicho));
+            }
+            finally { Application.targetFrameRate = fotogramas; }
+        }
+
+        [Test]
+        public void Servicio_SinReanudar_HablaComoSiempre()
+        {
+            var reloj = Ahora;
+            vozFalsa = new VozFalsa();
+            voz = new ServicioVoz(nav, vozFalsa, prefs, () => reloj);
+            Empezar();
+            gps.Mover(M(690, 0));
+            gps.Mover(M(710, 0));
+            Assert.AreEqual("En 300 metros, gire a la derecha por Calle Ancha.", vozFalsa.Dicho.Last());
+        }
+
         [Test]
         public void VozNula_NoHaceNada()
         {

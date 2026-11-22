@@ -116,5 +116,10 @@ namespace PriceMap.Dominio
         public const double VozRedondeoCocheMetros = 50.0;
         /// <summary>Lo mismo a pie.</summary>
         public const double VozRedondeoPieMetros = 10.0;
+        /// <summary>
+        /// Segundos sin hablar al volver de una pausa real de Unity (historia 2.8, parte 2): las posiciones guardadas se
+        /// procesan de golpe y solo se da por dicho lo que ya no toca.
+        /// </summary>
+        public const double VozSilencioAlVolverSegundos = 1.0;
     }
 }

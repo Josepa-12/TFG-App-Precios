@@ -13,6 +13,8 @@ namespace PriceMap.Adaptadores.Gps
     internal class ServicioRutaAndroid : IServicioRuta
     {
         const string ClasePuente = "com.pricemap.ruta.PuenteUbicacionRuta";
+        /// <summary>La actividad de la app (historia 2.8, parte 2): navegando no pausa Unity en segundo plano.</summary>
+        const string ClaseActividad = "com.pricemap.app.ActividadPrincipal";
         const string PermisoNotificaciones = "android.permission.POST_NOTIFICATIONS";
         const int Android13 = 33;
 
@@ -42,11 +44,36 @@ namespace PriceMap.Adaptadores.Gps
             Permission.RequestUserPermission(PermisoNotificaciones, respuestas);
         }
 
-        public void Iniciar(string textoNotificacion) => Llamar("iniciar", textoNotificacion, objetoUnity);
+        public void Iniciar(string textoNotificacion)
+        {
+            Llamar("iniciar", textoNotificacion, objetoUnity);
+            Seguir(true);
+        }
 
         public void ActualizarTexto(string textoNotificacion) => Llamar("actualizar", textoNotificacion);
 
-        public void Parar() => Llamar("parar");
+        public void Parar()
+        {
+            Seguir(false); // primero: así, si la app está detrás, la actividad pausa Unity como siempre
+            Llamar("parar");
+        }
+
+        /// <summary>
+        /// Con ruta (true), la actividad no pausa Unity al ir a segundo plano y le avisa con AlSegundoPlano (al mismo
+        /// GameObject que AlPosicionRuta, el del Arranque); sin ruta (false), todo como siempre.
+        /// </summary>
+        void Seguir(bool activo)
+        {
+            try
+            {
+                using var actividad = new AndroidJavaClass(ClaseActividad);
+                actividad.CallStatic("seguir", activo, objetoUnity);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("PriceMap: la actividad no puede seguir en segundo plano: " + e.Message);
+            }
+        }
 
         public bool EnMarcha
         {

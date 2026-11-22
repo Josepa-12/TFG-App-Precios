@@ -12,7 +12,8 @@ namespace PriceMap.EditorTools
     /// que Unity no pida permisos al arrancar: el permiso se pide tras la explicación (historia 1.7). Para la ruta
     /// (historia 2.1, AD-19) añade el servicio en primer plano de tipo "location" del plugin (ServicioUbicacionRuta,
     /// no exportado) con sus permisos FOREGROUND_SERVICE, FOREGROUND_SERVICE_LOCATION y POST_NOTIFICATIONS. Nunca
-    /// ACCESS_BACKGROUND_LOCATION: si apareciera, se quita.
+    /// ACCESS_BACKGROUND_LOCATION: si apareciera, se quita. WAKE_LOCK (historia 2.8, parte 2): el servicio no deja dormir al
+    /// procesador mientras se navega.
     /// </summary>
     public class PermisosUbicacionAndroid : IPostGenerateGradleAndroidProject
     {
@@ -22,6 +23,7 @@ namespace PriceMap.EditorTools
             "android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION",
             "android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_LOCATION",
             "android.permission.POST_NOTIFICATIONS",
+            "android.permission.WAKE_LOCK", // el servicio de ruta mantiene el procesador despierto (historia 2.8, parte 2)
         };
         /// <summary>Permiso que la app no pide nunca (AD-19): el GPS en segundo plano va con el servicio de ruta.</summary>
         public const string PermisoProhibido = "android.permission.ACCESS_BACKGROUND_LOCATION";

@@ -28,6 +28,9 @@ namespace PriceMap.EditorTools
             PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)35; // API 35 (Android 15): el enum no tiene nombre para ella
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            // Activity y no GameActivity (historia 2.8, parte 2): con GameActivity la pausa la hace la parte nativa y no
+            // se puede evitar; con Activity, ActividadPrincipal (ActividadAndroid) no pausa Unity navegando
+            PlayerSettings.Android.applicationEntry = AndroidApplicationEntry.Activity;
 
             // Solo vertical (UX-DR22)
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
@@ -38,7 +41,7 @@ namespace PriceMap.EditorTools
 
             EditorUserBuildSettings.buildAppBundle = false; // APK instalable a mano
             AssetDatabase.SaveAssets();
-            Debug.Log($"PriceMap: Android configurado ({Identificador}, minSdk 26, targetSdk 35, IL2CPP ARM64, vertical).");
+            Debug.Log($"PriceMap: Android configurado ({Identificador}, minSdk 26, targetSdk 35, IL2CPP ARM64, vertical, Activity).");
         }
 
         [MenuItem("PriceMap/Compilar APK")]

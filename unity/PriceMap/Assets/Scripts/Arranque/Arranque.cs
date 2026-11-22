@@ -23,10 +23,16 @@ namespace PriceMap.Arranque
         [SerializeField] PantallaMapa pantallaMapa;
 
         ServicioUbicacion ubicacion;
+        ServicioVoz voz;
+
+        /// <summary>Fotogramas por segundo con la app delante: Android limita a 30 por defecto (NFR-1 pide ≥ 30).</summary>
+        public const int FotogramasDelante = 60;
+        /// <summary>Fotogramas por segundo en segundo plano navegando (historia 2.8, parte 2): sin dibujar, solo la lógica.</summary>
+        public const int FotogramasSegundoPlano = 5;
 
         void Start()
         {
-            Application.targetFrameRate = 60; // Android limita a 30 por defecto (NFR-1 pide ≥ 30)
+            Application.targetFrameRate = FotogramasDelante;
 
             if (mapa == null) mapa = FindFirstObjectByType<MapaVectorial>();
             if (pantallaMapa == null) pantallaMapa = FindFirstObjectByType<PantallaMapa>();
@@ -68,7 +74,7 @@ namespace PriceMap.Arranque
             var navegacion = new ServicioNavegacion(ubicacion, rutas, Task.Delay,
                 textoNotificacion: (destino, minutos) => Textos.T(ClavesTexto.NotificacionNavegando, destino, minutos));
             // Indicaciones por voz (historia 2.8): el TextToSpeech de Android; en el PC, el editor y la captura, callada
-            var voz = new ServicioVoz(navegacion, CrearVoz(), preferencias);
+            voz = new ServicioVoz(navegacion, CrearVoz(), preferencias);
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
                     navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz))
@@ -107,6 +113,7 @@ namespace PriceMap.Arranque
         void OnApplicationPause(bool enPausa)
         {
             AlPausar(ubicacion, enPausa);
+            AlVolverDePausa(voz, CamaraDelMapa(), enPausa);
             // Con pantalla partida puede llegar onNewIntent sin cambio de foco: también al salir de la pausa
             AlVolverDelante(compartida, pantallaMapa, delante: !enPausa, activo: enabled);
         }
@@ -116,6 +123,41 @@ namespace PriceMap.Arranque
             AlCambiarFoco(ubicacion, conFoco);
             if (conFoco && enabled && pantallaMapa != null) pantallaMapa.LeerAccesibilidadSistema();
             AlVolverDelante(compartida, pantallaMapa, delante: conFoco, activo: enabled);
+        }
+
+        /// <summary>
+        /// Lo manda ActividadPrincipal (Android, UnitySendMessage) al ir a segundo plano navegando ("1": Unity sigue sin
+        /// pausarse) y al volver o terminar la ruta ("0"). Historia 2.8, parte 2.
+        /// </summary>
+        public void AlSegundoPlano(string valor) => AplicarSegundoPlano(valor == "1", CamaraDelMapa());
+
+        static Camera CamaraDelMapa()
+        {
+            var camara = FindFirstObjectByType<CamaraMapa>();
+            return camara != null ? camara.GetComponent<Camera>() : null;
+        }
+
+        /// <summary>
+        /// Lo que hace OnApplicationPause para la voz y el dibujo (historia 2.8, parte 2). Navegando Unity no se pausa
+        /// (ActividadPrincipal): si llega aquí, el sistema lo pausó igualmente o no había ruta. Al salir de la pausa, el
+        /// ritmo normal y la cámara (sin depender del aviso «0», que pudo quedarse en cola) y la voz calla 1 s mientras se
+        /// procesan las posiciones guardadas. Al entrar en pausa, nada.
+        /// </summary>
+        internal static void AlVolverDePausa(ServicioVoz voz, Camera camara, bool enPausa)
+        {
+            if (enPausa) return;
+            AplicarSegundoPlano(false, camara);
+            voz?.Reanudar();
+        }
+
+        /// <summary>
+        /// En segundo plano navegando: 5 fotogramas por segundo y la cámara del mapa sin dibujar (la navegación, la voz y
+        /// la notificación siguen igual). Al volver: el ritmo normal y la cámara otra vez. Sin cámara, solo el ritmo.
+        /// </summary>
+        internal static void AplicarSegundoPlano(bool segundoPlano, Camera camara)
+        {
+            Application.targetFrameRate = segundoPlano ? FotogramasSegundoPlano : FotogramasDelante;
+            if (camara != null) camara.enabled = !segundoPlano;
         }
 
         /// <summary>

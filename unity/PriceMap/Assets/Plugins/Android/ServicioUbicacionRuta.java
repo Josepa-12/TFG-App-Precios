@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -24,7 +25,9 @@ import java.util.Locale;
  * Servicio en primer plano de tipo "location" (historia 2.1, AD-19): mantiene el GPS durante una ruta aunque la
  * pantalla esté apagada u otra app esté delante, con una notificación fija de navegación. Usa LocationManager
  * (GPS y red, cada segundo, sin distancia mínima), sin Google Play Services. Cada posición va a la cola de
- * PuenteUbicacionRuta. Lo arranca y lo para solo el puente (y este, el adaptador de GPS de Unity).
+ * PuenteUbicacionRuta. Lo arranca y lo para solo el puente (y este, el adaptador de GPS de Unity). Mientras está en
+ * marcha mantiene el procesador despierto (PARTIAL_WAKE_LOCK, historia 2.8 parte 2): con el móvil bloqueado Unity sigue
+ * navegando y hablando (ActividadPrincipal); lo suelta al parar.
  */
 public class ServicioUbicacionRuta extends Service implements LocationListener {
     static final String EXTRA_TEXTO = "texto";
@@ -38,6 +41,7 @@ public class ServicioUbicacionRuta extends Service implements LocationListener {
 
     private LocationManager ubicacion;
     private boolean escuchando;
+    private PowerManager.WakeLock despierto;
 
     @Override
     public IBinder onBind(Intent intent) { return null; }
@@ -63,7 +67,23 @@ public class ServicioUbicacionRuta extends Service implements LocationListener {
         }
         instancia = this;
         escuchar();
+        if (escuchando) despertar(); // sin ningún proveedor no hay nada que mantener despierto
         return START_NOT_STICKY;
+    }
+
+    /** El procesador no se duerme mientras dure la ruta (una sola vez, sin contar). */
+    private void despertar() {
+        if (despierto != null && despierto.isHeld()) return;
+        PowerManager energia = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        if (energia == null) return;
+        despierto = energia.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PriceMap:ruta");
+        despierto.setReferenceCounted(false);
+        despierto.acquire();
+    }
+
+    private void soltar() {
+        if (despierto != null && despierto.isHeld()) despierto.release();
+        despierto = null;
     }
 
     private void escuchar() {
@@ -122,6 +142,9 @@ public class ServicioUbicacionRuta extends Service implements LocationListener {
         instancia = null;
         if (ubicacion != null && escuchando) ubicacion.removeUpdates(this);
         escuchando = false;
+        soltar();
+        // Si lo para el sistema con la app detrás, Unity no debe quedarse sin pausar
+        com.pricemap.app.ActividadPrincipal.seguir(false, null);
         stopForeground(STOP_FOREGROUND_REMOVE);
         Log.i(ETIQUETA, "PriceMap: servicio de ruta parado.");
         super.onDestroy();

@@ -134,7 +134,7 @@
   summary: Comprobar en el móvil que la pantalla no se apaga durante la ruta (`Arranque.Start` pasa `PantallaSistemaUnity` a `Componer`; sin prueba automática).
   evidence: Revisión de la 2.7b (verification gap, low). Quitar ese argumento no rompe ninguna prueba; necesita escena y Android.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-indicaciones-por-voz.md`
-  summary: Historia 2.8 (parte 2): indicaciones por voz con la pantalla apagada; el servicio de Android recibe la lista de avisos con sus coordenadas y los dice él (reutilizando `PuenteVoz`), con el mismo modo de voz.
+  summary: Historia 2.8 (parte 2): indicaciones por voz con la pantalla apagada (en curso: spec-2-8b, Unity sin pausar navegando).
   evidence: El usuario partió la 2.8 el 22/11/2026 (unos 2.300 tokens): primero la voz con la app delante; la pantalla apagada obliga a tocar el servicio de Android.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-indicaciones-por-voz.md`
   summary: Prueba propia de que `AccesibilidadPantalla.RefrescarEtiqueta` relee el valor del nodo (cambiar el modo de voz con la fila cerrada y mirar el valor de TalkBack).
@@ -142,3 +142,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-indicaciones-por-voz.md`
   summary: Probar `PuenteVoz` en un móvil real: castellano, foco de audio con atenuación, calla en silencio/vibración, frase pedida antes de que el motor esté listo.
   evidence: Revisión de la 2.8: en EditMode solo se lee el código Java; no hay pruebas de Android instrumentadas.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8b-voz-con-la-pantalla-apagada.md`
+  summary: Probar en el móvil `ActividadPrincipal` (Unity sin pausar navegando con el móvil bloqueado, vuelta, ruta terminada detrás) y el `WAKE_LOCK` del servicio; en EditMode solo se lee el código Java.
+  evidence: Revisión de la 2.8b (verification-gap). Si Unity se pausa igualmente, pasar al respaldo decidido: la línea de la ruta al servicio de Android.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8b-voz-con-la-pantalla-apagada.md`
+  summary: Prueba que fije que `UbicacionUnity` y `Arranque` van en el mismo GameObject (destino de `AlPosicionRuta` y `AlSegundoPlano`).
+  evidence: Revisión de la 2.8b (verification-gap): si se separan, `AlSegundoPlano` no llega y en segundo plano se dibuja a 60 fps sin que falle ninguna prueba.
