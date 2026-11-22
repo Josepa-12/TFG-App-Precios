@@ -317,8 +317,15 @@ namespace PriceMap.UI
         /// <summary>Botón de ubicación navegando, mientras la cámara sigue ("Siguiendo tu posición").</summary>
         public const string UbicacionSiguiendo = "ubicacion.siguiendo";
 
+        // Flecha y sin señal (historia 2.7, parte 2c)
+        /// <summary>Pastilla bajo la tarjeta de arriba y anuncio de TalkBack al perder el GPS ("Buscando señal GPS").</summary>
+        public const string SenalBuscando = "navegacion.senal.buscando";
+        /// <summary>Anuncio de TalkBack al volver el GPS ("Señal GPS recuperada").</summary>
+        public const string SenalRecuperada = "navegacion.senal.recuperada";
+
         public static readonly string[] Todas =
         {
+            SenalBuscando, SenalRecuperada,
             UbicacionRecentrar, UbicacionSiguiendo,
             RutaCalculando, RutaFallo, RutaA, RutaDespues, RutaLlegada, RutaMin, RutaAnuncio, RutaAnuncioMinuto,
             RutaAnuncioCalculando, RutaAnuncioFallo, RutaQuitar,

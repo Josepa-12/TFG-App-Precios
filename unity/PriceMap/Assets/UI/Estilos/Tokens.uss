@@ -48,6 +48,8 @@
     --color-posicion: #2F5BEA;
     --color-posicion-borde: #FFFFFF;
     --color-posicion-cono: rgba(47, 91, 234, 0.28);
+    /* Flecha de la navegación en coche (historia 2.7, parte 2c): mismo azul con el borde blanco; en oscuro, más clara */
+    --color-flecha: #2F5BEA;
     /* Chincheta del punto libre (historia 2.5, maqueta del 19/11/2026): azul marino (--color-text del claro) con
        borde y centro blancos; en oscuro, blanca con borde fino y centro azul marino. Sombra pequeña en el suelo */
     --color-chincheta: #13235B;
@@ -159,6 +161,7 @@
     --poi-nombre-ancho: 96px; /* 8 em de 12 sp, como text-max-width del prototipo */
     --posicion-punto: 18px;
     --posicion-cono: 80px;
+    --posicion-flecha: 26px;
     --chincheta-ancho: 34px;
     --chincheta-alto: 44px;
     --gotita-ancho: 12px;  /* gotita delante de "Punto en el mapa" */
@@ -229,6 +232,7 @@
     --color-chincheta: #FFFFFF;
     --color-chincheta-detalle: #13235B;
     --color-chincheta-sombra: rgba(0, 0, 0, 0.45);
+    --color-flecha: #4C7DFF;
     --color-poi-comer-texto: #F5AA6A;
     --color-poi-rapida-texto: #EE906D;
     --color-poi-cafe-texto: #BE9E80;

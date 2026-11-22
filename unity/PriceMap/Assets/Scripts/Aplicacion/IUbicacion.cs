@@ -20,6 +20,13 @@ namespace PriceMap.Aplicacion
         /// <summary>Se lanza cuando cambia el estado, la posición o el rumbo.</summary>
         event Action Cambiado;
 
+        /// <summary>
+        /// Cuántas lecturas del GPS han llegado: sube con cada una, también si repite la coordenada (un coche parado
+        /// sigue teniendo señal) y sin avisar por Cambiado. La navegación lo mira para saber si se ha perdido la señal
+        /// (historia 2.7, parte 2c). Por defecto 0: entonces solo cuentan los cambios de posición.
+        /// </summary>
+        int Lecturas => 0;
+
         /// <summary>Lanza la petición de permiso del sistema (Android). Si ya está concedido, empieza a buscar.</summary>
         void PedirPermiso();
 

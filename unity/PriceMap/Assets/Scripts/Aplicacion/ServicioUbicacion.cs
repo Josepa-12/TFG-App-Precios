@@ -35,6 +35,9 @@ namespace PriceMap.Aplicacion
         /// <summary>Se lanza cuando cambia el estado, la posición o el rumbo.</summary>
         public event Action Cambiado;
 
+        /// <summary>Lecturas del GPS que han llegado, también las que repiten la coordenada (IUbicacion.Lecturas).</summary>
+        public int Lecturas => ubicacion.Lecturas;
+
         /// <summary>True con la app en segundo plano (ubicación y brújula apagadas).</summary>
         public bool Pausada { get; private set; }
 

@@ -14,8 +14,11 @@ namespace PriceMap.Adaptadores.Gps
     /// </summary>
     internal class FuenteUbicacionUnity : IFuenteUbicacion
     {
-        /// <summary>Precisión pedida al GPS y distancia mínima entre lecturas (m).</summary>
-        const float PrecisionMetros = 10f, DistanciaMinimaMetros = 2f;
+        /// <summary>
+        /// Precisión pedida al GPS y distancia mínima entre lecturas (m). A 0, como el servicio de ruta: parado también
+        /// llegan lecturas, y navegando eso dice que hay señal (sin el servicio, un coche en un semáforo no sale «sin señal»).
+        /// </summary>
+        const float PrecisionMetros = 10f, DistanciaMinimaMetros = 0f;
         const int FlagActivityNewTask = 0x10000000; // Intent.FLAG_ACTIVITY_NEW_TASK
 
         public bool TienePermiso

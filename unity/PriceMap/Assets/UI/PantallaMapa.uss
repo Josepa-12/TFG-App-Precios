@@ -371,6 +371,7 @@
     top: 0;
     width: 0;
     height: 0;
+    color: var(--color-posicion-borde); /* borde de la flecha */
 }
 
 /* Cono translúcido (sector dibujado con Painter2D hacia arriba; lo gira style.rotate alrededor de su centro) */
@@ -395,6 +396,18 @@
     border-width: 3px;
     border-color: var(--color-posicion-borde);
     background-color: var(--color-posicion);
+}
+
+/* Flecha de la navegación en coche (historia 2.7, parte 2c; dibujada con Painter2D hacia arriba, la gira style.rotate
+   alrededor de su centro): relleno --color-flecha y el borde, el color del marcador */
+.marcador-posicion__flecha {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--posicion-flecha);
+    height: var(--posicion-flecha);
+    translate: -50% -50%;
+    color: var(--color-flecha);
 }
 
 /* Chincheta del punto libre (historia 2.5). .chincheta mide 0×0 y está justo en la coordenada (ChinchetaPunto la
@@ -1570,6 +1583,26 @@
     background-color: var(--color-toast);
     color: var(--color-toast-texto);
     white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+/* "Buscando señal GPS" (historia 2.7, parte 2c): como el toast (fondo text, texto bg) pero más baja (texto caption,
+   menos relleno) y sin irse sola. La pantalla fija su top (bajo la tarjeta de arriba) */
+.pastilla-senal {
+    position: absolute;
+    top: var(--espacio-4);
+    left: 0;
+    right: 0;
+    align-items: center;
+    display: none;
+}
+
+.pastilla-senal__texto {
+    padding: var(--espacio-1) var(--espacio-3);
+    border-radius: var(--radio-toast);
+    background-color: var(--color-toast);
+    color: var(--color-toast-texto);
+    white-space: nowrap;
     -unity-text-align: middle-center;
 }
 

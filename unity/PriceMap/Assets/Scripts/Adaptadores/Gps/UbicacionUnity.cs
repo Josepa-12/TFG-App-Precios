@@ -33,6 +33,7 @@ namespace PriceMap.Adaptadores.Gps
         public EstadoUbicacion Estado => Gps.Estado;
         public Coordenada? Posicion => Gps.Posicion;
         public float? Rumbo => Gps.Rumbo;
+        public int Lecturas => Gps.Lecturas;
 
         public event Action Cambiado
         {

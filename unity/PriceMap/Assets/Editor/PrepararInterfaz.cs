@@ -206,6 +206,8 @@ namespace PriceMap.EditorTools
             [ClavesTexto.NotificacionNavegando] = "Navegando a {0} · {1} min",
             [ClavesTexto.UbicacionRecentrar] = "Volver a centrar",
             [ClavesTexto.UbicacionSiguiendo] = "Siguiendo tu posición",
+            [ClavesTexto.SenalBuscando] = "Buscando señal GPS",
+            [ClavesTexto.SenalRecuperada] = "Señal GPS recuperada",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

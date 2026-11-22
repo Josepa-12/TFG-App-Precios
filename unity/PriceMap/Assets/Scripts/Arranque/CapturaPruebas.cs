@@ -49,7 +49,8 @@ namespace PriceMap.Arranque
 
         /// <summary>
         /// Ubicación para la captura: Activa desde el principio, en la Plaza del Cabildo salvo cuando la captura
-        /// "navegacion" la mueve (Mover); Iniciar, Detener y AbrirAjustes no hacen nada.
+        /// "navegacion" la mueve (Mover); Iniciar, Detener y AbrirAjustes no hacen nada. Da una lectura por fotograma
+        /// (como un GPS con señal, aunque la posición no cambie) salvo con SinSenal, que la deja quieta (captura "sin-senal").
         /// </summary>
         class UbicacionCaptura : IUbicacion
         {
@@ -59,6 +60,14 @@ namespace PriceMap.Arranque
             public float? Rumbo => 45f;
             public event Action Cambiado;
             public void Mover(Coordenada c) { actual = c; Cambiado?.Invoke(); }
+            int congeladas;
+            bool sinSenal;
+            public bool SinSenal
+            {
+                get => sinSenal;
+                set { if (value && !sinSenal) congeladas = Time.frameCount; sinSenal = value; }
+            }
+            public int Lecturas => sinSenal ? congeladas : Time.frameCount;
             public void PedirPermiso() { }
             public void Iniciar() { }
             public void Detener() { }
@@ -243,6 +252,7 @@ namespace PriceMap.Arranque
             yield return RutaAproximada();
             yield return Navegacion();
             yield return NavegacionSigue();
+            yield return NavegacionFlecha();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -1040,6 +1050,107 @@ namespace PriceMap.Arranque
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             }
             // La cámara se queda inclinada donde estaba al terminar: vuelve a la vista de siempre para lo que sigue
+            camara.inclinacion = 50f;
+            camara.giro = -15f;
+            camara.distancia = 900f;
+            mapa.Centrar(PantallaMapa.VistaInicial);
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>
+        /// Historia 2.7 (parte 2c), capturas "navegacion-flecha" (claro y oscuro) y "sin-senal": Ir a Clínica Areas en
+        /// coche, la ubicación falsa a la mitad de Calle Regina y la cámara siguiendo: la posición es la flecha hacia arriba,
+        /// sin cono. Después la ubicación deja de dar lecturas: a los 10 s la flecha se atenúa, sale la pastilla "Buscando
+        /// señal GPS" bajo la tarjeta de arriba y TalkBack lo anuncia; al volver las lecturas se va con "Señal GPS
+        /// recuperada". Atrás termina la ruta y vuelve el círculo.
+        /// </summary>
+        IEnumerator NavegacionFlecha()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            var camara = FindFirstObjectByType<CamaraMapa>();
+            var marcador = pantalla?.MarcadorPosicion;
+            if (lugar == null || pantalla.Navegacion == null || ubicacionCaptura == null || camara == null || marcador == null)
+            { Debug.LogError("PriceMap: no se puede capturar la flecha."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var relojAntes = pantalla.RelojLocal;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+            pantalla.Rutas.VaciarCache();
+            var anuncios = new List<string>();
+            void Anotar(string t) => anuncios.Add(t);
+            AccesibilidadPantalla.AnuncioPedido += Anotar;
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.Coche);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarRuta();
+                var nav = pantalla.Navegacion;
+                if (!nav.Activa) { Debug.LogError("PriceMap: Ir no ha empezado la navegación."); yield break; }
+                var a = CalleCoche[3];
+                var b = CalleCoche[4];
+                var mitad = new Coordenada((a.Latitud + b.Latitud) / 2 - 0.00003, (a.Longitud + b.Longitud) / 2 + 0.000025);
+                ubicacionCaptura.Mover(mitad);
+                yield return new WaitForSeconds(3.5f); // los 2 s y la transición
+                yield return new WaitForEndOfFrame();
+                Debug.Log($"PriceMap: flecha: visible {marcador.FlechaVisible}, ángulo {marcador.AnguloFlecha:F1}° (rumbo {pantalla.RumboCamara:F0}°, giro {mapa.Giro:F0}°), " +
+                          $"cono {marcador.ConoVisible}, círculo {marcador.Punto.resolvedStyle.display}, atenuada {marcador.Atenuado}");
+                if (!marcador.FlechaVisible || marcador.ConoVisible) Debug.LogError("PriceMap: en coche la posición no es la flecha sin cono.");
+                if (Mathf.Abs(Mathf.DeltaAngle(marcador.AnguloFlecha, 0f)) > 3f) Debug.LogError("PriceMap: con la cámara siguiendo, la flecha no apunta hacia arriba.");
+                if (pantalla.PastillaSenal.Visible) Debug.LogError("PriceMap: con lecturas del GPS ha salido «Buscando señal GPS».");
+                yield return Capturar("navegacion-flecha");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return Capturar("navegacion-flecha-oscuro");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+
+                // Sin lecturas del GPS: a los 10 s, atenuada y la pastilla
+                anuncios.Clear();
+                ubicacionCaptura.SinSenal = true;
+                yield return new WaitForSeconds((float)ParametrosNegocio.NavegacionSinSenalSegundos + 1.5f);
+                yield return new WaitForEndOfFrame();
+                var pastilla = pantalla.PastillaSenal;
+                Debug.Log($"PriceMap: sin señal: {nav.SinSenal}; pastilla \"{pastilla.Texto.text}\" visible {pastilla.Visible} en {pastilla.Texto.worldBound} " +
+                          $"(tarjeta de arriba {pantalla.TarjetaManiobra.worldBound}); atenuada {marcador.Atenuado} ({marcador.resolvedStyle.opacity:F2}); " +
+                          $"anuncios: {string.Join(" | ", anuncios)}");
+                if (!nav.SinSenal || !pastilla.Visible || pastilla.Texto.text != Textos.T(ClavesTexto.SenalBuscando))
+                    Debug.LogError("PriceMap: sin lecturas del GPS no ha salido «Buscando señal GPS».");
+                if (!marcador.Atenuado || !marcador.FlechaVisible) Debug.LogError("PriceMap: sin señal la flecha no está atenuada.");
+                if (pastilla.Texto.worldBound.yMin < pantalla.TarjetaManiobra.worldBound.yMax)
+                    Debug.LogError("PriceMap: la pastilla no está bajo la tarjeta de arriba.");
+                if (!anuncios.Contains(Textos.T(ClavesTexto.SenalBuscando))) Debug.LogError("PriceMap: TalkBack no anuncia «Buscando señal GPS».");
+                yield return Capturar("sin-senal");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                if (!pastilla.Visible || !marcador.Atenuado) Debug.LogError("PriceMap: en oscuro no se ve la pastilla o la flecha no está atenuada.");
+                yield return Capturar("sin-senal-oscuro");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+
+                // Vuelven las lecturas
+                ubicacionCaptura.SinSenal = false;
+                yield return null;
+                yield return null;
+                if (nav.SinSenal || pastilla.Visible || marcador.Atenuado || !anuncios.Contains(Textos.T(ClavesTexto.SenalRecuperada)))
+                    Debug.LogError("PriceMap: al volver la señal no se ha ido la pastilla o no se ha anunciado «Señal GPS recuperada».");
+                pantalla.Atras();
+                yield return null;
+                yield return null;
+                if (nav.Activa || marcador.FlechaVisible || marcador.Atenuado) Debug.LogError("PriceMap: al terminar la ruta no vuelve el círculo.");
+            }
+            finally
+            {
+                AccesibilidadPantalla.AnuncioPedido -= Anotar;
+                ubicacionCaptura.SinSenal = false;
+                ubicacionCaptura.Mover(PantallaMapa.VistaInicial);
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
             camara.inclinacion = 50f;
             camara.giro = -15f;
             camara.distancia = 900f;

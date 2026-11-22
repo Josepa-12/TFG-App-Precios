@@ -144,6 +144,35 @@ namespace PriceMap.Tests.EditMode
                 Assert.GreaterOrEqual(Contraste(c["toast"], fondo), 3f, $"toast sobre {nombre}");
         }
 
+        /// <summary>
+        /// Flecha y "Buscando señal GPS" (historia 2.7, parte 2c): la flecha (#2F5BEA, en oscuro #4C7DFF) se distingue
+        /// (≥ 3:1) de su borde blanco y, con él, de cualquier color del mapa; la pastilla lleva los colores del toast (texto
+        /// ≥ 4,5:1) y se ve sobre el mapa.
+        /// </summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LaFlechaYLaPastillaDeSenalCumplenElContraste(bool oscuro)
+        {
+            var c = Tema(oscuro);
+            var p = PaletaMapa.De(oscuro ? TemaMapa.Oscuro : TemaMapa.Claro);
+            Assert.AreEqual(oscuro ? "4C7DFF" : "2F5BEA", ColorUtility.ToHtmlStringRGB(c["flecha"]));
+            Assert.AreEqual("FFFFFF", ColorUtility.ToHtmlStringRGB(c["posicion-borde"]));
+            Assert.GreaterOrEqual(Contraste(c["flecha"], c["posicion-borde"]), 3f, "flecha sobre su borde");
+            foreach (var (nombre, fondo) in new[] { ("fondo", p.fondo), ("agua", p.agua), ("verde", p.verde), ("calle", p.calle),
+                                                    ("calle menor", p.calleMenor), ("edificio", p.edificio), ("ruta", p.ruta) })
+            {
+                float flecha = Mathf.Max(Contraste(c["flecha"], fondo), Contraste(c["posicion-borde"], fondo));
+                Assert.GreaterOrEqual(flecha, 3f, $"flecha (o su borde) sobre {nombre}");
+            }
+            Assert.GreaterOrEqual(Contraste(c["toast-texto"], c["toast"]), 4.5f, "texto de la pastilla");
+            var uss = File.ReadAllText(Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            var bloque = Regex.Match(uss, @"\.pastilla-senal__texto\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            StringAssert.Contains("background-color: var(--color-toast);", bloque);
+            StringAssert.Contains("color: var(--color-toast-texto);", bloque);
+            foreach (var (nombre, fondo) in new[] { ("fondo", p.fondo), ("calle", p.calle), ("edificio", p.edificio) })
+                Assert.GreaterOrEqual(Contraste(c["toast"], fondo), 3f, $"pastilla sobre {nombre}");
+        }
+
         /// <summary>El nombre de cada punto de interés se lee sobre el fondo del mapa de su tema (≥ 4,5:1).</summary>
         [TestCase(false)]
         [TestCase(true)]

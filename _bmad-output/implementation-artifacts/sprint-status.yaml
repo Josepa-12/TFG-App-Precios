@@ -53,7 +53,7 @@ development_status:
   2-4-encuentra-cerca-por-categorías: done
   2-5-ir-a-un-punto-libre-o-a-una-ubicación-compartida: done
   2-6-ver-los-tiempos-y-calcular-la-ruta-más-corta: done
-  2-7-navegar-giro-a-giro: review  # parte 1 hecha; parte 2 (cámara, flecha, sin señal) pendiente
+  2-7-navegar-giro-a-giro: review  # partes 1, 2b (cámara) y 2c (flecha, sin señal) hechas y revisadas
   2-8-indicaciones-por-voz: ready-for-dev
   2-9-llegar-y-terminar-la-ruta: ready-for-dev
   epic-2-retrospective: optional

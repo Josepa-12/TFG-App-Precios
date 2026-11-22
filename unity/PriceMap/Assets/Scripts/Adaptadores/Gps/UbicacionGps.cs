@@ -32,6 +32,7 @@ namespace PriceMap.Adaptadores.Gps
         bool quiereFuncionar; // Iniciar sin Detener después: la app está delante
         bool encendido;       // GPS y brújula encendidos
         double ultimaLectura;
+        int lecturas; // lecturas del GPS (de Unity o de la cola del servicio), aunque repitan la coordenada
 
         // Respuesta del permiso: puede llegar desde el hilo de Java; se aplica en Actualizar
         int respuestaPendiente; // 0 nada, 1 concedido, 2 denegado (se lee y se pone a 0 con Interlocked)
@@ -55,6 +56,7 @@ namespace PriceMap.Adaptadores.Gps
         public Coordenada? Posicion => posicion;
         public float? Rumbo => rumbo;
         public event Action Cambiado;
+        public int Lecturas => lecturas;
 
         /// <summary>True con el GPS y la brújula encendidos (para las pruebas).</summary>
         internal bool Encendido => encendido;
@@ -180,7 +182,10 @@ namespace PriceMap.Adaptadores.Gps
             // Con la ubicación del móvil apagada (o sin permiso) las posiciones guardadas son viejas: se tiran
             if (estado != EstadoUbicacion.Activa && estado != EstadoUbicacion.Buscando) return;
             foreach (var lectura in LecturaRuta.Leer(texto))
+            {
+                lecturas++; // antes de Cambiar: quien escuche Cambiado ya la ve contada
                 Cambiar(EstadoUbicacion.Activa, lectura.Posicion, rumbo);
+            }
         }
 
         public void AbrirAjustes() => fuente.AbrirAjustes(estado == EstadoUbicacion.Apagada ? AjustesUbicacion : AjustesApp);
@@ -266,6 +271,7 @@ namespace PriceMap.Adaptadores.Gps
                 if (marca > 0 && marca != ultimaLectura)
                 {
                     ultimaLectura = marca;
+                    lecturas++;
                     nuevaPosicion = lectura;
                     nuevoEstado = EstadoUbicacion.Activa;
                 }

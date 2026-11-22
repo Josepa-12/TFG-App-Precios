@@ -65,6 +65,7 @@ namespace PriceMap.UI
         TarjetaManiobra tarjetaManiobra;
         TarjetaRuta tarjetaRuta;
         Toast toast;                         // avisos breves (parte 2b: bajo la tarjeta de la ruta)
+        PastillaSenal pastillaSenal;         // "Buscando señal GPS" bajo la tarjeta de arriba (historia 2.7, parte 2c)
         bool rutaActiva;                       // Ir pulsado y la ruta sin quitar (con tarjetas o con la ficha reabierta)
         Ruta rutaDibujada;                     // la ruta que se ve; null mientras se calcula o si falló
         ModoViaje modoRuta;
@@ -218,6 +219,7 @@ namespace PriceMap.UI
                 this.navegacion.RutaCambiada += AlRecalcularRuta;
                 this.navegacion.RecalculoFallido += AlFallarRecalculo;
                 this.navegacion.RutaTerminada += AlTerminarNavegacion;
+                this.navegacion.SenalCambiada += AlCambiarSenal;
                 this.mapa.GestoUsuario += AlGestoUsuario; // la cámara que sigue se suelta (historia 2.7, parte 2b)
             }
             else this.navegacion = null;
@@ -1602,13 +1604,56 @@ namespace PriceMap.UI
         /// <summary>Separación (dp) entre la tarjeta de arriba y el toast (--espacio-3).</summary>
         const float EspacioBajoTarjetaDp = 12f;
 
-        // El toast va 12 dp bajo la tarjeta de arriba (sin medida, bajo los 16 + 120 dp supuestos)
+        /// <summary>Separación (dp) entre la tarjeta de arriba y la pastilla "Buscando señal GPS", y entre esta y el toast (--espacio-2).</summary>
+        const float EspacioBajoPastillaDp = 8f;
+
+        /// <summary>Borde de abajo (dp) de la tarjeta de arriba (sin medida, el de los 16 + 120 dp supuestos).</summary>
+        float AbajoTarjetaManiobra()
+        {
+            var l = tarjetaManiobra.layout;
+            return !float.IsNaN(l.yMax) && l.height > 0f ? l.yMax : 16f + AltoSupuestoTarjetaManiobraDp;
+        }
+
+        // El toast va 12 dp bajo la tarjeta de arriba; con la pastilla "Buscando señal GPS" a la vista, 8 dp bajo ella
         void ColocarToast()
         {
             if (toast == null || tarjetaManiobra == null) return;
-            var l = tarjetaManiobra.layout;
-            float abajo = !float.IsNaN(l.yMax) && l.height > 0f ? l.yMax : 16f + AltoSupuestoTarjetaManiobraDp;
-            toast.Colocar(abajo + EspacioBajoTarjetaDp);
+            if (pastillaSenal != null && pastillaSenal.Visible) toast.Colocar(pastillaSenal.Abajo + EspacioBajoPastillaDp);
+            else toast.Colocar(AbajoTarjetaManiobra() + EspacioBajoTarjetaDp);
+        }
+
+        /// <summary>Navegando sin señal del GPS: la pastilla "Buscando señal GPS" a la vista (no con la ficha abierta).</summary>
+        public bool SinSenalVisible => Navegando && navegacion.SinSenal && TarjetasRutaVisibles;
+
+        /// <summary>Pone o quita la pastilla "Buscando señal GPS" según la señal, la ruta y la ficha; bajo la tarjeta de arriba.</summary>
+        void ActualizarPastillaSenal()
+        {
+            if (pastillaSenal == null) return;
+            bool ver = SinSenalVisible;
+            if (ver) pastillaSenal.Colocar(AbajoTarjetaManiobra() + EspacioBajoPastillaDp);
+            if (ver == pastillaSenal.Visible) return;
+            if (ver) pastillaSenal.Mostrar(Textos.T(ClavesTexto.SenalBuscando));
+            else pastillaSenal.Ocultar();
+            if (toast != null && toast.Visible) ColocarToast();
+        }
+
+        /// <summary>
+        /// Se pierde o vuelve la señal del GPS navegando: la pastilla y TalkBack, una vez cada uno ("Buscando señal GPS" al
+        /// perderla, "Señal GPS recuperada" al volver). La posición atenuada la pone ActualizarCapas.
+        /// </summary>
+        void AlCambiarSenal()
+        {
+            try
+            {
+                if (!Navegando) return;
+                Debug.Log(navegacion.SinSenal ? "PriceMap: sin señal del GPS; no se recalcula hasta que vuelva." : "PriceMap: señal del GPS recuperada.");
+                ActualizarPastillaSenal();
+                AccesibilidadPantalla.Anunciar(Textos.T(navegacion.SinSenal ? ClavesTexto.SenalBuscando : ClavesTexto.SenalRecuperada));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
 
         /// <summary>
@@ -1663,6 +1708,7 @@ namespace PriceMap.UI
         {
             try
             {
+                pastillaSenal?.Ocultar(); // sin señal o no, al terminar se va (la posición vuelve a lo de siempre en ActualizarCapas)
                 if (seguimiento.Estado == EstadoSeguimiento.Apagado) return;
                 seguimiento.Terminar();
                 mapa.DejarDeSeguir();
@@ -1913,6 +1959,7 @@ namespace PriceMap.UI
         {
             if (!rutaActiva || FichaAbierta) return;
             toast?.Ocultar(); // no se queda encima de la ficha
+            pastillaSenal?.Ocultar(); // vuelve al cerrarla si aún no hay señal (ActualizarCapas)
             if (lugarRuta != null) AbrirFicha(lugarRuta);
             else if (puntoRuta.HasValue) AbrirPunto(puntoRuta.Value);
             else return;
@@ -1935,6 +1982,8 @@ namespace PriceMap.UI
         public TarjetaRuta TarjetaRuta => tarjetaRuta;
         /// <summary>Aviso breve (toast) de la pantalla; null sin interfaz o sin servicio de rutas.</summary>
         public Toast Toast => toast;
+        /// <summary>Pastilla "Buscando señal GPS"; null sin interfaz o sin servicio de rutas.</summary>
+        public PastillaSenal PastillaSenal => pastillaSenal;
 
         /// <summary>Hora local para la llegada ("HH:mm"); por defecto DateTime.Now (las pruebas y la captura la fijan).</summary>
         public Func<DateTime> RelojLocal { get; set; } = () => DateTime.Now;
@@ -1950,6 +1999,8 @@ namespace PriceMap.UI
             (raiz.Q("hueco-ruta") ?? raiz).Add(tarjetaRuta);
             tarjetaRuta.Tocada += ReabrirFichaRuta;
             tarjetaRuta.QuitarPulsado += QuitarRuta;
+            pastillaSenal = new PastillaSenal();
+            (zonaSeguraRuta ?? raiz).Add(pastillaSenal);
             toast = new Toast();
             (zonaSeguraRuta ?? raiz).Add(toast);
             foreach (var t in new VisualElement[] { tarjetaManiobra, tarjetaRuta })
@@ -2312,6 +2363,7 @@ namespace PriceMap.UI
                 navegacion.RutaCambiada -= AlRecalcularRuta;
                 navegacion.RecalculoFallido -= AlFallarRecalculo;
                 navegacion.RutaTerminada -= AlTerminarNavegacion;
+                navegacion.SenalCambiada -= AlCambiarSenal;
                 if (mapa != null) mapa.GestoUsuario -= AlGestoUsuario;
                 navegacion.Terminar(); // fuera el GPS de fondo y la notificación
             }
@@ -2546,6 +2598,9 @@ namespace PriceMap.UI
         /// </summary>
         internal void ActualizarCapas(float escala)
         {
+            // Navegando (historia 2.7, parte 2c): ¿más de 10 s sin lecturas del GPS? La pastilla sigue a la señal y a la ficha
+            if (Navegando) navegacion.Comprobar();
+            ActualizarPastillaSenal();
             // Navegando (historia 2.7, parte 2b): pasados los 2 s con la ruta entera, la cámara pasa a seguir. Sin
             // transición se coloca ya, antes de proyectar nada en este fotograma
             if (seguimiento != null && Navegando && seguimiento.Avanzar()) SeguirCamara();
@@ -2571,7 +2626,13 @@ namespace PriceMap.UI
             }
             // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
             // Navegando en coche y en la ruta, el punto va sobre la línea (historia 2.7, parte 2b; PosicionMostrada)
-            if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, PosicionMostrada, ubicacion.Rumbo, escala);
+            // Navegando en coche, una flecha con el rumbo de la marcha (o el de la ruta); sin señal, atenuada (parte 2c)
+            if (marcadorPosicion != null && escala > 0f)
+            {
+                bool flecha = Navegando && navegacion.Modo == ModoViaje.Coche;
+                marcadorPosicion.Actualizar(mapa, PosicionMostrada, ubicacion.Rumbo, escala,
+                    flecha, flecha ? RumboCamara : null, Navegando && navegacion.SinSenal);
+            }
             // La chincheta del punto libre sigue a su coordenada mientras su ficha está abierta (o es el destino de la ruta)
             if (chincheta != null && escala > 0f) chincheta.Actualizar(mapa, PuntoChincheta, escala);
             if (escala > 0f) ultimaEscala = escala;

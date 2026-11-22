@@ -17,6 +17,11 @@ namespace PriceMap.Aplicacion
     /// nueva; solo hay un recálculo a la vez; si falla, avisa (RecalculoFallido) y lo intenta otra vez a los 10 s si aún
     /// está desviado.
     ///
+    /// Sin señal (parte 2c): Comprobar (la UI lo llama en cada fotograma) mira si han pasado más de 10 s sin una lectura
+    /// nueva del GPS (IUbicacion.Lecturas o una posición distinta; repetir la coordenada no es perder la señal). Entonces
+    /// SinSenal, SenalCambiada y el contador del desvío a cero: no se recalcula hasta la primera lectura nueva, que lo
+    /// deshace (y el desvío cuenta desde cero).
+    ///
     /// Eventos para las visitas (AD-9; los consumirá ServicioVisitas en la épica 4): RutaIniciada, TiempoRestanteCambiado
     /// (al cambiar el minuto) y RutaTerminada. No crea visitas. Se usa desde el hilo principal (la UI).
     /// </summary>
@@ -24,6 +29,9 @@ namespace PriceMap.Aplicacion
     {
         public static readonly TimeSpan TiempoDesvio = TimeSpan.FromSeconds(ParametrosNegocio.NavegacionDesvioSegundos);
         public static readonly TimeSpan EsperaReintento = TimeSpan.FromSeconds(ParametrosNegocio.NavegacionReintentoSegundos);
+        public static readonly TimeSpan TiempoSinSenal = TimeSpan.FromSeconds(ParametrosNegocio.NavegacionSinSenalSegundos);
+        /// <summary>Hueco entre dos Comprobar a partir del cual la app estaba en segundo plano (no cuenta como sin señal).</summary>
+        static readonly TimeSpan PausaComprobacion = TimeSpan.FromSeconds(1);
 
         readonly ServicioUbicacion ubicacion;
         readonly ServicioRutas rutas;
@@ -37,6 +45,9 @@ namespace PriceMap.Aplicacion
         Coordenada? origenRuta; // desde donde se pidió la ruta que se sigue: desde ahí no se recalcula (daría la misma)
         DateTime? desvioDesde;
         int ultimoMinuto;
+        DateTime ultimaLectura; // hora de la última lectura del GPS (o de Empezar)
+        int lecturasVistas;     // IUbicacion.Lecturas la última vez que se miró
+        DateTime ultimaComprobacion; // la última llamada a Comprobar (o Empezar)
 
         /// <param name="ubicacion">Posiciones del usuario y GPS de fondo (IniciarRuta, ActualizarNotificacion, TerminarRuta).</param>
         /// <param name="rutas">Recálculo (Calcular: servicios y, sin conexión, la aproximada).</param>
@@ -80,6 +91,15 @@ namespace PriceMap.Aplicacion
         /// <summary>El GPS de fondo arrancó al empezar (false: de momento solo con la app delante, o sin servicio).</summary>
         public bool GpsDeFondo { get; private set; }
 
+        /// <summary>
+        /// Navegando, más de 10 s sin una lectura nueva del GPS: la posición se queda atenuada en su último sitio, sale
+        /// "Buscando señal GPS" y no se recalcula. Vuelve a false con la primera lectura nueva o al terminar.
+        /// </summary>
+        public bool SinSenal { get; private set; }
+
+        /// <summary>SinSenal ha cambiado navegando (se pierde o vuelve la señal). Al terminar la ruta no se avisa.</summary>
+        public event Action SenalCambiada;
+
         /// <summary>Hay un estado nuevo (posición nueva, o ruta nueva al empezar o al recalcular).</summary>
         public event Action Actualizado;
 
@@ -113,6 +133,10 @@ namespace PriceMap.Aplicacion
             Modo = modo;
             Recalculando = false;
             desvioDesde = null;
+            SinSenal = false;
+            ultimaLectura = reloj();
+            ultimaComprobacion = ultimaLectura;
+            lecturasVistas = ubicacion.Lecturas;
             ultimaPosicion = ubicacion.Posicion;
             origenRuta = ultimaPosicion;
             Estado = regla.Seguir(ultimaPosicion ?? (ruta.Puntos.Count > 0 ? ruta.Puntos[0] : destino));
@@ -137,6 +161,7 @@ namespace PriceMap.Aplicacion
             desvioDesde = null;
             ultimaPosicion = null;
             origenRuta = null;
+            SinSenal = false; // sin aviso: la pantalla quita la pastilla al terminar
             GpsDeFondo = false;
             ubicacion.TerminarRuta();
             RutaTerminada?.Invoke(motivo);
@@ -148,7 +173,44 @@ namespace PriceMap.Aplicacion
             if (!Activa) return;
             var posicion = ubicacion.Posicion;
             if (!posicion.HasValue || posicion == ultimaPosicion) return;
+            lecturasVistas = ubicacion.Lecturas;
+            HayLectura(reloj());
+            if (!Activa) return; // terminada desde el aviso de la señal
             Seguir(posicion.Value);
+        }
+
+        /// <summary>
+        /// Mira la señal del GPS (la pantalla lo llama en cada fotograma): una lectura nueva (aunque repita la coordenada)
+        /// la mantiene o la recupera; más de 10 s sin ninguna, SinSenal, el desvío a cero y SenalCambiada. Sin ruta, nada.
+        /// </summary>
+        public void Comprobar()
+        {
+            if (!Activa) return;
+            var ahora = reloj();
+            // Más de 1 s sin llamar: la app no estaba delante (LateUpdate parado). Ese tiempo no cuenta como sin señal
+            if (ahora - ultimaComprobacion > PausaComprobacion) ultimaLectura = ahora;
+            ultimaComprobacion = ahora;
+            int lecturas = ubicacion.Lecturas;
+            if (lecturas != lecturasVistas)
+            {
+                lecturasVistas = lecturas;
+                HayLectura(ahora);
+                return;
+            }
+            if (SinSenal || ahora - ultimaLectura <= TiempoSinSenal) return;
+            SinSenal = true;
+            desvioDesde = null; // al volver, el desvío cuenta desde cero
+            SenalCambiada?.Invoke();
+        }
+
+        // Ha llegado una lectura del GPS: si se había perdido la señal, vuelve
+        void HayLectura(DateTime ahora)
+        {
+            ultimaLectura = ahora;
+            if (!SinSenal) return;
+            SinSenal = false;
+            desvioDesde = null;
+            SenalCambiada?.Invoke();
         }
 
         void Seguir(Coordenada posicion)
@@ -195,6 +257,11 @@ namespace PriceMap.Aplicacion
                     r = Resultado<Ruta>.Fallo(string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message);
                 }
                 if (s.IsCancellationRequested || !ReferenceEquals(s, sesion)) return;
+                if (SinSenal)
+                {
+                    Recalculando = false; // se perdió la señal mientras se pedía: se descarta en silencio y se espera a que vuelva
+                    return;
+                }
                 if (Estado != null && !Estado.FueraDeRuta)
                 {
                     Recalculando = false; // ha vuelto a la ruta mientras se pedía: se sigue con la de antes
@@ -215,6 +282,9 @@ namespace PriceMap.Aplicacion
                 }
 
                 RecalculoFallido?.Invoke();
+                // Si cambia durante la espera (se perdió o volvió la señal, o volvió a la ruta y se desvió otra vez), el desvío
+                // cuenta de nuevo: este reintento se deja y el siguiente lo lanza Seguir
+                var desvioAntes = desvioDesde;
                 try
                 {
                     await esperar(EsperaReintento, s.Token);
@@ -224,9 +294,10 @@ namespace PriceMap.Aplicacion
                     return;
                 }
                 if (s.IsCancellationRequested || !ReferenceEquals(s, sesion)) return;
-                if (Estado == null || !Estado.FueraDeRuta)
+                if (Estado == null || !Estado.FueraDeRuta || SinSenal || desvioDesde == null || desvioDesde != desvioAntes)
                 {
-                    Recalculando = false; // ha vuelto a la ruta: ya no hace falta
+                    // Ha vuelto a la ruta (ya no hace falta), no hay señal o se perdió y volvió (el desvío cuenta desde cero)
+                    Recalculando = false;
                     return;
                 }
                 desde = ultimaPosicion ?? desde;

@@ -90,5 +90,12 @@ namespace PriceMap.Dominio
         public const float CamaraTransicionSegundos = 0.6f;
         /// <summary>Grados que tiene que moverse la brújula, a pie y sin posición nueva, para volver a girar la cámara.</summary>
         public const float CamaraBrujulaMinimaGrados = 2f;
+
+        // Flecha y sin señal (historia 2.7, parte 2c; decisiones del 22/11/2026)
+        /// <summary>
+        /// Segundos sin ninguna lectura nueva del GPS (también cuenta una con la misma coordenada) a partir de los cuales,
+        /// navegando, se ha perdido la señal: posición atenuada, "Buscando señal GPS" y sin recálculo.
+        /// </summary>
+        public const double NavegacionSinSenalSegundos = 10.0;
     }
 }
