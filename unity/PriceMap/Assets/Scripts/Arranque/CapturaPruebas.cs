@@ -43,15 +43,22 @@ namespace PriceMap.Arranque
         public static bool SePide() => CarpetaPedida() != null;
 
         /// <summary>Posición en la Plaza del Cabildo con el móvil mirando al noreste (45°): la captura no pide permisos ni usa el GPS.</summary>
-        public static IUbicacion UbicacionFalsa() => new UbicacionCaptura();
+        public static IUbicacion UbicacionFalsa() => ubicacionCaptura = new UbicacionCaptura();
 
-        /// <summary>Ubicación fija para la captura: Activa desde el principio; Iniciar, Detener y AbrirAjustes no hacen nada.</summary>
+        static UbicacionCaptura ubicacionCaptura;
+
+        /// <summary>
+        /// Ubicación para la captura: Activa desde el principio, en la Plaza del Cabildo salvo cuando la captura
+        /// "navegacion" la mueve (Mover); Iniciar, Detener y AbrirAjustes no hacen nada.
+        /// </summary>
         class UbicacionCaptura : IUbicacion
         {
+            Coordenada actual = PantallaMapa.VistaInicial;
             public EstadoUbicacion Estado => EstadoUbicacion.Activa;
-            public Coordenada? Posicion => PantallaMapa.VistaInicial;
+            public Coordenada? Posicion => actual;
             public float? Rumbo => 45f;
-            public event Action Cambiado { add { } remove { } }
+            public event Action Cambiado;
+            public void Mover(Coordenada c) { actual = c; Cambiado?.Invoke(); }
             public void PedirPermiso() { }
             public void Iniciar() { }
             public void Detener() { }
@@ -234,6 +241,7 @@ namespace PriceMap.Arranque
             yield return Punto();
             yield return Ruta();
             yield return RutaAproximada();
+            yield return Navegacion();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -875,6 +883,69 @@ namespace PriceMap.Arranque
                 pantalla.QuitarRuta();
                 pantalla.RelojLocal = relojAntes;
                 if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>
+        /// Historia 2.7 (parte 1), captura "navegacion" (claro, coche): Ir a Clínica Areas desde la Plaza del Cabildo y la
+        /// ubicación falsa pasa a la mitad de Calle Regina (entre sus puntos 3 y 4, 4 m a un lado). Comprueba que la línea
+        /// empieza en la posición (el punto proyectado), que la tarjeta de arriba da la maniobra siguiente (Calle Santa
+        /// Ana) con su distancia ("En … m"), que la X dice "Terminar ruta" y que bajan los minutos. Al acabar, atrás
+        /// termina la ruta y la ubicación vuelve al Cabildo.
+        /// </summary>
+        IEnumerator Navegacion()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            if (lugar == null || pantalla.Navegacion == null || ubicacionCaptura == null) { Debug.LogError("PriceMap: no se puede capturar la navegación."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var relojAntes = pantalla.RelojLocal;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+            pantalla.Rutas.VaciarCache();
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.Coche);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarRuta();
+                var nav = pantalla.Navegacion;
+                if (!nav.Activa) { Debug.LogError("PriceMap: Ir no ha empezado la navegación."); yield break; }
+                int minutosAntes = nav.Estado.MinutosRestantes;
+                // A la mitad de Calle Regina, 4 m al sureste de la línea (que va hacia el noreste)
+                var a = CalleCoche[3];
+                var b = CalleCoche[4];
+                var mitad = new Coordenada((a.Latitud + b.Latitud) / 2 - 0.00003, (a.Longitud + b.Longitud) / 2 + 0.000025);
+                ubicacionCaptura.Mover(mitad);
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                var estado = nav.Estado;
+                var arriba = pantalla.TarjetaManiobra;
+                var abajo = pantalla.TarjetaRuta;
+                var linea = nav.Regla.PuntosRestantes(estado);
+                Debug.Log($"PriceMap: navegación: posición {mitad}; proyectado {estado.Proyectado} a {estado.DistanciaRuta:F1} m de la ruta; " +
+                          $"línea desde {linea[0]} ({linea.Count} puntos); arriba \"{arriba.Distancia.text}\" \"{arriba.Principal.text}\" / \"{arriba.Siguiente.text}\"; " +
+                          $"abajo \"{abajo.Llegada.text} · {abajo.Minutos.text} min · {abajo.Distancia.text} {abajo.RotuloDistancia.text}\" ({minutosAntes} min al empezar); " +
+                          $"TalkBack \"{arriba.AnuncioConDistancia}\"; X \"{pantalla.Accesibilidad.Recorrido().FirstOrDefault(e => e == Textos.T(ClavesTexto.RutaTerminar)) ?? "-"}\"");
+                if (linea[0].DistanciaMetros(estado.Proyectado) > 0.5 || estado.DistanciaRuta > 10)
+                    Debug.LogError("PriceMap: la línea de la navegación no empieza en la posición.");
+                if (!arriba.Principal.text.Contains("Santa Ana")) Debug.LogError("PriceMap: la tarjeta de arriba no da la maniobra siguiente (Calle Santa Ana).");
+                if (!arriba.Distancia.text.StartsWith("En ")) Debug.LogError("PriceMap: la tarjeta de arriba no da la distancia a la maniobra.");
+                if (!pantalla.Navegando) Debug.LogError("PriceMap: la pantalla no está navegando.");
+                yield return Capturar("navegacion");
+                yield return new WaitForSeconds(1f);
+                pantalla.Atras();
+                yield return null;
+                if (nav.Activa || pantalla.RutaActiva) Debug.LogError("PriceMap: el botón atrás no ha terminado la ruta.");
+            }
+            finally
+            {
+                ubicacionCaptura.Mover(PantallaMapa.VistaInicial);
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
                 if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             }

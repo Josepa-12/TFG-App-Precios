@@ -63,8 +63,12 @@ namespace PriceMap.Arranque
             var rutas = CapturaPruebas.SePide()
                 ? new ServicioRutas(CapturaPruebas.RutasFalsas(), null, Task.Delay, local: callesGuardadas)
                 : new ServicioRutas(new RutasValhalla(), new RutasOsrm(), Task.Delay, local: callesGuardadas);
+            // Seguir la ruta tras Ir (historia 2.7, parte 1): recálculo con las mismas rutas y la notificación en es-ES
+            var navegacion = new ServicioNavegacion(ubicacion, rutas, Task.Delay,
+                textoNotificacion: (destino, minutos) => Textos.T(ClavesTexto.NotificacionNavegando, destino, minutos));
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
-                    accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas))
+                    accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
+                    navegacion: navegacion))
             { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
@@ -135,10 +139,12 @@ namespace PriceMap.Arranque
         /// <param name="geocodificador">Dirección del punto libre (historia 2.5); sin él, la ficha del punto solo da coordenadas.</param>
         /// <param name="resolutorEnlaces">Enlaces cortos del buscador (historia 2.5, parte 2); sin él, no se reconocen.</param>
         /// <param name="rutas">Tiempos e Ir de la ficha (historia 2.6); sin él, la fila de acciones queda vacía.</param>
+        /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
-            IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null)
+            IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
+            ServicioNavegacion navegacion = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -158,7 +164,7 @@ namespace PriceMap.Arranque
             // "Encuentra cerca" (historia 2.4): también local, con las mismas fuentes que el buscador
             cerca ??= new ServicioCerca(lugares, mapa, ahora);
             pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca, geocodificador,
-                resolutorEnlaces, rutas);
+                resolutorEnlaces, rutas, navegacion);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

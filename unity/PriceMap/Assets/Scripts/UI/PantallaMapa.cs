@@ -72,6 +72,12 @@ namespace PriceMap.UI
         Coordenada? puntoRuta;
         string nombreRuta;                     // "Ruta a Clínica Areas" con una ruta sin textos de maniobra
         CancellationTokenSource peticionRuta;  // petición de la ruta en curso; null si no hay ninguna
+        // Seguir la ruta (historia 2.7, parte 1)
+        ServicioNavegacion navegacion;         // null = la ruta se dibuja pero no se sigue (como en la 2.6)
+        Coordenada? destinoRuta;               // coordenada del destino (la del lugar o el punto, no la de la calle)
+        int maniobraMostrada = int.MinValue;   // índice de la maniobra siguiente en la tarjeta (se anuncia al cambiar)
+        double avanceDibujado = double.NaN;    // avance con el que se recortó la línea por última vez
+        Ruta rutaRecortada;                    // ruta de la línea recortada (otra al recalcular: se redibuja)
 
         /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
@@ -84,25 +90,28 @@ namespace PriceMap.UI
         /// <param name="geocodificador">Dirección del punto libre (historia 2.5); sin él, la ficha del punto se queda con las coordenadas.</param>
         /// <param name="resolutorEnlaces">Enlaces cortos pegados en el buscador (historia 2.5, parte 2); sin él, no se reconocen.</param>
         /// <param name="rutas">Tiempos e Ir de la ficha (historia 2.6); sin él, la fila de acciones de la ficha queda vacía.</param>
+        /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
             BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
-            IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null)
+            IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null, ServicioNavegacion navegacion = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador, resolutorEnlaces, rutas);
+                geocodificador, resolutorEnlaces, rutas, navegacion);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, VisualElement raizDocumento,
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
-            IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null)
+            IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
+            ServicioNavegacion navegacion = null)
         {
             this.mapa = mapa;
+            this.navegacion = rutas != null ? navegacion : null; // sin rutas no hay Ir
             this.geocodificador = geocodificador;
             this.rutas = rutas;
             this.resolutorEnlaces = resolutorEnlaces;
@@ -195,6 +204,13 @@ namespace PriceMap.UI
                 ficha.Acciones.IrPulsado += Ir;
                 this.rutas.TiempoCalculado += AlCalcularTiempo;
             }
+            if (this.navegacion != null && tarjetaManiobra != null)
+            {
+                this.navegacion.Actualizado += AlNavegar;
+                this.navegacion.RutaCambiada += AlRecalcularRuta;
+                this.navegacion.RecalculoFallido += AlFallarRecalculo;
+            }
+            else this.navegacion = null;
 
             // Punto libre (historia 2.5): mantener pulsado el mapa pone la chincheta y abre la ficha del punto
             var capaChincheta = raiz.Q("capa-chincheta");
@@ -1473,6 +1489,8 @@ namespace PriceMap.UI
             if (origen == null) { TocarUbicacion(); return; }
             var modo = ficha.Acciones.Elegido;
             CancelarRuta();
+            TerminarNavegacion(); // la ruta de antes se termina: la nueva empieza al llegar
+            destinoRuta = destino.Value;
             rutaActiva = true;
             rutaDibujada = null;
             modoRuta = modo;
@@ -1538,6 +1556,7 @@ namespace PriceMap.UI
             Debug.Log($"PriceMap: ruta en {modoRuta}: {ruta.Puntos.Count} puntos, {ruta.Metros:F0} m, {ruta.Minutos} min; \"{tarjetaManiobra.Anuncio}\".");
             accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
             accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
+            EmpezarNavegacion(ruta);
             if (TarjetasRutaVisibles) // con la ficha reabierta se encuadra al cerrarla
             {
                 EncuadrarRuta();
@@ -1587,6 +1606,109 @@ namespace PriceMap.UI
             if (rutas != null && rutas.ConRutaAproximada && TarjetasRutaVisibles) MostrarToast(Textos.T(ClavesTexto.ToastSinCalles));
         }
 
+        /// <summary>
+        /// La ruta ha llegado (historia 2.7, parte 1): empieza a seguirla desde la posición actual (GPS de fondo con su
+        /// notificación). La línea se recorta desde el punto proyectado y las tarjetas pasan a la maniobra siguiente con su
+        /// distancia y a lo que queda (AlNavegar); la X pasa a ser "Terminar ruta".
+        /// </summary>
+        void EmpezarNavegacion(Ruta ruta)
+        {
+            if (navegacion == null || !destinoRuta.HasValue) return;
+            maniobraMostrada = int.MinValue;
+            avanceDibujado = double.NaN;
+            rutaRecortada = null;
+            navegacion.Empezar(ruta, destinoRuta.Value, nombreRuta, modoRuta);
+            accesibilidad.RefrescarEtiqueta(tarjetaRuta.Quitar);
+        }
+
+        void TerminarNavegacion()
+        {
+            if (navegacion == null || !navegacion.Activa) return;
+            navegacion.Terminar(MotivoFinRuta.Manual);
+            rutaRecortada = null;
+            if (tarjetaRuta != null) accesibilidad.RefrescarEtiqueta(tarjetaRuta.Quitar);
+        }
+
+        /// <summary>Se está siguiendo la ruta (la X dice "Terminar ruta").</summary>
+        public bool Navegando => navegacion != null && navegacion.Activa && rutaActiva;
+
+        /// <summary>Servicio de navegación que recibió al iniciarse (historia 2.7); null sin él.</summary>
+        public ServicioNavegacion Navegacion => navegacion;
+
+        /// <summary>
+        /// Posición nueva en la ruta: la línea desde el punto proyectado (solo si ha avanzado), la maniobra siguiente con
+        /// su distancia y lo que queda. TalkBack anuncia la maniobra solo cuando cambia, no a cada metro.
+        /// </summary>
+        void AlNavegar()
+        {
+            try
+            {
+                if (!Navegando || tarjetaManiobra == null) return;
+                var estado = navegacion.Estado;
+                var ruta = navegacion.Ruta;
+                if (estado == null || ruta == null) return;
+                rutaDibujada = ruta;
+                if (!ReferenceEquals(rutaRecortada, ruta) || estado.Avance != avanceDibujado)
+                {
+                    rutaRecortada = ruta;
+                    avanceDibujado = estado.Avance;
+                    mapa.MostrarRuta(navegacion.Regla.PuntosRestantes(estado), ruta.Aproximada);
+                }
+                tarjetaManiobra.MostrarNavegacion(estado, ruta, nombreRuta);
+                string anuncioAbajo = tarjetaRuta.Anuncio;
+                tarjetaRuta.MostrarRestante(estado.SegundosRestantes, estado.MetrosRestantes, ruta.Aproximada, RelojLocal());
+                if (tarjetaRuta.Anuncio != anuncioAbajo) accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
+                if (estado.IndiceSiguiente != maniobraMostrada)
+                {
+                    bool primera = maniobraMostrada == int.MinValue;
+                    maniobraMostrada = estado.IndiceSiguiente;
+                    accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
+                    // La primera la lee el foco al empezar; las siguientes, una vez al cambiar (con las tarjetas a la vista)
+                    if (!primera && TarjetasRutaVisibles) AccesibilidadPantalla.Anunciar(tarjetaManiobra.AnuncioConDistancia);
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e); // puede llegar desde el recálculo, una tarea que nadie espera
+            }
+        }
+
+        /// <summary>
+        /// La ruta se ha recalculado: la nueva sustituye a la vieja (se redibuja en AlNavegar, que llega justo después) y
+        /// su maniobra se anuncia otra vez. Si la nueva es la aproximada (se ha ido la conexión), su toast.
+        /// </summary>
+        void AlRecalcularRuta()
+        {
+            try
+            {
+                if (!Navegando) return;
+                bool eraAproximada = rutaDibujada != null && rutaDibujada.Aproximada;
+                var nueva = navegacion.Ruta;
+                rutaDibujada = nueva;
+                maniobraMostrada = int.MinValue + 1; // distinto de cualquier índice: se anuncia la de la ruta nueva
+                Debug.Log($"PriceMap: ruta recalculada en {modoRuta}: {nueva.Puntos.Count} puntos, {nueva.Metros:F0} m, {nueva.Minutos} min.");
+                if (nueva.Aproximada && !eraAproximada && TarjetasRutaVisibles) MostrarToast(Textos.T(ClavesTexto.ToastRutaAproximada));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        /// <summary>El recálculo ha fallado: toast "No se ha podido recalcular la ruta" (se reintenta a los 10 s).</summary>
+        void AlFallarRecalculo()
+        {
+            try
+            {
+                Debug.Log("PriceMap: no se ha podido recalcular la ruta; otra vez en 10 s.");
+                if (Navegando && TarjetasRutaVisibles) MostrarToast(Textos.T(ClavesTexto.ToastRecalculoFallo));
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
         /// <summary>Cancela la petición de la ruta: su respuesta ya no llegará.</summary>
         void CancelarRuta()
         {
@@ -1605,6 +1727,7 @@ namespace PriceMap.UI
         {
             if (!rutaActiva) return;
             CancelarRuta();
+            TerminarNavegacion();
             rutaActiva = false;
             rutaDibujada = null;
             lugarRuta = null;
@@ -1673,7 +1796,8 @@ namespace PriceMap.UI
         void DeclararTarjetaRutaEnTalkBack()
         {
             accesibilidad.Boton(tarjetaRuta.Cuerpo, () => tarjetaRuta.Anuncio, ReabrirFichaRuta, visible: () => TarjetasRutaVisibles);
-            accesibilidad.Boton(tarjetaRuta.Quitar, () => Textos.T(ClavesTexto.RutaQuitar), QuitarRuta, visible: () => TarjetasRutaVisibles);
+            accesibilidad.Boton(tarjetaRuta.Quitar, () => Textos.T(Navegando ? ClavesTexto.RutaTerminar : ClavesTexto.RutaQuitar), QuitarRuta,
+                visible: () => TarjetasRutaVisibles);
         }
 
         // Las tarjetas se han dispuesto (al mostrarse, o al cambiar sus textos o la fuente): la fuente escalada, el botón
@@ -2007,6 +2131,13 @@ namespace PriceMap.UI
             CancelarDireccionPunto();
             CancelarEnlace();
             CancelarRuta();
+            if (navegacion != null)
+            {
+                navegacion.Actualizado -= AlNavegar;
+                navegacion.RutaCambiada -= AlRecalcularRuta;
+                navegacion.RecalculoFallido -= AlFallarRecalculo;
+                navegacion.Terminar(); // fuera el GPS de fondo y la notificación
+            }
             if (tarjetaRuta != null)
             {
                 tarjetaRuta.Tocada -= ReabrirFichaRuta;

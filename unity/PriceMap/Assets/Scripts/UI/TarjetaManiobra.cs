@@ -19,12 +19,20 @@ namespace PriceMap.UI
 
         public IconoManiobra IconoPrincipal { get; }
         public Label Principal { get; }
+        /// <summary>Distancia a la maniobra siguiente ("En 120 m") o lo que queda sin maniobras ("Quedan 1,2 km"), encima del texto; oculta sin navegación.</summary>
+        public Label Distancia { get; }
         public VisualElement FilaSiguiente { get; }
         public IconoManiobra IconoSiguiente { get; }
         public Label Siguiente { get; }
 
         /// <summary>Lo que lee TalkBack: "Sal hacia el norte por Calle Ancha. Después, gira a la derecha en Calle Santo Domingo".</summary>
         public string Anuncio { get; private set; } = "";
+
+        /// <summary>
+        /// Lo que anuncia TalkBack al cambiar de maniobra durante la navegación (historia 2.7): la distancia y la tarjeta
+        /// ("En 120 m, gire a la derecha hacia Calle Regina. Después, …"); sin navegación, el Anuncio.
+        /// </summary>
+        public string AnuncioConDistancia { get; private set; } = "";
 
         public TarjetaManiobra(Func<string, string> textos = null)
         {
@@ -39,10 +47,17 @@ namespace PriceMap.UI
             IconoPrincipal = new IconoManiobra { name = "tarjeta-maniobra-icono" };
             IconoPrincipal.AddToClassList("tarjeta-maniobra__icono");
             fila.Add(IconoPrincipal);
+            var textosFila = new VisualElement { name = "tarjeta-maniobra-textos", pickingMode = PickingMode.Ignore };
+            textosFila.AddToClassList("tarjeta-maniobra__textos");
+            fila.Add(textosFila);
+            Distancia = new Label { name = "tarjeta-maniobra-distancia", pickingMode = PickingMode.Ignore };
+            Distancia.AddToClassList("tarjeta-maniobra__distancia");
+            Distancia.AddToClassList("t-label");
+            textosFila.Add(Distancia);
             Principal = new Label { name = "tarjeta-maniobra-principal", pickingMode = PickingMode.Ignore };
             Principal.AddToClassList("tarjeta-maniobra__principal");
             Principal.AddToClassList("t-maniobra");
-            fila.Add(Principal);
+            textosFila.Add(Principal);
 
             FilaSiguiente = new VisualElement { name = "tarjeta-maniobra-siguiente-fila", pickingMode = PickingMode.Ignore };
             FilaSiguiente.AddToClassList("tarjeta-maniobra__fila");
@@ -98,8 +113,40 @@ namespace PriceMap.UI
             return -1;
         }
 
-        void Poner(TipoManiobra tipo, bool conIcono, string principal, string siguiente, TipoManiobra tipoSiguiente)
+        /// <summary>Metros por debajo de los cuales no se pone la distancia a la maniobra ("0 m" con FormatoDistancia).</summary>
+        public const double DistanciaMinima = 5.0;
+
+        /// <summary>
+        /// Navegando (historia 2.7, parte 1): la maniobra siguiente con su distancia ("En 120 m") y la de después. Sin
+        /// maniobras con texto (OSRM o aproximada), el texto de MostrarRuta y la distancia que queda ("Quedan 1,2 km").
+        /// </summary>
+        public void MostrarNavegacion(EstadoNavegacion estado, Ruta ruta, string destino)
         {
+            if (estado == null) { MostrarRuta(ruta, destino); return; }
+            if (estado.Siguiente == null)
+            {
+                string texto = ruta != null && ruta.Aproximada
+                    ? textos(ClavesTexto.RutaAproximada)
+                    : Textos.Formatear(textos(ClavesTexto.RutaA), destino ?? "");
+                Poner(TipoManiobra.Recto, true, texto, null, TipoManiobra.Otra,
+                    Textos.Formatear(textos(ClavesTexto.RutaQuedan), FormatoDistancia.Texto(estado.MetrosRestantes)));
+                return;
+            }
+            var despues = estado.Despues;
+            // En la maniobra misma (p. ej. la salida al empezar) no se pone "En 0 m"
+            string distancia = estado.MetrosASiguiente >= DistanciaMinima
+                ? Textos.Formatear(textos(ClavesTexto.RutaEn), FormatoDistancia.Texto(estado.MetrosASiguiente))
+                : null;
+            Poner(estado.Siguiente.Tipo, true, SinPunto(estado.Siguiente.Texto), despues != null ? SinPunto(despues.Texto) : null,
+                despues?.Tipo ?? TipoManiobra.Otra, distancia);
+        }
+
+        void Poner(TipoManiobra tipo, bool conIcono, string principal, string siguiente, TipoManiobra tipoSiguiente,
+            string distancia = null)
+        {
+            bool conDistancia = !string.IsNullOrEmpty(distancia);
+            Distancia.text = distancia ?? "";
+            Distancia.style.display = conDistancia ? DisplayStyle.Flex : DisplayStyle.None;
             IconoPrincipal.Tipo = tipo;
             IconoPrincipal.style.display = conIcono ? DisplayStyle.Flex : DisplayStyle.None;
             Principal.text = principal ?? "";
@@ -110,6 +157,9 @@ namespace PriceMap.UI
             Anuncio = conSiguiente
                 ? Textos.Formatear(textos(ClavesTexto.RutaDespues), Principal.text, Minuscula(siguiente))
                 : Principal.text;
+            AnuncioConDistancia = conDistancia
+                ? Textos.Formatear(textos(ClavesTexto.RutaAnuncioManiobra), distancia.Replace(' ', ' '), Minuscula(Anuncio))
+                : Anuncio;
         }
 
         /// <summary>Quita el punto final de un texto de Valhalla ("Gira a la derecha en Calle Ancha." → sin punto).</summary>

@@ -1616,6 +1616,21 @@
     color: var(--color-tarjeta-maniobra-meta);
 }
 
+/* Distancia a la maniobra ("En 120 m", historia 2.7) encima de su texto */
+.tarjeta-maniobra__textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-direction: column;
+}
+
+.tarjeta-maniobra__distancia {
+    margin: 0 0 2px 0;
+    padding: 0;
+    white-space: nowrap;
+    color: var(--color-tarjeta-maniobra-texto);
+    display: none;
+}
+
 .tarjeta-maniobra__principal {
     flex-grow: 1;
     flex-shrink: 1;

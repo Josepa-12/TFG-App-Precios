@@ -30,10 +30,15 @@ namespace PriceMap.Dominio
         /// <summary>Minutos que se enseñan: redondeados hacia arriba y como mínimo 1 ("1 min" aunque sean 10 s).</summary>
         public int Minutos => MinutosDe(Segundos);
 
-        /// <summary>Segundos a minutos de la ficha: hacia arriba, como mínimo 1.</summary>
+        /// <summary>
+        /// Segundos a minutos de la ficha: al segundo (360,3 s y 180,0001 s son 6 y 3 min en la ficha y en las tarjetas),
+        /// hacia arriba, como mínimo 1.
+        /// </summary>
         public static int MinutosDe(double segundos)
         {
-            if (double.IsNaN(segundos) || segundos <= 60) return 1;
+            if (double.IsNaN(segundos)) return 1;
+            segundos = Math.Round(segundos);
+            if (segundos <= 60) return 1;
             return (int)Math.Min(int.MaxValue, Math.Ceiling(segundos / 60.0));
         }
     }

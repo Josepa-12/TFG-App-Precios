@@ -47,5 +47,25 @@ namespace PriceMap.Dominio
         public const double RutaAproximadaCalleMetros = 300.0;
         /// <summary>Teselas por lado, como mucho, que se leen para la ruta aproximada (5 × 5).</summary>
         public const int RutaAproximadaTeselasLado = 5;
+
+        // Seguir la ruta (historia 2.7, parte 1)
+        /// <summary>Metros a la ruta por encima de los cuales el usuario se ha desviado.</summary>
+        public const double NavegacionDesvioMetros = 40.0;
+        /// <summary>Segundos seguidos desviado a partir de los cuales se recalcula la ruta.</summary>
+        public const double NavegacionDesvioSegundos = 5.0;
+        /// <summary>Segundos que se espera para volver a intentar un recálculo que ha fallado.</summary>
+        public const double NavegacionReintentoSegundos = 10.0;
+        /// <summary>
+        /// Metros hacia atrás del último avance en los que aún se busca el tramo más cercano (el avance nunca baja: el
+        /// ruido del GPS por detrás se queda en el último punto).
+        /// </summary>
+        public const double NavegacionMargenAtrasMetros = 30.0;
+        /// <summary>
+        /// Metros por delante del último avance a partir de los cuales un tramo cuenta como salto (p. ej. la vuelta por la
+        /// misma calle): solo gana si está claramente más cerca (NavegacionEmpateMetros).
+        /// </summary>
+        public const double NavegacionSaltoMetros = 100.0;
+        /// <summary>Metros que un tramo lejano por delante tiene que estar más cerca que el cercano para saltar a él.</summary>
+        public const double NavegacionEmpateMetros = 15.0;
     }
 }

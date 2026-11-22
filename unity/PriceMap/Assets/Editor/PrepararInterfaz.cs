@@ -198,6 +198,12 @@ namespace PriceMap.EditorTools
             [ClavesTexto.FichaAnuncioMinutoAprox] = "{0}, alrededor de 1 minuto",
             [ClavesTexto.ToastRutaAproximada] = "Sin conexión: ruta aproximada",
             [ClavesTexto.ToastSinCalles] = "Sin conexión: no hay calles guardadas para esta ruta",
+            [ClavesTexto.RutaEn] = "En {0}",
+            [ClavesTexto.RutaQuedan] = "Quedan {0}",
+            [ClavesTexto.RutaAnuncioManiobra] = "{0}, {1}",
+            [ClavesTexto.RutaTerminar] = "Terminar ruta",
+            [ClavesTexto.ToastRecalculoFallo] = "No se ha podido recalcular la ruta",
+            [ClavesTexto.NotificacionNavegando] = "Navegando a {0} · {1} min",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

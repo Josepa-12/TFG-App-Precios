@@ -115,3 +115,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-6c-ruta-aproximada-sin-conexion.md`
   summary: Medir en un móvil el peor caso de la ruta aproximada (5×5 teselas, unión de extremos y A*) frente al límite de 8 s; si no cabe, límite propio para la local o límite al tamaño del grafo.
   evidence: Sin verificar (maybe-false, medium si es cierto). Solo se ha medido en PC (563 m y 371 m); pasado el límite saldría el toast «no hay calles guardadas».
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-7-navegar-giro-a-giro.md`
+  summary: Historia 2.7 (parte 2): la cámara sigue al usuario (inclinación 45°, arriba el rumbo de la marcha en coche y el de la brújula a pie; a los 2 s de pulsar Ir, al instante con «reducir animaciones»), deja de seguir si se mueve el mapa y sale «Volver a centrar»; flecha `#2F5BEA` con borde blanco orientada al rumbo GPS (velocidad > 1 m/s; si no, el último) en coche y, por pedido del usuario del 21/11, también a pie (concretar: solo navegando, o también fuera de ruta); sin señal 10 s, posición atenuada y «Buscando señal GPS» sin recálculo (UX-DR16); `Screen.sleepTimeout = NeverSleep` durante la navegación. Matriz: coche rumbo 90° a 5 m/s → flecha al este; 12 s sin posición → atenuada; arrastre → «Volver a centrar». Necesita que `IUbicacion` entregue el rumbo de la marcha y la velocidad (pendiente de la 2.1) o calcularlos de dos posiciones.
+  evidence: El usuario partió la 2.7 el 21/11/2026 (total unos 2.800 tokens): primero el seguimiento y después la cámara y la posición.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-7-navegar-giro-a-giro.md`
+  summary: En la llegada (2.9), la tarjeta de arriba y TalkBack dicen «En 130 m, ha llegado a su destino» (texto de Valhalla en pasado); usar una forma futura («Su destino está a 130 m») o el texto `verbal_pre_transition_instruction` de Valhalla.
+  evidence: Revisión de la 2.7 parte 1 (blind, low). La prueba `Pantalla_PasarManiobra_SaleLaSiguienteYTalkBackLaAnunciaUnaVez` fija ese texto; la llegada queda fuera de la 2.7 por el intent.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-7-navegar-giro-a-giro.md`
+  summary: `PantallaMapa.OnDestroy` termina la ruta con `MotivoFinRuta.Manual`; cuando `ServicioVisitas` (épica 4) escuche `RutaTerminada`, cerrar la app no debe contar como que el usuario terminó la ruta (otro motivo o sin evento).
+  evidence: Revisión de la 2.7 parte 1 (blind, low). Hoy nadie escucha `RutaTerminada`; `OnDestroy` llama a `navegacion.Terminar()` con el motivo por defecto.

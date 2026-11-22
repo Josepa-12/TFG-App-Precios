@@ -24,7 +24,7 @@ namespace PriceMap.UI
         public Label RotuloMinutos { get; }
         public Label Distancia { get; }
         public Label RotuloDistancia { get; }
-        /// <summary>X "Quitar ruta" (48 dp).</summary>
+        /// <summary>X "Quitar ruta" (48 dp); "Terminar ruta" para TalkBack durante la navegación (historia 2.7).</summary>
         public BotonRedondo Quitar { get; }
 
         /// <summary>Lo que lee TalkBack en el cuerpo: "Llegada 13:34, 4 minutos, 1,2 km".</summary>
@@ -103,23 +103,29 @@ namespace PriceMap.UI
         /// La ruta llegada, con la hora local de ahora para la llegada. La aproximada (parte 2b) lleva "≈" en los tres
         /// valores y TalkBack dice "Ruta aproximada. Llegada hacia las 13:34, unos 4 minutos, unos 1,2 km".
         /// </summary>
-        public void MostrarRuta(Ruta ruta, DateTime ahoraLocal)
+        public void MostrarRuta(Ruta ruta, DateTime ahoraLocal) => MostrarRestante(ruta.Segundos, ruta.Metros, ruta.Aproximada, ahoraLocal);
+
+        /// <summary>
+        /// Navegando (historia 2.7, parte 1): lo que queda, con la llegada a ahora + los segundos que quedan, y "≈" si la
+        /// ruta es aproximada. Igual que MostrarRuta con la ruta entera.
+        /// </summary>
+        public void MostrarRestante(double segundos, double metros, bool aproximada, DateTime ahoraLocal)
         {
-            string hora = HoraLlegada(ahoraLocal, ruta.Segundos);
-            var (valor, unidad) = PartirDistancia(ruta.Metros);
-            int minutos = ruta.Minutos;
-            if (ruta.Aproximada)
+            string hora = HoraLlegada(ahoraLocal, segundos);
+            var (valor, unidad) = PartirDistancia(metros);
+            int minutos = Ruta.MinutosDe(segundos); // como la ficha y EstadoNavegacion.MinutosRestantes
+            if (aproximada)
             {
                 string Aprox(string v) => Textos.Formatear(textos(ClavesTexto.RutaValorAprox), v);
                 Poner(Aprox(hora), Aprox(minutos.ToString(CultureInfo.InvariantCulture)), Aprox(valor), unidad);
-                string aprox = FormatoDistancia.Texto(ruta.Metros).Replace(' ', ' ');
+                string aprox = FormatoDistancia.Texto(metros).Replace(' ', ' ');
                 Anuncio = minutos == 1
                     ? Textos.Formatear(textos(ClavesTexto.RutaAnuncioAproxMinuto), hora, aprox)
                     : Textos.Formatear(textos(ClavesTexto.RutaAnuncioAprox), hora, minutos, aprox);
                 return;
             }
             Poner(hora, minutos.ToString(CultureInfo.InvariantCulture), valor, unidad);
-            string distancia = FormatoDistancia.Texto(ruta.Metros).Replace(' ', ' ');
+            string distancia = FormatoDistancia.Texto(metros).Replace(' ', ' ');
             Anuncio = minutos == 1
                 ? Textos.Formatear(textos(ClavesTexto.RutaAnuncioMinuto), hora, distancia)
                 : Textos.Formatear(textos(ClavesTexto.RutaAnuncio), hora, minutos, distancia);
@@ -137,7 +143,8 @@ namespace PriceMap.UI
         public static string HoraLlegada(DateTime ahoraLocal, double segundos)
         {
             if (double.IsNaN(segundos) || segundos < 0) segundos = 0;
-            return ahoraLocal.AddSeconds(segundos).ToString("HH:mm", CultureInfo.InvariantCulture);
+            // Al segundo: lo que queda al navegar (179,99 s) no adelanta la llegada un minuto
+            return ahoraLocal.AddSeconds(Math.Round(segundos)).ToString("HH:mm", CultureInfo.InvariantCulture);
         }
 
         /// <summary>La distancia de FormatoDistancia partida en valor y unidad: ("1,2", "km") o ("950", "m").</summary>

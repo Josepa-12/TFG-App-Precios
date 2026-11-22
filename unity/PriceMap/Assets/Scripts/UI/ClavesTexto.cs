@@ -297,12 +297,27 @@ namespace PriceMap.UI
         /// <summary>Toast sin ruta aproximada ("Sin conexión: no hay calles guardadas para esta ruta").</summary>
         public const string ToastSinCalles = "toast.ruta.sincalles";
 
+        // Seguir la ruta (historia 2.7, parte 1)
+        /// <summary>Distancia a la maniobra siguiente en la tarjeta de arriba: {0} distancia ("En 120 m").</summary>
+        public const string RutaEn = "ruta.en";
+        /// <summary>Distancia que queda en una ruta sin maniobras (OSRM o aproximada): {0} distancia ("Quedan 1,2 km").</summary>
+        public const string RutaQuedan = "ruta.quedan";
+        /// <summary>Lo que anuncia TalkBack al cambiar de maniobra: {0} distancia, {1} la tarjeta en minúscula ("En 120 m, gire…").</summary>
+        public const string RutaAnuncioManiobra = "ruta.anuncio.maniobra";
+        /// <summary>Botón X de la tarjeta de abajo durante la navegación ("Terminar ruta").</summary>
+        public const string RutaTerminar = "ruta.terminar";
+        /// <summary>Toast si falla el recálculo ("No se ha podido recalcular la ruta").</summary>
+        public const string ToastRecalculoFallo = "toast.ruta.recalculo";
+        /// <summary>Notificación fija de la ruta: {0} destino, {1} minutos ("Navegando a Clínica Areas · 6 min").</summary>
+        public const string NotificacionNavegando = "notificacion.navegando";
+
         public static readonly string[] Todas =
         {
             RutaCalculando, RutaFallo, RutaA, RutaDespues, RutaLlegada, RutaMin, RutaAnuncio, RutaAnuncioMinuto,
             RutaAnuncioCalculando, RutaAnuncioFallo, RutaQuitar,
             RutaAproximada, RutaValorAprox, RutaAnuncioAprox, RutaAnuncioAproxMinuto, FichaMinutosAprox,
             FichaAnuncioMinutosAprox, FichaAnuncioMinutoAprox, ToastRutaAproximada, ToastSinCalles,
+            RutaEn, RutaQuedan, RutaAnuncioManiobra, RutaTerminar, ToastRecalculoFallo, NotificacionNavegando,
             FichaModoCoche, FichaModoPie, FichaIr, FichaIrA, FichaIrPunto, FichaMinutos, FichaCalculando, FichaSinTiempo,
             FichaAnuncioMinutos, FichaAnuncioMinuto, FichaAnuncioSinTiempo, FichaAnuncioCalculando, FichaModoElegido,
             BuscadorIrAPunto, BuscadorAnuncioPunto, BuscadorComprobandoEnlace, BuscadorEnlaceNoReconocido,
