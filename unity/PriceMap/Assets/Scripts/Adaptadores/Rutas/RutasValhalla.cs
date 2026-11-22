@@ -36,8 +36,9 @@ namespace PriceMap.Adaptadores.Rutas
         public async Task<Resultado<Ruta>> Calcular(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
         {
             var r = await PeticionRutas.Pedir("Valhalla", Url, Cuerpo(origen, destino, modo), ct);
-            if (!r.Ok) return Resultado<Ruta>.Fallo(r.Error);
-            return LecturaValhalla.Leer(r.Valor);
+            var ruta = r.Ok ? LecturaValhalla.Leer(r.Valor) : Resultado<Ruta>.Fallo(r.Error);
+            if (!ruta.Ok) UnityEngine.Debug.LogWarning("PriceMap: Valhalla sin ruta: " + ruta.Error);
+            return ruta;
         }
     }
 }

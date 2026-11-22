@@ -148,3 +148,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8b-voz-con-la-pantalla-apagada.md`
   summary: Prueba que fije que `UbicacionUnity` y `Arranque` van en el mismo GameObject (destino de `AlPosicionRuta` y `AlSegundoPlano`).
   evidence: Revisión de la 2.8b (verification-gap): si se separan, `AlSegundoPlano` no llega y en segundo plano se dibuja a 60 fps sin que falle ninguna prueba.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-red-android-tls13.md`
+  summary: En Android 8 y 9 (minSdk 26) `HttpURLConnection` no tiene TLS 1.3, así que Valhalla y OSRM seguirán fallando por SSL en esos móviles (la ruta sale aproximada).
+  evidence: TLS 1.3 viene activado desde Android 10; arreglarlo pediría Conscrypt en la APK o subir el minSdk a 29 (decisión del usuario).
+- source_spec: `_bmad-output/implementation-artifacts/spec-red-android-tls13.md`
+  summary: La ruta de Android de `ClienteHttp`/`PuenteRed` solo tiene pruebas de lectura del código; falta probarla en el móvil (ruta, búsqueda, enlace corto, modo avión, cancelar).
+  evidence: EditMode no ejecuta JNI ni Java; queda para la prueba en el Redmi con `adb logcat`.

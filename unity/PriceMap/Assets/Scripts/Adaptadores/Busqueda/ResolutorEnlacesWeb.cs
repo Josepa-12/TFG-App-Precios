@@ -1,19 +1,18 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using PriceMap.Adaptadores.Red;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
-using UnityEngine; // await de AsyncOperation (Unity 6: AsyncOperationAwaitableExtensions)
-using UnityEngine.Networking;
 
 namespace PriceMap.Adaptadores.Busqueda
 {
     /// <summary>
     /// Enlaces cortos de Google Maps (historia 2.5, parte 2): pide el enlace sin seguir redirecciones
-    /// (<c>redirectLimit = 0</c>) y lee la cabecera <c>Location</c>, hasta 5 saltos. Para en cuanto la URL deja de ser
+    /// (ClienteHttp con <c>SeguirRedirecciones = false</c>) y lee la cabecera <c>Location</c>, hasta 5 saltos. Para en cuanto la URL deja de ser
     /// un enlace corto (no se llega a pedir la página de Google, que en Europa manda al aviso de cookies) y la devuelve.
     /// Cualquier fallo (sin conexión, HTTP sin Location, demasiados saltos) vuelve como Resultado.Fallo; cancelar
-    /// aborta la petición. Nada se guarda (FR17). Se llama desde el hilo principal (UnityWebRequest lo exige).
+    /// aborta la petición. Nada se guarda (FR17). Se llama desde el hilo principal.
     /// </summary>
     public sealed class ResolutorEnlacesWeb : IResolutorEnlaces
     {
@@ -42,7 +41,7 @@ namespace PriceMap.Adaptadores.Busqueda
                 actual = r.Valor;
                 if (!LectorUbicacionCompartida.EsEnlaceCorto(actual)) return Resultado<string>.Exito(actual);
             }
-            return Resultado<string>.Fallo($"Más de {MaximoSaltos} redirecciones.");
+            return Fallo($"Más de {MaximoSaltos} redirecciones.");
         }
 
         /// <summary>
@@ -52,24 +51,20 @@ namespace PriceMap.Adaptadores.Busqueda
         {
             try
             {
-                using var req = UnityWebRequest.Get(url);
-                req.SetRequestHeader("User-Agent", GeocodificadorPhoton.AgenteUsuario);
-                req.timeout = GeocodificadorPhoton.TiempoMaximo;
-                req.redirectLimit = 0;
-                using (ct.Register(req.Abort))
-                    await req.SendWebRequest();
-                ct.ThrowIfCancellationRequested();
-                long codigo = req.responseCode;
-                // Con redirectLimit = 0 la redirección puede llegar como error ("redirect limit exceeded"): vale el código
+                var peticion = PeticionHttp.Get(url, GeocodificadorPhoton.AgenteUsuario);
+                peticion.SegundosMaximo = GeocodificadorPhoton.TiempoMaximo;
+                peticion.SeguirRedirecciones = false;
+                var resp = await ClienteHttp.Pedir(peticion, ct);
+                long codigo = resp.Codigo;
+                // Una redirección sin seguir llega en el PC como error ("redirect limit exceeded") y en Android como
+                // Success: por eso se mira antes el código
                 if (codigo >= 300 && codigo < 400)
                 {
-                    string destino = req.GetResponseHeader("Location");
-                    if (string.IsNullOrWhiteSpace(destino)) return Resultado<string>.Fallo($"Redirección {codigo} sin Location.");
+                    string destino = resp.Location;
+                    if (string.IsNullOrWhiteSpace(destino)) return Fallo($"Redirección {codigo} sin Location.");
                     return Resultado<string>.Exito(Absoluta(url, destino.Trim()));
                 }
-                if (req.result != UnityWebRequest.Result.Success)
-                    return Resultado<string>.Fallo(
-                        $"El enlace no responde ({req.result}{(codigo > 0 ? ", HTTP " + codigo : "")}): {req.error}");
+                if (!resp.Ok) return Fallo("El enlace no responde " + resp.Describir());
                 return Resultado<string>.Exito(null);
             }
             catch (OperationCanceledException)
@@ -78,8 +73,15 @@ namespace PriceMap.Adaptadores.Busqueda
             }
             catch (Exception e)
             {
-                return Resultado<string>.Fallo("Fallo al resolver el enlace: " + (string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message));
+                return Fallo("Fallo al resolver el enlace: " + (string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message));
             }
+        }
+
+        /// <summary>El fallo de un salto, también en el registro.</summary>
+        static Resultado<string> Fallo(string error)
+        {
+            UnityEngine.Debug.LogWarning("PriceMap: enlace corto sin resolver: " + error);
+            return Resultado<string>.Fallo(error);
         }
 
         /// <summary>Un enlace corto con <c>http://</c> se pide con <c>https://</c> (Android no deja http en claro).</summary>

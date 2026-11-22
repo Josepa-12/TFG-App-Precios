@@ -1,18 +1,17 @@
 using System;
 using System.Globalization;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using PriceMap.Adaptadores.Red;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
-using UnityEngine; // await de AsyncOperation (Unity 6: AsyncOperationAwaitableExtensions)
-using UnityEngine.Networking;
 
 namespace PriceMap.Adaptadores.Rutas
 {
     /// <summary>
     /// Petición HTTP común a Valhalla y OSRM (historia 2.6), como GeocodificadorPhoton.Pedir: agente propio, tiempo
-    /// máximo y cancelación que aborta. Se llama desde el hilo principal (UnityWebRequest lo exige).
+    /// máximo y cancelación que aborta. Va por ClienteHttp (en Android, la red del sistema: FOSSGIS solo acepta
+    /// TLS 1.3). Se llama desde el hilo principal.
     /// </summary>
     internal static class PeticionRutas
     {
@@ -38,23 +37,13 @@ namespace PriceMap.Adaptadores.Rutas
             ct.ThrowIfCancellationRequested();
             try
             {
-                using var req = cuerpoJson == null
-                    ? UnityWebRequest.Get(url)
-                    : new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
-                    {
-                        uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(cuerpoJson)),
-                        downloadHandler = new DownloadHandlerBuffer(),
-                    };
-                if (cuerpoJson != null) req.SetRequestHeader("Content-Type", "application/json");
-                req.SetRequestHeader("User-Agent", AgenteUsuario);
-                req.timeout = TiempoMaximo;
-                using (ct.Register(req.Abort))
-                    await req.SendWebRequest();
-                ct.ThrowIfCancellationRequested();
-                if (req.result != UnityWebRequest.Result.Success)
-                    return Resultado<string>.Fallo(
-                        $"{servicio} no responde ({req.result}{(req.responseCode > 0 ? ", HTTP " + req.responseCode : "")}): {req.error}");
-                return Resultado<string>.Exito(req.downloadHandler.text);
+                var peticion = cuerpoJson == null
+                    ? PeticionHttp.Get(url, AgenteUsuario)
+                    : PeticionHttp.PostJson(url, cuerpoJson, AgenteUsuario);
+                peticion.SegundosMaximo = TiempoMaximo;
+                var resp = await ClienteHttp.Pedir(peticion, ct);
+                if (!resp.Ok) return Resultado<string>.Fallo($"{servicio} no responde {resp.Describir()}");
+                return Resultado<string>.Exito(resp.Texto);
             }
             catch (OperationCanceledException)
             {

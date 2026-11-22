@@ -847,9 +847,9 @@ namespace PriceMap.Vectorial
 
         void CrearSuelo()
         {
-            var suelo = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            suelo.name = "Suelo";
-            Destroy(suelo.GetComponent<Collider>());
+            // Sin CreatePrimitive: añade un MeshCollider y en Android la física no va en la compilación (se quita al podar)
+            var suelo = new GameObject("Suelo", typeof(MeshFilter), typeof(MeshRenderer));
+            suelo.GetComponent<MeshFilter>().sharedMesh = Resources.GetBuiltinResource<Mesh>("Quad.fbx");
             suelo.transform.SetParent(transform, false);
             suelo.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             suelo.transform.localScale = new Vector3(20000f, 20000f, 1f);

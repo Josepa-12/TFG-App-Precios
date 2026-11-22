@@ -2,6 +2,7 @@
     "name": "PriceMap.Adaptadores.Rutas",
     "rootNamespace": "PriceMap.Adaptadores.Rutas",
     "references": [
+        "PriceMap.Adaptadores.Red",
         "PriceMap.Aplicacion",
         "PriceMap.Dominio"
     ],

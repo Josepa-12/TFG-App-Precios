@@ -30,8 +30,9 @@ namespace PriceMap.Adaptadores.Rutas
         public async Task<Resultado<Ruta>> Calcular(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
         {
             var r = await PeticionRutas.Pedir("OSRM", Url(origen, destino, modo), null, ct);
-            if (!r.Ok) return Resultado<Ruta>.Fallo(r.Error);
-            return LecturaOsrm.Leer(r.Valor);
+            var ruta = r.Ok ? LecturaOsrm.Leer(r.Valor) : Resultado<Ruta>.Fallo(r.Error);
+            if (!ruta.Ok) UnityEngine.Debug.LogWarning("PriceMap: OSRM sin ruta: " + ruta.Error);
+            return ruta;
         }
     }
 }

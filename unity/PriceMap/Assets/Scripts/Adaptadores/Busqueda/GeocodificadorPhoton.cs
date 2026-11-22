@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using PriceMap.Adaptadores.Red;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
-using UnityEngine; // await de AsyncOperation (Unity 6: AsyncOperationAwaitableExtensions)
-using UnityEngine.Networking;
 
 namespace PriceMap.Adaptadores.Busqueda
 {
@@ -15,7 +14,7 @@ namespace PriceMap.Adaptadores.Busqueda
     /// punto dado. Como mucho 8 resultados, en el idioma de cada sitio (<c>lang=default</c>). Cualquier fallo (sin
     /// conexión, HTTP, respuesta rota) vuelve como Resultado.Fallo; cancelar aborta la petición. Nada se guarda (FR17).
     /// La geocodificación inversa del punto libre (historia 2.5) usa <c>/reverse</c> con el mismo trato.
-    /// Se llama desde el hilo principal (UnityWebRequest lo exige).
+    /// Va por ClienteHttp (en Android, la red del sistema). Se llama desde el hilo principal.
     /// </summary>
     public sealed class GeocodificadorPhoton : IGeocodificador
     {
@@ -39,8 +38,11 @@ namespace PriceMap.Adaptadores.Busqueda
         {
             var vacia = (IReadOnlyList<Direccion>)Array.Empty<Direccion>();
             var r = await Pedir(Url(consulta, cerca), ct);
-            if (!r.Ok) return Resultado<IReadOnlyList<Direccion>>.Fallo(r.Error, vacia);
-            return LecturaPhoton.Leer(r.Valor);
+            var lista = r.Ok ? LecturaPhoton.Leer(r.Valor) : Resultado<IReadOnlyList<Direccion>>.Fallo(r.Error, vacia);
+            UnityEngine.Debug.Log(lista.Ok
+                ? $"PriceMap: Photon, {lista.Valor.Count} direcciones para la búsqueda."
+                : "PriceMap: Photon sin direcciones: " + lista.Error);
+            return lista;
         }
 
         public const string ApiInversa = "https://photon.komoot.io/reverse";
@@ -58,8 +60,9 @@ namespace PriceMap.Adaptadores.Busqueda
         public async Task<Resultado<Direccion>> Inverso(Coordenada punto, CancellationToken ct)
         {
             var r = await Pedir(UrlInversa(punto), ct);
-            if (!r.Ok) return Resultado<Direccion>.Fallo(r.Error);
-            return LecturaPhoton.LeerInverso(r.Valor);
+            var direccion = r.Ok ? LecturaPhoton.LeerInverso(r.Valor) : Resultado<Direccion>.Fallo(r.Error);
+            if (!direccion.Ok) UnityEngine.Debug.LogWarning("PriceMap: Photon sin dirección del punto: " + direccion.Error);
+            return direccion;
         }
 
         /// <summary>
@@ -71,16 +74,11 @@ namespace PriceMap.Adaptadores.Busqueda
             ct.ThrowIfCancellationRequested();
             try
             {
-                using var req = UnityWebRequest.Get(url);
-                req.SetRequestHeader("User-Agent", AgenteUsuario);
-                req.timeout = TiempoMaximo;
-                using (ct.Register(req.Abort))
-                    await req.SendWebRequest();
-                ct.ThrowIfCancellationRequested();
-                if (req.result != UnityWebRequest.Result.Success)
-                    return Resultado<string>.Fallo(
-                        $"Photon no responde ({req.result}{(req.responseCode > 0 ? ", HTTP " + req.responseCode : "")}): {req.error}");
-                return Resultado<string>.Exito(req.downloadHandler.text);
+                var peticion = PeticionHttp.Get(url, AgenteUsuario);
+                peticion.SegundosMaximo = TiempoMaximo;
+                var resp = await ClienteHttp.Pedir(peticion, ct);
+                if (!resp.Ok) return Resultado<string>.Fallo("Photon no responde " + resp.Describir());
+                return Resultado<string>.Exito(resp.Texto);
             }
             catch (OperationCanceledException)
             {

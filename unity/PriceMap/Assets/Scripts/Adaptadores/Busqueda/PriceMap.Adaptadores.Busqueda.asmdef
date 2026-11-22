@@ -2,6 +2,7 @@
     "name": "PriceMap.Adaptadores.Busqueda",
     "rootNamespace": "PriceMap.Adaptadores.Busqueda",
     "references": [
+        "PriceMap.Adaptadores.Red",
         "PriceMap.Aplicacion",
         "PriceMap.Dominio"
     ],

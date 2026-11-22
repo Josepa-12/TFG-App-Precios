@@ -45,6 +45,22 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void ElSueloTieneMallaYNingunCollider()
+        {
+            var mapa = objMapa.AddComponent<MapaVectorial>();
+            mapa.sombras = false;
+            // Como en Start, sin Update: materiales y suelo (métodos privados)
+            const System.Reflection.BindingFlags privado = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            typeof(MapaVectorial).GetMethod("CrearMateriales", privado).Invoke(mapa, null);
+            typeof(MapaVectorial).GetMethod("CrearSuelo", privado).Invoke(mapa, null);
+
+            var suelo = objMapa.transform.Find("Suelo");
+            Assert.IsNotNull(suelo, "Falta el hijo Suelo.");
+            Assert.IsNotNull(suelo.GetComponent<MeshFilter>().sharedMesh, "El suelo tiene malla.");
+            Assert.IsNull(suelo.GetComponent<Collider>(), "Sin collider: en Android la física se poda.");
+        }
+
+        [Test]
         public void ElCentroEsLaCoordenadaCentrada()
         {
             IMapa mapa = objMapa.AddComponent<MapaVectorial>();

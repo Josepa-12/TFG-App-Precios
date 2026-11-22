@@ -24,6 +24,12 @@ namespace PriceMap.Tests.EditMode
         const string Dominio = "PriceMap.Dominio";
         const string Aplicacion = "PriceMap.Aplicacion";
         static readonly string[] SoloNucleo = { Aplicacion, Dominio };
+        /// <summary>
+        /// El cliente HTTP común (arreglo «red Android TLS 1.3»): un adaptador técnico sin capas del proyecto, que
+        /// los otros adaptadores pueden usar.
+        /// </summary>
+        const string Red = "PriceMap.Adaptadores.Red";
+        static readonly string[] NucleoYRed = { Aplicacion, Dominio, Red };
 
         /// <summary>Herramientas del editor y pruebas: no son capas de la app y pueden ver cualquier capa.</summary>
         static bool EsHerramienta(string nombre) => nombre == "PriceMap.Editor" || nombre.StartsWith("PriceMap.Tests.");
@@ -48,8 +54,9 @@ namespace PriceMap.Tests.EditMode
         {
             if (nombre == Dominio) return new string[0];
             if (nombre == Aplicacion) return new[] { Dominio };
-            if (nombre == "PriceMap.Vectorial" || nombre == "PriceMap.UI" || nombre.StartsWith("PriceMap.Adaptadores."))
-                return SoloNucleo;
+            if (nombre == Red) return new string[0];
+            if (nombre.StartsWith("PriceMap.Adaptadores.")) return NucleoYRed;
+            if (nombre == "PriceMap.Vectorial" || nombre == "PriceMap.UI") return SoloNucleo;
             if (nombre == "PriceMap.Arranque") return null;
             return new[] { "(no es una capa de la arquitectura)" };
         }
@@ -104,6 +111,9 @@ namespace PriceMap.Tests.EditMode
                 new Asmdef { name = Dominio, references = new[] { Aplicacion, "Unity.Localization" }, noEngineReferences = false },
                 new Asmdef { name = "PriceMap.Vectorial", references = new[] { Aplicacion, "Unity.Localization" } },
                 new Asmdef { name = "PriceMap.Extra" },
+                new Asmdef { name = "PriceMap.Adaptadores.Rutas", references = new[] { Aplicacion, Red } },
+                new Asmdef { name = "PriceMap.UI", references = new[] { Red } },
+                new Asmdef { name = Red, references = new[] { Aplicacion } },
                 new Asmdef { name = "PriceMap.Arranque", references = new[] { "PriceMap.UI", "PriceMap.Vectorial" } },
             };
             CollectionAssert.AreEquivalent(new[]
@@ -112,6 +122,8 @@ namespace PriceMap.Tests.EditMode
                 "PriceMap.Adaptadores.Datos → PriceMap.UI",
                 "PriceMap.Dominio → PriceMap.Aplicacion",
                 "PriceMap.Dominio → Unity.Localization",
+                "PriceMap.UI → PriceMap.Adaptadores.Red",
+                "PriceMap.Adaptadores.Red → PriceMap.Aplicacion",
 
                 "PriceMap.Dominio debe tener noEngineReferences: true",
                 "PriceMap.Extra no es ninguna capa de la arquitectura",

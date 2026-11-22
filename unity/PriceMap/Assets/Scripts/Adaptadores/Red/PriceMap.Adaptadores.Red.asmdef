@@ -1,0 +1,14 @@
+{
+    "name": "PriceMap.Adaptadores.Red",
+    "rootNamespace": "PriceMap.Adaptadores.Red",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
