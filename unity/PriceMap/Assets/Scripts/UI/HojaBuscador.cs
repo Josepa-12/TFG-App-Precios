@@ -354,7 +354,7 @@ namespace PriceMap.UI
         public float Top => Medida ? TopPlegada - fisica.Fraccion * fisica.AltoUtil : float.NaN;
 
         /// <summary>Mezcla de cápsula (0) a hoja (1): s = min(1, k / 0,15).</summary>
-        public static float Mezcla(float fraccion) => Mathf.Clamp01(fraccion / FisicaHoja.PlegarDebajo);
+        public static float Mezcla(float fraccion) => Mathf.Clamp01(fraccion / FisicaHoja.MezclaHasta);
 
         /// <summary>Pone la forma de la fracción actual: posición, márgenes, esquinas, relleno y clases.</summary>
         void Aplicar()
@@ -613,7 +613,10 @@ namespace PriceMap.UI
             Aplicar();
         }
 
-        /// <summary>Suelta el dedo: toque (abre del todo y enfoca el campo) o arrastre (destino de FisicaHoja).</summary>
+        /// <summary>
+        /// Suelta el dedo: toque (abre del todo y enfoca el campo) o arrastre (a la parada de FisicaHoja; el arrastre
+        /// ya quitó el foco al empezar, y en las tres paradas se conservan lo escrito y los resultados).
+        /// </summary>
         public FisicaHoja.Suelta Soltar(double ms)
         {
             var r = fisica.Soltar(ms);
@@ -637,7 +640,7 @@ namespace PriceMap.UI
             // El avatar y la X (que se ve también en la cápsula plegada) no despliegan ni arrastran
             if (Dentro(objetivo, Avatar) || Dentro(objetivo, Borrar)) return;
             // Un gesto anterior que no llegó a soltarse (p. ej. otro dedo) no bloquea la hoja: empieza uno nuevo
-            if (fisica.Pulsado) { SoltarPuntero(); fisica.Cancelar(); }
+            if (fisica.Pulsado) { SoltarPuntero(); fisica.Cancelar(); Aplicar(); }
             puntero = e.pointerId;
             raizGesto = panel?.visualTree;
             if (raizGesto != null)

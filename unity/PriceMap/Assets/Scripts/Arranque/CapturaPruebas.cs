@@ -245,6 +245,7 @@ namespace PriceMap.Arranque
             yield return Ficha();
             yield return Variantes();
             yield return Buscador();
+            yield return BuscadorMitad();
             yield return Busqueda();
             yield return Cerca();
             yield return Punto();
@@ -1494,6 +1495,72 @@ namespace PriceMap.Arranque
                 yield return null;
                 Debug.Log($"PriceMap: tras el botón atrás, hoja del buscador en {buscador.Fraccion:F2}");
                 if (buscador.Abierta) Debug.LogError("PriceMap: el botón atrás no ha plegado la hoja del buscador.");
+            }
+            finally
+            {
+                buscador.Plegar();
+                if (tema.Actual != temaAntes) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+        }
+
+        /// <summary>
+        /// Hoja con tres paradas, capturas "buscador-mitad" (tema claro) y "buscador-mitad-oscuro": se arrastra la hoja
+        /// con el gesto real desde la cápsula hasta el 40 % y se suelta despacio; tiene que quedar en la parada de la
+        /// mitad (fracción 0,5, a la mitad del recorrido). Después, un lanzamiento hacia arriba la abre completa y el
+        /// botón atrás la cierra. Deja el tema y su preferencia como estaban.
+        /// </summary>
+        IEnumerator BuscadorMitad()
+        {
+            var buscador = pantalla != null ? pantalla.Buscador : null;
+            if (buscador == null) { Debug.LogError("PriceMap: no hay buscador que capturar."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var temaAntes = tema.Actual;
+            try
+            {
+                buscador.Plegar();
+                mapa.Centrar(PantallaMapa.VistaInicial);
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+
+                // Arrastre lento hasta el 40 % y soltar con el dedo parado (sin lanzamiento)
+                float y0 = buscador.TopPlegada + 20f, recorrido = buscador.Fisica.AltoUtil;
+                buscador.Bajar(new Vector2(buscador.worldBound.center.x, y0), 0.0);
+                for (int i = 1; i <= 10; i++)
+                    buscador.Mover(new Vector2(buscador.worldBound.center.x, y0 - recorrido * 0.04f * i), 50.0 * i);
+                var suelta = buscador.Soltar(800.0);
+                yield return new WaitForSeconds(1f); // la transición dura 0,32 s
+                yield return new WaitForEndOfFrame();
+                float esperado = buscador.TopPlegada - 0.5f * recorrido;
+                var hoja = buscador.worldBound;
+                Debug.Log($"PriceMap: hoja soltada al 40 %: parada {suelta.Destino}, fracción {buscador.Fraccion:F2}, " +
+                          $"top {hoja.yMin:F1} dp (esperado {esperado:F1} dp, recorrido {recorrido:F1} dp)");
+                if (suelta.Destino != DestinoHoja.Mitad || Mathf.Abs(buscador.Fraccion - FisicaHoja.FraccionMitad) > 0.001f)
+                    Debug.LogError($"PriceMap: soltada al 40 % la hoja no está en la mitad ({suelta.Destino}, {buscador.Fraccion:F2}).");
+                if (Mathf.Abs(hoja.yMin - esperado) > 1f)
+                    Debug.LogError($"PriceMap: la hoja no está a la mitad del recorrido ({hoja.yMin:F1} dp y no {esperado:F1}).");
+
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                yield return Capturar("buscador-mitad");
+                yield return new WaitForSeconds(1f);
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return Capturar("buscador-mitad-oscuro");
+                yield return new WaitForSeconds(1f);
+
+                // Lanzamiento hacia arriba desde la mitad: completa
+                float y1 = buscador.Top + 20f;
+                buscador.Bajar(new Vector2(buscador.worldBound.center.x, y1), 0.0);
+                buscador.Mover(new Vector2(buscador.worldBound.center.x, y1 - 30f), 20.0);
+                buscador.Soltar(25.0);
+                yield return null;
+                Debug.Log($"PriceMap: tras lanzar hacia arriba desde la mitad, fracción {buscador.Fraccion:F2}");
+                if (!buscador.AbiertaDelTodo) Debug.LogError("PriceMap: lanzada hacia arriba desde la mitad, la hoja no se ha abierto completa.");
+
+                pantalla.Atras();
+                yield return null;
+                if (buscador.Abierta) Debug.LogError("PriceMap: el botón atrás no ha cerrado la hoja del buscador.");
             }
             finally
             {

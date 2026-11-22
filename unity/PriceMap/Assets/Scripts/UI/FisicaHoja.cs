@@ -2,17 +2,18 @@ using UnityEngine;
 
 namespace PriceMap.UI
 {
-    /// <summary>A dónde va la hoja del buscador al soltarla.</summary>
-    public enum DestinoHoja { Plegada, Abierta, Quedar }
+    /// <summary>A qué parada va la hoja del buscador al soltarla: cerrada (cápsula), mitad o completa.</summary>
+    public enum DestinoHoja { Plegada, Mitad, Abierta }
 
     /// <summary>
-    /// Física de la hoja del buscador (historia 2.2, UX-DR5; prototipo/app.js · SHEET y setupDockDrag), lógica pura
-    /// (solo usa Vector2 y Mathf, sin escena ni UI):
-    /// la hoja sigue al dedo; un lanzamiento de más de 0,6 dp/ms la abre o la pliega del todo según el sentido; si se
-    /// suelta por debajo del 15 % de la altura útil se pliega, por encima del 88 % se abre del todo y, entre los dos,
-    /// se queda exactamente donde se suelta (sin imán, decisión del 19/11/2026). Un movimiento de menos de 6 dp es un
-    /// toque. Desde la lista, el dedo mueve la hoja si no está abierta del todo o, abierta, si la lista está arriba
-    /// del todo y se arrastra hacia abajo.
+    /// Física de la hoja del buscador (historia 2.2, UX-DR5; basada en prototipo/app.js · SHEET y setupDockDrag, pero
+    /// con otra regla de suelta desde el 22/11/2026), lógica pura (solo usa Vector2 y Mathf, sin escena ni UI):
+    /// la hoja sigue al dedo y, al soltarla, va siempre a una de tres paradas (sustituye a «se queda donde se suelta»
+    /// del 19/11 y a los umbrales 15 %/88 % del prototipo): cerrada (0), mitad (0,5) o completa (1). Sin lanzamiento
+    /// va a la más cercana (cortes en 0,25 y 0,75); un lanzamiento de más de 0,6 dp/ms lleva a la primera parada más
+    /// allá de donde está la hoja en ese sentido, como Apple Maps (en el extremo se queda). Un movimiento de
+    /// menos de 6 dp es un toque. Desde la lista, el dedo mueve la hoja si no está abierta del todo o, abierta, si la
+    /// lista está arriba del todo y se arrastra hacia abajo.
     ///
     /// La fracción abierta va de 0 (plegada, cápsula) a 1 (abierta del todo); la altura útil es lo que recorre la hoja
     /// entre las dos. Las posiciones son dp del panel con y hacia abajo; los tiempos, milisegundos.
@@ -25,10 +26,17 @@ namespace PriceMap.UI
         public const float AltoPlegado = 76f;
         /// <summary>Velocidad (dp/ms) a partir de la cual soltar es un lanzamiento (FLICK).</summary>
         public const float Lanzamiento = 0.6f;
-        /// <summary>Por debajo de esta fracción, soltar pliega (CLOSE_BELOW).</summary>
-        public const float PlegarDebajo = 0.15f;
-        /// <summary>Por encima de esta fracción, soltar abre del todo (OPEN_ABOVE).</summary>
-        public const float AbrirEncima = 0.88f;
+        /// <summary>
+        /// Solo para la forma: hasta esta fracción la cápsula se mezcla con la hoja (HojaBuscador.Mezcla). No decide
+        /// paradas.
+        /// </summary>
+        public const float MezclaHasta = 0.15f;
+        /// <summary>Fracción de la parada de la mitad.</summary>
+        public const float FraccionMitad = 0.5f;
+        /// <summary>Sin lanzamiento, por debajo de esta fracción se va a cerrada; desde ella, a la mitad.</summary>
+        public const float CorteCerrada = 0.25f;
+        /// <summary>Sin lanzamiento, por encima de esta fracción se va a completa; hasta ella, a la mitad.</summary>
+        public const float CorteCompleta = 0.75f;
         /// <summary>Menos de este movimiento (dp) es un toque; desde él, un arrastre.</summary>
         public const float UmbralToque = 6f;
         /// <summary>La velocidad se vuelve a medir solo si han pasado más de 4 ms desde la última muestra.</summary>
@@ -144,7 +152,11 @@ namespace PriceMap.UI
             }
         }
 
-        /// <summary>Suelta el dedo: decide el destino (con la velocidad, 0 si el dedo se paró) y deja ahí la hoja.</summary>
+        /// <summary>
+        /// Suelta el dedo: tras un arrastre decide la parada (con la velocidad, 0 si el dedo se paró) y pone ahí la
+        /// hoja. Si no hubo arrastre ni toque (gesto ignorado, toque en la lista) la hoja no se mueve y el destino es
+        /// la parada más cercana a donde está.
+        /// </summary>
         public Suelta Soltar(double ms)
         {
             var antes = estado;
@@ -158,29 +170,45 @@ namespace PriceMap.UI
                     float v = ms - msMuestra > ParadaMs ? 0f : Velocidad;
                     Velocidad = v;
                     var destino = Destino(Fraccion, v);
-                    if (destino == DestinoHoja.Plegada) Fraccion = 0f;
-                    else if (destino == DestinoHoja.Abierta) Fraccion = 1f;
+                    Fraccion = FraccionDe(destino);
                     return new Suelta(false, true, destino, Fraccion);
                 default:
-                    return new Suelta(false, false, DestinoHoja.Quedar, Fraccion);
+                    return new Suelta(false, false, Destino(Fraccion, 0f), Fraccion);
             }
         }
 
-        /// <summary>Se pierde el dedo (cancelado por el sistema): la hoja se queda donde está.</summary>
-        public void Cancelar() => estado = Estado.Libre;
+        /// <summary>
+        /// Termina el gesto sin soltar (la hoja se oculta, otro gesto empieza encima o se pliega desde el código): si
+        /// la hoja se arrastraba, va a la parada más cercana (sin lanzamiento), para no quedarse a medias. El
+        /// PointerCancel del sistema no pasa por aquí durante un arrastre: HojaBuscador.AlCancelar llama a Soltar.
+        /// </summary>
+        public void Cancelar()
+        {
+            if (estado == Estado.Arrastre) Fraccion = FraccionDe(Destino(Fraccion, 0f));
+            estado = Estado.Libre;
+        }
+
+        /// <summary>Fracción de cada parada: cerrada 0, mitad 0,5, completa 1.</summary>
+        public static float FraccionDe(DestinoHoja parada) => parada switch
+        {
+            DestinoHoja.Plegada => 0f,
+            DestinoHoja.Mitad => FraccionMitad,
+            _ => 1f,
+        };
 
         /// <summary>
-        /// Destino al soltar con la fracción k y la velocidad v (dp/ms, positiva hacia abajo): lanzamiento hacia
-        /// arriba abre, hacia abajo pliega; si no, por debajo del 15 % pliega, por encima del 88 % abre y entre medias
-        /// se queda.
+        /// Parada al soltar con la fracción k y la velocidad v (dp/ms, positiva hacia abajo). Sin lanzamiento
+        /// (|v| ≤ 0,6), la más cercana a k (cortes en 0,25 y 0,75; en el corte, la mitad). Con lanzamiento hacia
+        /// arriba, la primera parada estrictamente por encima de k (mitad o completa); hacia abajo, la primera
+        /// estrictamente por debajo (mitad o cerrada). En el extremo, se queda en él.
         /// </summary>
         public static DestinoHoja Destino(float k, float v)
         {
-            if (v < -Lanzamiento) return DestinoHoja.Abierta;
-            if (v > Lanzamiento) return DestinoHoja.Plegada;
-            if (k < PlegarDebajo) return DestinoHoja.Plegada;
-            if (k > AbrirEncima) return DestinoHoja.Abierta;
-            return DestinoHoja.Quedar;
+            if (v < -Lanzamiento) return k < FraccionMitad ? DestinoHoja.Mitad : DestinoHoja.Abierta;
+            if (v > Lanzamiento) return k > FraccionMitad ? DestinoHoja.Mitad : DestinoHoja.Plegada;
+            if (k < CorteCerrada) return DestinoHoja.Plegada;
+            if (k > CorteCompleta) return DestinoHoja.Abierta;
+            return DestinoHoja.Mitad;
         }
 
         /// <summary>

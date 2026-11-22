@@ -54,14 +54,159 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void ArrastrarHastaLaMitadYSoltarDespacioLaDejaAhi()
+        public void ArrastrarHastaLaMitadYSoltarDespacioLaDejaEnLaMitad()
         {
             var f = Fisica();
             var r = Arrastrar(f, 700f, 700f - 0.5f * AltoUtil, 0.1f);
             Assert.IsTrue(r.FueArrastre);
-            Assert.AreEqual(DestinoHoja.Quedar, r.Destino);
-            Assert.AreEqual(0.5f, f.Fraccion, 0.001f, "Sin imán: se queda exactamente donde se suelta.");
+            Assert.AreEqual(DestinoHoja.Mitad, r.Destino);
+            Assert.AreEqual(0.5f, f.Fraccion, 0.001f);
             Assert.AreEqual(-0.1f, f.Velocidad, 0.001f, "Velocidad medida hacia arriba.");
+        }
+
+        // Matriz de la spec de las tres paradas: soltar sin lanzamiento va a la parada más cercana
+        [TestCase(0.8f, DestinoHoja.Abierta, 1f)]   // cerca de arriba: completa
+        [TestCase(0.6f, DestinoHoja.Mitad, 0.5f)]   // en medio: mitad
+        [TestCase(0.4f, DestinoHoja.Mitad, 0.5f)]
+        [TestCase(0.2f, DestinoHoja.Plegada, 0f)]   // cerca de abajo: cerrada
+        [TestCase(0.26f, DestinoHoja.Mitad, 0.5f)]  // junto a los cortes (0,25 y 0,75)
+        [TestCase(0.74f, DestinoHoja.Mitad, 0.5f)]
+        [TestCase(0.76f, DestinoHoja.Abierta, 1f)]
+        [TestCase(0.24f, DestinoHoja.Plegada, 0f)]
+        public void SoltarSinLanzamientoVaALaParadaMasCercana(float fraccion, DestinoHoja destino, float queda)
+        {
+            var f = Fisica();
+            var r = Arrastrar(f, 700f, 700f - fraccion * AltoUtil, 0.05f, esperaMs: 200.0);
+            Assert.AreEqual(destino, r.Destino);
+            Assert.AreEqual(queda, f.Fraccion, 0.0001f);
+            Assert.AreEqual(queda, r.Fraccion, 0.0001f);
+        }
+
+        [Test]
+        public void DesdeArribaSoltarDespacioTambienVaALaMasCercana()
+        {
+            var f = Fisica(1f);
+            Arrastrar(f, 100f, 100f + 0.45f * AltoUtil, 0.05f, esperaMs: 200.0); // de 1 a 0,55
+            Assert.AreEqual(0.5f, f.Fraccion, 0.0001f);
+            Arrastrar(f, 400f, 400f + 0.3f * AltoUtil, 0.05f, esperaMs: 200.0);  // de 0,5 a 0,2
+            Assert.AreEqual(0f, f.Fraccion);
+        }
+
+        [Test]
+        public void LanzarHaciaArribaDesdeCerradaVaALaMitadYOtroACompleta()
+        {
+            var f = Fisica();
+            var r = Arrastrar(f, 700f, 650f, 0.9f); // al 8 %: sin lanzamiento se cerraría
+            Assert.AreEqual(DestinoHoja.Mitad, r.Destino);
+            Assert.AreEqual(0.5f, f.Fraccion, 0.0001f);
+            r = Arrastrar(f, 400f, 350f, 0.9f);
+            Assert.AreEqual(DestinoHoja.Abierta, r.Destino);
+            Assert.AreEqual(1f, f.Fraccion);
+            r = Arrastrar(f, 100f, 50f, 0.9f);
+            Assert.AreEqual(DestinoHoja.Abierta, r.Destino, "En el extremo se queda.");
+            Assert.AreEqual(1f, f.Fraccion);
+        }
+
+        [Test]
+        public void LanzarHaciaAbajoDesdeCompletaVaALaMitadYOtroACerrada()
+        {
+            var f = Fisica(1f);
+            var r = Arrastrar(f, 100f, 150f, 0.9f); // al 92 %: sin lanzamiento volvería a completa
+            Assert.AreEqual(DestinoHoja.Mitad, r.Destino);
+            Assert.AreEqual(0.5f, f.Fraccion, 0.0001f);
+            r = Arrastrar(f, 400f, 450f, 0.9f);
+            Assert.AreEqual(DestinoHoja.Plegada, r.Destino);
+            Assert.AreEqual(0f, f.Fraccion);
+            r = Arrastrar(f, 700f, 750f, 0.9f);
+            Assert.AreEqual(DestinoHoja.Plegada, r.Destino, "En el extremo se queda.");
+            Assert.AreEqual(0f, f.Fraccion);
+        }
+
+        /// <summary>
+        /// Arrastra la hoja (desde la fracción en que esté) hasta la fracción k y la suelta con la velocidad v (dp/ms,
+        /// positiva hacia abajo): el último movimiento, de 10 ms, llega a k a esa velocidad.
+        /// </summary>
+        static FisicaHoja.Suelta SoltarEn(FisicaHoja f, float k, float v)
+        {
+            const float y0 = 1000f;
+            float objetivo = y0 - Mathf.Round((k - f.Fraccion) * AltoUtil); // dp enteros: k exacta en los cortes
+            f.Bajar(new Vector2(200f, y0), 0.0);
+            f.Mover(new Vector2(200f, y0 + 50f), 500.0);           // empieza el arrastre, despacio
+            f.Mover(new Vector2(200f, objetivo - Mathf.Round(v * 100f) / 10f), 1000.0); // recorrido exacto (6 dp a 0,6)
+            f.Mover(new Vector2(200f, objetivo), 1010.0);           // velocidad medida: v
+            return f.Soltar(1015.0);
+        }
+
+        // Fracción en que queda la hoja soltada en k = i/20 (i = 0…20), sin lanzamiento y con lanzamiento arriba y abajo
+        static readonly float[] QuedaSinLanzar =
+            { 0, 0, 0, 0, 0, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, 1, 1, 1, 1, 1 };
+        static readonly float[] QuedaLanzandoArriba =
+            { .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+        static readonly float[] QuedaLanzandoAbajo =
+            { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f, .5f };
+
+        [TestCase(0f)]
+        [TestCase(-2f)]
+        [TestCase(2f)]
+        public void SoltarEnCadaFraccionLlevaASuParada(float v)
+        {
+            var esperado = v < 0f ? QuedaLanzandoArriba : v > 0f ? QuedaLanzandoAbajo : QuedaSinLanzar;
+            for (int i = 0; i <= 20; i++)
+            {
+                var f = Fisica();
+                var r = SoltarEn(f, i / 20f, v);
+                Assert.IsTrue(r.FueArrastre, $"k = {i}/20");
+                Assert.AreEqual(v, f.Velocidad, 0.0001f, $"k = {i}/20: velocidad");
+                Assert.AreEqual(esperado[i], f.Fraccion, 0.0001f, $"k = {i}/20, v = {v}");
+                Assert.AreEqual(esperado[i], FisicaHoja.FraccionDe(r.Destino), 0.0001f, $"k = {i}/20: destino");
+            }
+        }
+
+        [Test]
+        public void EnLosCortesExactosVaALaMitad()
+        {
+            Assert.AreEqual(DestinoHoja.Mitad, FisicaHoja.Destino(0.25f, 0f));
+            Assert.AreEqual(DestinoHoja.Mitad, FisicaHoja.Destino(0.75f, 0f));
+            Assert.AreEqual(DestinoHoja.Mitad, SoltarEn(Fisica(), 0.25f, 0f).Destino);
+            Assert.AreEqual(DestinoHoja.Mitad, SoltarEn(Fisica(), 0.75f, 0f).Destino);
+        }
+
+        [Test]
+        public void A06DpPorMsJustoNoEsUnLanzamiento()
+        {
+            Assert.AreEqual(DestinoHoja.Plegada, FisicaHoja.Destino(0.2f, -FisicaHoja.Lanzamiento));
+            Assert.AreEqual(DestinoHoja.Abierta, FisicaHoja.Destino(0.8f, FisicaHoja.Lanzamiento));
+            var f = Fisica();
+            var r = SoltarEn(f, 0.2f, -0.6f);
+            Assert.AreEqual(-FisicaHoja.Lanzamiento, f.Velocidad, 0f, "Medida exactamente a 0,6 dp/ms.");
+            Assert.AreEqual(DestinoHoja.Plegada, r.Destino, "No es un lanzamiento: la más cercana.");
+            var g = Fisica();
+            Assert.AreEqual(DestinoHoja.Abierta, SoltarEn(g, 0.8f, 0.6f).Destino);
+        }
+
+        [Test]
+        public void UnLanzamientoVaALaParadaSiguienteDesdeDondeEstaLaHoja()
+        {
+            // De cerrada, arrastrada más allá de la mitad y lanzada hacia arriba: completa, no de vuelta a la mitad
+            Assert.AreEqual(DestinoHoja.Abierta, SoltarEn(Fisica(0f), 0.6f, -2f).Destino);
+            // De completa, arrastrada por debajo de la mitad y lanzada hacia abajo: cerrada
+            Assert.AreEqual(DestinoHoja.Plegada, SoltarEn(Fisica(1f), 0.4f, 2f).Destino);
+            // Cambiando de sentido a medio arrastre: la parada siguiente desde donde está, no desde la de partida
+            Assert.AreEqual(DestinoHoja.Mitad, SoltarEn(Fisica(0.5f), 0.3f, -2f).Destino,
+                "De la mitad bajada al 30 % y lanzada hacia arriba: mitad.");
+            Assert.AreEqual(DestinoHoja.Mitad, SoltarEn(Fisica(0f), 0.9f, 2f).Destino,
+                "De cerrada subida al 90 % y lanzada hacia abajo: mitad.");
+        }
+
+        [Test]
+        public void CancelarUnArrastreLaLlevaALaParadaMasCercana()
+        {
+            var f = Fisica();
+            f.Bajar(new Vector2(200f, 700f), 0.0);
+            f.Mover(new Vector2(200f, 700f - 0.4f * AltoUtil), 400.0);
+            f.Cancelar();
+            Assert.IsFalse(f.Pulsado);
+            Assert.AreEqual(0.5f, f.Fraccion, 0.0001f, "No se queda a medias.");
         }
 
         [Test]
@@ -80,61 +225,17 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void LanzarHaciaArribaLaAbreDelTodo()
-        {
-            var f = Fisica();
-            var r = Arrastrar(f, 700f, 650f, 0.9f); // al 8 %: sin lanzamiento se plegaría
-            Assert.AreEqual(DestinoHoja.Abierta, r.Destino);
-            Assert.AreEqual(1f, f.Fraccion);
-        }
-
-        [Test]
-        public void LanzarHaciaAbajoDesdeEl70LaPliega()
-        {
-            var f = Fisica(0.7f);
-            var r = Arrastrar(f, 300f, 360f, 0.9f); // al 60 %: sin lanzamiento se quedaría
-            Assert.AreEqual(DestinoHoja.Plegada, r.Destino);
-            Assert.AreEqual(0f, f.Fraccion);
-        }
-
-        [Test]
-        public void SoltarAl10LaPliega()
-        {
-            var f = Fisica();
-            Arrastrar(f, 700f, 700f - 0.1f * AltoUtil, 0.1f, esperaMs: 200.0);
-            Assert.AreEqual(0f, f.Fraccion);
-        }
-
-        [Test]
-        public void SoltarAl92LaAbreDelTodo()
-        {
-            var f = Fisica();
-            Arrastrar(f, 700f, 700f - 0.92f * AltoUtil, 0.1f, esperaMs: 200.0);
-            Assert.AreEqual(1f, f.Fraccion);
-        }
-
-        [TestCase(0.16f)]
-        [TestCase(0.3f)]
-        [TestCase(0.87f)]
-        public void EntreLosLimitesNoHayIman(float fraccion)
-        {
-            var f = Fisica();
-            Arrastrar(f, 700f, 700f - fraccion * AltoUtil, 0.05f, esperaMs: 200.0);
-            Assert.AreEqual(fraccion, f.Fraccion, 0.001f);
-        }
-
-        [Test]
         public void SiElDedoSeParaAntesDeSoltarNoEsUnLanzamiento()
         {
             var f = Fisica();
-            var r = Arrastrar(f, 700f, 400f, 2f, esperaMs: 91.0);
-            Assert.AreEqual(0f, r.Fraccion - 0.5f, 0.001f, "Parado más de 90 ms: velocidad 0 y se queda al 50 %.");
-            Assert.AreEqual(DestinoHoja.Quedar, r.Destino);
+            var r = Arrastrar(f, 700f, 700f - 0.6f * AltoUtil, 2f, esperaMs: 91.0);
+            Assert.AreEqual(0.5f, r.Fraccion, 0.001f, "Parado más de 90 ms: velocidad 0 y va a la más cercana (mitad).");
+            Assert.AreEqual(DestinoHoja.Mitad, r.Destino);
             Assert.AreEqual(0f, f.Velocidad);
 
             var g = Fisica();
-            Arrastrar(g, 700f, 400f, 2f, esperaMs: 80.0);
-            Assert.AreEqual(1f, g.Fraccion, "Soltado a los 80 ms: es un lanzamiento hacia arriba.");
+            Arrastrar(g, 700f, 700f - 0.6f * AltoUtil, 2f, esperaMs: 80.0);
+            Assert.AreEqual(1f, g.Fraccion, "Soltado a los 80 ms: es un lanzamiento hacia arriba (pasada la mitad, completa).");
         }
 
         [Test]
@@ -161,7 +262,7 @@ namespace PriceMap.Tests.EditMode
             f.Mover(new Vector2(200f, 393f), 70.0);  // pasa los 6 dp: arrastre
             var r = f.Soltar(75.0);
             Assert.AreEqual(-0.1f, f.Velocidad, 0.001f, "La velocidad real, no la del recorrido previo dividido por un instante.");
-            Assert.AreEqual(DestinoHoja.Quedar, r.Destino);
+            Assert.AreEqual(DestinoHoja.Mitad, r.Destino, "Sin lanzamiento sigue en la mitad.");
         }
 
         [Test]
@@ -171,7 +272,7 @@ namespace PriceMap.Tests.EditMode
             f.Bajar(new Vector2(200f, 700f), 0.0);
             f.Mover(new Vector2(200f, 670f), 20.0); // 1,5 dp/ms de una vez
             var r = f.Soltar(25.0);
-            Assert.AreEqual(DestinoHoja.Abierta, r.Destino);
+            Assert.AreEqual(DestinoHoja.Mitad, r.Destino, "Lanzada desde cerrada: la parada siguiente.");
         }
 
         [Test]
@@ -192,8 +293,10 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(64f, FisicaHoja.HuecoArriba);
             Assert.AreEqual(76f, FisicaHoja.AltoPlegado);
             Assert.AreEqual(0.6f, FisicaHoja.Lanzamiento);
-            Assert.AreEqual(0.15f, FisicaHoja.PlegarDebajo);
-            Assert.AreEqual(0.88f, FisicaHoja.AbrirEncima);
+            Assert.AreEqual(0.15f, FisicaHoja.MezclaHasta);
+            Assert.AreEqual(0.5f, FisicaHoja.FraccionMitad);
+            Assert.AreEqual(0.25f, FisicaHoja.CorteCerrada);
+            Assert.AreEqual(0.75f, FisicaHoja.CorteCompleta);
             Assert.AreEqual(6f, FisicaHoja.UmbralToque);
             Assert.AreEqual(800f - 76f - 64f, FisicaHoja.AltoUtilDe(800f, 0f, 0f));
             Assert.AreEqual(800f - 24f - 76f - 64f - 30f, FisicaHoja.AltoUtilDe(800f, 30f, 24f), "Con las zonas seguras.");
@@ -420,6 +523,83 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(hoja.Top, hoja.style.top.value.value, 0.01f, "La hoja se pone en su sitio.");
         }
 
+        /// <summary>Arrastra la hoja despacio (sin lanzamiento) desde la cápsula hasta esa fracción y la suelta.</summary>
+        FisicaHoja.Suelta ArrastrarHojaHasta(float fraccion)
+        {
+            float y0 = hoja.TopPlegada + 20f, recorrido = hoja.Fisica.AltoUtil;
+            hoja.Bajar(new Vector2(150f, y0), 0.0);
+            for (int i = 1; i <= 10; i++) hoja.Mover(new Vector2(150f, y0 - recorrido * fraccion * i / 10f), 500.0 * i);
+            return hoja.Soltar(5200.0);
+        }
+
+        [TestCase(0.4f)]
+        [TestCase(0.6f)]
+        public void SoltarEnMedioLaDejaEnLaMitadConLoEscrito(float fraccion)
+        {
+            hoja.Escribir("clinica");
+            var r = ArrastrarHojaHasta(fraccion);
+            Assert.AreEqual(DestinoHoja.Mitad, r.Destino);
+            Assert.AreEqual(hoja.TopPlegada - hoja.Fisica.AltoUtil * 0.5f, hoja.Top, 0.01f, "A la mitad del recorrido.");
+            Assert.IsTrue(hoja.Abierta);
+            Assert.AreEqual("clinica", hoja.Campo.value, "Se conserva lo escrito.");
+            Assert.IsFalse(hoja.TecladoPedido, "Un arrastre nunca saca el teclado.");
+        }
+
+        [Test]
+        public void SoltarCercaDeArribaLaAbreCompleta()
+        {
+            ArrastrarHojaHasta(0.8f);
+            Assert.IsTrue(hoja.AbiertaDelTodo);
+            Assert.AreEqual(hoja.TopAbierta, hoja.Top, 0.01f);
+        }
+
+        [Test]
+        public void SoltarCercaDeAbajoLaCierraSinFoco()
+        {
+            hoja.Escribir("clinica");
+            TocarCapsula();
+            Assert.IsTrue(hoja.TecladoPedido);
+            hoja.Poner(0.5f);
+            // De la mitad, bajándola despacio hasta el 20 %
+            float y0 = hoja.Top + 20f;
+            hoja.Bajar(new Vector2(150f, y0), 0.0, enLista: false);
+            for (int i = 1; i <= 10; i++) hoja.Mover(new Vector2(150f, y0 + hoja.Fisica.AltoUtil * 0.03f * i), 500.0 * i);
+            var r = hoja.Soltar(5200.0);
+            Assert.AreEqual(DestinoHoja.Plegada, r.Destino);
+            Assert.IsFalse(hoja.Abierta);
+            Assert.IsFalse(hoja.TecladoPedido, "Cerrada, sin foco en el campo.");
+            Assert.AreEqual("clinica", hoja.Campo.value, "El texto se queda para cuando se vuelva a abrir.");
+        }
+
+        [Test]
+        public void LanzarLaHojaHaciaArribaVaParadaAParada()
+        {
+            void Lanzar(float dy)
+            {
+                float y0 = hoja.Top + 20f;
+                hoja.Bajar(new Vector2(150f, y0), 0.0);
+                hoja.Mover(new Vector2(150f, y0 + dy), 20.0); // 1,5 dp/ms
+                hoja.Soltar(25.0);
+            }
+            Lanzar(-30f);
+            Assert.AreEqual(0.5f, hoja.Fraccion, 0.0001f, "De cerrada, a la mitad.");
+            Lanzar(-30f);
+            Assert.IsTrue(hoja.AbiertaDelTodo, "De la mitad, completa.");
+            Lanzar(30f);
+            Assert.AreEqual(0.5f, hoja.Fraccion, 0.0001f, "De completa hacia abajo, a la mitad.");
+            Lanzar(30f);
+            Assert.IsFalse(hoja.Abierta, "De la mitad hacia abajo, cerrada.");
+        }
+
+        [Test]
+        public void AtrasEnLaMitadLaCierra()
+        {
+            ArrastrarHojaHasta(0.5f);
+            Assert.AreEqual(0.5f, hoja.Fraccion, 0.0001f);
+            Assert.IsTrue(pantalla.Atras());
+            Assert.AreEqual(0f, hoja.Fraccion);
+        }
+
         [Test]
         public void LaFormaPasaDeCapsulaAHoja()
         {
@@ -525,6 +705,19 @@ namespace PriceMap.Tests.EditMode
             hoja.Mostrar(true);
             TocarCapsula();
             Assert.IsTrue(hoja.AbiertaDelTodo, "La hoja sigue respondiendo.");
+        }
+
+        [Test]
+        public void OcultarLaCapsulaAMitadDeArrastreLaDejaEnUnaParada()
+        {
+            float y0 = hoja.TopPlegada + 20f, recorrido = hoja.Fisica.AltoUtil;
+            hoja.Bajar(new Vector2(150f, y0), 0.0);
+            for (int i = 1; i <= 10; i++) hoja.Mover(new Vector2(150f, y0 - recorrido * 0.04f * i), 500.0 * i);
+            Assert.AreEqual(0.4f, hoja.Fraccion, 0.001f, "Sin soltar, sigue al dedo.");
+            hoja.Mostrar(false);
+            Assert.AreEqual(0.5f, hoja.Fraccion, 0.0001f, "No se queda a medias: va a la mitad.");
+            Assert.AreEqual(hoja.TopPlegada - 0.5f * recorrido, hoja.Top, 0.01f);
+            Assert.AreEqual(hoja.Top, hoja.style.top.value.value, 0.01f, "Y se dibuja ahí.");
         }
 
         [Test]
