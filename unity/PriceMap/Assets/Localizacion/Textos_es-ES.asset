@@ -668,63 +668,72 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074378
-    m_Localized: "Ruta aproximada por las calles guardadas"
+    m_Localized: Ruta aproximada por las calles guardadas
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074379
-    m_Localized: "≈ {0}"
+    m_Localized: "\u2248\_{0}"
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074380
-    m_Localized: "Ruta aproximada. Llegada hacia las {0}, unos {1} minutos, unos {2}"
+    m_Localized: Ruta aproximada. Llegada hacia las {0}, unos {1} minutos, unos {2}
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074381
-    m_Localized: "Ruta aproximada. Llegada hacia las {0}, alrededor de 1 minuto, unos {1}"
+    m_Localized: Ruta aproximada. Llegada hacia las {0}, alrededor de 1 minuto, unos
+      {1}
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074382
-    m_Localized: "≈ {0} min"
+    m_Localized: "\u2248\_{0} min"
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074383
-    m_Localized: "{0}, unos {1} minutos"
+    m_Localized: '{0}, unos {1} minutos'
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074384
-    m_Localized: "{0}, alrededor de 1 minuto"
+    m_Localized: '{0}, alrededor de 1 minuto'
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074385
-    m_Localized: "Sin conexión: ruta aproximada"
+    m_Localized: "Sin conexi\xF3n: ruta aproximada"
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074386
-    m_Localized: "Sin conexión: no hay calles guardadas para esta ruta"
+    m_Localized: "Sin conexi\xF3n: no hay calles guardadas para esta ruta"
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074387
-    m_Localized: "En {0}"
+    m_Localized: En {0}
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074388
-    m_Localized: "Quedan {0}"
+    m_Localized: Quedan {0}
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074389
-    m_Localized: "{0}, {1}"
+    m_Localized: '{0}, {1}'
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074390
-    m_Localized: "Terminar ruta"
+    m_Localized: Terminar ruta
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074391
-    m_Localized: "No se ha podido recalcular la ruta"
+    m_Localized: No se ha podido recalcular la ruta
     m_Metadata:
       m_Items: []
   - m_Id: 1164695238074392
-    m_Localized: "Navegando a {0} · {1} min"
+    m_Localized: "Navegando a {0} \xB7 {1} min"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1831059611181056
+    m_Localized: Volver a centrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1831059636346880
+    m_Localized: "Siguiendo tu posici\xF3n"
     m_Metadata:
       m_Items: []
   references:

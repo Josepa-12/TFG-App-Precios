@@ -68,7 +68,7 @@ namespace PriceMap.Arranque
                 textoNotificacion: (destino, minutos) => Textos.T(ClavesTexto.NotificacionNavegando, destino, minutos));
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
-                    navegacion: navegacion))
+                    navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity()))
             { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
@@ -140,11 +140,12 @@ namespace PriceMap.Arranque
         /// <param name="resolutorEnlaces">Enlaces cortos del buscador (historia 2.5, parte 2); sin él, no se reconocen.</param>
         /// <param name="rutas">Tiempos e Ir de la ficha (historia 2.6); sin él, la fila de acciones queda vacía.</param>
         /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
+        /// <param name="pantallaSistema">Pantalla encendida mientras se navega (historia 2.7, parte 2b); sin él, se apaga sola.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
-            ServicioNavegacion navegacion = null)
+            ServicioNavegacion navegacion = null, IPantallaSistema pantallaSistema = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -163,6 +164,8 @@ namespace PriceMap.Arranque
             busqueda ??= new ServicioBusqueda(lugares, mapa, ahora);
             // "Encuentra cerca" (historia 2.4): también local, con las mismas fuentes que el buscador
             cerca ??= new ServicioCerca(lugares, mapa, ahora);
+            // La pantalla no se apaga mientras se navega (historia 2.7, parte 2b; FR20)
+            if (navegacion != null && pantallaSistema != null) _ = new PantallaEncendida(navegacion, pantallaSistema);
             pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca, geocodificador,
                 resolutorEnlaces, rutas, navegacion);
             tema.Iniciar();

@@ -67,5 +67,28 @@ namespace PriceMap.Dominio
         public const double NavegacionSaltoMetros = 100.0;
         /// <summary>Metros que un tramo lejano por delante tiene que estar más cerca que el cercano para saltar a él.</summary>
         public const double NavegacionEmpateMetros = 15.0;
+
+        // La cámara sigue al usuario (historia 2.7, parte 2b; decisiones del 21 y 22/11/2026)
+        /// <summary>Metros mínimos entre dos posiciones para sacar de ellas el rumbo de la marcha.</summary>
+        public const double RumboDistanciaMinimaMetros = 3.0;
+        /// <summary>Velocidad (m/s) hasta la que se considera parado: se queda el último rumbo de la marcha.</summary>
+        public const double RumboVelocidadMinima = 1.0;
+        /// <summary>Segundos que se ve la ruta entera tras Ir antes de que la cámara pase a seguir.</summary>
+        public const double CamaraEsperaSeguirSegundos = 2.0;
+        /// <summary>Inclinación de la cámara al seguir (grados desde la horizontal; 85 es la vista cenital).</summary>
+        public const float CamaraSeguirInclinacion = 45f;
+        /// <summary>Distancia (m) de la cámara a la posición al seguir en coche.</summary>
+        public const float CamaraSeguirDistanciaCoche = 350f;
+        /// <summary>Distancia (m) de la cámara a la posición al seguir a pie.</summary>
+        public const float CamaraSeguirDistanciaPie = 180f;
+        /// <summary>
+        /// Altura de la posición en la zona libre entre las tarjetas al seguir (0 = borde de arriba, 1 = el de abajo):
+        /// en el tercio de abajo, con la ruta delante.
+        /// </summary>
+        public const float CamaraSeguirAlturaZona = 0.75f;
+        /// <summary>Segundos aproximados de la transición suave de la cámara (al 95 %).</summary>
+        public const float CamaraTransicionSegundos = 0.6f;
+        /// <summary>Grados que tiene que moverse la brújula, a pie y sin posición nueva, para volver a girar la cámara.</summary>
+        public const float CamaraBrujulaMinimaGrados = 2f;
     }
 }

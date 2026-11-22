@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace PriceMap.UI
 {
-    public enum Icono { Sol, Luna, Mas, Menos, Navegar, Cerrar }
+    public enum Icono { Sol, Luna, Mas, Menos, Navegar, Cerrar, Recentrar }
 
     /// <summary>
     /// Botón redondo de 48 dp con fondo de cristal (DESIGN.md · round-button) y un icono dibujado
@@ -73,7 +73,28 @@ namespace PriceMap.UI
                 case Icono.Menos: Linea(p, c + new Vector2(-7, 0), c + new Vector2(7, 0)); break;
                 // Aspa de cerrar (ficha del lugar, historia 1.8)
                 case Icono.Cerrar: Linea(p, c + new Vector2(-6, -6), c + new Vector2(6, 6)); Linea(p, c + new Vector2(-6, 6), c + new Vector2(6, -6)); break;
+                // Volver a centrar (historia 2.7, parte 2b): la mira de "mi ubicación"
+                case Icono.Recentrar: Recentrar(p, c); break;
             }
+        }
+
+        // Mira (viewBox de 24): círculo de radio 7, cuatro marcas de 2 a 5 desde el borde y un punto lleno de radio 3
+        static void Recentrar(Painter2D p, Vector2 c)
+        {
+            Trazo(p);
+            float s = TamanoIcono / 24f;
+            p.BeginPath();
+            p.Arc(c, 7f * s, 0f, 360f);
+            p.ClosePath();
+            p.Stroke();
+            p.BeginPath();
+            p.Arc(c, 3f * s, 0f, 360f);
+            p.ClosePath();
+            p.Fill();
+            Linea(p, V(c, 12f, 1.5f), V(c, 12f, 5f));
+            Linea(p, V(c, 12f, 19f), V(c, 12f, 22.5f));
+            Linea(p, V(c, 1.5f, 12f), V(c, 5f, 12f));
+            Linea(p, V(c, 19f, 12f), V(c, 22.5f, 12f));
         }
 
         static void Linea(Painter2D p, Vector2 a, Vector2 b)

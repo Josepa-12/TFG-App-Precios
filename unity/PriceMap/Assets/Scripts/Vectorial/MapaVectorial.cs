@@ -339,6 +339,28 @@ namespace PriceMap.Vectorial
             c.Encuadrar(mundo, Rect.MinMaxRect(libre.Izquierda, Screen.height - libre.Abajo, libre.Derecha, Screen.height - libre.Arriba));
         }
 
+        // ───────────────────────── Seguir al usuario (historia 2.7, parte 2b) ─────────────────────────
+
+        /// <summary>
+        /// La cámara sigue a la posición: en ese punto de pantalla (px, origen arriba a la izquierda), con ese giro,
+        /// inclinación y distancia; animado, con la transición suave de la cámara.
+        /// </summary>
+        public void Seguir(Coordenada posicion, float giro, float inclinacion, float distancia, PuntoPantalla enPantalla, bool animado)
+        {
+            var c = Camara();
+            // Unity cuenta Y desde abajo: la inversa exacta de Proyectar
+            if (c != null) c.Seguir(posicion.Latitud, posicion.Longitud, giro, inclinacion, distancia,
+                new Vector2(enPantalla.X, Screen.height - enPantalla.Y), animado);
+        }
+
+        /// <summary>Deja de seguir: la cámara se queda donde está.</summary>
+        public void DejarDeSeguir() { var c = Camara(); if (c != null) c.DejarDeSeguir(); }
+
+        /// <summary>El usuario ha movido la cámara con un gesto (no un toque); ya no sigue.</summary>
+        public event System.Action GestoUsuario;
+
+        void AlGestoCamara() => GestoUsuario?.Invoke();
+
         /// <summary>
         /// Ancho de la línea (m): el de la calle (9 m) o, si con él se vería más fina de 6 dp, los metros que ocupan 6 dp
         /// en el centro de la vista. Metros por píxel = 2 · distancia · tan(FOV / 2) / alto en px; 1 dp = dpi / 160 px
@@ -466,6 +488,7 @@ namespace PriceMap.Vectorial
                 {
                     camara.Tocado += AlTocarCamara; // una sola vez, al encontrarla
                     camara.PulsacionLarga += AlPulsarLargoCamara;
+                    camara.GestoUsuario += AlGestoCamara;
                 }
             }
             if (camara != null && entradaBloqueada != null) camara.entradaBloqueada = entradaBloqueada;

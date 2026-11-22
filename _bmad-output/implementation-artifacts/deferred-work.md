@@ -124,3 +124,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-7-navegar-giro-a-giro.md`
   summary: `PantallaMapa.OnDestroy` termina la ruta con `MotivoFinRuta.Manual`; cuando `ServicioVisitas` (épica 4) escuche `RutaTerminada`, cerrar la app no debe contar como que el usuario terminó la ruta (otro motivo o sin evento).
   evidence: Revisión de la 2.7 parte 1 (blind, low). Hoy nadie escucha `RutaTerminada`; `OnDestroy` llama a `navegacion.Terminar()` con el motivo por defecto.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-7b-camara-que-sigue.md`
+  summary: Historia 2.7 (parte 2c): flecha de posición (`#2F5BEA`/`#4C7DFF`, borde blanco, gira respecto al norte; rumbo de la marcha de `ReglaRumbo` en coche y brújula a pie) y 10 s sin posición → flecha atenuada (0,4), aviso «Buscando señal GPS» (anuncio al aparecer y «Señal GPS recuperada»), sin recálculo y con el contador de desvío a cero. Preguntas abiertas: flecha a pie solo navegando (recomendado) o siempre; aviso en pastilla fija bajo la tarjeta de arriba (recomendado) o en lugar de la distancia. Capturas `navegacion-flecha` y `sin-senal`.
+  evidence: El usuario partió la 2.7 parte 2 el 22/11/2026 (unos 2.600 tokens): primero la cámara que sigue, «Volver a centrar» y la pantalla encendida (spec 2.7b); después la flecha y la falta de señal.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-7b-camara-que-sigue.md`
+  summary: Siguiendo en coche, la cámara llega al punto en ≈ 0,6 s y espera la posición siguiente (≈ 1 s): comprobar en el móvil si se nota el «avanza y para»; si se nota, extrapolar la posición con la velocidad o ligar la transición al intervalo del GPS.
+  evidence: Revisión de la 2.7b (blind, maybe-false; medium si es cierto). τ = 0,2 s en `CamaraMapa.AvanzarSeguimiento`; en PC no se puede juzgar.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-7b-camara-que-sigue.md`
+  summary: Comprobar en el móvil que la pantalla no se apaga durante la ruta (`Arranque.Start` pasa `PantallaSistemaUnity` a `Componer`; sin prueba automática).
+  evidence: Revisión de la 2.7b (verification gap, low). Quitar ese argumento no rompe ninguna prueba; necesita escena y Android.

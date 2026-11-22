@@ -204,6 +204,8 @@ namespace PriceMap.EditorTools
             [ClavesTexto.RutaTerminar] = "Terminar ruta",
             [ClavesTexto.ToastRecalculoFallo] = "No se ha podido recalcular la ruta",
             [ClavesTexto.NotificacionNavegando] = "Navegando a {0} · {1} min",
+            [ClavesTexto.UbicacionRecentrar] = "Volver a centrar",
+            [ClavesTexto.UbicacionSiguiendo] = "Siguiendo tu posición",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

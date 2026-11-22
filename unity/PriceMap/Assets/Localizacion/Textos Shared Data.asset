@@ -719,6 +719,14 @@ MonoBehaviour:
     m_Key: notificacion.navegando
     m_Metadata:
       m_Items: []
+  - m_Id: 1831059611181056
+    m_Key: ubicacion.recentrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1831059636346880
+    m_Key: ubicacion.siguiendo
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

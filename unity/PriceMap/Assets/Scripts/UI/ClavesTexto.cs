@@ -311,8 +311,15 @@ namespace PriceMap.UI
         /// <summary>Notificación fija de la ruta: {0} destino, {1} minutos ("Navegando a Clínica Areas · 6 min").</summary>
         public const string NotificacionNavegando = "notificacion.navegando";
 
+        // La cámara sigue al usuario (historia 2.7, parte 2b)
+        /// <summary>Botón de ubicación navegando, con la cámara suelta ("Volver a centrar").</summary>
+        public const string UbicacionRecentrar = "ubicacion.recentrar";
+        /// <summary>Botón de ubicación navegando, mientras la cámara sigue ("Siguiendo tu posición").</summary>
+        public const string UbicacionSiguiendo = "ubicacion.siguiendo";
+
         public static readonly string[] Todas =
         {
+            UbicacionRecentrar, UbicacionSiguiendo,
             RutaCalculando, RutaFallo, RutaA, RutaDespues, RutaLlegada, RutaMin, RutaAnuncio, RutaAnuncioMinuto,
             RutaAnuncioCalculando, RutaAnuncioFallo, RutaQuitar,
             RutaAproximada, RutaValorAprox, RutaAnuncioAprox, RutaAnuncioAproxMinuto, FichaMinutosAprox,

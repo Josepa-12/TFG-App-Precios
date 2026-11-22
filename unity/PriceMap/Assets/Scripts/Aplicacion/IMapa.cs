@@ -93,5 +93,24 @@ namespace PriceMap.Aplicacion
         /// origen arriba a la izquierda), sin cambiar el giro ni la inclinación y sin pasar los límites de la cámara.
         /// </summary>
         void Encuadrar(IReadOnlyList<Coordenada> puntos, RectPantalla libre);
+
+        /// <summary>
+        /// La cámara sigue al usuario al navegar (historia 2.7, parte 2b): deja la posición en ese punto de la pantalla
+        /// (px, origen arriba a la izquierda), con ese giro (rumbo arriba, grados desde el norte), esa inclinación (grados
+        /// desde la horizontal; 85 = cenital) y esa distancia de cámara (m). Animado, llega con una transición suave
+        /// (≈ 0,6 s) y cada llamada nueva recoloca sin saltos; sin animar, al instante. Sigue hasta DejarDeSeguir o hasta
+        /// un gesto del usuario (GestoUsuario). Por defecto (mapas falsos de las pruebas), solo centra al instante.
+        /// </summary>
+        void Seguir(Coordenada posicion, float giro, float inclinacion, float distancia, PuntoPantalla enPantalla, bool animado)
+            => Centrar(posicion, enPantalla);
+
+        /// <summary>Deja de seguir: la cámara se queda donde está (con su giro e inclinación de ese momento).</summary>
+        void DejarDeSeguir() { }
+
+        /// <summary>
+        /// El usuario ha movido la cámara con un gesto (arrastre, giro, inclinación, pellizco, rueda o teclado; un toque
+        /// no cuenta). Llega en cada fotograma del gesto; la cámara ya ha dejado de seguir.
+        /// </summary>
+        event Action GestoUsuario { add { } remove { } }
     }
 }

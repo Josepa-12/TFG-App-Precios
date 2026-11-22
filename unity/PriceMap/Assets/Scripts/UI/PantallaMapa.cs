@@ -78,6 +78,11 @@ namespace PriceMap.UI
         int maniobraMostrada = int.MinValue;   // índice de la maniobra siguiente en la tarjeta (se anuncia al cambiar)
         double avanceDibujado = double.NaN;    // avance con el que se recortó la línea por última vez
         Ruta rutaRecortada;                    // ruta de la línea recortada (otra al recalcular: se redibuja)
+        // La cámara sigue al usuario (historia 2.7, parte 2b)
+        SeguimientoCamara seguimiento;         // esperando 2 s → siguiendo → suelto; apagado sin navegación
+        ReglaRumbo rumboMarcha;                // rumbo de la marcha sacado de las posiciones
+        bool animacionesQuitadas;              // "quitar animaciones" del sistema (leído al arrancar y al volver delante)
+        float giroSeguido;                     // último giro pedido a la cámara al seguir (la brújula a pie se compara con él)
 
         /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
@@ -123,6 +128,9 @@ namespace PriceMap.UI
             this.direcciones = direcciones;
             this.accesibilidadSistema = accesibilidadSistema;
             this.ahora = ahora;
+            this.animacionesQuitadas = accesibilidadSistema != null && accesibilidadSistema.AnimacionesQuitadas;
+            seguimiento = new SeguimientoCamara(() => RelojCamara());
+            rumboMarcha = new ReglaRumbo(() => RelojCamara());
             this.mapa.Centrar(VistaInicial);
 
             raiz = raizDocumento?.Q("raiz");
@@ -146,8 +154,8 @@ namespace PriceMap.UI
                 huecoUbicacion.Add(botonUbicacion);
             }
             Columna(botonTema, botonUbicacion);
-            botonAcercar = new BotonRedondo(Icono.Mas, () => this.mapa.Acercar(), enColumna: true) { name = "boton-acercar" };
-            botonAlejar = new BotonRedondo(Icono.Menos, () => this.mapa.Alejar(), enColumna: true) { name = "boton-alejar" };
+            botonAcercar = new BotonRedondo(Icono.Mas, Acercar, enColumna: true) { name = "boton-acercar" };
+            botonAlejar = new BotonRedondo(Icono.Menos, Alejar, enColumna: true) { name = "boton-alejar" };
             zoom.Add(botonAcercar);
             zoom.Add(botonAlejar);
             Columna(botonAcercar, botonAlejar);
@@ -161,8 +169,8 @@ namespace PriceMap.UI
                 visible: () => !rutaActiva);
             if (botonUbicacion != null)
                 accesibilidad.Boton(botonUbicacion, () => Textos.T(ClaveBotonUbicacion()), TocarUbicacion);
-            accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), () => this.mapa.Acercar(), visible: () => AccesibilidadPantalla.LectorActivo);
-            accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), () => this.mapa.Alejar(), visible: () => AccesibilidadPantalla.LectorActivo);
+            accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), Acercar, visible: () => AccesibilidadPantalla.LectorActivo);
+            accesibilidad.Boton(botonAlejar, () => Textos.T(ClavesTexto.MapaAlejar), Alejar, visible: () => AccesibilidadPantalla.LectorActivo);
             // La tarjeta de la ruta (abajo) y su X, detrás de los botones del mapa
             if (tarjetaRuta != null) DeclararTarjetaRutaEnTalkBack();
 
@@ -209,6 +217,8 @@ namespace PriceMap.UI
                 this.navegacion.Actualizado += AlNavegar;
                 this.navegacion.RutaCambiada += AlRecalcularRuta;
                 this.navegacion.RecalculoFallido += AlFallarRecalculo;
+                this.navegacion.RutaTerminada += AlTerminarNavegacion;
+                this.mapa.GestoUsuario += AlGestoUsuario; // la cámara que sigue se suelta (historia 2.7, parte 2b)
             }
             else this.navegacion = null;
 
@@ -302,6 +312,8 @@ namespace PriceMap.UI
         public void TocarUbicacion()
         {
             if (ubicacion == null || ModalUbicacionAbierta) return;
+            // Navegando (historia 2.7, parte 2b), el botón siempre vuelve a seguir al usuario
+            if (Navegando) { Recentrar(); return; }
             switch (AccionUbicacionActual())
             {
                 case AccionUbicacion.Explicar: AbrirExplicacion(); break;
@@ -331,7 +343,12 @@ namespace PriceMap.UI
         }
 
         /// <summary>Clave de la etiqueta de TalkBack del botón de ubicación según lo que hará al tocarlo.</summary>
-        public string ClaveBotonUbicacion() => ClaveBotonUbicacion(AccionUbicacionActual());
+        public string ClaveBotonUbicacion()
+        {
+            // Navegando (historia 2.7, parte 2b): "Volver a centrar" con la cámara suelta; si no, "Siguiendo tu posición"
+            if (Navegando) return seguimiento.Suelto ? ClavesTexto.UbicacionRecentrar : ClavesTexto.UbicacionSiguiendo;
+            return ClaveBotonUbicacion(AccionUbicacionActual());
+        }
 
         /// <summary>"Orientar al norte", "Buscando tu posición", "Ubicación desactivada" o "Centrar en mi posición".</summary>
         public static string ClaveBotonUbicacion(AccionUbicacion accion)
@@ -1082,8 +1099,10 @@ namespace PriceMap.UI
         /// </summary>
         public void LeerAccesibilidadSistema()
         {
+            // También la cámara que sigue al navegar (historia 2.7, parte 2b): sin la espera de 2 s ni transición
+            animacionesQuitadas = accesibilidadSistema != null && accesibilidadSistema.AnimacionesQuitadas;
             if (buscador == null) return;
-            buscador.SinTransicion = accesibilidadSistema != null && accesibilidadSistema.AnimacionesQuitadas;
+            buscador.SinTransicion = animacionesQuitadas;
         }
 
         /// <summary>La cápsula activada con TalkBack: abre la hoja del todo, modal, y lleva el foco al campo.</summary>
@@ -1245,6 +1264,8 @@ namespace PriceMap.UI
             }
             CancelarDireccionPunto();
             chincheta?.Actualizar(mapa, null, 1f); // la del punto anterior desaparece ya
+            // Navegando (historia 2.7, parte 2b), la cámara no sigue mientras la ficha la centra; al cerrarla, vuelve
+            if (Navegando) mapa.DejarDeSeguir();
             return FichaAbierta;
         }
 
@@ -1559,7 +1580,8 @@ namespace PriceMap.UI
             EmpezarNavegacion(ruta);
             if (TarjetasRutaVisibles) // con la ficha reabierta se encuadra al cerrarla
             {
-                EncuadrarRuta();
+                EncuadrarRuta(); // la ruta entera; a los 2 s la cámara pasa a seguir (sin animaciones, ya sigue)
+                SeguirCamara();
                 accesibilidad.PedirFoco(tarjetaManiobra);
             }
             // Solo con las tarjetas a la vista: con la ficha reabierta (modal) no se tapa ni se anuncia dentro de ella
@@ -1617,16 +1639,153 @@ namespace PriceMap.UI
             maniobraMostrada = int.MinValue;
             avanceDibujado = double.NaN;
             rutaRecortada = null;
+            rumboMarcha.Reiniciar();
             navegacion.Empezar(ruta, destinoRuta.Value, nombreRuta, modoRuta);
+            // La cámara (parte 2b): 2 s con la ruta entera y después sigue; sin animaciones, sigue ya
+            seguimiento.Empezar(sinEspera: animacionesQuitadas);
+            ActualizarBotonUbicacion();
             accesibilidad.RefrescarEtiqueta(tarjetaRuta.Quitar);
         }
 
         void TerminarNavegacion()
         {
             if (navegacion == null || !navegacion.Activa) return;
-            navegacion.Terminar(MotivoFinRuta.Manual);
+            navegacion.Terminar(MotivoFinRuta.Manual); // la cámara la suelta AlTerminarNavegacion
             rutaRecortada = null;
             if (tarjetaRuta != null) accesibilidad.RefrescarEtiqueta(tarjetaRuta.Quitar);
+        }
+
+        /// <summary>
+        /// La navegación ha terminado (X, atrás, otra ruta o el servicio): la cámara deja de seguir y se queda donde está,
+        /// y el botón de ubicación vuelve a su icono y a lo de siempre.
+        /// </summary>
+        void AlTerminarNavegacion(MotivoFinRuta motivo)
+        {
+            try
+            {
+                if (seguimiento.Estado == EstadoSeguimiento.Apagado) return;
+                seguimiento.Terminar();
+                mapa.DejarDeSeguir();
+                ActualizarBotonUbicacion();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        // ───────────────────────── La cámara sigue al usuario (historia 2.7, parte 2b) ─────────────────────────
+
+        /// <summary>Hora para la espera de 2 s y el rumbo de la marcha; por defecto DateTime.UtcNow (las pruebas la fijan).</summary>
+        public Func<DateTime> RelojCamara { get; set; } = () => DateTime.UtcNow;
+
+        /// <summary>Lo que hace la cámara durante la navegación.</summary>
+        public EstadoSeguimiento EstadoCamara => seguimiento != null ? seguimiento.Estado : EstadoSeguimiento.Apagado;
+
+        /// <summary>
+        /// Punto de posición que se ve al navegar: en coche y a ≤ 40 m de la ruta, el proyectado sobre la línea; fuera de
+        /// ruta o a pie, la posición real. Sin navegación, la posición real (null sin ella).
+        /// </summary>
+        public Coordenada? PosicionMostrada
+        {
+            get
+            {
+                var real = ubicacion?.Posicion;
+                if (!Navegando) return real;
+                var estado = navegacion.Estado;
+                if (estado == null) return real;
+                if (navegacion.Modo == ModoViaje.Coche && !estado.FueraDeRuta) return estado.Proyectado;
+                return real ?? estado.Proyectado;
+            }
+        }
+
+        /// <summary>
+        /// Rumbo que va arriba al seguir: a pie la brújula; en coche (o sin brújula) el de la marcha; sin él aún, el de la
+        /// ruta en el punto proyectado. Null si no hay ninguno (la cámara mantiene su giro).
+        /// </summary>
+        public float? RumboCamara
+        {
+            get
+            {
+                if (!Navegando) return null;
+                var estado = navegacion.Estado;
+                double? ruta = estado != null ? ReglaRumbo.RumboRuta(navegacion.Ruta?.Puntos, estado.Tramo) : null;
+                double? brujula = ubicacion?.Rumbo;
+                var r = ReglaRumbo.Elegir(navegacion.Modo, brujula, rumboMarcha.Rumbo, ruta);
+                return r.HasValue ? (float)r.Value : (float?)null;
+            }
+        }
+
+        /// <summary>
+        /// Punto de la pantalla (px, origen arriba) donde va la posición al seguir: centrado en horizontal y en el tercio
+        /// de abajo de la zona libre entre las tarjetas (ParametrosNegocio.CamaraSeguirAlturaZona).
+        /// </summary>
+        public PuntoPantalla PuntoSeguir()
+        {
+            float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala > 0f ? ultimaEscala : 1f;
+            var zona = ZonaEncuadre(Screen.width, Screen.height, escala, BordeDp(tarjetaManiobra, abajo: true), BordeDp(tarjetaRuta, abajo: false));
+            return new PuntoPantalla((zona.Izquierda + zona.Derecha) / 2f,
+                zona.Arriba + (zona.Abajo - zona.Arriba) * ParametrosNegocio.CamaraSeguirAlturaZona, 1f);
+        }
+
+        /// <summary>
+        /// Coloca la cámara siguiendo al usuario (solo si toca seguir y las tarjetas se ven): el punto que se ve, el rumbo
+        /// arriba, 45°, 350 m en coche y 180 m a pie, en el tercio de abajo; con transición salvo sin animaciones.
+        /// </summary>
+        void SeguirCamara()
+        {
+            if (!Navegando || !seguimiento.Siguiendo || !TarjetasRutaVisibles) return;
+            var punto = PosicionMostrada;
+            if (!punto.HasValue) return;
+            float giro = RumboCamara ?? mapa.Giro;
+            float distancia = navegacion.Modo == ModoViaje.APie
+                ? ParametrosNegocio.CamaraSeguirDistanciaPie : ParametrosNegocio.CamaraSeguirDistanciaCoche;
+            giroSeguido = giro;
+            mapa.Seguir(punto.Value, giro, ParametrosNegocio.CamaraSeguirInclinacion, distancia, PuntoSeguir(), animado: !animacionesQuitadas);
+        }
+
+        /// <summary>"Volver a centrar" (el botón de ubicación navegando): la cámara vuelve a seguir.</summary>
+        void Recentrar()
+        {
+            seguimiento.Recentrar();
+            ActualizarBotonUbicacion();
+            SeguirCamara();
+        }
+
+        /// <summary>Un gesto del usuario o los botones de zoom: la cámara deja de seguir y el botón pasa a "Volver a centrar".</summary>
+        void SoltarCamara()
+        {
+            if (!Navegando || !seguimiento.Soltar()) return;
+            mapa.DejarDeSeguir();
+            ActualizarBotonUbicacion();
+        }
+
+        void AlGestoUsuario()
+        {
+            try
+            {
+                SoltarCamara();
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        // Botones de zoom (y su versión de TalkBack): navegando, sueltan la cámara antes de acercar o alejar
+        void Acercar() { SoltarCamara(); mapa.Acercar(); }
+        void Alejar() { SoltarCamara(); mapa.Alejar(); }
+
+        /// <summary>Icono del botón de ubicación: recentrar con la cámara suelta; si no, el de siempre. Su etiqueta, al día.</summary>
+        void ActualizarBotonUbicacion()
+        {
+            if (botonUbicacion == null) return;
+            var icono = Navegando && seguimiento.Suelto ? Icono.Recentrar : Icono.Navegar;
+            if (botonUbicacion.Icono != icono) botonUbicacion.Icono = icono;
+            var clave = ClaveBotonUbicacion();
+            if (clave == claveBotonUbicacion) return;
+            claveBotonUbicacion = clave;
+            accesibilidad?.RefrescarEtiqueta(botonUbicacion);
         }
 
         /// <summary>Se está siguiendo la ruta (la X dice "Terminar ruta").</summary>
@@ -1666,6 +1825,11 @@ namespace PriceMap.UI
                     // La primera la lee el foco al empezar; las siguientes, una vez al cambiar (con las tarjetas a la vista)
                     if (!primera && TarjetasRutaVisibles) AccesibilidadPantalla.Anunciar(tarjetaManiobra.AnuncioConDistancia);
                 }
+                // La cámara (parte 2b): rumbo de la marcha con el punto que se ve (en coche y en ruta, el proyectado, que
+                // nunca retrocede: el ruido del GPS parado no la gira) y, si sigue, recolocada sin saltos
+                var visto = PosicionMostrada;
+                if (visto.HasValue) rumboMarcha.Nueva(visto.Value);
+                SeguirCamara();
             }
             catch (Exception e)
             {
@@ -1807,7 +1971,18 @@ namespace PriceMap.UI
             EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema);
             ColocarControlesRuta();
             ColocarToast();
-            if (rutaDibujada != null && TarjetasRutaVisibles) EncuadrarRuta();
+            if (rutaDibujada != null && TarjetasRutaVisibles) EncuadrarOSeguir();
+        }
+
+        /// <summary>
+        /// Con las tarjetas ya dispuestas o de vuelta (ficha cerrada): sin navegar o en los 2 s de espera, la ruta entera;
+        /// siguiendo, la cámara otra vez sobre el usuario (la zona libre ha podido cambiar); suelta, nada (el usuario ha
+        /// movido el mapa y no se le recoloca).
+        /// </summary>
+        void EncuadrarOSeguir()
+        {
+            if (Navegando && seguimiento.Siguiendo) SeguirCamara();
+            else if (!Navegando || seguimiento.Estado != EstadoSeguimiento.Suelto) EncuadrarRuta();
         }
 
         /// <summary>
@@ -1969,7 +2144,7 @@ namespace PriceMap.UI
             accesibilidad.Modal = false;
             if (rutaActiva)
             {
-                EncuadrarRuta();
+                EncuadrarOSeguir();
                 accesibilidad.PedirFoco(tarjetaRuta.Cuerpo);
                 return;
             }
@@ -2136,6 +2311,8 @@ namespace PriceMap.UI
                 navegacion.Actualizado -= AlNavegar;
                 navegacion.RutaCambiada -= AlRecalcularRuta;
                 navegacion.RecalculoFallido -= AlFallarRecalculo;
+                navegacion.RutaTerminada -= AlTerminarNavegacion;
+                if (mapa != null) mapa.GestoUsuario -= AlGestoUsuario;
                 navegacion.Terminar(); // fuera el GPS de fondo y la notificación
             }
             if (tarjetaRuta != null)
@@ -2369,6 +2546,16 @@ namespace PriceMap.UI
         /// </summary>
         internal void ActualizarCapas(float escala)
         {
+            // Navegando (historia 2.7, parte 2b): pasados los 2 s con la ruta entera, la cámara pasa a seguir. Sin
+            // transición se coloca ya, antes de proyectar nada en este fotograma
+            if (seguimiento != null && Navegando && seguimiento.Avanzar()) SeguirCamara();
+            // A pie y parado no llegan posiciones nuevas: la cámara sigue a la brújula si se ha movido 2° o más
+            else if (seguimiento != null && Navegando && seguimiento.Siguiendo && navegacion.Modo == ModoViaje.APie)
+            {
+                var brujula = ubicacion?.Rumbo;
+                if (brujula.HasValue && Mathf.Abs(Mathf.DeltaAngle(brujula.Value, giroSeguido)) >= ParametrosNegocio.CamaraBrujulaMinimaGrados)
+                    SeguirCamara();
+            }
             // Primero los marcadores (sin pisar los controles); después los puntos, que no pisan ni controles ni
             // marcadores visibles y se ocultan si repiten un lugar visible (FR-4)
             if (escala > 0f) ZonasControles();
@@ -2383,7 +2570,8 @@ namespace PriceMap.UI
                 capaPuntos.Actualizar(escala, LugaresVisibles(), zonasOcupadas);
             }
             // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
-            if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, ubicacion.Posicion, ubicacion.Rumbo, escala);
+            // Navegando en coche y en la ruta, el punto va sobre la línea (historia 2.7, parte 2b; PosicionMostrada)
+            if (marcadorPosicion != null && escala > 0f) marcadorPosicion.Actualizar(mapa, PosicionMostrada, ubicacion.Rumbo, escala);
             // La chincheta del punto libre sigue a su coordenada mientras su ficha está abierta (o es el destino de la ruta)
             if (chincheta != null && escala > 0f) chincheta.Actualizar(mapa, PuntoChincheta, escala);
             if (escala > 0f) ultimaEscala = escala;
@@ -2391,15 +2579,8 @@ namespace PriceMap.UI
             if (rutas != null && !tiemposPedidos && FichaAbierta && ubicacion?.Posicion != null) PedirTiempos();
             // La etiqueta del botón de ubicación sigue a lo que hará al tocarlo: si cambia, se actualiza en su nodo,
             // sin rehacer la jerarquía (TalkBack no pierde el foco aunque la distancia oscile alrededor de 8 dp)
-            if (botonUbicacion != null)
-            {
-                var clave = ClaveBotonUbicacion();
-                if (clave != claveBotonUbicacion)
-                {
-                    claveBotonUbicacion = clave;
-                    accesibilidad?.RefrescarEtiqueta(botonUbicacion);
-                }
-            }
+            // Navegando, su icono también: el de recentrar con la cámara suelta (historia 2.7, parte 2b)
+            ActualizarBotonUbicacion();
             // Ruta sin notificaciones (permiso denegado): el aviso sale una vez por ruta, cuando no hay otra ventana
             if (ubicacion != null)
             {

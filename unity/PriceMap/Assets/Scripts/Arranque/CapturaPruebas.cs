@@ -242,6 +242,7 @@ namespace PriceMap.Arranque
             yield return Ruta();
             yield return RutaAproximada();
             yield return Navegacion();
+            yield return NavegacionSigue();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -949,6 +950,100 @@ namespace PriceMap.Arranque
                 if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             }
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>
+        /// Historia 2.7 (parte 2b), capturas "navegacion-sigue" (claro y oscuro) y "volver-centrar": Ir a Clínica Areas en
+        /// coche y la ubicación falsa a la mitad de Calle Regina (4 m a un lado); pasados los 2 s y la transición, la
+        /// cámara sigue: inclinada 45°, a 350 m, con el rumbo de la marcha arriba y el punto sobre la línea en el tercio de
+        /// abajo. Después, un gesto mueve el mapa y el botón de ubicación pasa al icono de recentrar ("Volver a centrar").
+        /// </summary>
+        IEnumerator NavegacionSigue()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            var camara = FindFirstObjectByType<CamaraMapa>();
+            if (lugar == null || pantalla.Navegacion == null || ubicacionCaptura == null || camara == null)
+            { Debug.LogError("PriceMap: no se puede capturar la cámara que sigue."); yield break; }
+            // La captura "navegacion" pudo terminar con la cámara ya empezando a inclinarse: la vista de siempre
+            camara.inclinacion = 50f;
+            camara.giro = -15f;
+            camara.distancia = 900f;
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var relojAntes = pantalla.RelojLocal;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+            pantalla.Rutas.VaciarCache();
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.Coche);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarRuta();
+                var nav = pantalla.Navegacion;
+                if (!nav.Activa) { Debug.LogError("PriceMap: Ir no ha empezado la navegación."); yield break; }
+                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Esperando)
+                    Debug.LogError($"PriceMap: al pulsar Ir la cámara debería esperar 2 s con la ruta entera ({pantalla.EstadoCamara}).");
+                var a = CalleCoche[3];
+                var b = CalleCoche[4];
+                var mitad = new Coordenada((a.Latitud + b.Latitud) / 2 - 0.00003, (a.Longitud + b.Longitud) / 2 + 0.000025);
+                ubicacionCaptura.Mover(mitad);
+                yield return new WaitForSeconds(3.5f); // los 2 s y la transición
+                yield return new WaitForEndOfFrame();
+                var estado = nav.Estado;
+                var visto = pantalla.PosicionMostrada;
+                var enPantalla = visto.HasValue ? mapa.Proyectar(visto.Value) : PuntoPantalla.Ninguno;
+                var objetivo = pantalla.PuntoSeguir();
+                Debug.Log($"PriceMap: cámara que sigue: {pantalla.EstadoCamara}; inclinación {camara.inclinacion:F1}°, distancia {camara.distancia:F0} m, " +
+                          $"giro {camara.giro:F0}° (rumbo {pantalla.RumboCamara:F0}°); punto {visto} (proyectado {estado.Proyectado}, a {estado.DistanciaRuta:F1} m) " +
+                          $"en ({enPantalla.X:F0}, {enPantalla.Y:F0}) px, objetivo ({objetivo.X:F0}, {objetivo.Y:F0}); botón \"{Textos.T(pantalla.ClaveBotonUbicacion())}\"");
+                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Siguiendo) Debug.LogError("PriceMap: la cámara no sigue a los 2 s.");
+                if (Mathf.Abs(camara.inclinacion - ParametrosNegocio.CamaraSeguirInclinacion) > 1f) Debug.LogError("PriceMap: la cámara no está inclinada 45°.");
+                if (Mathf.Abs(camara.distancia - ParametrosNegocio.CamaraSeguirDistanciaCoche) > 5f) Debug.LogError("PriceMap: la cámara no está a 350 m.");
+                if (!visto.HasValue || visto.Value.DistanciaMetros(estado.Proyectado) > 0.5) Debug.LogError("PriceMap: en coche el punto no va sobre la línea.");
+                if (Vector2.Distance(new Vector2(enPantalla.X, enPantalla.Y), new Vector2(objetivo.X, objetivo.Y)) > 10f)
+                    Debug.LogError("PriceMap: la posición no está en el tercio de abajo de la zona libre.");
+                yield return Capturar("navegacion-sigue");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return Capturar("navegacion-sigue-oscuro");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+
+                // El usuario mueve el mapa: la cámara se suelta y el botón pasa a "Volver a centrar"
+                camara.SimularGesto();
+                camara.pivote += new Vector3(120f, 0f, 160f);
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                var boton = pantalla.BotonUbicacion;
+                Debug.Log($"PriceMap: tras mover el mapa: {pantalla.EstadoCamara}; icono {boton?.Icono}; botón \"{Textos.T(pantalla.ClaveBotonUbicacion())}\"");
+                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Suelto || boton == null || boton.Icono != UI.Icono.Recentrar)
+                    Debug.LogError("PriceMap: tras mover el mapa el botón de ubicación no es «Volver a centrar».");
+                yield return Capturar("volver-centrar");
+                pantalla.TocarUbicacion();
+                yield return null;
+                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Siguiendo || boton.Icono != UI.Icono.Navegar)
+                    Debug.LogError("PriceMap: «Volver a centrar» no vuelve a seguir.");
+                pantalla.Atras();
+                yield return null;
+                if (nav.Activa || pantalla.EstadoCamara != UI.EstadoSeguimiento.Apagado || boton.Icono != UI.Icono.Navegar)
+                    Debug.LogError("PriceMap: al terminar la ruta la cámara y el botón no vuelven a lo de siempre.");
+            }
+            finally
+            {
+                ubicacionCaptura.Mover(PantallaMapa.VistaInicial);
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            // La cámara se queda inclinada donde estaba al terminar: vuelve a la vista de siempre para lo que sigue
+            camara.inclinacion = 50f;
+            camara.giro = -15f;
+            camara.distancia = 900f;
+            mapa.Centrar(PantallaMapa.VistaInicial);
             yield return new WaitForSeconds(1f);
         }
 

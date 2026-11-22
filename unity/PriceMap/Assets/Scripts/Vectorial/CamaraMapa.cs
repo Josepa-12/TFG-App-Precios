@@ -63,6 +63,7 @@ namespace PriceMap.Vectorial
 
         void Update()
         {
+            var antes = Estado();
             if (Input.touchSupported && Input.touchCount > 0)
             {
                 if (Input.GetTouch(0).phase == TouchPhase.Began && Input.touchCount == 1) gestoSobreInterfaz = SobreInterfaz(Input.GetTouch(0).position);
@@ -79,7 +80,128 @@ namespace PriceMap.Vectorial
                 if (!Input.touchSupported) ToqueRaton();
             }
             Teclado();
+            // Un gesto del usuario suelta la cámara (historia 2.7, parte 2b). Mover el mapa con un dedo (o el botón
+            // izquierdo) cuenta solo pasado el umbral del toque: un toque no suelta
+            if (EsGesto(antes, Estado(), arrastreLargo, teclaMovio)) Gesto();
+            teclaMovio = false;
+            AvanzarSeguimiento(Time.unscaledDeltaTime);
             Aplicar();
+        }
+
+        (Vector3 pivote, float distancia, float inclinacion, float giro) Estado() => (pivote, distancia, inclinacion, giro);
+
+        /// <summary>
+        /// Si la entrada de este fotograma es un gesto del usuario: cambian la distancia, la inclinación o el giro, o se
+        /// mueve el pivote con un arrastre más largo que un toque o con el teclado.
+        /// </summary>
+        internal static bool EsGesto((Vector3 pivote, float distancia, float inclinacion, float giro) antes,
+            (Vector3 pivote, float distancia, float inclinacion, float giro) despues, bool arrastreLargo, bool teclaMovio)
+        {
+            bool movido = despues.pivote != antes.pivote;
+            bool cambiado = despues.distancia != antes.distancia || despues.inclinacion != antes.inclinacion || despues.giro != antes.giro;
+            return cambiado || (movido && (arrastreLargo || teclaMovio));
+        }
+
+        // ───────────────────────── Seguir al usuario (historia 2.7, parte 2b) ─────────────────────────
+
+        /// <summary>
+        /// El usuario ha movido la cámara (arrastre pasado el umbral del toque, dos dedos, botón derecho, rueda o
+        /// teclado). Llega en cada fotograma del gesto, después de dejar de seguir.
+        /// </summary>
+        public event System.Action GestoUsuario;
+
+        bool siguiendo;
+        bool arrastreLargo; // el dedo o el botón izquierdo se ha movido más que un toque desde que bajó
+        bool teclaMovio;    // el teclado ha movido el pivote en este fotograma
+        Vector2 inicioArrastre;
+        Vector3 objetivoPivote;
+        float objetivoDistancia, objetivoInclinacion, objetivoGiro;
+
+        /// <summary>La cámara está siguiendo un objetivo (Seguir) y ningún gesto la ha soltado.</summary>
+        public bool Siguiendo => siguiendo;
+
+        /// <summary>Para las pruebas: el estado al que va la cámara mientras sigue.</summary>
+        internal Vector3 ObjetivoPivote => objetivoPivote;
+        internal float ObjetivoGiro => objetivoGiro;
+
+        /// <summary>Constante de tiempo de la transición: al 95 % en CamaraTransicionSegundos (3 τ).</summary>
+        static float Tau => PriceMap.Dominio.ParametrosNegocio.CamaraTransicionSegundos / 3f;
+
+        /// <summary>
+        /// Sigue: deja la coordenada en ese punto de la pantalla (px de la cámara, Y desde abajo, como Input) con ese giro,
+        /// inclinación y distancia. Animado, la cámara se acerca al objetivo en cada fotograma (al 95 % en ≈ 0,6 s) y cada
+        /// objetivo nuevo se persigue desde donde esté, sin saltos; sin animar, llega al instante.
+        /// </summary>
+        public void Seguir(double lat, double lon, float giroObjetivo, float inclinacionObjetivo, float distanciaObjetivo,
+            Vector2 enPantalla, bool animado)
+        {
+            if (cam == null) cam = GetComponent<Camera>(); // en EditMode no se ejecuta Awake
+            var antes = Estado();
+            // El objetivo: la cámara ya en su giro, inclinación y distancia, con la coordenada en el punto pedido
+            giro = giroObjetivo;
+            inclinacion = inclinacionObjetivo;
+            distancia = distanciaObjetivo;
+            CentrarEn(lat, lon, enPantalla);
+            objetivoPivote = pivote;
+            objetivoDistancia = distancia;   // ya limitados por Aplicar
+            objetivoInclinacion = inclinacion;
+            objetivoGiro = giro;
+            siguiendo = true;
+            if (!animado) return; // se queda en el objetivo
+            // Animado: vuelve a donde estaba y se acerca desde Update
+            pivote = antes.pivote;
+            distancia = antes.distancia;
+            inclinacion = antes.inclinacion;
+            giro = antes.giro;
+            Aplicar();
+        }
+
+        /// <summary>Deja de seguir: la cámara se queda donde está.</summary>
+        public void DejarDeSeguir() => siguiendo = false;
+
+        /// <summary>
+        /// Acerca la cámara al objetivo lo que toca en ese tiempo (1 − e^(−dt/τ)); el giro, por el lado más corto. Muy
+        /// cerca, se queda en él. Lo llama Update; las pruebas, directamente.
+        /// </summary>
+        internal void AvanzarSeguimiento(float segundos)
+        {
+            if (!siguiendo || segundos <= 0f) return;
+            float k = 1f - Mathf.Exp(-segundos / Tau);
+            pivote = Vector3.Lerp(pivote, objetivoPivote, k);
+            distancia = Mathf.Lerp(distancia, objetivoDistancia, k);
+            inclinacion = Mathf.Lerp(inclinacion, objetivoInclinacion, k);
+            giro = Mathf.LerpAngle(giro, objetivoGiro, k);
+            if ((pivote - objetivoPivote).sqrMagnitude < 0.0001f && Mathf.Abs(Mathf.DeltaAngle(giro, objetivoGiro)) < 0.01f
+                && Mathf.Abs(distancia - objetivoDistancia) < 0.01f && Mathf.Abs(inclinacion - objetivoInclinacion) < 0.01f)
+            {
+                pivote = objetivoPivote;
+                distancia = objetivoDistancia;
+                inclinacion = objetivoInclinacion;
+                giro = objetivoGiro;
+            }
+            Aplicar();
+        }
+
+        // El usuario mueve la cámara: deja de seguir y avisa
+        void Gesto()
+        {
+            siguiendo = false;
+            GestoUsuario?.Invoke();
+        }
+
+        /// <summary>Solo para las pruebas y la captura: un gesto del usuario, como si moviera el mapa.</summary>
+        public void SimularGesto() => Gesto();
+
+        // El dedo o el botón izquierdo bajan: empieza a medirse si pasan del umbral del toque
+        void EmpezarArrastre(Vector2 pantalla)
+        {
+            inicioArrastre = pantalla;
+            arrastreLargo = false;
+        }
+
+        void MedirArrastre(Vector2 pantalla)
+        {
+            if (!arrastreLargo && Vector2.Distance(pantalla, inicioArrastre) >= DetectorToque.UmbralPx(Screen.dpi)) arrastreLargo = true;
         }
 
         void ToqueTactil()
@@ -166,6 +288,8 @@ namespace PriceMap.Vectorial
 
         void Raton()
         {
+            if (Input.GetMouseButtonDown(0)) EmpezarArrastre(Input.mousePosition);
+            if (Input.GetMouseButton(0)) MedirArrastre(Input.mousePosition);
             // Tras la pulsación larga el botón izquierdo ya no mueve el mapa
             if (Input.GetMouseButton(0) && !toque.ArrastreBloqueado) Arrastrar(Input.mousePosition); else sueloAnterior = null;
             if (Input.GetMouseButton(1))
@@ -185,7 +309,8 @@ namespace PriceMap.Vectorial
             if (Input.touchCount == 1)
             {
                 var t = Input.GetTouch(0);
-                if (t.phase == TouchPhase.Began) sueloAnterior = null;
+                if (t.phase == TouchPhase.Began) { sueloAnterior = null; EmpezarArrastre(t.position); }
+                else MedirArrastre(t.position);
                 Arrastrar(t.position);
                 if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled) sueloAnterior = null;
                 return;
@@ -216,7 +341,9 @@ namespace PriceMap.Vectorial
             float paso = distancia * velocidadTeclado * Time.deltaTime;
             var adelante = Quaternion.Euler(0f, giro, 0f) * Vector3.forward;
             var derecha = Quaternion.Euler(0f, giro, 0f) * Vector3.right;
-            pivote += (adelante * Input.GetAxisRaw("Vertical") + derecha * Input.GetAxisRaw("Horizontal")) * paso;
+            float v = Input.GetAxisRaw("Vertical"), h = Input.GetAxisRaw("Horizontal");
+            if (v != 0f || h != 0f) teclaMovio = true;
+            pivote += (adelante * v + derecha * h) * paso;
             if (Input.GetKey(KeyCode.Q)) giro -= 60f * Time.deltaTime;
             if (Input.GetKey(KeyCode.E)) giro += 60f * Time.deltaTime;
             if (Input.GetKey(KeyCode.R)) inclinacion += 40f * Time.deltaTime;
