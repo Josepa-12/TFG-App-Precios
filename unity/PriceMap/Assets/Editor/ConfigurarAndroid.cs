@@ -40,8 +40,40 @@ namespace PriceMap.EditorTools
             PlayerSettings.allowedAutorotateToLandscapeRight = false;
 
             EditorUserBuildSettings.buildAppBundle = false; // APK instalable a mano
+            PonerIconos();
             AssetDatabase.SaveAssets();
             Debug.Log($"PriceMap: Android configurado ({Identificador}, minSdk 26, targetSdk 35, IL2CPP ARM64, vertical, Activity).");
+        }
+
+        public const string IconoApp = "Assets/Iconos/IconoApp.png";       // logo redondeado (clásico y PC)
+        public const string IconoFondo = "Assets/Iconos/IconoFondo.png";   // adaptativo: el dibujo entero en la zona visible
+        public const string IconoFrente = "Assets/Iconos/IconoFrente.png"; // adaptativo: capa delantera vacía
+
+        /// <summary>
+        /// Icono de la app: el de siempre (PC y Android antiguo) y el adaptativo de Android 8+, que cada móvil
+        /// recorta con su forma (círculo, squircle…). El dibujo va entero en el fondo, dentro de los 72 dp de 108 visibles.
+        /// </summary>
+        public static void PonerIconos()
+        {
+            var app = AssetDatabase.LoadAssetAtPath<Texture2D>(IconoApp);
+            var fondo = AssetDatabase.LoadAssetAtPath<Texture2D>(IconoFondo);
+            var frente = AssetDatabase.LoadAssetAtPath<Texture2D>(IconoFrente);
+            if (app == null || fondo == null || frente == null)
+            {
+                Debug.LogError("PriceMap: faltan los iconos en Assets/Iconos.");
+                return;
+            }
+            PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { app }, IconKind.Any);
+            Poner(UnityEditor.Android.AndroidPlatformIconKind.Legacy, app);
+            Poner(UnityEditor.Android.AndroidPlatformIconKind.Round, app);
+            Poner(UnityEditor.Android.AndroidPlatformIconKind.Adaptive, fondo, frente); // capa 0 fondo, capa 1 frente
+        }
+
+        static void Poner(PlatformIconKind tipo, params Texture2D[] capas)
+        {
+            var iconos = PlayerSettings.GetPlatformIcons(NamedBuildTarget.Android, tipo);
+            foreach (var icono in iconos) icono.SetTextures(capas);
+            PlayerSettings.SetPlatformIcons(NamedBuildTarget.Android, tipo, iconos);
         }
 
         [MenuItem("PriceMap/Compilar APK")]
@@ -97,6 +129,7 @@ namespace PriceMap.EditorTools
             PlayerSettings.defaultScreenWidth = 412;  // ancho de referencia de EXPERIENCE.md (dp)
             PlayerSettings.defaultScreenHeight = 915;
             PlayerSettings.resizableWindow = false;
+            PonerIconos();
             var informe = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = new[] { PrepararEscenaPrincipal.RutaEscena },
