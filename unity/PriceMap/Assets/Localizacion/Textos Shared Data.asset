@@ -707,10 +707,6 @@ MonoBehaviour:
     m_Key: ruta.anuncio.maniobra
     m_Metadata:
       m_Items: []
-  - m_Id: 1164695238074390
-    m_Key: ruta.terminar
-    m_Metadata:
-      m_Items: []
   - m_Id: 1164695238074391
     m_Key: toast.ruta.recalculo
     m_Metadata:
@@ -761,6 +757,34 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 1903538279014405
     m_Key: voz.valor.nada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014406
+    m_Key: ruta.finalizar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014407
+    m_Key: ruta.desplegar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014408
+    m_Key: ruta.plegar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014409
+    m_Key: ruta.encoche
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014410
+    m_Key: ruta.apie
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014411
+    m_Key: ruta.destino.detalle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014412
+    m_Key: ruta.anuncio.destino
     m_Metadata:
       m_Items: []
   m_Metadata:

@@ -155,3 +155,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-red-android-tls13.md`
   summary: La ruta de Android de `ClienteHttp`/`PuenteRed` solo tiene pruebas de lectura del código; falta probarla en el móvil (ruta, búsqueda, enlace corto, modo avión, cancelar).
   evidence: EditMode no ejecuta JNI ni Java; queda para la prueba en el Redmi con `adb logcat`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-hoja-navegacion-finalizar-ruta.md`
+  summary: Probar en el móvil el gesto de la hoja de la ruta (tocar, arrastrar arriba/abajo, pulsar «Finalizar ruta», arrastrar desde el botón) y TalkBack «Desplegar»/«Plegar».
+  evidence: En EditMode los eventos de puntero se envían con el destino puesto a mano y la disposición forzada por reflexión.

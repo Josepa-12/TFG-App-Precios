@@ -119,6 +119,25 @@ namespace PriceMap.Tests.EditMode
         }
 
         /// <summary>
+        /// Hoja de la ruta desplegada (22/11/2026): "Finalizar ruta" con texto surface sobre danger (≥ 4,5:1, AA) y la
+        /// fila del destino (nombre text y detalle muted sobre surface-2).
+        /// </summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LaHojaDesplegadaCumpleElContraste(bool oscuro)
+        {
+            var c = Tema(oscuro);
+            Assert.GreaterOrEqual(Contraste(c["surface"], c["danger"]), 4.5f, "«Finalizar ruta» sobre el rojo");
+            Assert.GreaterOrEqual(Contraste(c["text"], c["surface-2"]), 4.5f, "nombre del destino");
+            Assert.GreaterOrEqual(Contraste(c["muted"], c["surface-2"]), 4.5f, "detalle del destino");
+            var uss = File.ReadAllText(Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            var boton = Regex.Match(uss, @"\.tarjeta-ruta__finalizar\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            StringAssert.Contains("background-color: var(--color-danger);", boton);
+            var texto = Regex.Match(uss, @"\.tarjeta-ruta__finalizar-texto\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            StringAssert.Contains("color: var(--color-surface);", texto);
+        }
+
+        /// <summary>
         /// Ruta aproximada (historia 2.6, parte 2b; colores del 21/11/2026): la línea se distingue (≥ 3:1) de las calles y
         /// del fondo por su relleno o por su borde (en claro el relleno es suave y lo marca el borde; en oscuro, al revés),
         /// es distinta de la ruta normal, y el toast (fondo text, texto bg) se lee (≥ 4,5:1) y destaca sobre el mapa.

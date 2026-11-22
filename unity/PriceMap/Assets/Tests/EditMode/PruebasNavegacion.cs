@@ -588,7 +588,7 @@ namespace PriceMap.Tests.EditMode
         {
             foreach (var clave in new[]
                      {
-                         ClavesTexto.RutaEn, ClavesTexto.RutaQuedan, ClavesTexto.RutaAnuncioManiobra, ClavesTexto.RutaTerminar,
+                         ClavesTexto.RutaEn, ClavesTexto.RutaQuedan, ClavesTexto.RutaAnuncioManiobra,
                          ClavesTexto.ToastRecalculoFallo, ClavesTexto.NotificacionNavegando,
                      })
             {
@@ -813,15 +813,157 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_TerminarConLaX()
+        public void Pantalla_TerminarConFinalizarRuta()
         {
             IrAAreas();
-            Abajo.PulsarQuitar();
+            Abajo.Desplegar();
+            Assert.AreEqual("Finalizar ruta", Abajo.TextoFinalizar.text, "Navegando, el botón dice «Finalizar ruta».");
+            Abajo.PulsarFinalizar();
             Assert.IsFalse(pantalla.RutaActiva);
             Assert.IsFalse(nav.Activa);
             Assert.IsNull(mapa.linea);
             Assert.AreEqual(1, gps.Terminadas);
             Assert.AreEqual("terminada Manual", eventos.Last());
+            Assert.IsTrue(pantalla.Buscador.Visible, "Vuelve la cápsula del buscador.");
+            Assert.IsFalse(Abajo.Desplegada, "La hoja se cierra plegada con la ruta.");
+        }
+
+        // ───────────────────────── Hoja de la ruta que solo informa (22/11/2026) ─────────────────────────
+
+        [Test]
+        public void Hoja_TocarPlegada_SeDespliegaYLaRutaSigueSinFicha()
+        {
+            IrAAreas();
+            Assert.IsFalse(Abajo.Desplegada, "La ruta empieza con la hoja plegada.");
+            Assert.AreEqual(DisplayStyle.None, Abajo.Desplegable.style.display.value);
+            Abajo.Tocar();
+            Assert.IsTrue(Abajo.Desplegada);
+            Assert.AreEqual(DisplayStyle.Flex, Abajo.Desplegable.style.display.value, "Se ven el destino y el botón.");
+            Assert.IsFalse(pantalla.FichaAbierta, "La ficha no se abre.");
+            Assert.IsTrue(pantalla.Navegando, "La ruta sigue.");
+            Assert.AreEqual(0, gps.Terminadas);
+            Assert.AreEqual(DisplayStyle.Flex, Abajo.style.display.value, "Las tarjetas siguen a la vista.");
+        }
+
+        [Test]
+        public void Hoja_Desplegada_TocarArribaArrastrarAbajoOAtrasLaPliegan()
+        {
+            IrAAreas();
+            Abajo.Desplegar();
+            Abajo.Tocar(); // la parte de arriba
+            Assert.IsFalse(Abajo.Desplegada, "Tocar arriba la pliega.");
+            Abajo.Desplegar();
+            Abajo.Soltar(30f);
+            Assert.IsFalse(Abajo.Desplegada, "Arrastrar hacia abajo la pliega.");
+            Abajo.Desplegar();
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsFalse(Abajo.Desplegada, "Atrás la pliega.");
+            Assert.IsTrue(pantalla.Navegando, "La ruta sigue.");
+            Assert.AreEqual(0, gps.Terminadas);
+        }
+
+        [Test]
+        public void Hoja_AtrasPlegada_QuitaLaRuta()
+        {
+            IrAAreas();
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsFalse(pantalla.RutaActiva);
+            Assert.IsFalse(nav.Activa);
+        }
+
+        [Test]
+        public void Hoja_Arrastre_ArribaDespliegaAbajoPliegaYPocoEsUnToque()
+        {
+            IrAAreas();
+            Abajo.Soltar(-7f);
+            Assert.IsTrue(Abajo.Desplegada, "Más de 6 dp hacia arriba la despliega.");
+            Abajo.Soltar(-20f);
+            Assert.IsTrue(Abajo.Desplegada, "Hacia arriba desplegada se queda.");
+            Abajo.Soltar(7f);
+            Assert.IsFalse(Abajo.Desplegada, "Más de 6 dp hacia abajo la pliega.");
+            Abajo.Soltar(20f);
+            Assert.IsFalse(Abajo.Desplegada, "Hacia abajo plegada se queda.");
+            Abajo.Soltar(3f);
+            Assert.IsTrue(Abajo.Desplegada, "Menos de 6 dp es un toque.");
+            Assert.IsTrue(pantalla.Navegando);
+            Assert.IsFalse(pantalla.FichaAbierta);
+        }
+
+        [Test]
+        public void Hoja_Recalculo_LaRutaNuevaEmpiezaPlegada()
+        {
+            IrAAreas();
+            Abajo.Desplegar();
+            pantalla.Accesibilidad.PedirFoco(Arriba); // TalkBack está en la tarjeta de arriba
+            Ir(M(150, 45));
+            Ir(M(150, 46), 6);
+            valhalla.Peticiones.Last().Responder(new Ruta(new[] { M(150, 46), M(150, 300), M(300, 300) }, 400, 240, null));
+            Assert.IsTrue(pantalla.Navegando);
+            Assert.IsFalse(Abajo.Desplegada, "Con el recálculo la hoja se pliega.");
+            Assert.AreSame(Arriba, pantalla.Accesibilidad.Enfocado, "Plegarla la app no se lleva el foco de TalkBack.");
+        }
+
+        [Test]
+        public void Hoja_FinDeLaNavegacion_SePliegaYLaSiguienteEmpiezaPlegada()
+        {
+            IrAAreas();
+            Abajo.Desplegar();
+            nav.Terminar(); // como la llegada (historia 2.9): el servicio termina la ruta
+            Assert.IsFalse(Abajo.Desplegada, "Se cierra plegada.");
+            Assert.AreEqual("Quitar ruta", Abajo.TextoFinalizar.text, "Sin navegación, «Quitar ruta».");
+            Abajo.Desplegar();
+            pantalla.ReabrirFichaRuta();
+            pantalla.Ficha.Acciones.PulsarIr(); // la ruta sale de la caché
+            Assert.IsTrue(pantalla.Navegando);
+            Assert.IsFalse(Abajo.Desplegada, "La siguiente empieza plegada.");
+        }
+
+        [Test]
+        public void Hoja_FilaDelDestino_IconoNombreYCategoriaConElModo()
+        {
+            IrAAreas();
+            Assert.AreEqual("Clínica Areas", Abajo.DestinoNombre.text);
+            Assert.AreEqual(Areas.Tipo + " · en coche", Abajo.DestinoDetalle.text);
+            Assert.AreEqual(IconosLugar.GlifoDe(Areas.Tipo), Abajo.GlifoDestino);
+            Assert.IsTrue(Abajo.DestinoIcono.ClassListContains(PantallaMapa.ClaseIconoDestino(Areas.Plantilla)));
+            Assert.AreEqual("Destino: Clínica Areas, " + Areas.Tipo + ", en coche", Abajo.AnuncioDestino);
+        }
+
+        [Test]
+        public void Hoja_TalkBack_DesplegarPlegarYFinalizarRutaComoBotonPropio()
+        {
+            IrAAreas();
+            AccesibilidadPantalla.LectorForzado = () => false; // sin jerarquía: el recorrido se calcula igual
+            var plegada = pantalla.Accesibilidad.Recorrido();
+            Assert.Contains(Abajo.Anuncio, plegada, string.Join(" | ", plegada));
+            Assert.IsFalse(plegada.Contains("Finalizar ruta"), "Plegada, sin botón.");
+            Assert.IsFalse(plegada.Contains(Abajo.AnuncioDestino));
+            Assert.AreEqual("Desplegar", ValorTalkBack(Abajo.Cuerpo));
+
+            Abajo.Tocar(); // el doble toque de TalkBack hace lo mismo
+            var desplegada = pantalla.Accesibilidad.Recorrido();
+            int hoja = desplegada.IndexOf(Abajo.Anuncio);
+            Assert.GreaterOrEqual(hoja, 0, string.Join(" | ", desplegada));
+            Assert.AreEqual(Abajo.AnuncioDestino, desplegada[hoja + 1]);
+            Assert.AreEqual("Finalizar ruta", desplegada[hoja + 2]);
+            Assert.IsFalse(desplegada.Contains("Terminar ruta"));
+            Assert.AreEqual("Plegar", ValorTalkBack(Abajo.Cuerpo));
+            Assert.AreSame(Abajo.Cuerpo, pantalla.Accesibilidad.Enfocado, "El foco se queda en la hoja.");
+        }
+
+        // Valor de TalkBack de un control (el "valor" declarado en AccesibilidadPantalla.Boton)
+        string ValorTalkBack(VisualElement e)
+        {
+            var campo = typeof(AccesibilidadPantalla).GetField("controles", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            var lista = (System.Collections.IList)campo.GetValue(pantalla.Accesibilidad);
+            foreach (var c in lista)
+            {
+                var t = c.GetType();
+                if (!ReferenceEquals(t.GetField("elemento").GetValue(c), e)) continue;
+                var valor = (Func<string>)t.GetField("valor").GetValue(c);
+                return valor?.Invoke();
+            }
+            return null;
         }
 
         [Test]
@@ -835,12 +977,13 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_TalkBack_LaXEsTerminarRuta()
+        public void Pantalla_TalkBack_ElBotonEsFinalizarRuta()
         {
             IrAAreas();
             AccesibilidadPantalla.LectorForzado = () => false; // sin jerarquía: el recorrido se calcula igual
+            Abajo.Desplegar();
             var recorrido = pantalla.Accesibilidad.Recorrido();
-            Assert.Contains("Terminar ruta", recorrido, string.Join(" | ", recorrido));
+            Assert.Contains("Finalizar ruta", recorrido, string.Join(" | ", recorrido));
             Assert.IsFalse(recorrido.Contains("Quitar ruta"));
         }
 

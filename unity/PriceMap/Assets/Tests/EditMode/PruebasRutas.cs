@@ -212,7 +212,7 @@ namespace PriceMap.Tests.EditMode
         }
 
         /// <summary>La pantalla real con el servicio de rutas (o sin él) y una ubicación en ese estado.</summary>
-        void Crear(EstadoUbicacion estado, Coordenada? posicion, bool conRutas = true)
+        void Crear(EstadoUbicacion estado, Coordenada? posicion, bool conRutas = true, IGeocodificador geocodificador = null)
         {
             if (objeto != null) UnityEngine.Object.DestroyImmediate(objeto);
             objeto = new GameObject("Pantalla de prueba");
@@ -224,7 +224,8 @@ namespace PriceMap.Tests.EditMode
             var filtro = new ServicioFiltro(prefs);
             mapa = new MapaFalso();
             gps = new UbicacionFalsa { Estado = estado, Posicion = posicion };
-            pantalla.Inicializar(mapa, tema, Lugares(), Ahora, arbol, filtro, new ServicioUbicacion(gps, prefs), rutas: conRutas ? servicio : null);
+            pantalla.Inicializar(mapa, tema, Lugares(), Ahora, arbol, filtro, new ServicioUbicacion(gps, prefs),
+                geocodificador: geocodificador, rutas: conRutas ? servicio : null);
             pantalla.RelojLocal = () => HoraLocal;
             raizArbol = arbol.Q("raiz");
             tema.Iniciar();
@@ -1052,7 +1053,8 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(StyleKeyword.Auto, pila.style.right.keyword);
             Assert.AreEqual(encima, atribucion.style.bottom.value.value, 0.01f);
 
-            Abajo.PulsarQuitar();
+            Abajo.Desplegar();
+            Abajo.PulsarFinalizar();
             Assert.IsFalse(pantalla.RutaActiva);
             Assert.IsNull(mapa.linea);
             ComprobarControlesDeRuta(false);
@@ -1086,7 +1088,7 @@ namespace PriceMap.Tests.EditMode
             valhalla.De(ModoViaje.APie).ResponderConManiobras(900, 1100);
             int encuadres = mapa.encuadres.Count;
 
-            Abajo.Tocar();
+            pantalla.ReabrirFichaRuta();
             Assert.IsTrue(pantalla.FichaAbierta);
             Assert.AreSame(Areas, Ficha.Lugar);
             Assert.AreEqual(ModoViaje.APie, Fila.Elegido, "Con el modo de la ruta elegido.");
@@ -1101,7 +1103,7 @@ namespace PriceMap.Tests.EditMode
             Assert.Greater(mapa.encuadres.Count, encuadres, "Al volver, la ruta se encuadra otra vez.");
 
             // Atrás con la ficha reabierta la cierra (vuelven las tarjetas); no quita la ruta
-            Abajo.Tocar();
+            pantalla.ReabrirFichaRuta();
             Assert.IsTrue(pantalla.Atras());
             Assert.IsTrue(pantalla.RutaActiva);
             ComprobarControlesDeRuta(true);
@@ -1113,7 +1115,7 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
-            Abajo.Tocar();
+            pantalla.ReabrirFichaRuta();
             Fila.APie.Pulsar();
             Fila.PulsarIr();
             Assert.IsFalse(pantalla.FichaAbierta);
@@ -1141,7 +1143,7 @@ namespace PriceMap.Tests.EditMode
             pantalla.Chincheta.Actualizar(mapa, pantalla.PuntoChincheta, Escala, 1000f, 2000f);
             Assert.IsTrue(pantalla.Chincheta.Visible, "La chincheta del destino sigue.");
 
-            Abajo.Tocar();
+            pantalla.ReabrirFichaRuta();
             Assert.AreEqual(CalleAncha, pantalla.PuntoAbierto);
             Assert.IsFalse(Visible(Arriba), "Con la ficha del punto, las tarjetas se ocultan.");
             Assert.IsFalse(Visible(Abajo));
@@ -1186,11 +1188,19 @@ namespace PriceMap.Tests.EditMode
                 string.Join(" | ", recorrido));
             int llegada = recorrido.IndexOf("Llegada 13:34, 4 minutos, 1,2 km");
             Assert.Greater(llegada, 0, string.Join(" | ", recorrido));
-            Assert.AreEqual("Quitar ruta", recorrido[llegada + 1]);
+            Assert.IsFalse(recorrido.Contains("Quitar ruta"), "Plegada, sin botón.");
             Assert.IsFalse(recorrido.Contains("Precios en el mapa"), "Sin píldora.");
             Assert.IsFalse(recorrido.Contains("Cambiar tema"), "Sin botón de tema.");
 
-            // La de abajo es un botón que abre la ficha
+            // Desplegada (sin navegación): el destino y "Quitar ruta" detrás de la hoja
+            Abajo.Desplegar();
+            recorrido = Acc.Recorrido();
+            llegada = recorrido.IndexOf("Llegada 13:34, 4 minutos, 1,2 km");
+            Assert.AreEqual(Abajo.AnuncioDestino, recorrido[llegada + 1], string.Join(" | ", recorrido));
+            Assert.AreEqual("Quitar ruta", recorrido[llegada + 2]);
+            Abajo.Plegar();
+
+            // La ficha se reabre desde la pantalla (la hoja ya no la abre)
             pantalla.ReabrirFichaRuta();
             Assert.IsTrue(pantalla.FichaAbierta);
             Assert.IsFalse(Acc.Recorrido().Contains("Quitar ruta"), "Con la ficha, fuera las tarjetas.");
@@ -1202,6 +1212,280 @@ namespace PriceMap.Tests.EditMode
             Assert.Contains("Precios en el mapa", sinRuta);
             Assert.Contains("Cambiar tema", sinRuta);
             Assert.IsFalse(sinRuta.Any(e => e.StartsWith("Llegada") || e == "Quitar ruta"));
+        }
+
+        // ───────────────────────── Hoja de la ruta que solo informa (22/11/2026) ─────────────────────────
+
+        [Test]
+        public void Hoja_TocarNoReabreLaFichaNiQuitaLaRuta()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            Abajo.Tocar();
+            Assert.IsFalse(pantalla.FichaAbierta, "Tocar la hoja ya no reabre la ficha.");
+            Assert.IsTrue(pantalla.RutaActiva);
+            Assert.IsTrue(Abajo.Desplegada);
+            ComprobarControlesDeRuta(true);
+            Assert.IsNull(raizArbol.Q("tarjeta-ruta-quitar"), "La hoja plegada no lleva X.");
+        }
+
+        [Test]
+        public void Hoja_SinNavegacion_CalculandoYConFalloIgualConQuitarRuta()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            Abajo.Tocar(); // calculando
+            Assert.IsTrue(Abajo.Desplegada);
+            Assert.AreEqual("Quitar ruta", Abajo.TextoFinalizar.text);
+            Assert.IsFalse(pantalla.FichaAbierta);
+            valhalla.De(ModoViaje.Coche).Fallar();
+            osrm.De(ModoViaje.Coche).Fallar();
+            Assert.IsTrue(pantalla.RutaActiva);
+            Assert.AreEqual("Quitar ruta", Abajo.TextoFinalizar.text, "Con fallo, igual.");
+            Assert.IsTrue(pantalla.Atras(), "Atrás pliega.");
+            Assert.IsFalse(Abajo.Desplegada);
+            Assert.IsTrue(pantalla.RutaActiva);
+            Abajo.Desplegar();
+            Abajo.PulsarFinalizar();
+            Assert.IsFalse(pantalla.RutaActiva);
+            ComprobarControlesDeRuta(false);
+            Assert.IsFalse(Abajo.Desplegada);
+        }
+
+        [Test]
+        public void Hoja_OtraRutaEmpiezaPlegada()
+        {
+            CrearConPosicion();
+            IrAAreas();
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            Abajo.Desplegar();
+            pantalla.QuitarRuta();
+            IrAAreas();
+            Assert.IsFalse(Abajo.Desplegada, "La siguiente empieza plegada.");
+        }
+
+        [Test]
+        public void Hoja_PuntoLibre_ChinchetaYSinCategoria()
+        {
+            CrearConPosicion();
+            var px = new PuntoPantalla(100f, 200f, 300f);
+            mapa.suelo[(px.X, px.Y)] = CalleAncha;
+            pantalla.PulsarLargoMapa(px);
+            Fila.PulsarIr();
+            Assert.AreEqual("36,7781, -6,3515", Abajo.DestinoNombre.text);
+            Assert.AreEqual(FilaResultado.GlifoChincheta, Abajo.GlifoDestino);
+            Assert.IsTrue(Abajo.DestinoIcono.ClassListContains(TarjetaRuta.ClaseIconoPunto));
+            Assert.AreEqual(T(ClavesTexto.PuntoTipo), Abajo.DestinoDetalle.text, "Sin dirección, «Punto en el mapa».");
+        }
+
+        /// <summary>
+        /// Los gestos de verdad (AlBajar, AlMover, AlSoltar) con la hoja en un panel dispuesto y eventos de puntero:
+        /// tocar arriba despliega o pliega; tocar el destino o dentro de lo desplegado no cambia nada; "Finalizar ruta"
+        /// se pulsa una vez y no pliega; un arrastre que empieza en el botón no lo pulsa; uno de lado no cambia nada; si
+        /// la app pliega la hoja con el dedo en el botón, soltarlo no la vuelve a desplegar.
+        /// </summary>
+        [Test]
+        public void Hoja_GestosDeVerdadEnUnPanel()
+        {
+            var objetoPanel = new GameObject("Hoja en un panel");
+            try
+            {
+                objetoPanel.SetActive(false);
+                var documento = objetoPanel.AddComponent<UIDocument>();
+                documento.panelSettings = AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/UI/PanelSettings.asset");
+                documento.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml");
+                objetoPanel.SetActive(true);
+                var raiz = documento.rootVisualElement.Q("raiz");
+                var marco = new VisualElement();
+                marco.style.position = Position.Absolute;
+                marco.style.left = 0f;
+                marco.style.top = 0f;
+                marco.style.width = 412f;
+                marco.style.height = 915f;
+                raiz.Add(marco);
+                var hoja = new TarjetaRuta(T);
+                hoja.style.display = DisplayStyle.Flex;
+                marco.Add(hoja);
+                hoja.PonerDestino("Clínica Areas", "Clínica privada · en coche", IconosLugar.Generico, null, "Destino");
+                int finalizadas = 0;
+                hoja.FinalizarPulsado += () => finalizadas++;
+                Disponer(hoja);
+                Vector2 arriba = hoja.Cuerpo.worldBound.center;
+                Assert.Greater(hoja.Cuerpo.worldBound.height, 0f, "La hoja está dispuesta.");
+
+                Puntero(hoja.Cuerpo, arriba, EventType.MouseDown);
+                Assert.IsTrue(hoja.Cabecera.ClassListContains(TarjetaRuta.ClaseCabeceraPulsada), "La parte de arriba se ve pulsada.");
+                Puntero(hoja.Cuerpo, arriba, EventType.MouseUp);
+                Assert.IsFalse(hoja.Cabecera.ClassListContains(TarjetaRuta.ClaseCabeceraPulsada));
+                Assert.IsTrue(hoja.Desplegada, "Tocar arriba la despliega.");
+                Disponer(hoja);
+                Vector2 destino = hoja.Destino.worldBound.center, boton = hoja.Finalizar.worldBound.center;
+                Vector2 hueco = new Vector2(boton.x, (hoja.Destino.worldBound.yMax + hoja.Finalizar.worldBound.yMin) / 2f);
+                Assert.Greater(hoja.Finalizar.worldBound.height, 0f);
+
+                Tocar(hoja.Desplegable, destino);
+                Assert.IsTrue(hoja.Desplegada, "Tocar la fila del destino no cambia nada.");
+                Tocar(hoja.Desplegable, hueco);
+                Assert.IsTrue(hoja.Desplegada, "Tocar dentro de lo desplegado no cambia nada.");
+
+                Puntero(hoja.Finalizar, boton, EventType.MouseDown);
+                Assert.IsTrue(hoja.Finalizar.ClassListContains(TarjetaRuta.ClaseFinalizarPulsado), "Se ve pulsado.");
+                Puntero(hoja.Finalizar, boton, EventType.MouseUp);
+                Assert.IsFalse(hoja.Finalizar.ClassListContains(TarjetaRuta.ClaseFinalizarPulsado));
+                Assert.AreEqual(1, finalizadas, "«Finalizar ruta» se pulsa una vez.");
+                Assert.IsTrue(hoja.Desplegada, "Pulsar el botón no pliega la hoja.");
+
+                Puntero(hoja.Finalizar, boton, EventType.MouseDown);
+                Puntero(hoja.Finalizar, boton + new Vector2(0f, 10f), EventType.MouseDrag);
+                Puntero(hoja.Finalizar, boton + new Vector2(0f, 10f), EventType.MouseUp);
+                Assert.AreEqual(1, finalizadas, "Un arrastre que empieza en el botón no lo pulsa.");
+                Assert.IsFalse(hoja.Desplegada, "Arrastrar hacia abajo la pliega.");
+
+                Puntero(hoja.Cuerpo, arriba, EventType.MouseDown);
+                Puntero(hoja.Cuerpo, arriba + new Vector2(20f, 0f), EventType.MouseDrag);
+                Puntero(hoja.Cuerpo, arriba + new Vector2(20f, 0f), EventType.MouseUp);
+                Assert.IsFalse(hoja.Desplegada, "Un arrastre de lado no cambia nada.");
+
+                Puntero(hoja.Cuerpo, arriba, EventType.MouseDown);
+                Puntero(hoja.Cuerpo, arriba - new Vector2(0f, 10f), EventType.MouseDrag);
+                Puntero(hoja.Cuerpo, arriba - new Vector2(0f, 10f), EventType.MouseUp);
+                Assert.IsTrue(hoja.Desplegada, "Arrastrar hacia arriba la despliega.");
+
+                // La app la pliega (recálculo) con el dedo en el botón: soltarlo no la vuelve a desplegar
+                Disponer(hoja);
+                boton = hoja.Finalizar.worldBound.center;
+                Puntero(hoja.Finalizar, boton, EventType.MouseDown);
+                hoja.Plegar(porUsuario: false);
+                Puntero(hoja.Finalizar, boton, EventType.MouseUp);
+                Assert.IsFalse(hoja.Desplegada, "Una pulsación que empezó en lo desplegado nunca despliega.");
+                Assert.AreEqual(1, finalizadas, "Con la hoja ya plegada, el botón no se pulsa.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(objetoPanel); }
+        }
+
+        // El panel se dispone ya (estilos y disposición), como en el siguiente fotograma
+        static void Disponer(VisualElement e)
+        {
+            var panel = e.panel;
+            Assert.IsNotNull(panel, "La hoja está en un panel.");
+            var validar = panel.GetType().GetMethod("ValidateLayout",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            Assert.IsNotNull(validar, "El panel tiene ValidateLayout.");
+            validar.Invoke(panel, null);
+        }
+
+        static void Tocar(VisualElement objetivo, Vector2 punto)
+        {
+            Puntero(objetivo, punto, EventType.MouseDown);
+            Puntero(objetivo, punto, EventType.MouseUp);
+        }
+
+        // Un evento de puntero táctil (como en el móvil) en ese punto del panel, sobre ese elemento
+        static void Puntero(VisualElement objetivo, Vector2 punto, EventType tipo)
+        {
+            var sistema = new Event
+            {
+                type = tipo, mousePosition = punto, button = 0, clickCount = 1, pointerType = UnityEngine.PointerType.Touch,
+            };
+            EventBase e = tipo == EventType.MouseDown ? PointerDownEvent.GetPooled(sistema)
+                : tipo == EventType.MouseDrag ? PointerMoveEvent.GetPooled(sistema)
+                : (EventBase)PointerUpEvent.GetPooled(sistema);
+            using (e)
+            {
+                e.target = objetivo;
+                objetivo.SendEvent(e);
+            }
+        }
+
+        static readonly Direccion DireccionCalleAncha =
+            new Direccion("Calle Ancha 10", "Sanlúcar de Barrameda", CalleAncha, "Calle Ancha", "10");
+
+        /// <summary>Punto libre con geocodificador: Ir con la ficha en ese estado de la dirección.</summary>
+        GeoFalso IrAlPuntoConDireccion(bool llegaAntes)
+        {
+            var geo = new GeoFalso();
+            Crear(EstadoUbicacion.Activa, Cabildo, geocodificador: geo);
+            var px = new PuntoPantalla(100f, 200f, 300f);
+            mapa.suelo[(px.X, px.Y)] = CalleAncha;
+            pantalla.PulsarLargoMapa(px);
+            if (llegaAntes) geo.Inversas.Single().Responder(DireccionCalleAncha);
+            Fila.PulsarIr();
+            return geo;
+        }
+
+        [Test]
+        public void Hoja_PuntoLibre_ConLaDireccionYaConocida()
+        {
+            IrAlPuntoConDireccion(llegaAntes: true);
+            string calle = FichaLugar.TituloDireccion(DireccionCalleAncha, T);
+            Assert.AreEqual(calle, Abajo.DestinoNombre.text);
+            Assert.AreEqual("Sanlúcar de Barrameda", Abajo.DestinoDetalle.text);
+            Assert.AreEqual(Textos.Formatear(T(ClavesTexto.RutaAnuncioDestino), calle, "Sanlúcar de Barrameda"), Abajo.AnuncioDestino);
+        }
+
+        [Test]
+        public void Hoja_PuntoLibre_DireccionQueLlegaDespuesDeIr()
+        {
+            var geo = IrAlPuntoConDireccion(llegaAntes: false);
+            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.AreEqual(T(ClavesTexto.PuntoTipo), Abajo.DestinoDetalle.text, "Mientras se busca, «Punto en el mapa».");
+            Assert.AreEqual(Textos.Formatear(T(ClavesTexto.RutaAnuncioDestino), "36,7781, -6,3515", T(ClavesTexto.PuntoTipo)),
+                Abajo.AnuncioDestino);
+            var inversa = geo.Inversas.Single();
+            Assert.IsFalse(inversa.Ct.IsCancellationRequested, "Ir no cancela la dirección del punto de destino.");
+
+            inversa.Responder(DireccionCalleAncha);
+            string calle = FichaLugar.TituloDireccion(DireccionCalleAncha, T);
+            Assert.AreEqual(calle, Abajo.DestinoNombre.text, "La fila se rehace al llegar la dirección.");
+            Assert.AreEqual("Sanlúcar de Barrameda", Abajo.DestinoDetalle.text);
+            Assert.AreEqual(Textos.Formatear(T(ClavesTexto.RutaAnuncioDestino), calle, "Sanlúcar de Barrameda"), Abajo.AnuncioDestino);
+        }
+
+        [Test]
+        public void Hoja_PuntoLibre_QuitarLaRutaCancelaLaDireccion()
+        {
+            var geo = IrAlPuntoConDireccion(llegaAntes: false);
+            pantalla.QuitarRuta();
+            Assert.IsTrue(geo.Inversas.Single().Ct.IsCancellationRequested);
+        }
+
+        class Inversa
+        {
+            public CancellationToken Ct;
+            public TaskCompletionSource<Resultado<Direccion>> Tcs;
+            public void Responder(Direccion d) => Tcs.TrySetResult(Resultado<Direccion>.Exito(d));
+        }
+
+        /// <summary>Geocodificador falso: cada geocodificación inversa queda pendiente hasta que la prueba responde.</summary>
+        class GeoFalso : IGeocodificador
+        {
+            public readonly List<Inversa> Inversas = new List<Inversa>();
+
+            public Task<Resultado<IReadOnlyList<Direccion>>> Buscar(string consulta, Coordenada cerca, CancellationToken ct) =>
+                Task.FromResult(Resultado<IReadOnlyList<Direccion>>.Fallo("no se usa", Array.Empty<Direccion>()));
+
+            public Task<Resultado<Direccion>> Inverso(Coordenada punto, CancellationToken ct)
+            {
+                var i = new Inversa { Ct = ct, Tcs = new TaskCompletionSource<Resultado<Direccion>>() };
+                Inversas.Add(i);
+                ct.Register(() => i.Tcs.TrySetCanceled());
+                return i.Tcs.Task;
+            }
+        }
+
+        [Test]
+        public void Hoja_LosTextosEstanEnLaTabla()
+        {
+            foreach (var clave in new[]
+                     {
+                         ClavesTexto.RutaFinalizar, ClavesTexto.RutaDesplegar, ClavesTexto.RutaPlegar, ClavesTexto.RutaEnCoche,
+                         ClavesTexto.RutaAPie, ClavesTexto.RutaDestinoDetalle, ClavesTexto.RutaAnuncioDestino,
+                     })
+            {
+                CollectionAssert.Contains(ClavesTexto.Todas, clave);
+                Assert.IsTrue(PrepararInterfaz.TextosEs.ContainsKey(clave), clave);
+            }
         }
 
         [Test]

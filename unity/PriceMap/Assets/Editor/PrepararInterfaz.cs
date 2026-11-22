@@ -201,7 +201,6 @@ namespace PriceMap.EditorTools
             [ClavesTexto.RutaEn] = "En {0}",
             [ClavesTexto.RutaQuedan] = "Quedan {0}",
             [ClavesTexto.RutaAnuncioManiobra] = "{0}, {1}",
-            [ClavesTexto.RutaTerminar] = "Terminar ruta",
             [ClavesTexto.ToastRecalculoFallo] = "No se ha podido recalcular la ruta",
             [ClavesTexto.NotificacionNavegando] = "Navegando a {0} · {1} min",
             [ClavesTexto.UbicacionRecentrar] = "Volver a centrar",
@@ -215,6 +214,13 @@ namespace PriceMap.EditorTools
             [ClavesTexto.VozValorTodo] = "todas",
             [ClavesTexto.VozValorImportante] = "solo las importantes",
             [ClavesTexto.VozValorNada] = "sin voz",
+            [ClavesTexto.RutaFinalizar] = "Finalizar ruta",
+            [ClavesTexto.RutaDesplegar] = "Desplegar",
+            [ClavesTexto.RutaPlegar] = "Plegar",
+            [ClavesTexto.RutaEnCoche] = "en coche",
+            [ClavesTexto.RutaAPie] = "a pie",
+            [ClavesTexto.RutaDestinoDetalle] = "{0} · {1}",
+            [ClavesTexto.RutaAnuncioDestino] = "Destino: {0}, {1}",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

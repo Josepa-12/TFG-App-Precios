@@ -1742,7 +1742,7 @@
     color: var(--color-tarjeta-maniobra-meta);
 }
 
-/* Tarjeta de la ruta abajo: de borde a borde, esquinas de hoja, llegada · minutos · distancia y la X de 48 dp */
+/* Hoja de la ruta abajo: de borde a borde, esquinas de hoja; plegada, solo llegada · minutos · distancia (sin X) */
 .tarjeta-ruta {
     position: absolute;
     left: 0;
@@ -1768,6 +1768,16 @@
     background-color: var(--color-border);
 }
 
+/* La parte de arriba se toca para desplegar o plegar: fondo surface-2 mientras el dedo la pulsa (clase puesta por
+   TarjetaRuta: sin Clickable no hay :active) */
+.tarjeta-ruta__cabecera {
+    border-radius: var(--radio-md);
+}
+
+.tarjeta-ruta__cabecera--pulsada {
+    background-color: var(--color-surface-2);
+}
+
 .tarjeta-ruta__fila {
     flex-direction: row;
     align-items: center;
@@ -1779,15 +1789,10 @@
     flex-direction: row;
     align-items: center;
     min-height: var(--zona-tactil-min);
-    margin-right: var(--espacio-2);
     padding: var(--espacio-1) 0;
     border-radius: var(--radio-md);
     border-width: 2px;
     border-color: rgba(0, 0, 0, 0);
-}
-
-.tarjeta-ruta__cuerpo:active {
-    background-color: var(--color-surface-2);
 }
 
 .tarjeta-ruta__cuerpo:focus {
@@ -1815,7 +1820,91 @@
     -unity-text-align: middle-center;
 }
 
-.tarjeta-ruta__quitar {
+/* Hoja desplegada (22/11/2026, maqueta aprobada): debajo, con 16 dp entre bloques, la fila del destino y el botón
+   rojo ancho "Finalizar ruta" */
+.tarjeta-ruta__desplegable {
+    margin-top: var(--espacio-4);
+}
+
+.tarjeta-ruta__destino {
+    flex-direction: row;
+    align-items: center;
+    min-height: var(--zona-tactil-min);
+    padding: var(--espacio-3);
+    border-radius: var(--radio-md);
+    background-color: var(--color-surface-2);
+}
+
+.tarjeta-ruta__destino-icono {
+    width: 40px;
+    height: 40px;
     flex-shrink: 0;
-    background-color: var(--color-surface);
+    border-radius: 20px;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-pin-servicio);
+}
+
+.tarjeta-ruta__destino-icono--hosteleria { background-color: var(--color-pin-hosteleria); }
+.tarjeta-ruta__destino-icono--ocio { background-color: var(--color-pin-ocio); }
+/* Punto libre: la chincheta en negativo, como «Ir a este punto» */
+.tarjeta-ruta__destino-icono--punto { background-color: var(--color-chincheta); }
+
+.tarjeta-ruta__destino-glifo {
+    width: 22px;
+    height: 22px;
+    color: var(--color-pin-borde);
+}
+
+.tarjeta-ruta__destino-icono--punto .tarjeta-ruta__destino-glifo { color: var(--color-chincheta-detalle); }
+.tarjeta-ruta__destino-glifo--chincheta {
+    width: 17px;
+    height: 22px;
+}
+
+.tarjeta-ruta__destino-textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-left: var(--espacio-3);
+}
+
+.tarjeta-ruta__destino-nombre {
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-text);
+}
+
+.tarjeta-ruta__destino-detalle {
+    margin: 2px 0 0 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-muted);
+}
+
+.tarjeta-ruta__finalizar {
+    height: 52px;
+    margin-top: var(--espacio-4);
+    align-items: center;
+    justify-content: center;
+    border-radius: 26px;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+    background-color: var(--color-danger);
+}
+
+/* Mientras el dedo pulsa el botón (clase puesta por TarjetaRuta, como la de la cabecera) */
+.tarjeta-ruta__finalizar--pulsado {
+    opacity: 0.85;
+}
+
+.tarjeta-ruta__finalizar:focus {
+    border-color: var(--color-focus);
+}
+
+.tarjeta-ruta__finalizar-texto {
+    margin: 0;
+    padding: 0;
+    color: var(--color-surface);
+    -unity-text-align: middle-center;
 }

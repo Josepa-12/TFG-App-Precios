@@ -251,6 +251,7 @@ namespace PriceMap.Arranque
             yield return Ruta();
             yield return RutaAproximada();
             yield return Navegacion();
+            yield return RutaDesplegada();
             yield return NavegacionSigue();
             yield return NavegacionFlecha();
             yield return NavegacionVoz();
@@ -815,9 +816,9 @@ namespace PriceMap.Arranque
 
                 tema.Alternar();
                 yield return new WaitForSeconds(1.5f);
-                pantalla.TarjetaRuta.Tocar();
+                pantalla.ReabrirFichaRuta();
                 yield return new WaitForSeconds(1f);
-                if (!pantalla.FichaAbierta) Debug.LogError("PriceMap: tocar la tarjeta de la ruta no ha reabierto la ficha.");
+                if (!pantalla.FichaAbierta) Debug.LogError("PriceMap: reabrir la ficha desde la ruta no ha funcionado.");
                 pantalla.Ficha.Acciones.Tocar(ModoViaje.APie);
                 pantalla.Ficha.Acciones.PulsarIr();
                 yield return new WaitForSeconds(2f);
@@ -877,7 +878,7 @@ namespace PriceMap.Arranque
 
                 tema.Alternar();
                 yield return new WaitForSeconds(1.5f);
-                pantalla.TarjetaRuta.Tocar();
+                pantalla.ReabrirFichaRuta();
                 yield return new WaitForSeconds(1f);
                 pantalla.Ficha.Acciones.Tocar(ModoViaje.APie);
                 anuncios.Clear();
@@ -941,7 +942,7 @@ namespace PriceMap.Arranque
                 Debug.Log($"PriceMap: navegación: posición {mitad}; proyectado {estado.Proyectado} a {estado.DistanciaRuta:F1} m de la ruta; " +
                           $"línea desde {linea[0]} ({linea.Count} puntos); arriba \"{arriba.Distancia.text}\" \"{arriba.Principal.text}\" / \"{arriba.Siguiente.text}\"; " +
                           $"abajo \"{abajo.Llegada.text} · {abajo.Minutos.text} min · {abajo.Distancia.text} {abajo.RotuloDistancia.text}\" ({minutosAntes} min al empezar); " +
-                          $"TalkBack \"{arriba.AnuncioConDistancia}\"; X \"{pantalla.Accesibilidad.Recorrido().FirstOrDefault(e => e == Textos.T(ClavesTexto.RutaTerminar)) ?? "-"}\"");
+                          $"TalkBack \"{arriba.AnuncioConDistancia}\"; X \"{pantalla.Accesibilidad.Recorrido().FirstOrDefault(e => e == Textos.T(ClavesTexto.RutaFinalizar)) ?? "-"}\"");
                 if (linea[0].DistanciaMetros(estado.Proyectado) > 0.5 || estado.DistanciaRuta > 10)
                     Debug.LogError("PriceMap: la línea de la navegación no empieza en la posición.");
                 if (!arriba.Principal.text.Contains("Santa Ana")) Debug.LogError("PriceMap: la tarjeta de arriba no da la maniobra siguiente (Calle Santa Ana).");
@@ -962,6 +963,85 @@ namespace PriceMap.Arranque
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             }
             yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>
+        /// Hoja de la ruta que solo informa (22/11/2026), capturas "ruta-desplegada" (claro) y "ruta-desplegada-oscuro":
+        /// navegando a Clínica Areas en coche, tocar la hoja la despliega (no abre la ficha ni quita la ruta) con la fila
+        /// del destino y "Finalizar ruta". Comprueba que la hoja crece y el botón de ubicación sigue encima, que la ruta
+        /// sigue y lo que dice TalkBack. Al acabar, atrás la pliega (la ruta sigue) y "Finalizar ruta" la termina.
+        /// </summary>
+        IEnumerator RutaDesplegada()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            if (lugar == null || pantalla.Navegacion == null || pantalla.TarjetaRuta == null) { Debug.LogError("PriceMap: no se puede capturar la hoja desplegada."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var relojAntes = pantalla.RelojLocal;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+            pantalla.Rutas.VaciarCache();
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.Coche);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarRuta();
+                yield return new WaitForSeconds(2.5f); // la ruta entera y después la cámara sigue
+                var hoja = pantalla.TarjetaRuta;
+                float altoPlegada = hoja.worldBound.height;
+                hoja.Tocar();
+                yield return new WaitForSeconds(1f);
+                yield return new WaitForEndOfFrame();
+                ComprobarHojaDesplegada("claro", altoPlegada);
+                yield return Capturar("ruta-desplegada");
+                yield return new WaitForSeconds(1f);
+
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return new WaitForEndOfFrame();
+                ComprobarHojaDesplegada("oscuro", altoPlegada);
+                yield return Capturar("ruta-desplegada-oscuro");
+                yield return new WaitForSeconds(1f);
+
+                pantalla.Atras();
+                yield return null;
+                if (hoja.Desplegada || !pantalla.RutaActiva) Debug.LogError("PriceMap: atrás con la hoja desplegada no la ha plegado (o ha quitado la ruta).");
+                hoja.Desplegar();
+                yield return null;
+                hoja.PulsarFinalizar();
+                yield return null;
+                Debug.Log($"PriceMap: tras «Finalizar ruta», ruta activa {pantalla.RutaActiva}; navegando {pantalla.Navegacion.Activa}; cápsula visible {pantalla.Buscador.Visible}");
+                if (pantalla.RutaActiva || pantalla.Navegacion.Activa || !pantalla.Buscador.Visible) Debug.LogError("PriceMap: «Finalizar ruta» no ha terminado la ruta.");
+            }
+            finally
+            {
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>La hoja está desplegada con el destino y "Finalizar ruta", más alta, y la ruta sigue; Debug.LogError si no.</summary>
+        void ComprobarHojaDesplegada(string caso, float altoPlegada)
+        {
+            var hoja = pantalla.TarjetaRuta;
+            var recorrido = pantalla.Accesibilidad.Recorrido();
+            var ubic = pantalla.BotonUbicacion?.worldBound;
+            Debug.Log($"PriceMap: hoja desplegada ({caso}): {hoja.worldBound} (plegada {altoPlegada:F0} de alto); destino \"{hoja.DestinoNombre.text}\" / " +
+                      $"\"{hoja.DestinoDetalle.text}\" {hoja.Destino.worldBound}; botón \"{hoja.TextoFinalizar.text}\" {hoja.Finalizar.worldBound}; " +
+                      $"ubicación {ubic}; TalkBack: {string.Join(" | ", recorrido)}");
+            if (!hoja.Desplegada || hoja.Finalizar.resolvedStyle.display == DisplayStyle.None) Debug.LogError($"PriceMap: tocar la hoja ({caso}) no la ha desplegado.");
+            if (pantalla.FichaAbierta) Debug.LogError($"PriceMap: tocar la hoja ({caso}) ha abierto la ficha.");
+            if (!pantalla.RutaActiva || !pantalla.Navegando) Debug.LogError($"PriceMap: tocar la hoja ({caso}) ha quitado la ruta.");
+            if (hoja.worldBound.height <= altoPlegada + 40f) Debug.LogError($"PriceMap: la hoja desplegada ({caso}) no ha crecido.");
+            if (hoja.TextoFinalizar.text != Textos.T(ClavesTexto.RutaFinalizar)) Debug.LogError($"PriceMap: el botón ({caso}) no dice «Finalizar ruta».");
+            if (Mathf.Abs(hoja.Finalizar.worldBound.height - 52f) > 1f) Debug.LogError($"PriceMap: el botón ({caso}) no mide 52 dp de alto.");
+            if (ubic.HasValue && ubic.Value.yMax > hoja.worldBound.yMin) Debug.LogError($"PriceMap: el botón de ubicación ({caso}) queda debajo de la hoja desplegada.");
+            if (!recorrido.Contains(Textos.T(ClavesTexto.RutaFinalizar))) Debug.LogError($"PriceMap: TalkBack ({caso}) no tiene «Finalizar ruta».");
         }
 
         /// <summary>

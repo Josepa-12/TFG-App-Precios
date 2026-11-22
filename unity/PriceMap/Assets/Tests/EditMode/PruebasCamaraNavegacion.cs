@@ -849,7 +849,8 @@ namespace PriceMap.Tests.EditMode
             PasarEspera();
             mapa.Gesto();
             int dejados = mapa.dejados;
-            pantalla.TarjetaRuta.PulsarQuitar();
+            pantalla.TarjetaRuta.Desplegar();
+            pantalla.TarjetaRuta.PulsarFinalizar();
             Assert.AreEqual(EstadoSeguimiento.Apagado, pantalla.EstadoCamara);
             Assert.Greater(mapa.dejados, dejados);
             Assert.AreEqual(Icono.Navegar, BotonUbicacion.Icono);

@@ -304,8 +304,6 @@ namespace PriceMap.UI
         public const string RutaQuedan = "ruta.quedan";
         /// <summary>Lo que anuncia TalkBack al cambiar de maniobra: {0} distancia, {1} la tarjeta en minúscula ("En 120 m, gire…").</summary>
         public const string RutaAnuncioManiobra = "ruta.anuncio.maniobra";
-        /// <summary>Botón X de la tarjeta de abajo durante la navegación ("Terminar ruta").</summary>
-        public const string RutaTerminar = "ruta.terminar";
         /// <summary>Toast si falla el recálculo ("No se ha podido recalcular la ruta").</summary>
         public const string ToastRecalculoFallo = "toast.ruta.recalculo";
         /// <summary>Notificación fija de la ruta: {0} destino, {1} minutos ("Navegando a Clínica Areas · 6 min").</summary>
@@ -339,8 +337,25 @@ namespace PriceMap.UI
         /// <summary>Valor callado ("sin voz").</summary>
         public const string VozValorNada = "voz.valor.nada";
 
+        // Hoja de la ruta que solo informa (22/11/2026)
+        /// <summary>Botón rojo de la hoja desplegada durante la navegación ("Finalizar ruta").</summary>
+        public const string RutaFinalizar = "ruta.finalizar";
+        /// <summary>Valor de TalkBack de la hoja plegada: su acción ("Desplegar").</summary>
+        public const string RutaDesplegar = "ruta.desplegar";
+        /// <summary>Valor de TalkBack de la hoja desplegada: su acción ("Plegar").</summary>
+        public const string RutaPlegar = "ruta.plegar";
+        /// <summary>Modo en la fila del destino ("en coche").</summary>
+        public const string RutaEnCoche = "ruta.encoche";
+        /// <summary>Modo en la fila del destino ("a pie").</summary>
+        public const string RutaAPie = "ruta.apie";
+        /// <summary>Detalle de la fila del destino: {0} categoría, {1} modo ("Clínica privada · en coche").</summary>
+        public const string RutaDestinoDetalle = "ruta.destino.detalle";
+        /// <summary>TalkBack de la fila del destino: {0} nombre, {1} detalle ("Destino: Clínica Areas, Clínica privada, en coche").</summary>
+        public const string RutaAnuncioDestino = "ruta.anuncio.destino";
+
         public static readonly string[] Todas =
         {
+            RutaFinalizar, RutaDesplegar, RutaPlegar, RutaEnCoche, RutaAPie, RutaDestinoDetalle, RutaAnuncioDestino,
             VozBoton, VozTodo, VozImportante, VozNada, VozValorTodo, VozValorImportante, VozValorNada,
             SenalBuscando, SenalRecuperada,
             UbicacionRecentrar, UbicacionSiguiendo,
@@ -348,7 +363,7 @@ namespace PriceMap.UI
             RutaAnuncioCalculando, RutaAnuncioFallo, RutaQuitar,
             RutaAproximada, RutaValorAprox, RutaAnuncioAprox, RutaAnuncioAproxMinuto, FichaMinutosAprox,
             FichaAnuncioMinutosAprox, FichaAnuncioMinutoAprox, ToastRutaAproximada, ToastSinCalles,
-            RutaEn, RutaQuedan, RutaAnuncioManiobra, RutaTerminar, ToastRecalculoFallo, NotificacionNavegando,
+            RutaEn, RutaQuedan, RutaAnuncioManiobra, ToastRecalculoFallo, NotificacionNavegando,
             FichaModoCoche, FichaModoPie, FichaIr, FichaIrA, FichaIrPunto, FichaMinutos, FichaCalculando, FichaSinTiempo,
             FichaAnuncioMinutos, FichaAnuncioMinuto, FichaAnuncioSinTiempo, FichaAnuncioCalculando, FichaModoElegido,
             BuscadorIrAPunto, BuscadorAnuncioPunto, BuscadorComprobandoEnlace, BuscadorEnlaceNoReconocido,

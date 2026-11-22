@@ -1401,10 +1401,13 @@ namespace PriceMap.UI
             if (cts.IsCancellationRequested || !ReferenceEquals(peticionPunto, cts)) return;
             peticionPunto = null;
             cts.Dispose();
-            if (ficha == null || !FichaAbierta || ficha.Punto != punto) return;
+            // Con la ficha cerrada solo vale si la ruta va a ese punto: su fila del destino se rehace
+            bool paraRuta = rutaActiva && lugarRuta == null && puntoRuta == punto;
+            if (ficha == null || ficha.Punto != punto || (!FichaAbierta && !paraRuta)) return;
             if (!r.Ok) Debug.Log("PriceMap: sin dirección para el punto libre (" + r.Error + "); se quedan las coordenadas.");
             ficha.PonerDireccionPunto(r.Ok ? r.Valor : null);
             accesibilidad?.RefrescarEtiqueta(ficha.Titulo);
+            if (paraRuta) PonerDestinoRuta();
         }
 
         /// <summary>Cancela la petición de la dirección del punto: su respuesta ya no llegará a la ficha.</summary>
@@ -1555,6 +1558,9 @@ namespace PriceMap.UI
             mapa.QuitarRuta(); // sin línea mientras llega la nueva
             tarjetaManiobra.MostrarCalculando();
             tarjetaRuta.MostrarCalculando();
+            tarjetaRuta.Plegar(porUsuario: false); // la ruta nueva empieza con la hoja plegada
+            PonerDestinoRuta();
+            ActualizarBotonFinalizar();
             CerrarFicha(); // con la ruta activa vuelven las tarjetas, no la cápsula
             accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
             accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
@@ -1722,7 +1728,7 @@ namespace PriceMap.UI
             seguimiento.Empezar(sinEspera: animacionesQuitadas);
             ActualizarBotonUbicacion();
             ActualizarBotonVoz();
-            accesibilidad.RefrescarEtiqueta(tarjetaRuta.Quitar);
+            ActualizarBotonFinalizar();
         }
 
         void TerminarNavegacion()
@@ -1730,8 +1736,73 @@ namespace PriceMap.UI
             if (navegacion == null || !navegacion.Activa) return;
             navegacion.Terminar(MotivoFinRuta.Manual); // la cámara la suelta AlTerminarNavegacion
             rutaRecortada = null;
-            if (tarjetaRuta != null) accesibilidad.RefrescarEtiqueta(tarjetaRuta.Quitar);
+            ActualizarBotonFinalizar();
         }
+
+        /// <summary>El botón de la hoja desplegada: "Finalizar ruta" navegando; "Quitar ruta" calculando o con fallo.</summary>
+        void ActualizarBotonFinalizar()
+        {
+            if (tarjetaRuta == null) return;
+            tarjetaRuta.PonerTextoFinalizar(Textos.T(Navegando ? ClavesTexto.RutaFinalizar : ClavesTexto.RutaQuitar));
+            accesibilidad.RefrescarEtiqueta(tarjetaRuta.Finalizar);
+        }
+
+        /// <summary>
+        /// La fila del destino de la hoja: el lugar con el glifo de su tipo en el color de su plantilla y "categoría ·
+        /// en coche"; el punto libre con la chincheta y su dirección (si aún no la tiene, "Punto en el mapa").
+        /// </summary>
+        void PonerDestinoRuta()
+        {
+            if (tarjetaRuta == null) return;
+            string modo = Textos.T(modoRuta == ModoViaje.APie ? ClavesTexto.RutaAPie : ClavesTexto.RutaEnCoche);
+            string nombre = nombreRuta ?? "";
+            bool fichaDelPunto = lugarRuta == null && ficha != null && puntoRuta.HasValue && ficha.Punto == puntoRuta;
+            string detalle, glifo, clase, anuncioDetalle;
+            if (lugarRuta != null)
+            {
+                detalle = Textos.Formatear(Textos.T(ClavesTexto.RutaDestinoDetalle), lugarRuta.Tipo, modo);
+                anuncioDetalle = lugarRuta.Tipo + ", " + modo;
+                glifo = IconosLugar.GlifoDe(lugarRuta.Tipo);
+                clase = ClaseIconoDestino(lugarRuta.Plantilla);
+            }
+            else
+            {
+                if (fichaDelPunto) nombre = ficha.Titulo.text; // "Calle Ancha, 10" en cuanto llega la dirección
+                string direccion = fichaDelPunto && !ficha.BuscandoDireccion ? ficha.Direccion.text : null;
+                detalle = string.IsNullOrWhiteSpace(direccion) ? Textos.T(ClavesTexto.PuntoTipo) : direccion;
+                anuncioDetalle = detalle;
+                glifo = FilaResultado.GlifoChincheta;
+                clase = TarjetaRuta.ClaseIconoPunto;
+            }
+            tarjetaRuta.PonerDestino(nombre, detalle, glifo, clase,
+                Textos.Formatear(Textos.T(ClavesTexto.RutaAnuncioDestino), nombre, anuncioDetalle));
+            accesibilidad.RefrescarEtiqueta(tarjetaRuta.Destino);
+        }
+
+        /// <summary>Clase del círculo del destino con el color de la plantilla (--color-pin-*).</summary>
+        public static string ClaseIconoDestino(Plantilla p) => p switch
+        {
+            Plantilla.Hosteleria => "tarjeta-ruta__destino-icono--hosteleria",
+            Plantilla.Ocio => "tarjeta-ruta__destino-icono--ocio",
+            _ => "tarjeta-ruta__destino-icono--servicio",
+        };
+
+        /// <summary>
+        /// La hoja de la ruta se ha desplegado o plegado: si lo ha pedido el usuario, TalkBack rehace el recorrido
+        /// (entran o salen el destino y "Finalizar ruta") con el foco en la hoja; si lo hace la app (ruta nueva,
+        /// recálculo, fin de la ruta), no se toca el foco. El encuadre y la cámara usan la altura nueva al disponerse
+        /// (AlMedirTarjetaRuta).
+        /// </summary>
+        void AlDesplegarHojaRuta(bool desplegada, bool porUsuario)
+        {
+            if (desplegada) ActualizarBotonFinalizar();
+            if (!porUsuario || !TarjetasRutaVisibles) return;
+            accesibilidad.Reconstruir();
+            accesibilidad.PedirFoco(tarjetaRuta.Cuerpo);
+        }
+
+        /// <summary>La hoja de la ruta está desplegada (con la ruta a la vista).</summary>
+        public bool HojaRutaDesplegada => tarjetaRuta != null && tarjetaRuta.Desplegada;
 
         /// <summary>
         /// La navegación ha terminado (X, atrás, otra ruta o el servicio): la cámara deja de seguir y se queda donde está,
@@ -1743,6 +1814,8 @@ namespace PriceMap.UI
             {
                 pastillaSenal?.Ocultar(); // sin señal o no, al terminar se va (la posición vuelve a lo de siempre en ActualizarCapas)
                 ActualizarBotonVoz(); // fuera el botón de voz y su fila
+                tarjetaRuta?.Plegar(porUsuario: false); // la hoja se cierra plegada con la ruta
+                ActualizarBotonFinalizar();
                 if (seguimiento.Estado == EstadoSeguimiento.Apagado) return;
                 seguimiento.Terminar();
                 mapa.DejarDeSeguir();
@@ -2001,6 +2074,7 @@ namespace PriceMap.UI
                 var nueva = navegacion.Ruta;
                 rutaDibujada = nueva;
                 maniobraMostrada = int.MinValue + 1; // distinto de cualquier índice: se anuncia la de la ruta nueva
+                tarjetaRuta?.Plegar(porUsuario: false); // la ruta nueva empieza con la hoja plegada
                 Debug.Log($"PriceMap: ruta recalculada en {modoRuta}: {nueva.Puntos.Count} puntos, {nueva.Metros:F0} m, {nueva.Minutos} min.");
                 if (nueva.Aproximada && !eraAproximada && TarjetasRutaVisibles) MostrarToast(Textos.T(ClavesTexto.ToastRutaAproximada));
             }
@@ -2035,7 +2109,7 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Quitar ruta (la X o atrás): fuera la línea y las tarjetas; vuelven la píldora, los botones y la cápsula, y el
+        /// Quitar ruta («Finalizar ruta» de la hoja desplegada o atrás con ella plegada): fuera la línea y las tarjetas; vuelven la píldora, los botones y la cápsula, y el
         /// foco de TalkBack va a la cápsula.
         /// </summary>
         public void QuitarRuta()
@@ -2048,6 +2122,8 @@ namespace PriceMap.UI
             lugarRuta = null;
             puntoRuta = null;
             toast?.Ocultar();
+            if (!FichaAbierta) CancelarDireccionPunto(); // la del punto de destino ya no hace falta
+            tarjetaRuta?.Plegar(porUsuario: false); // la siguiente empieza plegada
             mapa.QuitarRuta();
             if (!FichaAbierta) chincheta?.Actualizar(mapa, null, 1f); // la del punto de destino se va con la ruta
             ActualizarVistaRuta();
@@ -2057,8 +2133,9 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Tocar la tarjeta de la ruta: reabre la ficha del destino con el modo de la ruta elegido. Las tarjetas se
-        /// ocultan y la línea sigue; al cerrar la ficha vuelven. Otro modo e Ir en ella dan una ruta nueva.
+        /// Reabre la ficha del destino con el modo de la ruta elegido. Las tarjetas se ocultan y la línea sigue; al
+        /// cerrar la ficha vuelven. Otro modo e Ir en ella dan una ruta nueva. Desde el 22/11/2026 la hoja de la ruta
+        /// ya no la llama (solo informa); se queda para la ficha y las pruebas.
         /// </summary>
         public void ReabrirFichaRuta()
         {
@@ -2102,8 +2179,9 @@ namespace PriceMap.UI
             (zonaSeguraRuta ?? raiz).Add(tarjetaManiobra);
             tarjetaRuta = new TarjetaRuta();
             (raiz.Q("hueco-ruta") ?? raiz).Add(tarjetaRuta);
-            tarjetaRuta.Tocada += ReabrirFichaRuta;
-            tarjetaRuta.QuitarPulsado += QuitarRuta;
+            // La hoja solo informa: tocarla la despliega o pliega, nunca reabre la ficha ni quita la ruta
+            tarjetaRuta.DesplegadaCambiada += AlDesplegarHojaRuta;
+            tarjetaRuta.FinalizarPulsado += QuitarRuta;
             pastillaSenal = new PastillaSenal();
             (zonaSeguraRuta ?? raiz).Add(pastillaSenal);
             toast = new Toast();
@@ -2115,9 +2193,15 @@ namespace PriceMap.UI
 
         void DeclararTarjetaRutaEnTalkBack()
         {
-            accesibilidad.Boton(tarjetaRuta.Cuerpo, () => tarjetaRuta.Anuncio, ReabrirFichaRuta, visible: () => TarjetasRutaVisibles);
-            accesibilidad.Boton(tarjetaRuta.Quitar, () => Textos.T(Navegando ? ClavesTexto.RutaTerminar : ClavesTexto.RutaQuitar), QuitarRuta,
+            // La hoja con su texto de siempre y la acción "Desplegar"/"Plegar"; desplegada, el destino (texto) y
+            // "Finalizar ruta" (botón propio)
+            accesibilidad.Boton(tarjetaRuta.Cuerpo, () => tarjetaRuta.Anuncio, tarjetaRuta.Tocar,
+                () => Textos.T(tarjetaRuta.Desplegada ? ClavesTexto.RutaPlegar : ClavesTexto.RutaDesplegar),
                 visible: () => TarjetasRutaVisibles);
+            accesibilidad.Texto(tarjetaRuta.Destino, () => tarjetaRuta.AnuncioDestino,
+                () => TarjetasRutaVisibles && tarjetaRuta.Desplegada);
+            accesibilidad.Boton(tarjetaRuta.Finalizar, () => tarjetaRuta.TextoFinalizar.text, QuitarRuta,
+                visible: () => TarjetasRutaVisibles && tarjetaRuta.Desplegada);
         }
 
         // Las tarjetas se han dispuesto (al mostrarse, o al cambiar sus textos o la fuente): la fuente escalada, el botón
@@ -2281,7 +2365,9 @@ namespace PriceMap.UI
         public void CerrarFicha()
         {
             centrarPendiente = null;
-            CancelarDireccionPunto();
+            // La dirección del punto de destino de la ruta sigue llegando: con ella se rehace la fila del destino
+            if (!(rutaActiva && lugarRuta == null && puntoRuta.HasValue && ficha != null && ficha.Punto == puntoRuta))
+                CancelarDireccionPunto();
             tiemposPedidos = false;
             rutas?.Cancelar(); // los tiempos pedidos se cancelan: una respuesta tardía no pinta nada
             // La chincheta del punto libre se va con su ficha, salvo que sea el destino de la ruta (historia 2.6, parte 2a)
@@ -2419,8 +2505,8 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con la
-        /// hoja del buscador desplegada la pliega; con la ficha del lugar abierta la cierra; con una ruta, la quita
-        /// (historia 2.6, parte 2a); con el menú abierto lo
+        /// hoja del buscador desplegada la pliega; con la ficha del lugar abierta la cierra; con la hoja de la ruta
+        /// desplegada la pliega; con una ruta, la quita (historia 2.6, parte 2a); con el menú abierto lo
         /// cierra sin cambiar el filtro. Si no, no hace nada (la app no sale: Input.backButtonLeavesApp sigue en
         /// false). Devuelve true si lo ha gestionado.
         /// </summary>
@@ -2432,6 +2518,7 @@ namespace PriceMap.UI
             if (BuscadorAbierto && cercaActiva) { QuitarCategoria(); return true; } // primero vuelven las categorías
             if (BuscadorAbierto) { PlegarBuscador(); return true; }
             if (FichaAbierta) { CerrarFicha(); return true; }
+            if (rutaActiva && HojaRutaDesplegada) { tarjetaRuta.Plegar(); return true; } // la ruta sigue
             if (rutaActiva) { QuitarRuta(); return true; } // historia 2.6, parte 2a
             if (!MenuAbierto) return false;
             ConsumirNavegacion();
@@ -2477,8 +2564,8 @@ namespace PriceMap.UI
             }
             if (tarjetaRuta != null)
             {
-                tarjetaRuta.Tocada -= ReabrirFichaRuta;
-                tarjetaRuta.QuitarPulsado -= QuitarRuta;
+                tarjetaRuta.DesplegadaCambiada -= AlDesplegarHojaRuta;
+                tarjetaRuta.FinalizarPulsado -= QuitarRuta;
             }
             if (rutas != null)
             {
@@ -2621,7 +2708,7 @@ namespace PriceMap.UI
                 chincheta?.Repintar();
                 buscador?.Repintar();
                 tarjetaManiobra?.Repintar();
-                tarjetaRuta?.Quitar.MarkDirtyRepaint();
+                tarjetaRuta?.Repintar();
             });
         }
 
