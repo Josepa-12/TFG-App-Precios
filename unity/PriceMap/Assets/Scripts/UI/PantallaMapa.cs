@@ -84,6 +84,10 @@ namespace PriceMap.UI
         ReglaRumbo rumboMarcha;                // rumbo de la marcha sacado de las posiciones
         bool animacionesQuitadas;              // "quitar animaciones" del sistema (leído al arrancar y al volver delante)
         float giroSeguido;                     // último giro pedido a la cámara al seguir (la brújula a pie se compara con él)
+        // Indicaciones por voz (historia 2.8)
+        ServicioVoz voz;                       // null = sin botón de voz
+        BotonRedondo botonVoz;                 // en la columna, encima de "Volver a centrar"; solo se ve navegando
+        FilaVoz filaVoz;                       // los tres modos, a la derecha del botón
 
         /// <param name="lugares">Lugares que se dibujan como marcadores (vacío si la carga falló).</param>
         /// <param name="ahora">Momento con el que se calcula el resumen del precio (AD-12: lo da el Arranque).</param>
@@ -97,16 +101,18 @@ namespace PriceMap.UI
         /// <param name="resolutorEnlaces">Enlaces cortos pegados en el buscador (historia 2.5, parte 2); sin él, no se reconocen.</param>
         /// <param name="rutas">Tiempos e Ir de la ficha (historia 2.6); sin él, la fila de acciones de la ficha queda vacía.</param>
         /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
+        /// <param name="voz">Indicaciones por voz (historia 2.8); sin él (o sin navegación), no hay botón de voz.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
             BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
-            IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null, ServicioNavegacion navegacion = null)
+            IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null, ServicioNavegacion navegacion = null,
+            ServicioVoz voz = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador, resolutorEnlaces, rutas, navegacion);
+                geocodificador, resolutorEnlaces, rutas, navegacion, voz);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
@@ -114,7 +120,7 @@ namespace PriceMap.UI
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
-            ServicioNavegacion navegacion = null)
+            ServicioNavegacion navegacion = null, ServicioVoz voz = null)
         {
             this.mapa = mapa;
             this.navegacion = rutas != null ? navegacion : null; // sin rutas no hay Ir
@@ -155,6 +161,20 @@ namespace PriceMap.UI
                 huecoUbicacion.Add(botonUbicacion);
             }
             Columna(botonTema, botonUbicacion);
+            // Voz (historia 2.8): encima del de ubicación, solo navegando (entonces el de tema no se ve)
+            this.voz = this.navegacion != null ? voz : null;
+            var huecoVoz = raiz.Q("hueco-voz");
+            if (this.voz != null && huecoVoz != null && botonUbicacion != null)
+            {
+                botonVoz = new BotonRedondo(FilaVoz.IconoDe(this.voz.Modo), AlternarFilaVoz, enColumna: true) { name = "boton-voz" };
+                botonVoz.AddToClassList("boton-redondo--arriba");
+                huecoVoz.Add(botonVoz);
+                filaVoz = new FilaVoz(ElegirVoz);
+                filaVoz.Marcar(this.voz.Modo);
+                huecoVoz.Add(filaVoz);
+                this.voz.ModoCambiado += AlCambiarModoVoz;
+            }
+            else this.voz = null;
             botonAcercar = new BotonRedondo(Icono.Mas, Acercar, enColumna: true) { name = "boton-acercar" };
             botonAlejar = new BotonRedondo(Icono.Menos, Alejar, enColumna: true) { name = "boton-alejar" };
             zoom.Add(botonAcercar);
@@ -168,6 +188,17 @@ namespace PriceMap.UI
             if (this.filtro != null) CrearFiltro(); // la píldora va arriba a la izquierda: primera en TalkBack
             accesibilidad.Boton(botonTema, () => Textos.T(ClavesTexto.TemaCambiar), () => this.tema.Alternar(), ValorTema,
                 visible: () => !rutaActiva);
+            if (botonVoz != null)
+            {
+                accesibilidad.Boton(botonVoz, () => Textos.T(ClavesTexto.VozBoton), AlternarFilaVoz,
+                    () => Textos.T(FilaVoz.ClaveValor(this.voz.Modo)), visible: () => BotonVozVisible);
+                foreach (var m in FilaVoz.Modos)
+                {
+                    var modo = m;
+                    accesibilidad.Boton(filaVoz.Opcion(modo), () => Textos.T(FilaVoz.ClaveNombre(modo)), () => ElegirVoz(modo),
+                        visible: () => FilaVozAbierta, seleccionado: () => this.voz.Modo == modo);
+                }
+            }
             if (botonUbicacion != null)
                 accesibilidad.Boton(botonUbicacion, () => Textos.T(ClaveBotonUbicacion()), TocarUbicacion);
             accesibilidad.Boton(botonAcercar, () => Textos.T(ClavesTexto.MapaAcercar), Acercar, visible: () => AccesibilidadPantalla.LectorActivo);
@@ -1224,6 +1255,7 @@ namespace PriceMap.UI
         public bool TocarMapa(PuntoPantalla punto, float escala)
         {
             if (ModalUbicacionAbierta) return false;
+            if (FilaVozAbierta) { CerrarFilaVoz(); return false; } // historia 2.8: el toque solo cierra la fila
             if (MenuAbierto) { CerrarMenu(); return false; }
             if (FichaAbierta) { CerrarFicha(); return false; }
             if (capa == null || escala <= 0f || float.IsNaN(punto.X) || float.IsNaN(punto.Y)) return false;
@@ -1689,6 +1721,7 @@ namespace PriceMap.UI
             // La cámara (parte 2b): 2 s con la ruta entera y después sigue; sin animaciones, sigue ya
             seguimiento.Empezar(sinEspera: animacionesQuitadas);
             ActualizarBotonUbicacion();
+            ActualizarBotonVoz();
             accesibilidad.RefrescarEtiqueta(tarjetaRuta.Quitar);
         }
 
@@ -1709,6 +1742,7 @@ namespace PriceMap.UI
             try
             {
                 pastillaSenal?.Ocultar(); // sin señal o no, al terminar se va (la posición vuelve a lo de siempre en ActualizarCapas)
+                ActualizarBotonVoz(); // fuera el botón de voz y su fila
                 if (seguimiento.Estado == EstadoSeguimiento.Apagado) return;
                 seguimiento.Terminar();
                 mapa.DejarDeSeguir();
@@ -1718,6 +1752,77 @@ namespace PriceMap.UI
             {
                 Debug.LogException(e);
             }
+        }
+
+        // ───────────────────────── Indicaciones por voz (historia 2.8) ─────────────────────────
+
+        /// <summary>Clase de la raíz con el botón de voz a la vista (navegando): la columna lleva voz y ubicación.</summary>
+        public const string ClaseConVoz = "con-voz";
+
+        /// <summary>Servicio de voz que recibió al iniciarse; null sin él (o sin navegación).</summary>
+        public ServicioVoz Voz => voz;
+
+        /// <summary>Botón de voz de la columna y su fila de modos; null sin servicio de voz o sin interfaz.</summary>
+        public BotonRedondo BotonVoz => botonVoz;
+        public FilaVoz FilaVoz => filaVoz;
+
+        /// <summary>El botón de voz se ve: navegando con las tarjetas a la vista.</summary>
+        public bool BotonVozVisible => botonVoz != null && Navegando && TarjetasRutaVisibles;
+
+        /// <summary>La fila de los tres modos está abierta.</summary>
+        public bool FilaVozAbierta => filaVoz != null && filaVoz.Abierta;
+
+        /// <summary>Tocar el botón de voz: abre la fila de los modos o, si ya está abierta, la cierra.</summary>
+        public void AlternarFilaVoz()
+        {
+            if (!BotonVozVisible) return;
+            if (FilaVozAbierta) { CerrarFilaVoz(); return; }
+            filaVoz.Marcar(voz.Modo);
+            filaVoz.Abrir();
+            botonVoz.AddToClassList(ClaseBotonVozAbierto);
+            accesibilidad?.Reconstruir();
+            accesibilidad?.PedirFoco(filaVoz.Opcion(voz.Modo));
+        }
+
+        /// <summary>Clase del botón de voz con la fila abierta (fondo de pulsado, como en la maqueta).</summary>
+        public const string ClaseBotonVozAbierto = "boton-voz--abierto";
+
+        /// <summary>Cierra la fila (al elegir, al tocar el mapa o con atrás); el foco de TalkBack vuelve al botón.</summary>
+        public void CerrarFilaVoz(bool enfocar = true)
+        {
+            if (!FilaVozAbierta) return;
+            filaVoz.Cerrar();
+            botonVoz.RemoveFromClassList(ClaseBotonVozAbierto);
+            accesibilidad?.Reconstruir();
+            if (enfocar && BotonVozVisible) accesibilidad?.PedirFoco(botonVoz);
+        }
+
+        /// <summary>Elige un modo de voz: se guarda, se cierra la fila y TalkBack lo anuncia.</summary>
+        public void ElegirVoz(ModoVoz modo)
+        {
+            if (voz == null) return;
+            voz.Elegir(modo);
+            CerrarFilaVoz();
+            AccesibilidadPantalla.Anunciar(Textos.T(FilaVoz.ClaveNombre(modo)));
+        }
+
+        void AlCambiarModoVoz(ModoVoz modo)
+        {
+            if (botonVoz == null) return;
+            botonVoz.Icono = FilaVoz.IconoDe(modo);
+            filaVoz.Marcar(modo);
+            accesibilidad?.RefrescarEtiqueta(botonVoz);
+        }
+
+        /// <summary>El botón de voz a la vista solo navegando (clase con-voz); si no, fuera también su fila.</summary>
+        void ActualizarBotonVoz()
+        {
+            if (botonVoz == null || raiz == null) return;
+            bool ver = BotonVozVisible;
+            if (!ver) CerrarFilaVoz(enfocar: false);
+            if (raiz.ClassListContains(ClaseConVoz) == ver) return;
+            raiz.EnableInClassList(ClaseConVoz, ver);
+            accesibilidad?.Reconstruir();
         }
 
         // ───────────────────────── La cámara sigue al usuario (historia 2.7, parte 2b) ─────────────────────────
@@ -2048,6 +2153,7 @@ namespace PriceMap.UI
             tarjetaRuta.style.display = display;
             raiz.EnableInClassList(ClaseConRuta, rutaActiva);
             if (rutaActiva) buscador?.Mostrar(false);
+            ActualizarBotonVoz();
             ColocarControlesRuta();
         }
 
@@ -2322,6 +2428,7 @@ namespace PriceMap.UI
         {
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (AvisoAbierto) { CerrarAviso(); return true; }
+            if (FilaVozAbierta) { CerrarFilaVoz(); return true; } // historia 2.8
             if (BuscadorAbierto && cercaActiva) { QuitarCategoria(); return true; } // primero vuelven las categorías
             if (BuscadorAbierto) { PlegarBuscador(); return true; }
             if (FichaAbierta) { CerrarFicha(); return true; }
@@ -2348,6 +2455,7 @@ namespace PriceMap.UI
         {
             if (tema != null) tema.Cambiado -= AlCambiarTema;
             if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
+            if (voz != null) voz.ModoCambiado -= AlCambiarModoVoz;
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
             if (ficha != null && mapa != null)
             {
@@ -2506,6 +2614,7 @@ namespace PriceMap.UI
             raiz.schedule.Execute(() =>
             {
                 botonTema.MarkDirtyRepaint(); botonUbicacion?.MarkDirtyRepaint(); botonAcercar.MarkDirtyRepaint(); botonAlejar.MarkDirtyRepaint();
+                botonVoz?.MarkDirtyRepaint(); filaVoz?.Repintar();
                 capa?.Repintar(); pildora?.Repintar(); menu?.Repintar(); marcadorPosicion?.Repintar();
                 ficha?.BotonCerrar.MarkDirtyRepaint();
                 ficha?.RepintarGota();

@@ -10,7 +10,8 @@
         "PriceMap.Adaptadores.Sistema",
         "PriceMap.Adaptadores.Gps",
         "PriceMap.Adaptadores.Busqueda",
-        "PriceMap.Adaptadores.Rutas"
+        "PriceMap.Adaptadores.Rutas",
+        "PriceMap.Adaptadores.Voz"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

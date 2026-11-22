@@ -208,6 +208,13 @@ namespace PriceMap.EditorTools
             [ClavesTexto.UbicacionSiguiendo] = "Siguiendo tu posición",
             [ClavesTexto.SenalBuscando] = "Buscando señal GPS",
             [ClavesTexto.SenalRecuperada] = "Señal GPS recuperada",
+            [ClavesTexto.VozBoton] = "Indicaciones por voz",
+            [ClavesTexto.VozTodo] = "Todas las indicaciones",
+            [ClavesTexto.VozImportante] = "Solo las importantes",
+            [ClavesTexto.VozNada] = "Sin voz",
+            [ClavesTexto.VozValorTodo] = "todas",
+            [ClavesTexto.VozValorImportante] = "solo las importantes",
+            [ClavesTexto.VozValorNada] = "sin voz",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

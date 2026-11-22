@@ -744,6 +744,34 @@ MonoBehaviour:
     m_Localized: "Se\xF1al GPS recuperada"
     m_Metadata:
       m_Items: []
+  - m_Id: 1903538249654272
+    m_Localized: Indicaciones por voz
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014400
+    m_Localized: Todas las indicaciones
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014401
+    m_Localized: Solo las importantes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014402
+    m_Localized: Sin voz
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014403
+    m_Localized: todas
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014404
+    m_Localized: solo las importantes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014405
+    m_Localized: sin voz
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

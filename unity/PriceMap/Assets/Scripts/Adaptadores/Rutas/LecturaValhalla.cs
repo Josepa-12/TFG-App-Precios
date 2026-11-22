@@ -10,7 +10,8 @@ namespace PriceMap.Adaptadores.Rutas
     /// Lee la respuesta de <c>/route</c> de Valhalla (historia 2.6). Pura: no sale a la red. La línea de cada tramo
     /// es una polilínea de precisión 6; las longitudes van en kilómetros (o millas si así lo dice <c>units</c>) y
     /// los tiempos en segundos. Cada maniobra empieza en el punto <c>begin_shape_index</c> de su tramo y trae su
-    /// texto (<c>instruction</c>) en el idioma pedido.
+    /// texto (<c>instruction</c>) en el idioma pedido y el corto para la voz
+    /// (<c>verbal_succinct_transition_instruction</c>, historia 2.8).
     /// </summary>
     internal static class LecturaValhalla
     {
@@ -18,7 +19,7 @@ namespace PriceMap.Adaptadores.Rutas
         [Serializable] class Viaje { public Tramo[] legs; public Resumen summary; public string units; }
         [Serializable] class Tramo { public ManiobraJson[] maneuvers; public string shape; public Resumen summary; }
         [Serializable] class Resumen { public double length; public double time; }
-        [Serializable] class ManiobraJson { public int type; public string instruction; public double length; public int begin_shape_index; }
+        [Serializable] class ManiobraJson { public int type; public string instruction; public string verbal_succinct_transition_instruction; public double length; public int begin_shape_index; }
 
         const double MetrosPorMilla = 1609.344;
 
@@ -53,7 +54,8 @@ namespace PriceMap.Adaptadores.Rutas
                     {
                         if (m == null) continue;
                         var donde = PeticionRutas.Punto(puntos, desplazamiento + m.begin_shape_index, default);
-                        maniobras.Add(new Maniobra(Tipo(m.type), m.instruction, donde, m.length * porUnidad));
+                        maniobras.Add(new Maniobra(Tipo(m.type), m.instruction, donde, m.length * porUnidad,
+                            m.verbal_succinct_transition_instruction));
                     }
                 }
             }

@@ -334,6 +334,7 @@ namespace PriceMap.UI
             var control = controles.Find(c => c.elemento == elemento);
             if (control == null) return;
             nodo.label = control.etiqueta();
+            if (control.valor != null) nodo.value = control.valor(); // p. ej. el modo del botón de voz (historia 2.8)
             // Solo el bit de seleccionado: las demás banderas del nodo se quedan como estaban
             if (control.seleccionado != null)
                 nodo.state = Seleccionado(control) ? nodo.state | AccessibilityState.Selected : nodo.state & ~AccessibilityState.Selected;

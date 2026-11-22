@@ -11,6 +11,7 @@
         "PriceMap.Adaptadores.Busqueda",
         "PriceMap.Adaptadores.Rutas",
         "PriceMap.Adaptadores.Sistema",
+        "PriceMap.Adaptadores.Voz",
         "PriceMap.UI",
         "PriceMap.Arranque",
         "PriceMap.Vectorial",

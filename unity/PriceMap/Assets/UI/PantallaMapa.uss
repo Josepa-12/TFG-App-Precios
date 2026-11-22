@@ -1557,6 +1557,66 @@
     border-top-width: 2px;
 }
 
+/* ───────── Voz (historia 2.8; maqueta del 22/11/2026) ─────────
+   Navegando (.con-voz) la columna lleva el botón de voz arriba y el de ubicación debajo, con su línea. La fila de los
+   tres modos sale a la derecha del botón de voz, de cristal, con el elegido en el acento. */
+.hueco-voz {
+    display: none;
+}
+
+.pm-raiz.con-voz .hueco-voz {
+    display: flex;
+}
+
+.pm-raiz.con-ruta.con-voz #boton-ubicacion {
+    border-top-width: 1px;
+    border-top-color: var(--color-border);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.pm-raiz.con-ruta.con-voz #boton-ubicacion:focus {
+    border-top-width: 2px;
+    border-top-color: var(--color-focus);
+}
+
+.boton-voz--abierto {
+    background-color: var(--color-surface-2);
+}
+
+.fila-voz {
+    position: absolute;
+    left: 56px;
+    top: -4px;
+    flex-direction: row;
+    padding: 4px;
+    border-radius: 28px;
+    background-color: var(--color-glass);
+    --borde-cristal: var(--color-glass-edge);
+    display: none;
+}
+
+.fila-voz--abierta {
+    display: flex;
+}
+
+.fila-voz .fila-voz__opcion {
+    border-radius: 24px;
+}
+
+.fila-voz .fila-voz__opcion--siguiente {
+    margin-left: 4px;
+}
+
+.fila-voz .fila-voz__opcion--elegida {
+    background-color: var(--color-accent);
+    color: var(--color-accent-ink);
+}
+
+.fila-voz .fila-voz__opcion--elegida:focus {
+    border-color: var(--color-accent-ink);
+}
+
 .hueco-ruta {
     position: absolute;
     left: 0;

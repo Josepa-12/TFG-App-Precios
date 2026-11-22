@@ -323,8 +323,25 @@ namespace PriceMap.UI
         /// <summary>Anuncio de TalkBack al volver el GPS ("Señal GPS recuperada").</summary>
         public const string SenalRecuperada = "navegacion.senal.recuperada";
 
+        // Indicaciones por voz (historia 2.8)
+        /// <summary>Botón de voz en TalkBack ("Indicaciones por voz"; su valor es el modo).</summary>
+        public const string VozBoton = "voz.boton";
+        /// <summary>Modo con todos los avisos ("Todas las indicaciones"; TalkBack de su icono y anuncio al elegirlo).</summary>
+        public const string VozTodo = "voz.todo";
+        /// <summary>Modo con los avisos importantes ("Solo las importantes").</summary>
+        public const string VozImportante = "voz.importante";
+        /// <summary>Modo callado ("Sin voz").</summary>
+        public const string VozNada = "voz.nada";
+        /// <summary>Valor del botón de voz con todos los avisos ("todas").</summary>
+        public const string VozValorTodo = "voz.valor.todo";
+        /// <summary>Valor con los importantes ("solo las importantes").</summary>
+        public const string VozValorImportante = "voz.valor.importante";
+        /// <summary>Valor callado ("sin voz").</summary>
+        public const string VozValorNada = "voz.valor.nada";
+
         public static readonly string[] Todas =
         {
+            VozBoton, VozTodo, VozImportante, VozNada, VozValorTodo, VozValorImportante, VozValorNada,
             SenalBuscando, SenalRecuperada,
             UbicacionRecentrar, UbicacionSiguiendo,
             RutaCalculando, RutaFallo, RutaA, RutaDespues, RutaLlegada, RutaMin, RutaAnuncio, RutaAnuncioMinuto,

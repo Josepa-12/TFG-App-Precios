@@ -133,3 +133,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-7b-camara-que-sigue.md`
   summary: Comprobar en el móvil que la pantalla no se apaga durante la ruta (`Arranque.Start` pasa `PantallaSistemaUnity` a `Componer`; sin prueba automática).
   evidence: Revisión de la 2.7b (verification gap, low). Quitar ese argumento no rompe ninguna prueba; necesita escena y Android.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-indicaciones-por-voz.md`
+  summary: Historia 2.8 (parte 2): indicaciones por voz con la pantalla apagada; el servicio de Android recibe la lista de avisos con sus coordenadas y los dice él (reutilizando `PuenteVoz`), con el mismo modo de voz.
+  evidence: El usuario partió la 2.8 el 22/11/2026 (unos 2.300 tokens): primero la voz con la app delante; la pantalla apagada obliga a tocar el servicio de Android.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-indicaciones-por-voz.md`
+  summary: Prueba propia de que `AccesibilidadPantalla.RefrescarEtiqueta` relee el valor del nodo (cambiar el modo de voz con la fila cerrada y mirar el valor de TalkBack).
+  evidence: Revisión de la 2.8 (verification-gap). Hoy todo cambio de modo desde la UI reconstruye el recorrido y la prueba pasa aunque se quite esa línea.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-8-indicaciones-por-voz.md`
+  summary: Probar `PuenteVoz` en un móvil real: castellano, foco de audio con atenuación, calla en silencio/vibración, frase pedida antes de que el motor esté listo.
+  evidence: Revisión de la 2.8: en EditMode solo se lee el código Java; no hay pruebas de Android instrumentadas.

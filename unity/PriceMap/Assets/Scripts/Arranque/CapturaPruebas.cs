@@ -253,6 +253,7 @@ namespace PriceMap.Arranque
             yield return Navegacion();
             yield return NavegacionSigue();
             yield return NavegacionFlecha();
+            yield return NavegacionVoz();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -1147,6 +1148,96 @@ namespace PriceMap.Arranque
                 ubicacionCaptura.Mover(PantallaMapa.VistaInicial);
                 pantalla.QuitarRuta();
                 pantalla.RelojLocal = relojAntes;
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            camara.inclinacion = 50f;
+            camara.giro = -15f;
+            camara.distancia = 900f;
+            mapa.Centrar(PantallaMapa.VistaInicial);
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>
+        /// Historia 2.8, capturas "voz" y "voz-oscuro": Ir a Clínica Areas en coche y, navegando, tocar el botón de voz de la
+        /// columna (encima de "Volver a centrar"): la fila de cristal con los tres modos sale a su derecha, con el elegido
+        /// en el acento. Elegir "Solo las importantes" la cierra, cambia el icono del botón y lo anuncia; se deja el modo
+        /// como estaba. Atrás termina la ruta y el botón de voz se va.
+        /// </summary>
+        IEnumerator NavegacionVoz()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            var camara = FindFirstObjectByType<CamaraMapa>();
+            if (lugar == null || pantalla.Navegacion == null || pantalla.Voz == null || pantalla.BotonVoz == null || ubicacionCaptura == null || camara == null)
+            { Debug.LogError("PriceMap: no se puede capturar el botón de voz."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var vozGuardada = preferencias.Leer(ServicioVoz.ClavePreferencia);
+            var modoAntes = pantalla.Voz.Modo;
+            var relojAntes = pantalla.RelojLocal;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 20, 13, 30, 0, DateTimeKind.Local);
+            pantalla.Rutas.VaciarCache();
+            var anuncios = new List<string>();
+            void Anotar(string t) => anuncios.Add(t);
+            AccesibilidadPantalla.AnuncioPedido += Anotar;
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.Voz.Elegir(ModoVoz.Todo);
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.Coche);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarRuta();
+                if (!pantalla.Navegacion.Activa) { Debug.LogError("PriceMap: Ir no ha empezado la navegación."); yield break; }
+                var a = CalleCoche[3];
+                var b = CalleCoche[4];
+                ubicacionCaptura.Mover(new Coordenada((a.Latitud + b.Latitud) / 2 - 0.00003, (a.Longitud + b.Longitud) / 2 + 0.000025));
+                yield return new WaitForSeconds(3.5f); // los 2 s y la transición
+                if (!pantalla.BotonVozVisible) Debug.LogError("PriceMap: navegando no se ve el botón de voz.");
+                pantalla.BotonVoz.Pulsar();
+                yield return new WaitForSeconds(0.5f);
+                yield return new WaitForEndOfFrame();
+                var fila = pantalla.FilaVoz;
+                var boton = pantalla.BotonVoz;
+                var ubicacionBoton = pantalla.BotonUbicacion;
+                Debug.Log($"PriceMap: voz: botón {boton.worldBound} (icono {boton.Icono}), ubicación {ubicacionBoton?.worldBound}, fila abierta {fila.Abierta} en {fila.worldBound}, " +
+                          $"elegido {fila.Elegido}");
+                if (!fila.Abierta || fila.resolvedStyle.display == DisplayStyle.None) Debug.LogError("PriceMap: al tocar el botón de voz no se abre la fila.");
+                if (ubicacionBoton != null && boton.worldBound.yMax > ubicacionBoton.worldBound.yMin + 1f)
+                    Debug.LogError("PriceMap: el botón de voz no está encima del de ubicación.");
+                if (fila.worldBound.xMin < boton.worldBound.xMax) Debug.LogError("PriceMap: la fila de la voz no sale a la derecha del botón.");
+                foreach (var m in UI.FilaVoz.Modos)
+                {
+                    var o = fila.Opcion(m).worldBound;
+                    if (o.width < 47.5f || o.height < 47.5f) Debug.LogError($"PriceMap: el icono {m} de la fila mide {o.width:F1}×{o.height:F1} dp.");
+                }
+                yield return Capturar("voz");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return Capturar("voz-oscuro");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+
+                anuncios.Clear();
+                fila.Opcion(ModoVoz.Importante).Pulsar();
+                yield return null;
+                if (fila.Abierta || pantalla.Voz.Modo != ModoVoz.Importante || boton.Icono != UI.Icono.VozImportante
+                    || !anuncios.Contains(Textos.T(ClavesTexto.VozImportante)))
+                    Debug.LogError("PriceMap: elegir «Solo las importantes» no cierra la fila, no cambia el icono o no se anuncia.");
+                pantalla.Atras();
+                yield return null;
+                if (pantalla.BotonVozVisible) Debug.LogError("PriceMap: al terminar la ruta sigue el botón de voz.");
+            }
+            finally
+            {
+                AccesibilidadPantalla.AnuncioPedido -= Anotar;
+                ubicacionCaptura.Mover(PantallaMapa.VistaInicial);
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
+                pantalla.Voz.Elegir(modoAntes);
+                if (vozGuardada == null) preferencias.Borrar(ServicioVoz.ClavePreferencia);
+                else preferencias.Guardar(ServicioVoz.ClavePreferencia, vozGuardada);
                 if (tema.Actual != Tema.Claro) tema.Alternar();
                 if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);

@@ -4,13 +4,14 @@ using UnityEngine.UIElements;
 
 namespace PriceMap.UI
 {
-    public enum Icono { Sol, Luna, Mas, Menos, Navegar, Cerrar, Recentrar }
+    public enum Icono { Sol, Luna, Mas, Menos, Navegar, Cerrar, Recentrar, Voz, VozImportante, VozNada }
 
     /// <summary>
     /// Botón redondo de 48 dp con fondo de cristal (DESIGN.md · round-button) y un icono dibujado
     /// con vectores, nunca emojis (UX-DR23). El icono usa el color (USS color) del botón.
     /// En columna (tema, ubicación y zoom; prototipo .ctrl-stack) es un hueco de 48 × 48 dp sin fondo ni borde
     /// propios: el cristal, el borde y la sombra los pone la columna, y el icono va en --color-accent-text.
+    /// Voz, VozImportante y VozNada son los de la maqueta de la historia 2.8.
     /// Sol, Luna y Navegar son los iconos del prototipo (viewBox de 24 con trazo 2) dibujados a 22 dp.
     /// </summary>
     public class BotonRedondo : VisualElement
@@ -75,6 +76,10 @@ namespace PriceMap.UI
                 case Icono.Cerrar: Linea(p, c + new Vector2(-6, -6), c + new Vector2(6, 6)); Linea(p, c + new Vector2(-6, 6), c + new Vector2(6, -6)); break;
                 // Volver a centrar (historia 2.7, parte 2b): la mira de "mi ubicación"
                 case Icono.Recentrar: Recentrar(p, c); break;
+                // Modos de la voz (historia 2.8; maqueta del 22/11/2026): volumen, volumen con «!» y volumen tachado
+                case Icono.Voz: Altavoz(p, c, 0f); Ondas(p, c); break;
+                case Icono.VozImportante: Altavoz(p, c, -1f); Exclamacion(p, c); break;
+                case Icono.VozNada: Altavoz(p, c, 0f); Ondas(p, c); Linea(p, V(c, 3f, 3f), V(c, 21f, 21f)); break;
             }
         }
 
@@ -95,6 +100,45 @@ namespace PriceMap.UI
             Linea(p, V(c, 12f, 19f), V(c, 12f, 22.5f));
             Linea(p, V(c, 1.5f, 12f), V(c, 5f, 12f));
             Linea(p, V(c, 19f, 12f), V(c, 22.5f, 12f));
+        }
+
+        // Altavoz de la maqueta ("M4 9 H8 L13 5 V19 L8 15 H4 Z"), desplazado dx en x (el de «!» va 1 a la izquierda)
+        static void Altavoz(Painter2D p, Vector2 c, float dx)
+        {
+            Trazo(p);
+            p.BeginPath();
+            p.MoveTo(V(c, 4f + dx, 9f));
+            p.LineTo(V(c, 8f + dx, 9f));
+            p.LineTo(V(c, 13f + dx, 5f));
+            p.LineTo(V(c, 13f + dx, 19f));
+            p.LineTo(V(c, 8f + dx, 15f));
+            p.LineTo(V(c, 4f + dx, 15f));
+            p.ClosePath();
+            p.Stroke();
+        }
+
+        // Ondas ("M16 9.5 a3.5 3.5 0 0 1 0 5" y "M18.5 7 a7 7 0 0 1 0 10"): arcos hacia la derecha entre ±45,6°
+        static void Ondas(Painter2D p, Vector2 c)
+        {
+            float s = TamanoIcono / 24f;
+            const float Angulo = 45.58f;
+            p.BeginPath();
+            p.Arc(V(c, 16f - Mathf.Sqrt(3.5f * 3.5f - 2.5f * 2.5f), 12f), 3.5f * s, -Angulo, Angulo, ArcDirection.Clockwise);
+            p.Stroke();
+            p.BeginPath();
+            p.Arc(V(c, 18.5f - Mathf.Sqrt(7f * 7f - 5f * 5f), 12f), 7f * s, -Angulo, Angulo, ArcDirection.Clockwise);
+            p.Stroke();
+        }
+
+        // «!» de la maqueta: raya de (18, 6) a (18, 13) y punto lleno de radio 1,3 en (18; 17,5)
+        static void Exclamacion(Painter2D p, Vector2 c)
+        {
+            float s = TamanoIcono / 24f;
+            Linea(p, V(c, 18f, 6f), V(c, 18f, 13f));
+            p.BeginPath();
+            p.Arc(V(c, 18f, 17.5f), 1.3f * s, 0f, 360f);
+            p.ClosePath();
+            p.Fill();
         }
 
         static void Linea(Painter2D p, Vector2 a, Vector2 b)

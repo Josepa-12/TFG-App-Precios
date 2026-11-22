@@ -18,6 +18,8 @@
                  TalkBack, otra igual debajo con acercar y alejar -->
             <ui:VisualElement name="pila-derecha" class="pila-derecha" picking-mode="Ignore">
                 <ui:VisualElement name="columna-controles" class="columna-controles" picking-mode="Ignore">
+                    <!-- Voz (historia 2.8): solo navegando, encima de ubicación (entonces el tema no se ve); su fila sale a la derecha -->
+                    <ui:VisualElement name="hueco-voz" class="hueco-voz" picking-mode="Ignore" />
                     <ui:VisualElement name="hueco-tema" picking-mode="Ignore" />
                     <ui:VisualElement name="hueco-ubicacion" picking-mode="Ignore" />
                 </ui:VisualElement>

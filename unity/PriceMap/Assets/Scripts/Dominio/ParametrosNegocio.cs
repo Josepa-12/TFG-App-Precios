@@ -97,5 +97,24 @@ namespace PriceMap.Dominio
         /// navegando, se ha perdido la señal: posición atenuada, "Buscando señal GPS" y sin recálculo.
         /// </summary>
         public const double NavegacionSinSenalSegundos = 10.0;
+
+        // Indicaciones por voz (historia 2.8; decisiones del 22/11/2026)
+        /// <summary>Metros a los que se dice la maniobra en el momento («Gire a la derecha.») en coche.</summary>
+        public const double VozMomentoCocheMetros = 40.0;
+        /// <summary>Lo mismo a pie.</summary>
+        public const double VozMomentoPieMetros = 15.0;
+        /// <summary>Metros del aviso intermedio (solo con «todas las indicaciones») en coche.</summary>
+        public const double VozIntermedioCocheMetros = 300.0;
+        /// <summary>Lo mismo a pie.</summary>
+        public const double VozIntermedioPieMetros = 50.0;
+        /// <summary>
+        /// El aviso intermedio solo se dice si el de la maniobra siguiente se dijo a más de estas veces su distancia (si no,
+        /// se acaba de oír y sería repetirlo).
+        /// </summary>
+        public const double VozIntermedioFactor = 1.5;
+        /// <summary>Las distancias dichas se redondean a estos metros en coche.</summary>
+        public const double VozRedondeoCocheMetros = 50.0;
+        /// <summary>Lo mismo a pie.</summary>
+        public const double VozRedondeoPieMetros = 10.0;
     }
 }

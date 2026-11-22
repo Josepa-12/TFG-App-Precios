@@ -5,6 +5,7 @@ using PriceMap.Adaptadores.Datos;
 using PriceMap.Adaptadores.Gps;
 using PriceMap.Adaptadores.Rutas;
 using PriceMap.Adaptadores.Sistema;
+using PriceMap.Adaptadores.Voz;
 using PriceMap.Aplicacion;
 using PriceMap.UI;
 using PriceMap.Vectorial;
@@ -66,9 +67,11 @@ namespace PriceMap.Arranque
             // Seguir la ruta tras Ir (historia 2.7, parte 1): recálculo con las mismas rutas y la notificación en es-ES
             var navegacion = new ServicioNavegacion(ubicacion, rutas, Task.Delay,
                 textoNotificacion: (destino, minutos) => Textos.T(ClavesTexto.NotificacionNavegando, destino, minutos));
+            // Indicaciones por voz (historia 2.8): el TextToSpeech de Android; en el PC, el editor y la captura, callada
+            var voz = new ServicioVoz(navegacion, CrearVoz(), preferencias);
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
-                    navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity()))
+                    navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz))
             { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
@@ -80,6 +83,15 @@ namespace PriceMap.Arranque
         }
 
         IEntradaCompartida compartida;
+
+        /// <summary>La voz del móvil (Android) o la que no suena (PC, editor y captura de pruebas).</summary>
+        static IVoz CrearVoz()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (!CapturaPruebas.SePide()) return new VozAndroid();
+#endif
+            return new VozNula();
+        }
 
         /// <summary>Lo compartido con la app y aún no leído va al buscador de la pantalla. Sin nada, nada.</summary>
         internal static void PasarCompartido(IEntradaCompartida entrada, PantallaMapa pantalla)
@@ -141,11 +153,12 @@ namespace PriceMap.Arranque
         /// <param name="rutas">Tiempos e Ir de la ficha (historia 2.6); sin él, la fila de acciones queda vacía.</param>
         /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
         /// <param name="pantallaSistema">Pantalla encendida mientras se navega (historia 2.7, parte 2b); sin él, se apaga sola.</param>
+        /// <param name="voz">Indicaciones por voz (historia 2.8); sin él, no hay botón de voz.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
-            ServicioNavegacion navegacion = null, IPantallaSistema pantallaSistema = null)
+            ServicioNavegacion navegacion = null, IPantallaSistema pantallaSistema = null, ServicioVoz voz = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -167,7 +180,7 @@ namespace PriceMap.Arranque
             // La pantalla no se apaga mientras se navega (historia 2.7, parte 2b; FR20)
             if (navegacion != null && pantallaSistema != null) _ = new PantallaEncendida(navegacion, pantallaSistema);
             pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca, geocodificador,
-                resolutorEnlaces, rutas, navegacion);
+                resolutorEnlaces, rutas, navegacion, voz);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

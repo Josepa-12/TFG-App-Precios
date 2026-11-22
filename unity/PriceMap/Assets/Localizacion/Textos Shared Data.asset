@@ -735,6 +735,34 @@ MonoBehaviour:
     m_Key: navegacion.senal.recuperada
     m_Metadata:
       m_Items: []
+  - m_Id: 1903538249654272
+    m_Key: voz.boton
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014400
+    m_Key: voz.todo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014401
+    m_Key: voz.importante
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014402
+    m_Key: voz.nada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014403
+    m_Key: voz.valor.todo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014404
+    m_Key: voz.valor.importante
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1903538279014405
+    m_Key: voz.valor.nada
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
