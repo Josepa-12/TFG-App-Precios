@@ -59,7 +59,9 @@ namespace PriceMap.Vectorial
     /// </summary>
     public static class LectorMVT
     {
-        public static Dictionary<string, CapaMVT> Leer(byte[] datos)
+        /// <param name="soloCapas">Capas que se quieren (de las demás no se leen los elementos, solo sus claves y valores);
+        /// null, todas.</param>
+        public static Dictionary<string, CapaMVT> Leer(byte[] datos, ICollection<string> soloCapas = null)
         {
             var capas = new Dictionary<string, CapaMVT>();
             int i = 0;
@@ -69,17 +71,20 @@ namespace PriceMap.Vectorial
                 int campo = (int)(clave >> 3), tipo = (int)(clave & 7);
                 if (campo == 3 && tipo == 2)
                 {
-                    int len = (int)Varint(datos, ref i);
-                    var capa = LeerCapa(datos, i, i + len);
-                    if (capa.nombre != null) capas[capa.nombre] = capa;
+                    int len = Largo(datos, ref i, datos.Length);
+                    var capa = LeerCapa(datos, i, i + len, soloCapas);
+                    if (capa.nombre != null && Vale(capa, soloCapas)) capas[capa.nombre] = capa;
                     i += len;
                 }
-                else Saltar(datos, ref i, tipo);
+                else Saltar(datos, ref i, tipo, datos.Length);
             }
             return capas;
         }
 
-        static CapaMVT LeerCapa(byte[] b, int inicio, int fin)
+        static bool Vale(CapaMVT capa, ICollection<string> soloCapas) =>
+            soloCapas == null || (capa.nombre != null && soloCapas.Contains(capa.nombre));
+
+        static CapaMVT LeerCapa(byte[] b, int inicio, int fin, ICollection<string> soloCapas)
         {
             var capa = new CapaMVT();
             var claves = new List<string>();
@@ -92,7 +97,7 @@ namespace PriceMap.Vectorial
                 int f = (int)(k >> 3), t = (int)(k & 7);
                 if (t == 2)
                 {
-                    int len = (int)Varint(b, ref i);
+                    int len = Largo(b, ref i, fin);
                     switch (f)
                     {
                         case 1: capa.nombre = Encoding.UTF8.GetString(b, i, len); break;
@@ -103,8 +108,9 @@ namespace PriceMap.Vectorial
                     i += len;
                 }
                 else if (f == 5 && t == 0) capa.extension = (int)Varint(b, ref i);
-                else Saltar(b, ref i, t);
+                else Saltar(b, ref i, t, fin);
             }
+            if (!Vale(capa, soloCapas)) return capa;
             foreach (var (a, z) in crudos) capa.elementos.Add(LeerElemento(b, a, z, claves, valores));
             return capa;
         }
@@ -118,14 +124,14 @@ namespace PriceMap.Vectorial
                 int f = (int)(k >> 3), t = (int)(k & 7);
                 switch (f)
                 {
-                    case 1: { int len = (int)Varint(b, ref i); v = Encoding.UTF8.GetString(b, i, len); i += len; break; }
+                    case 1: { int len = Largo(b, ref i, fin); v = Encoding.UTF8.GetString(b, i, len); i += len; break; }
                     case 2: v = (double)BitConverter.ToSingle(b, i); i += 4; break;
                     case 3: v = BitConverter.ToDouble(b, i); i += 8; break;
                     case 4: v = (double)(long)Varint(b, ref i); break;
                     case 5: v = (double)Varint(b, ref i); break;
                     case 6: { ulong u = Varint(b, ref i); v = (double)((long)(u >> 1) ^ -(long)(u & 1)); break; }
                     case 7: v = Varint(b, ref i) != 0; break;
-                    default: Saltar(b, ref i, t); break;
+                    default: Saltar(b, ref i, t, fin); break;
                 }
             }
             return v;
@@ -142,7 +148,7 @@ namespace PriceMap.Vectorial
                 int f = (int)(k >> 3), t = (int)(k & 7);
                 if (f == 2 && t == 2)
                 {
-                    int final = (int)Varint(b, ref i) + i;
+                    int final = Largo(b, ref i, fin) + i;
                     while (i < final)
                     {
                         int ki = (int)Varint(b, ref i), vi = (int)Varint(b, ref i);
@@ -153,11 +159,11 @@ namespace PriceMap.Vectorial
                 else if (f == 3 && t == 0) e.tipo = (TipoGeometria)(int)Varint(b, ref i);
                 else if (f == 4 && t == 2)
                 {
-                    int final = (int)Varint(b, ref i) + i;
+                    int final = Largo(b, ref i, fin) + i;
                     geometria = new List<uint>();
                     while (i < final) geometria.Add((uint)Varint(b, ref i));
                 }
-                else Saltar(b, ref i, t);
+                else Saltar(b, ref i, t, fin);
             }
             if (geometria != null) Decodificar(geometria, e);
             return e;
@@ -198,13 +204,21 @@ namespace PriceMap.Vectorial
             }
         }
 
-        static void Saltar(byte[] b, ref int i, int tipo)
+        // Largo de un campo: uno dañado (negativo al pasarlo a int, o que se sale) haría retroceder el índice para siempre
+        static int Largo(byte[] b, ref int i, int fin)
+        {
+            ulong n = Varint(b, ref i);
+            if (i > fin || n > (ulong)(fin - i)) throw new FormatException("Campo protobuf que se sale de su mensaje");
+            return (int)n;
+        }
+
+        static void Saltar(byte[] b, ref int i, int tipo, int fin)
         {
             switch (tipo)
             {
                 case 0: Varint(b, ref i); break;
                 case 1: i += 8; break;
-                case 2: { int len = (int)Varint(b, ref i); i += len; break; }
+                case 2: { int len = Largo(b, ref i, fin); i += len; break; }
                 case 5: i += 4; break;
                 default: throw new FormatException("Tipo de campo protobuf desconocido: " + tipo);
             }

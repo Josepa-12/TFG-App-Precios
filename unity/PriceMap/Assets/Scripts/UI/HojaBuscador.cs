@@ -461,9 +461,10 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Pinta los resultados. Sin texto que buscar (EnBusqueda falso) vuelven los chips y "Encuentra cerca"; con
-        /// texto, los locales (lugares y puntos) y detrás las direcciones (historia 2.3, parte 2) o, si no hay ninguna
-        /// fila, "No hay resultados". La lista vuelve arriba solo si cambian los locales: las direcciones que llegan
-        /// después se añaden debajo sin mover lo que el usuario está mirando.
+        /// texto, los locales (lugares y puntos), las calles guardadas (spec buscar-calles-guardadas) y detrás las
+        /// direcciones (historia 2.3, parte 2) o, si no hay ninguna fila, "No hay resultados". La lista vuelve arriba solo
+        /// si cambian los locales: las calles y direcciones que llegan después se añaden debajo sin mover lo que el
+        /// usuario está mirando.
         /// </summary>
         /// <param name="direcciones">Direcciones del geocodificador para el texto actual; null si aún no hay.</param>
         /// <param name="sinConexion">Las direcciones han fallado: se ve "Las direcciones necesitan conexión".</param>
@@ -471,20 +472,16 @@ namespace PriceMap.UI
         /// <param name="arriba">Devolver la lista arriba (falso al añadir solo direcciones).</param>
         /// <param name="mensaje">Texto sin filas en lugar de "No hay resultados" (historia 2.5, parte 2: "Comprobando el
         /// enlace…" o el de enlace no reconocido); con él no se ofrece "Buscar como dirección".</param>
+        /// <param name="calles">Calles guardadas para el texto actual, debajo de los locales; null si no hay.</param>
+        /// <param name="buscando">Las calles guardadas aún se están buscando: sin filas no se dice que no hay resultados.</param>
         public void MostrarResultados(IReadOnlyList<ResultadoBusqueda> resultados, IReadOnlyList<ResultadoBusqueda> direcciones = null,
-            bool sinConexion = false, bool ofrecerDireccion = false, bool arriba = true, string mensaje = null)
+            bool sinConexion = false, bool ofrecerDireccion = false, bool arriba = true, string mensaje = null,
+            IReadOnlyList<ResultadoBusqueda> calles = null, bool buscando = false)
         {
-            // Mismos locales (llegan solo direcciones): sus filas se quedan, para no perder el foco de TalkBack ni la
-            // pulsación; solo se cambian las de direcciones, que van detrás
+            // Mismos locales (llegan solo calles o direcciones): sus filas se quedan, para no perder el foco de TalkBack
+            // ni la pulsación; las de calles y direcciones, que van detrás, también si siguen en la lista
             bool mismosLocales = EnBusqueda && MostrandoResultados && resultados != null && ReferenceEquals(resultados, localesPintados);
-            if (mismosLocales)
-                for (int i = filas.Count - 1; i >= filasLocales; i--)
-                {
-                    EscalaFuente.Olvidar(filas[i]);
-                    Resultados.Remove(filas[i]);
-                    filas.RemoveAt(i);
-                }
-            else
+            if (!mismosLocales)
             {
                 EscalaFuente.Olvidar(Resultados); // las filas viejas se van: sus tamaños guardados también
                 Resultados.Clear();
@@ -504,11 +501,9 @@ namespace PriceMap.UI
                     localesPintados = resultados;
                     filasLocales = filas.Count;
                 }
-                if (direcciones != null)
-                    foreach (var r in direcciones)
-                        if (AnadirFila(r)) DireccionesVisibles++;
+                PintarDetras(calles, direcciones);
             }
-            SinResultadosVisible = MostrandoResultados && filas.Count == 0;
+            SinResultadosVisible = MostrandoResultados && filas.Count == 0 && !buscando;
             BuscarDireccionVisible = SinResultadosVisible && ofrecerDireccion && mensaje == null;
             AvisoDireccionesVisible = MostrandoResultados && sinConexion;
             PonerVisibilidad(MostrandoResultados);
@@ -557,14 +552,53 @@ namespace PriceMap.UI
             Borrar.style.display = HayTexto ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        bool AnadirFila(ResultadoBusqueda r)
+        /// <summary>
+        /// Detrás de los locales, las calles y las direcciones: las filas que siguen en la lista se conservan (con su foco
+        /// y su pulsación) aunque cambien de orden, las que sobran se quitan y las nuevas se ponen en su sitio.
+        /// </summary>
+        void PintarDetras(IReadOnlyList<ResultadoBusqueda> calles, IReadOnlyList<ResultadoBusqueda> direcciones)
+        {
+            var detras = new List<ResultadoBusqueda>();
+            if (calles != null) foreach (var r in calles) if (r != null) detras.Add(r);
+            int antes = detras.Count;
+            if (direcciones != null) foreach (var r in direcciones) if (r != null) detras.Add(r);
+            DireccionesVisibles = detras.Count - antes;
+
+            var siguen = new HashSet<ResultadoBusqueda>(detras);
+            for (int i = filas.Count - 1; i >= filasLocales; i--)
+                if (!siguen.Contains(filas[i].Resultado)) QuitarFila(i);
+            for (int i = 0; i < detras.Count; i++)
+            {
+                int pos = filasLocales + i;
+                int esta = filas.FindIndex(Math.Min(pos, filas.Count), f => ReferenceEquals(f.Resultado, detras[i]));
+                if (esta < 0) AnadirFila(detras[i], pos);
+                else if (esta > pos)
+                {
+                    var fila = filas[esta];
+                    fila.PlaceBehind(filas[pos]); // se mueve sin salir de la lista: no pierde el foco ni la pulsación
+                    filas.RemoveAt(esta);
+                    filas.Insert(pos, fila);
+                }
+            }
+            while (filas.Count > filasLocales + detras.Count) QuitarFila(filas.Count - 1);
+        }
+
+        void QuitarFila(int i)
+        {
+            EscalaFuente.Olvidar(filas[i]);
+            Resultados.Remove(filas[i]);
+            filas.RemoveAt(i);
+        }
+
+        bool AnadirFila(ResultadoBusqueda r, int pos = -1)
         {
             if (r == null) return false;
             var fila = new FilaResultado(r, x => ResultadoElegido?.Invoke(x), textos);
             // Si la lista mide lo mismo que antes, Resultados no recibe GeometryChanged: cada fila se escala sola
             fila.RegisterCallback<GeometryChangedEvent>(_ => EscalaFuente.Aplicar(fila, EscalaFuente.Sistema));
-            filas.Add(fila);
-            Resultados.Add(fila);
+            if (pos < 0) pos = filas.Count;
+            filas.Insert(pos, fila);
+            Resultados.Insert(pos, fila);
             return true;
         }
 

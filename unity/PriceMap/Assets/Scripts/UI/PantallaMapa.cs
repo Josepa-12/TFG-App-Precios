@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using PriceMap.Aplicacion;
@@ -28,6 +29,7 @@ namespace PriceMap.UI
         ServicioBusqueda busqueda;
         ServicioCerca servicioCerca;
         BuscadorDirecciones direcciones;
+        BuscadorCalles calles;               // calles de las teselas guardadas (spec buscar-calles-guardadas); null = no se buscan
         IGeocodificador geocodificador;      // dirección del punto libre (historia 2.5); null = solo coordenadas
         IResolutorEnlaces resolutorEnlaces;  // enlaces cortos del buscador (historia 2.5, parte 2); null = no se reconocen
         ServicioRutas rutas;                 // tiempos de la ficha (historia 2.6); null = fila de acciones vacía
@@ -112,17 +114,18 @@ namespace PriceMap.UI
         /// <param name="rutas">Tiempos e Ir de la ficha (historia 2.6); sin él, la fila de acciones de la ficha queda vacía.</param>
         /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
         /// <param name="voz">Indicaciones por voz (historia 2.8); sin él (o sin navegación), no hay botón de voz.</param>
+        /// <param name="calles">Calles guardadas (spec buscar-calles-guardadas); sin él, el buscador no las busca.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
             BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
             IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null, ServicioNavegacion navegacion = null,
-            ServicioVoz voz = null)
+            ServicioVoz voz = null, BuscadorCalles calles = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador, resolutorEnlaces, rutas, navegacion, voz);
+                geocodificador, resolutorEnlaces, rutas, navegacion, voz, calles);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
@@ -130,7 +133,7 @@ namespace PriceMap.UI
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
-            ServicioNavegacion navegacion = null, ServicioVoz voz = null)
+            ServicioNavegacion navegacion = null, ServicioVoz voz = null, BuscadorCalles calles = null)
         {
             this.mapa = mapa;
             this.navegacion = rutas != null ? navegacion : null; // sin rutas no hay Ir
@@ -143,6 +146,7 @@ namespace PriceMap.UI
             this.busqueda = busqueda;
             this.servicioCerca = cerca;
             this.direcciones = direcciones;
+            this.calles = calles;
             this.accesibilidadSistema = accesibilidadSistema;
             this.ahora = ahora;
             this.animacionesQuitadas = accesibilidadSistema != null && accesibilidadSistema.AnimacionesQuitadas;
@@ -526,6 +530,7 @@ namespace PriceMap.UI
             buscador.CategoriaElegida += ElegirCategoria;
             buscador.CategoriaQuitada += QuitarCategoria;
             if (direcciones != null) direcciones.Cambiado += AlCambiarDirecciones;
+            if (calles != null) calles.Cambiado += AlCambiarCalles;
             huecoBuscador.RegisterCallback<GeometryChangedEvent>(_ => MedirBuscador());
             buscador.Linea.RegisterCallback<GeometryChangedEvent>(_ => ColocarAtribucion());
             LeerAccesibilidadSistema();
@@ -579,6 +584,7 @@ namespace PriceMap.UI
         string consultaDirecciones;
         IReadOnlyList<ResultadoBusqueda> direccionesActuales;
         bool direccionesFallaron;
+        IReadOnlyList<ResultadoBusqueda> callesActuales; // calles guardadas del texto actual (spec buscar-calles-guardadas)
 
         /// <summary>
         /// Punto de cercanía de la búsqueda: la posición del usuario o, si no la hay, el centro del mapa.
@@ -587,7 +593,8 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Busca el texto del campo (a cada tecla: lo local, al momento) y pinta los resultados en la hoja; las
-        /// direcciones se piden aparte (BuscadorDirecciones: tras la espera) y se añaden debajo al llegar. TalkBack:
+        /// direcciones se piden aparte (BuscadorDirecciones: tras la espera) y se añaden debajo al llegar; las calles
+        /// guardadas (BuscadorCalles), también aparte pero sin espera, entre lo local y las direcciones. TalkBack:
         /// cada fila es un botón y, si la lista cambia, se anuncia "N resultados" o "No hay resultados".
         /// </summary>
         public void Buscar(string texto)
@@ -613,6 +620,8 @@ namespace PriceMap.UI
             IReadOnlyList<ResultadoBusqueda> resultados = null;
             if (busqueda != null && buscador.EnBusqueda) resultados = busqueda.Buscar(texto, PuntoCercania());
             localesActuales = resultados;
+            callesActuales = CallesQueSiguen(texto);
+            PedirCalles(texto);
             PedirDirecciones(texto);
             PintarResultados(arriba: true);
         }
@@ -662,6 +671,8 @@ namespace PriceMap.UI
             consultaDirecciones = null;
             direccionesActuales = null;
             direccionesFallaron = false;
+            calles?.Cancelar();
+            callesActuales = null;
             if (corto)
             {
                 var cts = new CancellationTokenSource();
@@ -841,6 +852,54 @@ namespace PriceMap.UI
         }
 
         /// <summary>
+        /// Al cambiar el texto, mientras llegan las calles del texto nuevo: de las que se ven, las que también coinciden
+        /// con él (así la lista no parpadea a cada tecla), con la distancia desde el punto de ahora.
+        /// </summary>
+        IReadOnlyList<ResultadoBusqueda> CallesQueSiguen(string texto)
+        {
+            if (callesActuales == null || !buscador.EnBusqueda) return null;
+            var formas = ReglaCalles.Formas(texto);
+            var siguen = new List<ResultadoBusqueda>();
+            foreach (var c in callesActuales)
+                if (ReglaCalles.Puntuar(formas, c.Nombre, c.Direccion.Localidad) != ReglaBusqueda.NoCoincide) siguen.Add(c);
+            return siguen.Count > 0 ? ConDistancia(siguen, PuntoCercania()) : null;
+        }
+
+        /// <summary>
+        /// Busca el texto en las calles guardadas (BuscadorCalles cancela lo anterior y pone el mínimo de caracteres). Es
+        /// local: también con el mismo texto, por si el mapa ha guardado más teselas.
+        /// </summary>
+        void PedirCalles(string texto)
+        {
+            if (calles == null) return;
+            if (buscador.EnBusqueda) calles.Pedir(texto, PuntoCercania());
+            else calles.Cancelar();
+        }
+
+        // Calles guardadas: solo valen si son del texto que hay ahora en el campo
+        void AlCambiarCalles(string consulta, Resultado<IReadOnlyList<ResultadoBusqueda>> r)
+        {
+            if (buscador == null || cercaActiva || EnEnlace || consulta != buscador.Campo.value) return;
+            try
+            {
+                if (!r.Ok) Debug.LogWarning("PriceMap: calles guardadas no disponibles (" + r.Error + ").");
+                // De las que ya se ven, el mismo objeto: sus filas (y su foco) se quedan
+                var nuevas = new List<ResultadoBusqueda>();
+                if (r.Valor != null)
+                    foreach (var c in r.Valor) nuevas.Add(callesActuales?.FirstOrDefault(v => MismaCalle(v, c)) ?? c);
+                callesActuales = nuevas;
+                PintarResultados(arriba: false, moverFoco: false); // llegan solas: el foco de TalkBack no se mueve
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e); // llega desde una tarea que nadie espera: sin esto el error se perdería
+            }
+        }
+
+        static bool MismaCalle(ResultadoBusqueda a, ResultadoBusqueda b) =>
+            a.Nombre == b.Nombre && a.Posicion == b.Posicion && a.Direccion.Localidad == b.Direccion.Localidad;
+
+        /// <summary>
         /// "Buscar como dirección" (junto a "No hay resultados"): pide las direcciones del texto ya, sin espera ni
         /// mínimo. Tras un fallo sirve de reintento.
         /// </summary>
@@ -885,8 +944,9 @@ namespace PriceMap.UI
         bool focoAlCampoPendiente;  // "Buscar como dirección" pulsado: si el botón desaparece, el foco vuelve al campo
 
         /// <summary>
-        /// Pinta locales + direcciones, el aviso de conexión y "Buscar como dirección" (si aún no hay direcciones
-        /// buenas). TalkBack (parte 3): "N resultados" cuenta locales y direcciones y se anuncia si cambia la lista; el
+        /// Pinta locales + calles guardadas + direcciones (sin las que ya salen como calle guardada), el aviso de
+        /// conexión y "Buscar como dirección" (si aún no hay direcciones buenas). TalkBack (parte 3): "N resultados"
+        /// cuenta locales, calles y direcciones y se anuncia si cambia la lista; el
         /// aviso de conexión se anuncia una vez, al aparecer.
         /// </summary>
         /// <param name="moverFoco">Falso cuando llegan las direcciones: no es una acción del usuario y el foco de
@@ -897,20 +957,28 @@ namespace PriceMap.UI
             // sitio de "No hay resultados"
             bool enEnlace = EnEnlace;
             bool ofrecer = !enEnlace && direcciones != null && direccionesActuales == null;
-            buscador.MostrarResultados(localesActuales, enEnlace ? null : direccionesActuales, !enEnlace && direccionesFallaron, ofrecer,
-                arriba, enEnlace ? mensajeEnlace : null);
+            // Mientras se buscan las calles guardadas no se dice (ni se anuncia) que no hay resultados: contestan enseguida
+            bool buscando = !enEnlace && calles != null && calles.Pendiente;
+            var callesAhora = enEnlace ? null : callesActuales;
+            var direccionesAhora = enEnlace ? null : ReglaCalles.SinRepetidas(callesActuales, direccionesActuales);
+            buscador.MostrarResultados(localesActuales, direccionesAhora, !enEnlace && direccionesFallaron, ofrecer,
+                arriba, enEnlace ? mensajeEnlace : null, callesAhora, buscando);
 
             string anuncio = null;
             if (!buscador.MostrandoResultados) ultimosResultados = null;
             else if (BuscadorAbierto && modalBuscador) // solo cuenta como anunciado si de verdad se puede anunciar
             {
-                var actuales = Juntar(localesActuales, enEnlace ? null : direccionesActuales);
+                var actuales = Juntar(Juntar(localesActuales, callesAhora), direccionesAhora);
                 // Sin filas se anuncia lo que se ve ("No hay resultados", "Comprobando el enlace…" o el de no reconocido)
                 string vacio = actuales.Count == 0 ? buscador.SinResultados.text : null;
-                if (ultimosResultados == null || !MismosResultados(ultimosResultados, actuales) || vacio != ultimoVacio)
+                bool esperar = actuales.Count == 0 && buscando;
+                if (!esperar && (ultimosResultados == null || !MismosResultados(ultimosResultados, actuales) || vacio != ultimoVacio))
                     anuncio = vacio ?? AnuncioResultados(actuales.Count);
-                ultimosResultados = actuales;
-                ultimoVacio = vacio;
+                if (!esperar)
+                {
+                    ultimosResultados = actuales;
+                    ultimoVacio = vacio;
+                }
                 if (buscador.AvisoDireccionesVisible && !avisoAnunciado)
                 {
                     string aviso = Textos.T(ClavesTexto.BuscadorDireccionesSinConexion);
@@ -1014,6 +1082,7 @@ namespace PriceMap.UI
         {
             if (buscador == null || ModalUbicacionAbierta) return;
             direcciones?.Cancelar(); // con la categoría no se buscan direcciones
+            calles?.Cancelar();
             cercaActiva = true;
             categoriaActiva = categoria;
             AplicarCategoriaAlMapa();
@@ -1146,6 +1215,7 @@ namespace PriceMap.UI
         {
             if (buscador == null) return;
             direcciones?.Cancelar(); // una petición en curso no llega a pintarse
+            calles?.Cancelar();
             buscador.BorrarTexto();
             accesibilidad?.PedirFoco(buscador.Campo);
         }
@@ -2917,6 +2987,11 @@ namespace PriceMap.UI
                 direcciones.Cambiado -= AlCambiarDirecciones;
                 direcciones.Cancelar();
             }
+            if (calles != null)
+            {
+                calles.Cambiado -= AlCambiarCalles;
+                calles.Cancelar();
+            }
             AssistiveSupport.screenReaderStatusChanged -= AlCambiarLector;
             AccessibilitySettings.fontScaleChanged -= AlCambiarEscalaFuente;
             if (raiz != null) EscalaFuente.Olvidar(raiz);
@@ -2964,6 +3039,8 @@ namespace PriceMap.UI
         public ServicioCerca Cerca => servicioCerca;
         /// <summary>Buscador de direcciones que recibió al iniciarse (historia 2.3, parte 2); null sin él.</summary>
         public BuscadorDirecciones Direcciones => direcciones;
+        /// <summary>Buscador de calles guardadas que recibió al iniciarse (spec buscar-calles-guardadas); null sin él.</summary>
+        public BuscadorCalles Calles => calles;
         /// <summary>Píldora, menú y velo del filtro "Precios"; null sin interfaz o sin filtro.</summary>
         public PildoraPrecios Pildora => pildora;
         public MenuPrecios Menu => menu;

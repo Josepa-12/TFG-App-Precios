@@ -67,6 +67,8 @@ namespace PriceMap.Arranque
             // de las teselas guardadas (parte 2b); la captura usa la misma, con las teselas de Sanlúcar ya en disco
             var callesGuardadas = new RutasCallesGuardadas(Application.persistentDataPath,
                 mapa != null ? mapa.zoom : RutasCallesGuardadas.Zoom); // el zoom con el que el mapa guarda las teselas
+            // Calles del buscador (spec buscar-calles-guardadas): los nombres de esas mismas teselas, sin red
+            var calles = new BuscadorCalles(new BusquedaCallesGuardadas(Application.persistentDataPath, callesGuardadas.ZoomTeselas));
             var rutas = CapturaPruebas.SePide()
                 ? new ServicioRutas(CapturaPruebas.RutasFalsas(), null, Task.Delay, local: callesGuardadas)
                 : new ServicioRutas(new RutasValhalla(), new RutasOsrm(), Task.Delay, local: callesGuardadas);
@@ -77,7 +79,7 @@ namespace PriceMap.Arranque
             voz = new ServicioVoz(navegacion, CrearVoz(), preferencias);
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
-                    navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz))
+                    navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz, calles: calles))
             { enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
@@ -196,11 +198,13 @@ namespace PriceMap.Arranque
         /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
         /// <param name="pantallaSistema">Pantalla encendida mientras se navega (historia 2.7, parte 2b); sin él, se apaga sola.</param>
         /// <param name="voz">Indicaciones por voz (historia 2.8); sin él, no hay botón de voz.</param>
+        /// <param name="calles">Calles guardadas del buscador (spec buscar-calles-guardadas); sin él, no se buscan.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
-            ServicioNavegacion navegacion = null, IPantallaSistema pantallaSistema = null, ServicioVoz voz = null)
+            ServicioNavegacion navegacion = null, IPantallaSistema pantallaSistema = null, ServicioVoz voz = null,
+            BuscadorCalles calles = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -222,7 +226,7 @@ namespace PriceMap.Arranque
             // La pantalla no se apaga mientras se navega (historia 2.7, parte 2b; FR20)
             if (navegacion != null && pantallaSistema != null) _ = new PantallaEncendida(navegacion, pantallaSistema);
             pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca, geocodificador,
-                resolutorEnlaces, rutas, navegacion, voz);
+                resolutorEnlaces, rutas, navegacion, voz, calles);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

@@ -164,9 +164,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-abrir-en-la-ultima-ubicacion-conocida.md`
   summary: Probar en el móvil que la app se abre ya en la última ubicación del sistema (precisa y solo aproximada).
   evidence: En EditMode solo se lee el código Java; nada ejecuta `getLastKnownLocation`.
-- source_spec: none
-  summary: Buscar también en las calles de las teselas guardadas lo que Photon no encuentra («calle fariñas»).
-  evidence: Pedido por el usuario el 23/11/2026 como cambio aparte, tras comprobar que Photon no da esa calle de Sanlúcar.
 - source_spec: `_bmad-output/implementation-artifacts/spec-varias-rutas-la-mas-rapida.md`
   summary: Probar en el móvil las alternativas reales (Valhalla y OSRM): ninguna prueba ejecuta los constructores sin parámetros de los dos adaptadores.
   evidence: Revisión de la 5a (verification-gap): cambiar de sitio la URL y el cuerpo no rompería ninguna prueba; ya pasaba antes.
@@ -176,3 +173,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-como-llegar-elegir-ruta.md`
   summary: Probar «Cómo llegar» en un móvil (alternativas reales, desplazar las tarjetas, TalkBack, paso de Iniciar a navegar) y ver si las etiquetas de minutos se pisan o si bloquear el móvil justo tras «Iniciar» molesta.
   evidence: En el PC solo hay rutas falsas y sin TalkBack; si se bloquea en los 0,9 s de acercamiento, la navegación empieza al volver.
+- source_spec: `_bmad-output/implementation-artifacts/spec-buscar-calles-guardadas.md`
+  summary: Probar con un panel que las calles y direcciones que llegan tarde no mueven el desplazamiento de la lista del buscador, y probar la búsqueda de calles en el móvil (tiempo de la primera).
+  evidence: Revisión (verification gap). Ninguna prueba mira `Panel.scrollOffset`; el tiempo solo se ha medido en el PC (20 ms la primera búsqueda).

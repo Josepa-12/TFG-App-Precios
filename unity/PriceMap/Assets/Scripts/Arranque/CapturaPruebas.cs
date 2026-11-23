@@ -1798,6 +1798,7 @@ namespace PriceMap.Arranque
                 if (buscador.Campo.value != "" || buscador.MostrandoResultados) Debug.LogError("PriceMap: la X no ha vaciado la búsqueda.");
 
                 yield return Direcciones(buscador);
+                yield return CalleGuardada(buscador);
                 yield return DireccionFicha(buscador);
                 yield return Enlace(buscador);
                 yield return Compartido(buscador);
@@ -1837,8 +1838,10 @@ namespace PriceMap.Arranque
                 int primera = filas.ToList().FindIndex(f => f.Resultado.Tipo == TipoResultado.Direccion);
                 if (filas.Skip(primera).Any(f => f.Resultado.Tipo != TipoResultado.Direccion))
                     Debug.LogError("PriceMap: hay resultados locales detrás de las direcciones.");
-                if (direcciones.Count > BuscadorDirecciones.MaximoDirecciones)
-                    Debug.LogError($"PriceMap: {direcciones.Count} direcciones (máximo {BuscadorDirecciones.MaximoDirecciones}).");
+                if (buscador.DireccionesVisibles > BuscadorDirecciones.MaximoDirecciones)
+                    Debug.LogError($"PriceMap: {buscador.DireccionesVisibles} direcciones (máximo {BuscadorDirecciones.MaximoDirecciones}).");
+                if (direcciones.Count - buscador.DireccionesVisibles > ReglaCalles.MaximoCalles)
+                    Debug.LogError($"PriceMap: más de {ReglaCalles.MaximoCalles} calles guardadas.");
                 if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
                 yield return Capturar("busqueda-direccion");
                 yield return new WaitForSeconds(1f);
@@ -1851,6 +1854,61 @@ namespace PriceMap.Arranque
             pantalla.BorrarBusqueda();
             yield return null;
             if (pantalla.Direcciones.Pendiente) Debug.LogError("PriceMap: la X no ha cancelado la petición de direcciones.");
+        }
+
+        /// <summary>
+        /// Calles guardadas (spec buscar-calles-guardadas), capturas "busqueda-calle", "busqueda-calle-oscuro" y
+        /// "calle-ficha": «calle farinas 12» da «Calle Fariñas» de Sanlúcar, de las teselas en disco, conteste Photon o
+        /// no. Comprueba que elegirla abre su ficha en la calle, con los minutos.
+        /// </summary>
+        IEnumerator CalleGuardada(HojaBuscador buscador)
+        {
+            if (pantalla.Calles == null) { Debug.LogError("PriceMap: la pantalla no ha recibido el BuscadorCalles."); yield break; }
+            buscador.Abrir();
+            float inicio = Time.realtimeSinceStartup;
+            buscador.Campo.value = "calle farinas 12";
+            while (pantalla.Calles.Pendiente && Time.realtimeSinceStartup < inicio + 10f) yield return null;
+            float ms = (Time.realtimeSinceStartup - inicio) * 1000f;
+            float limite = Time.realtimeSinceStartup + 12f;
+            while (pantalla.Direcciones != null && pantalla.Direcciones.Pendiente && Time.realtimeSinceStartup < limite) yield return null;
+            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForEndOfFrame();
+            var fila = buscador.Filas.FirstOrDefault(f => f.Resultado.Tipo == TipoResultado.Direccion);
+            Debug.Log($"PriceMap: \"calle farinas 12\" ({ms:F0} ms): " +
+                      string.Join("; ", buscador.Filas.Take(5).Select(f => $"{f.Nombre.text} | {f.Detalle.text} | {f.Resultado.Posicion}")));
+            if (fila == null || fila.Nombre.text != "Calle Fariñas" || fila.Resultado.Direccion.Localidad != "Sanlúcar de Barrameda")
+                Debug.LogError("PriceMap: «calle farinas 12» no da la Calle Fariñas guardada en primer lugar.");
+            else
+            {
+                if (buscador.SinResultadosVisible || buscador.BuscarDireccionVisible)
+                    Debug.LogError("PriceMap: con una calle guardada se ve «No hay resultados».");
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                yield return Capturar("busqueda-calle");
+                yield return new WaitForSeconds(1f);
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return Capturar("busqueda-calle-oscuro");
+                yield return new WaitForSeconds(1f);
+                tema.Alternar();
+
+                var calle = fila.Resultado;
+                pantalla.ElegirResultado(calle);
+                yield return new WaitForSeconds(2f);
+                yield return new WaitForEndOfFrame();
+                var ficha = pantalla.Ficha;
+                if (pantalla.PuntoAbierto != calle.Posicion || ficha.Titulo.text != "Calle Fariñas" || ficha.Direccion.text != "Sanlúcar de Barrameda")
+                    Debug.LogError($"PriceMap: la ficha de la calle guardada no lleva sus datos (\"{ficha.Titulo.text}\", \"{ficha.Direccion.text}\").");
+                if (!ficha.AccionesVisibles || ficha.Acciones.Coche.Estado != EstadoTiempo.Minutos)
+                    Debug.LogError("PriceMap: la ficha de la calle guardada no enseña los minutos.");
+                ComprobarCentrado("La calle guardada", calle.Posicion);
+                yield return Capturar("calle-ficha");
+                yield return new WaitForSeconds(1f);
+                pantalla.CerrarFicha();
+                yield return new WaitForSeconds(0.5f);
+            }
+            pantalla.BorrarBusqueda();
+            yield return null;
+            if (pantalla.Calles.Pendiente) Debug.LogError("PriceMap: la X no ha cancelado la búsqueda de calles.");
         }
 
         /// <summary>
