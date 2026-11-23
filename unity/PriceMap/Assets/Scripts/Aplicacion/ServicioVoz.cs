@@ -6,7 +6,8 @@ namespace PriceMap.Aplicacion
     /// <summary>
     /// Indicaciones por voz al navegar (historia 2.8, parte 1; FR21). Escucha a ServicioNavegacion: al empezar una ruta
     /// crea la ReglaVoz de su modo de viaje; con cada estado nuevo (Actualizado) dice lo que la regla mande según el modo
-    /// de voz; al recalcular empieza de cero con la ruta nueva; al terminar calla. El modo (todo, lo importante o nada) se
+    /// de voz; al recalcular empieza de cero con la ruta nueva; al terminar calla. Al llegar
+    /// (historia 2.9), en todo y en lo importante, «Has llegado a &lt;destino&gt;» una vez, y ninguna maniobra más. El modo (todo, lo importante o nada) se
     /// guarda en IPreferencias con la clave "voz" (sin valor: todo). Se usa desde el hilo principal (la UI).
     /// </summary>
     public sealed class ServicioVoz
@@ -17,6 +18,7 @@ namespace PriceMap.Aplicacion
         readonly IVoz voz;
         readonly IPreferencias preferencias;
         readonly Func<DateTime> reloj;
+        readonly Func<string, string> textoLlegada;
         ReglaVoz regla; // null sin ruta
         DateTime calladaHasta = DateTime.MinValue; // tras Reanudar, hasta aquí solo se apunta (Sincronizar)
         bool reanudada; // Reanudar sin estado nuevo aún: el segundo empieza con el primero
@@ -28,8 +30,11 @@ namespace PriceMap.Aplicacion
         public event Action<ModoVoz> ModoCambiado;
 
         /// <param name="reloj">La hora de ahora (para el silencio de Reanudar); sin él, DateTime.UtcNow.</param>
-        public ServicioVoz(ServicioNavegacion navegacion, IVoz voz, IPreferencias preferencias, Func<DateTime> reloj = null)
+        /// <param name="textoLlegada">Lo que dice al llegar, con el destino (la app lo saca de Localization).</param>
+        public ServicioVoz(ServicioNavegacion navegacion, IVoz voz, IPreferencias preferencias, Func<DateTime> reloj = null,
+            Func<string, string> textoLlegada = null)
         {
+            this.textoLlegada = textoLlegada ?? (destino => "Has llegado a " + destino);
             this.reloj = reloj ?? (() => DateTime.UtcNow);
             this.navegacion = navegacion ?? throw new ArgumentNullException(nameof(navegacion));
             this.voz = voz ?? throw new ArgumentNullException(nameof(voz));
@@ -43,6 +48,7 @@ namespace PriceMap.Aplicacion
             };
             navegacion.Actualizado += AlActualizar;
             navegacion.RutaCambiada += () => regla?.Reiniciar();
+            navegacion.HaLlegado += AlLlegar;
             navegacion.RutaTerminada += _ => { regla = null; Callar(); };
         }
 
@@ -71,13 +77,27 @@ namespace PriceMap.Aplicacion
                 reanudada = false;
                 calladaHasta = reloj().AddSeconds(ParametrosNegocio.VozSilencioAlVolverSegundos);
             }
-            if (regla == null || !navegacion.Activa) return;
+            if (regla == null || !navegacion.Activa || navegacion.Llegado) return;
             // Fuera de la ruta la distancia sale de la ruta vieja: no se dice nada (tras el recálculo, de cero)
             if (navegacion.Estado == null || navegacion.Estado.FueraDeRuta) return;
             if (reloj() < calladaHasta) { regla.Sincronizar(navegacion.Estado); return; }
             string frase = regla.Avisar(navegacion.Estado, Modo);
-            if (string.IsNullOrWhiteSpace(frase)) return;
-            try { voz.Hablar(frase); }
+            Decir(() => frase);
+        }
+
+        // También al volver de una pausa (Reanudar): no es un aviso viejo, se acaba de saber que ha llegado
+        void AlLlegar(string destino)
+        {
+            if (Modo != ModoVoz.Nada) Decir(() => textoLlegada(destino));
+        }
+
+        void Decir(Func<string> texto)
+        {
+            try
+            {
+                string frase = texto();
+                if (!string.IsNullOrWhiteSpace(frase)) voz.Hablar(frase);
+            }
             catch (Exception) { /* la voz no debe parar la navegación */ }
         }
 

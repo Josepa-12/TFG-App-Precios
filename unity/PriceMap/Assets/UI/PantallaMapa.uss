@@ -1926,6 +1926,96 @@
     -unity-text-align: middle-center;
 }
 
+/* ───────── "Has llegado" (historia 2.9; maqueta B del 23/11/2026) ─────────
+   Arriba, la tarjeta de acciones (.tarjeta-maniobra) con la marca de hecho, "Has llegado" y el destino; abajo, la hoja
+   con "Finalizar ruta" en el acento y el aviso del cierre. Nada tiene alto fijo: crece con la fuente. */
+.tarjeta-llegada {
+    padding: var(--espacio-4);
+    flex-direction: row;
+    align-items: center;
+}
+
+.tarjeta-llegada__marca {
+    width: var(--llegada-marca);
+    height: var(--llegada-marca);
+    flex-shrink: 0;
+    margin-right: var(--espacio-3);
+    border-radius: var(--radio-llegada-marca);
+    background-color: var(--color-success);
+    color: var(--color-success-ink);
+}
+
+.tarjeta-llegada__textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.tarjeta-llegada__titulo {
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-tarjeta-maniobra-texto);
+}
+
+.tarjeta-llegada__destino {
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-tarjeta-maniobra-meta);
+}
+
+.hoja-llegada {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 20px var(--espacio-4);
+    background-color: var(--color-surface);
+    border-top-left-radius: var(--radio-sheet);
+    border-top-right-radius: var(--radio-sheet);
+    border-top-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-color: var(--color-border);
+    display: none;
+}
+
+.hoja-llegada__finalizar {
+    min-height: var(--llegada-boton-alto);
+    padding: var(--espacio-1) var(--espacio-4);
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radio-llegada-boton);
+    border-width: 2px;
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+}
+
+.hoja-llegada__finalizar:active {
+    opacity: 0.85;
+}
+
+/* Sobre el acento, el foco no se vería con su mismo color */
+.hoja-llegada__finalizar:focus {
+    border-color: var(--color-text);
+}
+
+.hoja-llegada__finalizar-texto {
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-accent-ink);
+    -unity-text-align: middle-center;
+}
+
+.hoja-llegada__aviso {
+    margin: var(--espacio-4) 0 0 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-muted);
+    -unity-text-align: middle-center;
+}
+
 /* ───────── «Cómo llegar» (parte 5b; maqueta A del 22/11/2026) ─────────
    Mientras se elige ruta (.eligiendo-ruta) no se ven la píldora ni las columnas de botones (la cápsula ya la oculta la
    ficha). La hoja va anclada abajo, con como mucho el 60 % del alto y la lista de rutas desplazable. */

@@ -1489,13 +1489,17 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void QuitarRuta_ConAtras()
+        public void AtrasNoQuitaLaRuta()
         {
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
             pantalla.Iniciar();
-            Assert.IsTrue(pantalla.Atras());
+            Assert.IsTrue(pantalla.Atras(), "Se gasta: la app no sale.");
+            Assert.IsTrue(pantalla.RutaActiva);
+            ComprobarControlesDeRuta(true);
+            Assert.IsNotNull(mapa.linea);
+            pantalla.QuitarRuta(); // «Finalizar ruta»
             Assert.IsFalse(pantalla.RutaActiva);
             ComprobarControlesDeRuta(false);
             Assert.IsNull(mapa.linea);

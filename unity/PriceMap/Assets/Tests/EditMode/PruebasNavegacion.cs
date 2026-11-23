@@ -864,12 +864,13 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Hoja_AtrasPlegada_QuitaLaRuta()
+        public void Hoja_AtrasPlegada_NoQuitaLaRuta()
         {
             IrAAreas();
-            Assert.IsTrue(pantalla.Atras());
-            Assert.IsFalse(pantalla.RutaActiva);
-            Assert.IsFalse(nav.Activa);
+            Assert.IsTrue(pantalla.Atras(), "Se gasta: la app no sale.");
+            Assert.IsTrue(pantalla.RutaActiva);
+            Assert.IsTrue(nav.Activa);
+            Assert.AreEqual(DisplayStyle.Flex, Abajo.style.display.value);
         }
 
         [Test]
@@ -909,7 +910,7 @@ namespace PriceMap.Tests.EditMode
         {
             IrAAreas();
             Abajo.Desplegar();
-            nav.Terminar(); // como la llegada (historia 2.9): el servicio termina la ruta
+            nav.Terminar();
             Assert.IsFalse(Abajo.Desplegada, "Se cierra plegada.");
             Assert.AreEqual("Quitar ruta", Abajo.TextoFinalizar.text, "Sin navegación, «Quitar ruta».");
             Abajo.Desplegar();
@@ -969,13 +970,13 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_TerminarConAtras()
+        public void Pantalla_AtrasNoTerminaLaRuta()
         {
             IrAAreas();
-            Assert.IsTrue(pantalla.Atras());
-            Assert.IsFalse(nav.Activa);
-            Assert.AreEqual(1, gps.Terminadas);
-            Assert.AreEqual("terminada Manual", eventos.Last());
+            for (int i = 0; i < 3; i++) Assert.IsTrue(pantalla.Atras());
+            Assert.IsTrue(nav.Activa);
+            Assert.AreEqual(0, gps.Terminadas);
+            Assert.IsFalse(eventos.Any(e => e.StartsWith("terminada")));
         }
 
         [Test]

@@ -300,6 +300,7 @@ namespace PriceMap.Arranque
             yield return NavegacionSigue();
             yield return NavegacionFlecha();
             yield return NavegacionVoz();
+            yield return Llegada();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -952,7 +953,7 @@ namespace PriceMap.Arranque
         /// Areas, Ir e Iniciar dibujan la ruta por las calles (RutasFalsas) y enseñan las dos tarjetas, con la cámara en el
         /// usuario. Comprueba que no se ven la píldora, el botón de tema ni la cápsula, y que el botón de ubicación queda
         /// encima de la tarjeta de abajo. La segunda reabre la ficha desde la
-        /// tarjeta, elige "A pie" e Ir. Al acabar, atrás quita la ruta; deja el tema y la preferencia como estaban.
+        /// tarjeta, elige "A pie" e Ir. Al acabar, atrás no quita la ruta y «Finalizar ruta» sí; deja el tema y la preferencia como estaban.
         /// </summary>
         IEnumerator Ruta()
         {
@@ -989,8 +990,11 @@ namespace PriceMap.Arranque
                 yield return new WaitForSeconds(1f);
                 pantalla.Atras();
                 yield return null;
-                Debug.Log($"PriceMap: tras el botón atrás, ruta activa {pantalla.RutaActiva}; cápsula visible {pantalla.Buscador.Visible}");
-                if (pantalla.RutaActiva || !pantalla.Buscador.Visible) Debug.LogError("PriceMap: el botón atrás no ha quitado la ruta.");
+                if (!pantalla.RutaActiva || !pantalla.TarjetasRutaVisibles) Debug.LogError("PriceMap: el botón atrás ha quitado la ruta.");
+                pantalla.QuitarRuta();
+                yield return null;
+                Debug.Log($"PriceMap: tras «Finalizar ruta», ruta activa {pantalla.RutaActiva}; cápsula visible {pantalla.Buscador.Visible}");
+                if (pantalla.RutaActiva || !pantalla.Buscador.Visible) Debug.LogError("PriceMap: «Finalizar ruta» no ha quitado la ruta.");
             }
             finally
             {
@@ -1067,8 +1071,8 @@ namespace PriceMap.Arranque
         /// Historia 2.7 (parte 1), captura "navegacion" (claro, coche): Ir a Clínica Areas desde la Plaza del Cabildo y la
         /// ubicación falsa pasa a la mitad de Calle Regina (entre sus puntos 3 y 4, 4 m a un lado). Comprueba que la línea
         /// empieza en la posición (el punto proyectado), que la tarjeta de arriba da la maniobra siguiente (Calle Santa
-        /// Ana) con su distancia ("En … m"), que la X dice "Terminar ruta" y que bajan los minutos. Al acabar, atrás
-        /// termina la ruta y la ubicación vuelve al Cabildo.
+        /// Ana) con su distancia ("En … m"), que el botón dice "Finalizar ruta" y que bajan los minutos. Al acabar,
+        /// se termina la ruta y la ubicación vuelve al Cabildo.
         /// </summary>
         IEnumerator Navegacion()
         {
@@ -1111,9 +1115,9 @@ namespace PriceMap.Arranque
                 if (!pantalla.Navegando) Debug.LogError("PriceMap: la pantalla no está navegando.");
                 yield return Capturar("navegacion");
                 yield return new WaitForSeconds(1f);
-                pantalla.Atras();
+                pantalla.QuitarRuta();
                 yield return null;
-                if (nav.Activa || pantalla.RutaActiva) Debug.LogError("PriceMap: el botón atrás no ha terminado la ruta.");
+                if (nav.Activa || pantalla.RutaActiva) Debug.LogError("PriceMap: «Finalizar ruta» no ha terminado la ruta.");
             }
             finally
             {
@@ -1277,7 +1281,7 @@ namespace PriceMap.Arranque
                 yield return null;
                 if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Siguiendo || boton.Icono != UI.Icono.Navegar)
                     Debug.LogError("PriceMap: «Volver a centrar» no vuelve a seguir.");
-                pantalla.Atras();
+                pantalla.QuitarRuta();
                 yield return null;
                 if (nav.Activa || pantalla.EstadoCamara != UI.EstadoSeguimiento.Apagado || boton.Icono != UI.Icono.Navegar)
                     Debug.LogError("PriceMap: al terminar la ruta la cámara y el botón no vuelven a lo de siempre.");
@@ -1304,7 +1308,7 @@ namespace PriceMap.Arranque
         /// coche, la ubicación falsa a la mitad de Calle Regina y la cámara siguiendo: la posición es la flecha hacia arriba,
         /// sin cono. Después la ubicación deja de dar lecturas: a los 10 s el disco se atenúa, sale la pastilla "Buscando
         /// señal GPS" bajo la tarjeta de arriba y TalkBack lo anuncia; al volver las lecturas se va con "Señal GPS
-        /// recuperada". Atrás termina la ruta y vuelve el círculo.
+        /// recuperada". Al terminar la ruta vuelve el círculo.
         /// </summary>
         IEnumerator NavegacionFlecha()
         {
@@ -1379,7 +1383,7 @@ namespace PriceMap.Arranque
                 yield return null;
                 if (nav.SinSenal || pastilla.Visible || marcador.Atenuado || !anuncios.Contains(Textos.T(ClavesTexto.SenalRecuperada)))
                     Debug.LogError("PriceMap: al volver la señal no se ha ido la pastilla o no se ha anunciado «Señal GPS recuperada».");
-                pantalla.Atras();
+                pantalla.QuitarRuta();
                 yield return null;
                 yield return null;
                 if (nav.Activa || marcador.FlechaVisible || marcador.Atenuado) Debug.LogError("PriceMap: al terminar la ruta no vuelve el círculo.");
@@ -1406,7 +1410,7 @@ namespace PriceMap.Arranque
         /// Historia 2.8, capturas "voz" y "voz-oscuro": Ir a Clínica Areas en coche y, navegando, tocar el botón de voz de la
         /// columna (encima de "Volver a centrar"): la fila de cristal con los tres modos sale a su derecha, con el elegido
         /// en el acento. Elegir "Solo las importantes" la cierra, cambia el icono del botón y lo anuncia; se deja el modo
-        /// como estaba. Atrás termina la ruta y el botón de voz se va.
+        /// como estaba. Al terminar la ruta el botón de voz se va.
         /// </summary>
         IEnumerator NavegacionVoz()
         {
@@ -1468,7 +1472,7 @@ namespace PriceMap.Arranque
                 if (fila.Abierta || pantalla.Voz.Modo != ModoVoz.Importante || boton.Icono != UI.Icono.VozImportante
                     || !anuncios.Contains(Textos.T(ClavesTexto.VozImportante)))
                     Debug.LogError("PriceMap: elegir «Solo las importantes» no cierra la fila, no cambia el icono o no se anuncia.");
-                pantalla.Atras();
+                pantalla.QuitarRuta();
                 yield return null;
                 if (pantalla.BotonVozVisible) Debug.LogError("PriceMap: al terminar la ruta sigue el botón de voz.");
             }
@@ -1490,6 +1494,124 @@ namespace PriceMap.Arranque
             camara.distancia = 900f;
             mapa.Centrar(PantallaMapa.VistaInicial);
             yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>
+        /// Historia 2.9, capturas "llegada" (claro) y "llegada-oscuro": Ir a Clínica Areas en coche y la ubicación falsa por
+        /// la última calle hasta menos de 30 m: en el sitio de la tarjeta de arriba, "Has llegado" con la marca y el destino;
+        /// abajo, solo "Finalizar ruta" y el aviso del cierre; sin línea ni botón de voz y con la cámara siguiendo. Atrás no
+        /// la termina y "Finalizar ruta" sí, con motivo Llegada. También mide la tarjeta y la hoja con la fuente al 200 %.
+        /// </summary>
+        IEnumerator Llegada()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            var camara = FindFirstObjectByType<CamaraMapa>();
+            if (lugar == null || pantalla.Navegacion == null || pantalla.HojaLlegada == null || ubicacionCaptura == null || camara == null)
+            { Debug.LogError("PriceMap: no se puede capturar la llegada."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            pantalla.Rutas.VaciarCache();
+            var anuncios = new List<string>();
+            void Anotar(string t) => anuncios.Add(t);
+            var motivos = new List<MotivoFinRuta>();
+            void AnotarMotivo(MotivoFinRuta m) => motivos.Add(m);
+            AccesibilidadPantalla.AnuncioPedido += Anotar;
+            pantalla.Navegacion.RutaTerminada += AnotarMotivo;
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.Tocar(ModoViaje.Coche);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarRuta();
+                var nav = pantalla.Navegacion;
+                if (!nav.Activa) { Debug.LogError("PriceMap: Ir no ha empezado la navegación."); yield break; }
+                var a = CalleCoche[12];
+                var b = CalleCoche[13];
+                Coordenada Entre(double t) => new Coordenada(a.Latitud + (b.Latitud - a.Latitud) * t, a.Longitud + (b.Longitud - a.Longitud) * t);
+                ubicacionCaptura.Mover(Entre(0.1));
+                yield return new WaitForSeconds(2.5f);
+                if (nav.Llegado) Debug.LogError("PriceMap: a más de 30 m ya ha llegado.");
+                anuncios.Clear();
+                ubicacionCaptura.Mover(Entre(0.6));
+                yield return new WaitForSeconds(3f); // la transición de la cámara
+                yield return new WaitForEndOfFrame();
+                ComprobarLlegada("claro", anuncios);
+                yield return Capturar("llegada");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return new WaitForEndOfFrame();
+                ComprobarLlegada("oscuro", null);
+                yield return Capturar("llegada-oscuro");
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+
+                // Fuente al 200 %: nada se corta
+                EscalaFuente.Forzada = () => 2f;
+                EscalaFuente.Aplicar(pantalla.HojaLlegada, 2f);
+                EscalaFuente.Aplicar(pantalla.TarjetaLlegada, 2f);
+                yield return null;
+                yield return new WaitForEndOfFrame();
+                ComprobarLlegada("200 %", null);
+                EscalaFuente.Forzada = null;
+                EscalaFuente.Aplicar(pantalla.HojaLlegada, EscalaFuente.Sistema);
+                EscalaFuente.Aplicar(pantalla.TarjetaLlegada, EscalaFuente.Sistema);
+                yield return null;
+
+                pantalla.Atras();
+                yield return null;
+                if (!pantalla.LlegadaVisible) Debug.LogError("PriceMap: atrás ha quitado «Has llegado».");
+                pantalla.HojaLlegada.PulsarFinalizar();
+                yield return null;
+                Debug.Log($"PriceMap: tras «Finalizar ruta» en el destino: motivos {string.Join(", ", motivos)}; ruta activa {pantalla.RutaActiva}; cápsula visible {pantalla.Buscador.Visible}");
+                if (nav.Activa || pantalla.RutaActiva || !pantalla.Buscador.Visible || motivos.LastOrDefault() != MotivoFinRuta.Llegada)
+                    Debug.LogError("PriceMap: «Finalizar ruta» en el destino no ha terminado la ruta con motivo Llegada.");
+            }
+            finally
+            {
+                AccesibilidadPantalla.AnuncioPedido -= Anotar;
+                pantalla.Navegacion.RutaTerminada -= AnotarMotivo;
+                EscalaFuente.Forzada = null;
+                ubicacionCaptura.Mover(PantallaMapa.VistaInicial);
+                pantalla.QuitarRuta();
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            camara.inclinacion = 50f;
+            camara.giro = -15f;
+            camara.distancia = 900f;
+            mapa.Centrar(PantallaMapa.VistaInicial);
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>"Has llegado" a la vista en su sitio, con sus textos enteros y sin las tarjetas de navegar; Debug.LogError si no.</summary>
+        void ComprobarLlegada(string caso, List<string> anuncios)
+        {
+            var arriba = pantalla.TarjetaLlegada;
+            var hoja = pantalla.HojaLlegada;
+            var ubic = pantalla.BotonUbicacion?.worldBound;
+            Debug.Log($"PriceMap: llegada ({caso}): \"{arriba.Titulo.text}\" / \"{arriba.Destino.text}\" {arriba.worldBound} (marca {arriba.Marca.worldBound}); " +
+                      $"hoja {hoja.worldBound}: \"{hoja.TextoFinalizar.text}\" {hoja.Finalizar.worldBound}, \"{hoja.Aviso.text}\" {hoja.Aviso.worldBound}; " +
+                      $"ubicación {ubic}; cámara {pantalla.EstadoCamara}; TalkBack: {string.Join(" | ", pantalla.Accesibilidad.Recorrido())}" +
+                      (anuncios != null ? $"; anuncios: {string.Join(" | ", anuncios)}" : ""));
+            if (!pantalla.LlegadaVisible || arriba.resolvedStyle.display == DisplayStyle.None || hoja.resolvedStyle.display == DisplayStyle.None)
+            { Debug.LogError($"PriceMap: no se ve «Has llegado» ({caso})."); return; }
+            if (pantalla.TarjetaManiobra.resolvedStyle.display != DisplayStyle.None || pantalla.TarjetaRuta.resolvedStyle.display != DisplayStyle.None)
+                Debug.LogError($"PriceMap: con «Has llegado» ({caso}) siguen las tarjetas de navegar.");
+            if (pantalla.BotonVozVisible) Debug.LogError($"PriceMap: con «Has llegado» ({caso}) sigue el botón de voz.");
+            if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Siguiendo) Debug.LogError($"PriceMap: al llegar ({caso}) la cámara ha dejado de seguir.");
+            if (hoja.Finalizar.worldBound.height < 51.5f) Debug.LogError($"PriceMap: «Finalizar ruta» ({caso}) mide menos de 52 dp de alto.");
+            if (ubic.HasValue && ubic.Value.yMax > hoja.worldBound.yMin) Debug.LogError($"PriceMap: el botón de ubicación ({caso}) queda debajo de la hoja.");
+            foreach (var (texto, contenedor) in new[] { (arriba.Titulo, (VisualElement)arriba), (arriba.Destino, arriba), (hoja.TextoFinalizar, hoja.Finalizar), (hoja.Aviso, hoja) })
+            {
+                var t = texto.worldBound;
+                var c = contenedor.worldBound;
+                if (t.xMin < c.xMin - 0.5f || t.xMax > c.xMax + 0.5f || t.yMin < c.yMin - 0.5f || t.yMax > c.yMax + 0.5f)
+                    Debug.LogError($"PriceMap: «{texto.text}» ({caso}) se sale de su sitio: {t} en {c}.");
+            }
+            if (anuncios != null && anuncios.Count(x => x == Textos.T(ClavesTexto.LlegadaAnuncio, arriba.Destino.text)) != 1)
+                Debug.LogError("PriceMap: TalkBack no anuncia la llegada una vez.");
         }
 
         // Ir ya pulsado: hasta que llegan las rutas de «Cómo llegar» (o el fallo), «Iniciar» de la primera y hasta que la

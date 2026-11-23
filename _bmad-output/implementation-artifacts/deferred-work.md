@@ -176,3 +176,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-buscar-calles-guardadas.md`
   summary: Probar con un panel que las calles y direcciones que llegan tarde no mueven el desplazamiento de la lista del buscador, y probar la búsqueda de calles en el móvil (tiempo de la primera).
   evidence: Revisión (verification gap). Ninguna prueba mira `Panel.scrollOffset`; el tiempo solo se ha medido en el PC (20 ms la primera búsqueda).
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-llegar-y-terminar-la-ruta.md`
+  summary: Probar con la pantalla en un panel que los marcadores y puntos no se dibujan debajo de las tarjetas de la ruta ni de «Has llegado» (`ZonasOcupadas`).
+  evidence: Revisión de la 2.9 (verification gap). Ninguna prueba mira `ZonasOcupadas`; quitar `Ocupar` de esas tarjetas no rompe nada.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-9-llegar-y-terminar-la-ruta.md`
+  summary: En el móvil: llegada real, cierre al minuto (también bloqueado) y que la notificación desaparezca.
+  evidence: En el PC la posición es falsa y no hay notificación; si Android pausara Unity, el minuto se cerraría al volver.

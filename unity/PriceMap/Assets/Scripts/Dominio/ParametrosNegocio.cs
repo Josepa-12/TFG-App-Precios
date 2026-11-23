@@ -89,6 +89,12 @@ namespace PriceMap.Dominio
         /// <summary>Metros que un tramo lejano por delante tiene que estar más cerca que el cercano para saltar a él.</summary>
         public const double NavegacionEmpateMetros = 15.0;
 
+        // Llegar (historia 2.9; decisiones del 23/11/2026)
+        /// <summary>Metros en línea recta al destino, o al final de la línea de la ruta, hasta los que se ha llegado.</summary>
+        public const double LlegadaMetros = 30.0;
+        /// <summary>Segundos desde la llegada en que la ruta se cierra sola.</summary>
+        public const double LlegadaCierreSegundos = 60.0;
+
         // La cámara sigue al usuario (historia 2.7, parte 2b; decisiones del 21 y 22/11/2026)
         /// <summary>Metros mínimos entre dos posiciones para sacar de ellas el rumbo de la marcha.</summary>
         public const double RumboDistanciaMinimaMetros = 3.0;

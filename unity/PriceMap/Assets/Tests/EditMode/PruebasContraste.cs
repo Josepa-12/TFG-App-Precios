@@ -138,6 +138,30 @@ namespace PriceMap.Tests.EditMode
         }
 
         /// <summary>
+        /// "Has llegado" (historia 2.9): el título y el destino sobre la tarjeta de arriba (los de la de maniobras, encima
+        /// de cualquier color del mapa, en LaRutaCumpleElContraste), la marca sobre su círculo, "Finalizar ruta" sobre el
+        /// acento y el aviso sobre surface (≥ 4,5:1).
+        /// </summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void LaLlegadaCumpleElContraste(bool oscuro)
+        {
+            var c = Tema(oscuro);
+            Assert.GreaterOrEqual(Contraste(c["success-ink"], c["success"]), 4.5f, "marca de hecho sobre su círculo");
+            Assert.GreaterOrEqual(Contraste(c["accent-ink"], c["accent"]), 4.5f, "«Finalizar ruta» sobre el acento");
+            Assert.GreaterOrEqual(Contraste(c["muted"], c["surface"]), 4.5f, "aviso del cierre");
+            var uss = File.ReadAllText(Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            string Bloque(string selector) => Regex.Match(uss, Regex.Escape(selector) + @"\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            StringAssert.Contains("background-color: var(--color-success);", Bloque(".tarjeta-llegada__marca"));
+            StringAssert.Contains("color: var(--color-success-ink);", Bloque(".tarjeta-llegada__marca"));
+            StringAssert.Contains("color: var(--color-tarjeta-maniobra-texto);", Bloque(".tarjeta-llegada__titulo"));
+            StringAssert.Contains("color: var(--color-tarjeta-maniobra-meta);", Bloque(".tarjeta-llegada__destino"));
+            StringAssert.Contains("background-color: var(--color-accent);", Bloque(".hoja-llegada__finalizar"));
+            StringAssert.Contains("color: var(--color-accent-ink);", Bloque(".hoja-llegada__finalizar-texto"));
+            StringAssert.Contains("color: var(--color-muted);", Bloque(".hoja-llegada__aviso"));
+        }
+
+        /// <summary>
         /// Ruta aproximada (historia 2.6, parte 2b; colores del 21/11/2026): la línea se distingue (≥ 3:1) de las calles y
         /// del fondo por su relleno o por su borde (en claro el relleno es suave y lo marca el borde; en oscuro, al revés),
         /// es distinta de la ruta normal, y el toast (fondo text, texto bg) se lee (≥ 4,5:1) y destaca sobre el mapa.

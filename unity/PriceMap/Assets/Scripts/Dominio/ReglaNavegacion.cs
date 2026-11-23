@@ -114,6 +114,17 @@ namespace PriceMap.Dominio
             return Estado(mejor.punto, mejor.tramo, mejor.avance, mejor.distancia);
         }
 
+        /// <summary>
+        /// Ha llegado (historia 2.9): a LlegadaMetros o menos, en línea recta, del destino o del final de la línea (un
+        /// destino apartado de la calle).
+        /// </summary>
+        public bool HaLlegado(Coordenada posicion, Coordenada destino)
+        {
+            if (posicion.DistanciaMetros(destino) <= ParametrosNegocio.LlegadaMetros) return true;
+            var p = Ruta.Puntos;
+            return p.Count > 0 && posicion.DistanciaMetros(p[p.Count - 1]) <= ParametrosNegocio.LlegadaMetros;
+        }
+
         /// <summary>Lo que queda de línea: el punto proyectado y los puntos de la ruta por delante de él.</summary>
         public IReadOnlyList<Coordenada> PuntosRestantes(EstadoNavegacion estado)
         {

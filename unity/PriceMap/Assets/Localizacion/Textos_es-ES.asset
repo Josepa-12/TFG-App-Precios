@@ -845,6 +845,22 @@ MonoBehaviour:
     m_Localized: '{0}, seleccionada'
     m_Metadata:
       m_Items: []
+  - m_Id: 2259729068843008
+    m_Localized: Has llegado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2259729094008832
+    m_Localized: Has llegado a {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2259729094008833
+    m_Localized: "La ruta se cerrar\xE1 en 1 minuto"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2259729094008834
+    m_Localized: "Has llegado a {0}. La ruta se cerrar\xE1 en un minuto."
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds: []

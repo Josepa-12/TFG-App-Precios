@@ -835,6 +835,22 @@ MonoBehaviour:
     m_Key: comollegar.elegida
     m_Metadata:
       m_Items: []
+  - m_Id: 2259729068843008
+    m_Key: llegada.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2259729094008832
+    m_Key: llegada.a
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2259729094008833
+    m_Key: llegada.cierre
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2259729094008834
+    m_Key: llegada.anuncio
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

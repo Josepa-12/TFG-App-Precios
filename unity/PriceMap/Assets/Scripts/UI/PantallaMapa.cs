@@ -67,6 +67,11 @@ namespace PriceMap.UI
         TarjetaManiobra tarjetaManiobra;
         TarjetaRuta tarjetaRuta;
         Toast toast;                         // avisos breves (parte 2b: bajo la tarjeta de la ruta)
+        TarjetaLlegada tarjetaLlegada;       // "Has llegado", en el sitio de la de maniobras (historia 2.9)
+        HojaLlegada hojaLlegada;             // "Finalizar ruta" y el aviso del cierre, en el sitio de la de la ruta
+        string anuncioLlegada;               // lo que falta por anunciar de la llegada (al llevar el foco); null si nada
+        bool vistoEnLinea;                   // el último punto del rumbo de la marcha era el proyectado en la línea
+        bool empezandoNavegacion;            // dentro de EmpezarNavegacion: la vista aún no está puesta
         PastillaSenal pastillaSenal;         // "Buscando señal GPS" bajo la tarjeta de arriba (historia 2.7, parte 2c)
         bool rutaActiva;                       // Iniciar pulsado y la ruta sin quitar (con tarjetas o con la ficha reabierta)
         Ruta rutaDibujada;                     // la ruta activa; null sin ella
@@ -266,6 +271,7 @@ namespace PriceMap.UI
                 this.navegacion.RecalculoFallido += AlFallarRecalculo;
                 this.navegacion.RutaTerminada += AlTerminarNavegacion;
                 this.navegacion.SenalCambiada += AlCambiarSenal;
+                this.navegacion.HaLlegado += AlLlegar;
             }
             else this.navegacion = null;
 
@@ -470,7 +476,8 @@ namespace PriceMap.UI
             if (!AvisoAbierto) return;
             aviso.Mostrar(false);
             accesibilidad.Modal = false; // reconstruye: vuelven los botones y los marcadores
-            if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
+            if (LlegadaVisible) EnfocarLlegada(); // ha llegado con el aviso delante
+            else if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
         }
 
         /// <summary>Muestra la explicación (modal) y guarda que ya salió.</summary>
@@ -501,7 +508,8 @@ namespace PriceMap.UI
             if (!ExplicacionAbierta) return;
             explicacion.Mostrar(false);
             accesibilidad.Modal = false; // reconstruye: vuelven los botones y los marcadores
-            if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
+            if (LlegadaVisible) EnfocarLlegada();
+            else if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
         }
 
         /// <summary>True con la ficha de un lugar a la vista.</summary>
@@ -1915,7 +1923,7 @@ namespace PriceMap.UI
         // La línea de la ruta activa: navegando, lo que queda
         void DibujarRutaActiva()
         {
-            if (!rutaActiva || rutaDibujada == null) return;
+            if (!rutaActiva || rutaDibujada == null || HaLlegado) return; // al llegar, la línea se quitó
             var estado = Navegando ? navegacion.Estado : null;
             mapa.MostrarRuta(estado != null ? navegacion.Regla.PuntosRestantes(estado) : rutaDibujada.Puntos, rutaDibujada.Aproximada);
         }
@@ -1939,7 +1947,7 @@ namespace PriceMap.UI
         {
             if (!EligiendoRuta || opciones == null || indice < 0 || indice >= opciones.Count || !ficha.Posicion.HasValue) return;
             var ruta = opciones[indice];
-            TerminarNavegacion();
+            TerminarNavegacion(porOtraRuta: true);
             destinoRuta = ficha.Posicion.Value;
             modoRuta = modoOpciones;
             lugarRuta = ficha.Lugar;
@@ -1973,14 +1981,20 @@ namespace PriceMap.UI
         {
             EmpezarNavegacion(rutaDibujada);
             ActualizarVistaRuta();
-            if (!TarjetasRutaVisibles) return; // se ha abierto una ficha mientras llegaba
+            if (!RutaALaVista) { AnunciarLlegada(); return; } // se ha abierto una ficha mientras llegaba
             accesibilidad.Reconstruir(); // entran las tarjetas
             EnsenarRuta();
         }
 
-        // La ruta empieza con las tarjetas a la vista: el foco en la de arriba y, aproximada (sin conexión), su toast
+        // La ruta empieza con las tarjetas a la vista: el foco en la de arriba y, aproximada (sin conexión), su toast. Si ya
+        // estaba en el destino, el foco y el anuncio de la llegada (si no los ha puesto ya CerrarFicha)
         void EnsenarRuta()
         {
+            if (HaLlegado)
+            {
+                if (anuncioLlegada != null) EnfocarLlegada();
+                return;
+            }
             accesibilidad.RefrescarEtiqueta(tarjetaManiobra);
             accesibilidad.RefrescarEtiqueta(tarjetaRuta.Cuerpo);
             accesibilidad.PedirFoco(tarjetaManiobra);
@@ -2004,10 +2018,14 @@ namespace PriceMap.UI
         /// <summary>Separación (dp) entre la tarjeta de arriba y la pastilla "Buscando señal GPS", y entre esta y el toast (--espacio-2).</summary>
         const float EspacioBajoPastillaDp = 8f;
 
+        /// <summary>La tarjeta de arriba y la hoja de abajo de la ruta: las de navegar o, al llegar, las de "Has llegado".</summary>
+        VisualElement TarjetaArriba => HaLlegado ? (VisualElement)tarjetaLlegada : tarjetaManiobra;
+        VisualElement HojaAbajo => HaLlegado ? (VisualElement)hojaLlegada : tarjetaRuta;
+
         /// <summary>Borde de abajo (dp) de la tarjeta de arriba (sin medida, el de los 16 + 120 dp supuestos).</summary>
         float AbajoTarjetaManiobra()
         {
-            var l = tarjetaManiobra.layout;
+            var l = TarjetaArriba.layout;
             return !float.IsNaN(l.yMax) && l.height > 0f ? l.yMax : 16f + AltoSupuestoTarjetaManiobraDp;
         }
 
@@ -2065,16 +2083,22 @@ namespace PriceMap.UI
             avanceDibujado = double.NaN;
             rutaRecortada = null;
             rumboMarcha.Reiniciar();
-            navegacion.Empezar(ruta, destinoRuta.Value, nombreRuta, modoRuta); // la cámara ya sigue (IniciarRuta)
+            anuncioLlegada = null;
+            vistoEnLinea = false;
+            empezandoNavegacion = true;
+            try { navegacion.Empezar(ruta, destinoRuta.Value, nombreRuta, modoRuta); } // la cámara ya sigue (IniciarRuta)
+            finally { empezandoNavegacion = false; }
             ActualizarBotonUbicacion();
             ActualizarBotonVoz();
             ActualizarBotonFinalizar();
         }
 
-        void TerminarNavegacion()
+        // Con «Iniciar» de otra ruta, Manual aunque ya hubiera llegado; con «Finalizar ruta», Llegada si había llegado
+        void TerminarNavegacion(bool porOtraRuta)
         {
             if (navegacion == null || !navegacion.Activa) return;
-            navegacion.Terminar(MotivoFinRuta.Manual); // la cámara la suelta AlTerminarNavegacion
+            if (porOtraRuta) navegacion.Terminar(MotivoFinRuta.Manual); // la cámara la suelta AlTerminarNavegacion
+            else navegacion.Finalizar();
             rutaRecortada = null;
             ActualizarBotonFinalizar();
         }
@@ -2147,8 +2171,9 @@ namespace PriceMap.UI
         public bool HojaRutaDesplegada => tarjetaRuta != null && tarjetaRuta.Desplegada;
 
         /// <summary>
-        /// La navegación ha terminado (X, atrás, otra ruta o el servicio): la cámara deja de seguir y se queda donde está,
-        /// y el botón de ubicación vuelve a su icono y a lo de siempre.
+        /// La navegación ha terminado («Finalizar ruta», otra ruta o el servicio): la cámara deja de seguir y se queda donde
+        /// está, y el botón de ubicación vuelve a su icono y a lo de siempre. Si se ha cerrado sola al minuto de llegar, se
+        /// quita la ruta: el mapa normal.
         /// </summary>
         void AlTerminarNavegacion(MotivoFinRuta motivo)
         {
@@ -2158,15 +2183,84 @@ namespace PriceMap.UI
                 ActualizarBotonVoz(); // fuera el botón de voz y su fila
                 tarjetaRuta?.Plegar(porUsuario: false); // la hoja se cierra plegada con la ruta
                 ActualizarBotonFinalizar();
-                if (seguimiento.Estado == EstadoSeguimiento.Apagado) return;
-                seguimiento.Terminar();
-                mapa.DejarDeSeguir();
-                ActualizarBotonUbicacion();
+                anuncioLlegada = null;
+                if (seguimiento.Estado != EstadoSeguimiento.Apagado)
+                {
+                    seguimiento.Terminar();
+                    mapa.DejarDeSeguir();
+                    ActualizarBotonUbicacion();
+                }
+                if (motivo == MotivoFinRuta.Automatico) QuitarRuta();
             }
             catch (Exception e)
             {
                 Debug.LogException(e);
             }
+        }
+
+        // ───────────────────────── Llegar (historia 2.9) ─────────────────────────
+
+        /// <summary>Se ha llegado al destino y la ruta no ha terminado: "Has llegado" (debajo de la ficha, si hay una abierta).</summary>
+        public bool HaLlegado => Navegando && navegacion.Llegado;
+
+        /// <summary>Se ven la tarjeta "Has llegado" y su hoja (no con una ficha o «Cómo llegar» abiertas).</summary>
+        public bool LlegadaVisible => RutaALaVista && HaLlegado;
+
+        /// <summary>Tarjeta "Has llegado" (arriba) y su hoja (abajo); null sin interfaz o sin servicio de rutas.</summary>
+        public TarjetaLlegada TarjetaLlegada => tarjetaLlegada;
+        public HojaLlegada HojaLlegada => hojaLlegada;
+
+        /// <summary>
+        /// Se llega al destino: fuera la línea y las tarjetas de navegar, y en su sitio "Has llegado" y la hoja con
+        /// «Finalizar ruta», con el foco y el anuncio de TalkBack. Una ficha o «Cómo llegar» abiertas se quedan (solo el
+        /// anuncio); al cerrarlas sale "Has llegado". La cámara sigue como estaba.
+        /// </summary>
+        void AlLlegar(string destino)
+        {
+            try
+            {
+                if (!Navegando) return;
+                Debug.Log($"PriceMap: ha llegado a {destino}; la ruta se cierra sola en {ParametrosNegocio.LlegadaCierreSegundos:F0} s.");
+                toast?.Ocultar();
+                pastillaSenal?.Ocultar();
+                tarjetaRuta.Plegar(porUsuario: false);
+                if (!EligiendoRuta) mapa.QuitarRuta(); // si no, la línea es la de la elegida en «Cómo llegar»
+                // En coche y en la ruta, del punto proyectado se pasa al real: ese salto no es un rumbo
+                if (vistoEnLinea) rumboMarcha.Reiniciar();
+                tarjetaLlegada.Poner(destino);
+                anuncioLlegada = Textos.T(ClavesTexto.LlegadaAnuncio, destino);
+                if (empezandoNavegacion) return; // ya estaba allí: la vista y el foco los ponen al acabar de empezar
+                ActualizarVistaRuta();
+                accesibilidad.Reconstruir();
+                if (LlegadaVisible && !ModalUbicacionAbierta) EnfocarLlegada();
+                else // con una ventana delante se anuncia ya; el foco, al cerrarla
+                {
+                    accesibilidad.RecuperarFoco();
+                    AnunciarLlegada();
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
+        }
+
+        // TalkBack a «Finalizar ruta» y, la primera vez, el anuncio de la llegada detrás (así no lo corta). Con una ventana
+        // de ubicación delante, al cerrarla
+        void EnfocarLlegada()
+        {
+            if (ModalUbicacionAbierta) return;
+            var anuncio = anuncioLlegada;
+            anuncioLlegada = null;
+            accesibilidad.PedirFoco(hojaLlegada.Finalizar, anuncio: anuncio);
+        }
+
+        // Con algo encima (ficha, «Cómo llegar» o ventana): solo el anuncio, si falta
+        void AnunciarLlegada()
+        {
+            if (anuncioLlegada == null) return;
+            AccesibilidadPantalla.Anunciar(anuncioLlegada);
+            anuncioLlegada = null;
         }
 
         // ───────────────────────── Indicaciones por voz (historia 2.8) ─────────────────────────
@@ -2250,7 +2344,7 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Punto de posición que se ve al navegar: en coche y a ≤ 40 m de la ruta, el proyectado sobre la línea; fuera de
-        /// ruta o a pie, la posición real. Sin navegación, la posición real (null sin ella).
+        /// ruta, a pie o ya en el destino, la posición real. Sin navegación, la posición real (null sin ella).
         /// </summary>
         public Coordenada? PosicionMostrada
         {
@@ -2260,10 +2354,14 @@ namespace PriceMap.UI
                 if (!Navegando) return real;
                 var estado = navegacion.Estado;
                 if (estado == null) return real;
-                if (navegacion.Modo == ModoViaje.Coche && !estado.FueraDeRuta) return estado.Proyectado;
+                if (VaEnLinea) return estado.Proyectado;
                 return real ?? estado.Proyectado;
             }
         }
+
+        // El punto que se ve es el proyectado sobre la línea
+        bool VaEnLinea => Navegando && navegacion.Modo == ModoViaje.Coche && !navegacion.Llegado
+            && navegacion.Estado != null && !navegacion.Estado.FueraDeRuta;
 
         /// <summary>
         /// Rumbo que va arriba al seguir: a pie la brújula; en coche (o sin brújula) el de la marcha; sin él aún, el de la
@@ -2294,7 +2392,7 @@ namespace PriceMap.UI
         public PuntoPantalla PuntoSeguir()
         {
             float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala > 0f ? ultimaEscala : 1f;
-            var zona = ZonaEncuadre(Screen.width, Screen.height, escala, BordeDp(tarjetaManiobra, abajo: true), BordeDp(tarjetaRuta, abajo: false));
+            var zona = ZonaEncuadre(Screen.width, Screen.height, escala, BordeDp(TarjetaArriba, abajo: true), BordeDp(HojaAbajo, abajo: false));
             return new PuntoPantalla((zona.Izquierda + zona.Derecha) / 2f,
                 zona.Arriba + (zona.Abajo - zona.Arriba) * ParametrosNegocio.CamaraSeguirAlturaZona, 1f);
         }
@@ -2362,7 +2460,7 @@ namespace PriceMap.UI
             accesibilidad?.RefrescarEtiqueta(botonUbicacion);
         }
 
-        /// <summary>Se está siguiendo la ruta (la X dice "Terminar ruta").</summary>
+        /// <summary>Hay una navegación en marcha, también ya en el destino hasta que termina (HaLlegado).</summary>
         public bool Navegando => navegacion != null && navegacion.Activa && rutaActiva;
 
         /// <summary>Servicio de navegación que recibió al iniciarse (historia 2.7); null sin él.</summary>
@@ -2370,7 +2468,8 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Posición nueva en la ruta: la línea desde el punto proyectado (solo si ha avanzado), la maniobra siguiente con
-        /// su distancia y lo que queda. TalkBack anuncia la maniobra solo cuando cambia, no a cada metro.
+        /// su distancia y lo que queda. TalkBack anuncia la maniobra solo cuando cambia, no a cada metro. Ya en el destino,
+        /// solo la cámara.
         /// </summary>
         void AlNavegar()
         {
@@ -2380,6 +2479,7 @@ namespace PriceMap.UI
                 var estado = navegacion.Estado;
                 var ruta = navegacion.Ruta;
                 if (estado == null || ruta == null) return;
+                if (navegacion.Llegado) { SeguirPosicion(); return; }
                 rutaDibujada = ruta;
                 // Con «Cómo llegar» abierta se ven las líneas de sus rutas (al cerrarla vuelve esta)
                 if (!EligiendoRuta && (!ReferenceEquals(rutaRecortada, ruta) || estado.Avance != avanceDibujado))
@@ -2400,16 +2500,22 @@ namespace PriceMap.UI
                     // La primera la lee el foco al empezar; las siguientes, una vez al cambiar (con las tarjetas a la vista)
                     if (!primera && TarjetasRutaVisibles) AccesibilidadPantalla.Anunciar(tarjetaManiobra.AnuncioConDistancia);
                 }
-                // La cámara (parte 2b): rumbo de la marcha con el punto que se ve (en coche y en ruta, el proyectado, que
-                // nunca retrocede: el ruido del GPS parado no la gira) y, si sigue, recolocada sin saltos
-                var visto = PosicionMostrada;
-                if (visto.HasValue) rumboMarcha.Nueva(visto.Value);
-                SeguirCamara();
+                SeguirPosicion();
             }
             catch (Exception e)
             {
                 Debug.LogException(e); // puede llegar desde el recálculo, una tarea que nadie espera
             }
+        }
+
+        // La cámara (parte 2b): rumbo de la marcha con el punto que se ve (en coche y en ruta, el proyectado, que nunca
+        // retrocede: el ruido del GPS parado no la gira) y, si sigue, recolocada sin saltos
+        void SeguirPosicion()
+        {
+            var visto = PosicionMostrada;
+            vistoEnLinea = VaEnLinea;
+            if (visto.HasValue) rumboMarcha.Nueva(visto.Value);
+            SeguirCamara();
         }
 
         /// <summary>
@@ -2450,13 +2556,14 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Quitar ruta («Finalizar ruta» de la hoja desplegada o atrás con ella plegada): fuera la línea y las tarjetas; vuelven la píldora, los botones y la cápsula, y el
-        /// foco de TalkBack va a la cápsula.
+        /// Quitar ruta («Finalizar ruta» de la hoja desplegada o de "Has llegado", o el cierre al minuto de llegar): fuera la
+        /// línea y las tarjetas; vuelven la píldora, los botones y la cápsula, y el foco de TalkBack va a la cápsula. Una
+        /// ficha o «Cómo llegar» abiertas se quedan, con el foco donde estaba.
         /// </summary>
         public void QuitarRuta()
         {
             if (!rutaActiva) return;
-            TerminarNavegacion();
+            TerminarNavegacion(porOtraRuta: false);
             if (AcercandoCamara) // «Iniciar» recién pulsado: ya no empieza
             {
                 seguimiento.Terminar();
@@ -2476,7 +2583,8 @@ namespace PriceMap.UI
             ActualizarVistaRuta();
             if (!FichaAbierta) buscador?.Mostrar(true);
             accesibilidad.Reconstruir();
-            if (!FichaAbierta && buscador != null) accesibilidad.PedirFoco(buscador);
+            if (FichaAbierta || ModalUbicacionAbierta) accesibilidad.RecuperarFoco();
+            else if (buscador != null) accesibilidad.PedirFoco(buscador);
         }
 
         /// <summary>
@@ -2503,8 +2611,11 @@ namespace PriceMap.UI
         /// <summary>La ruta iniciada; null sin ella.</summary>
         public Ruta RutaDibujada => rutaDibujada;
 
-        /// <summary>Las dos tarjetas de la ruta se ven (ruta activa, la ficha cerrada y la cámara ya con el usuario).</summary>
-        public bool TarjetasRutaVisibles => rutaActiva && !FichaAbierta && !AcercandoCamara;
+        /// <summary>Las dos tarjetas de la ruta se ven (ruta activa, la ficha cerrada, la cámara ya con el usuario y sin haber llegado).</summary>
+        public bool TarjetasRutaVisibles => RutaALaVista && !HaLlegado;
+
+        // Se ven las tarjetas de la ruta o, al llegar, las de "Has llegado"
+        bool RutaALaVista => rutaActiva && !FichaAbierta && !AcercandoCamara;
 
         /// <summary>Tarjeta de acciones (arriba) y de la ruta (abajo); null sin interfaz o sin servicio de rutas.</summary>
         public TarjetaManiobra TarjetaManiobra => tarjetaManiobra;
@@ -2529,13 +2640,19 @@ namespace PriceMap.UI
             // La hoja solo informa: tocarla la despliega o pliega, nunca reabre la ficha ni quita la ruta
             tarjetaRuta.DesplegadaCambiada += AlDesplegarHojaRuta;
             tarjetaRuta.FinalizarPulsado += QuitarRuta;
+            tarjetaLlegada = new TarjetaLlegada();
+            (zonaSeguraRuta ?? raiz).Add(tarjetaLlegada);
+            hojaLlegada = new HojaLlegada();
+            (raiz.Q("hueco-ruta") ?? raiz).Add(hojaLlegada);
+            hojaLlegada.FinalizarPulsado += QuitarRuta;
             pastillaSenal = new PastillaSenal();
             (zonaSeguraRuta ?? raiz).Add(pastillaSenal);
             toast = new Toast();
             (zonaSeguraRuta ?? raiz).Add(toast);
-            foreach (var t in new VisualElement[] { tarjetaManiobra, tarjetaRuta })
+            foreach (var t in new VisualElement[] { tarjetaManiobra, tarjetaRuta, tarjetaLlegada, hojaLlegada })
                 t.RegisterCallback<GeometryChangedEvent>(_ => AlMedirTarjetaRuta());
             accesibilidad.Texto(tarjetaManiobra, () => tarjetaManiobra.Anuncio, () => TarjetasRutaVisibles);
+            accesibilidad.Texto(tarjetaLlegada, () => tarjetaLlegada.Anuncio, () => LlegadaVisible);
             CrearComoLlegar();
         }
 
@@ -2588,6 +2705,8 @@ namespace PriceMap.UI
                 () => TarjetasRutaVisibles && tarjetaRuta.Desplegada);
             accesibilidad.Boton(tarjetaRuta.Finalizar, () => tarjetaRuta.TextoFinalizar.text, QuitarRuta,
                 visible: () => TarjetasRutaVisibles && tarjetaRuta.Desplegada);
+            accesibilidad.Boton(hojaLlegada.Finalizar, () => hojaLlegada.TextoFinalizar.text, QuitarRuta, visible: () => LlegadaVisible);
+            accesibilidad.Texto(hojaLlegada.Aviso, () => hojaLlegada.Aviso.text, () => LlegadaVisible);
         }
 
         // Las tarjetas se han dispuesto (al mostrarse, o al cambiar sus textos o la fuente): la fuente escalada, el botón
@@ -2597,7 +2716,7 @@ namespace PriceMap.UI
             EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema);
             ColocarControlesRuta();
             ColocarToast();
-            if (rutaDibujada != null && TarjetasRutaVisibles) EncuadrarOSeguir();
+            if (rutaDibujada != null && RutaALaVista) EncuadrarOSeguir();
         }
 
         /// <summary>
@@ -2612,7 +2731,7 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Tarjetas a la vista o no (ruta activa y sin ficha), la clase con-ruta (fuera píldora y tema), la cápsula
+        /// Tarjetas (o las de "Has llegado") a la vista o no (ruta activa y sin ficha), la clase con-ruta (fuera píldora y tema), la cápsula
         /// oculta con ruta y el botón de ubicación abajo a la izquierda.
         /// </summary>
         void ActualizarVistaRuta()
@@ -2621,6 +2740,9 @@ namespace PriceMap.UI
             var display = TarjetasRutaVisibles ? DisplayStyle.Flex : DisplayStyle.None;
             tarjetaManiobra.style.display = display;
             tarjetaRuta.style.display = display;
+            var llegada = LlegadaVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            tarjetaLlegada.style.display = llegada;
+            hojaLlegada.style.display = llegada;
             raiz.EnableInClassList(ClaseConRuta, rutaActiva);
             if (rutaActiva) buscador?.Mostrar(false);
             ActualizarBotonVoz();
@@ -2655,7 +2777,7 @@ namespace PriceMap.UI
                 ColocarAtribucion();
                 return;
             }
-            float abajo = SobreLaHoja(tarjetaRuta, AltoSupuestoTarjetaRutaDp);
+            float abajo = SobreLaHoja(HojaAbajo, AltoSupuestoTarjetaRutaDp);
             pilaDerecha.style.top = StyleKeyword.Auto;
             pilaDerecha.style.right = StyleKeyword.Auto;
             pilaDerecha.style.left = EspacioSobreTarjetaDp;
@@ -2682,7 +2804,7 @@ namespace PriceMap.UI
             if (rutaDibujada == null) return;
             float escala = EscalaDp > 0f ? EscalaDp : ultimaEscala > 0f ? ultimaEscala : 1f;
             mapa.Encuadrar(rutaDibujada.Puntos, ZonaEncuadre(Screen.width, Screen.height, escala,
-                BordeDp(tarjetaManiobra, abajo: true), BordeDp(tarjetaRuta, abajo: false)));
+                BordeDp(TarjetaArriba, abajo: true), BordeDp(HojaAbajo, abajo: false)));
         }
 
         // Borde de abajo (o de arriba) de una tarjeta en dp del panel; null sin medida
@@ -2777,7 +2899,7 @@ namespace PriceMap.UI
             if (rutaActiva) ActualizarVistaRuta();
             else buscador?.Mostrar(true);
             // TalkBack: fuera los nodos de la ficha, vuelve el mapa y el foco al marcador que la abrió, si se ve (con ruta,
-            // a la tarjeta de la ruta, que la reabrió)
+            // a la tarjeta de la ruta, que la reabrió, o al «Finalizar ruta» de "Has llegado")
             var marcador = marcadorFicha;
             marcadorFicha = null;
             if (capa != null) capa.Fijado = null;
@@ -2786,7 +2908,8 @@ namespace PriceMap.UI
             if (rutaActiva)
             {
                 EncuadrarOSeguir();
-                if (TarjetasRutaVisibles) accesibilidad.PedirFoco(tarjetaRuta.Cuerpo);
+                if (LlegadaVisible) EnfocarLlegada();
+                else if (TarjetasRutaVisibles) accesibilidad.PedirFoco(tarjetaRuta.Cuerpo);
                 return;
             }
             // Elegido en el buscador (dirección o punto del mapa): no hay marcador, el foco vuelve a la cápsula
@@ -2906,9 +3029,9 @@ namespace PriceMap.UI
         /// <summary>
         /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con la
         /// hoja del buscador desplegada la pliega; con «Cómo llegar» abierta, vuelve la ficha; con la ficha del lugar abierta la cierra; con la hoja de la ruta
-        /// desplegada la pliega; con una ruta, la quita (historia 2.6, parte 2a); con el menú abierto lo
-        /// cierra sin cambiar el filtro. Si no, no hace nada (la app no sale: Input.backButtonLeavesApp sigue en
-        /// false). Devuelve true si lo ha gestionado.
+        /// desplegada la pliega; con el menú abierto lo cierra sin cambiar el filtro. Con una ruta iniciada y nada
+        /// encima (también al llegar) no hace nada: la ruta solo se termina con «Finalizar ruta» (historia 2.9). Si no,
+        /// tampoco (la app no sale: Input.backButtonLeavesApp sigue en false). Devuelve true si lo ha gestionado.
         /// </summary>
         public bool Atras()
         {
@@ -2920,8 +3043,7 @@ namespace PriceMap.UI
             if (EligiendoRuta) { CerrarComoLlegar(); return true; } // la X: vuelve la ficha (parte 5b)
             if (FichaAbierta) { CerrarFicha(); return true; }
             if (rutaActiva && HojaRutaDesplegada) { tarjetaRuta.Plegar(); return true; } // la ruta sigue
-            if (rutaActiva) { QuitarRuta(); return true; } // historia 2.6, parte 2a
-            if (!MenuAbierto) return false;
+            if (!MenuAbierto) return rutaActiva; // con ruta, atrás se gasta aquí sin terminarla
             ConsumirNavegacion();
             Cerrar(enfocar: true, porNavegacion: true); // atrás es una tecla: el foco de teclado vuelve a la píldora
             return true;
@@ -2961,12 +3083,14 @@ namespace PriceMap.UI
                 navegacion.RecalculoFallido -= AlFallarRecalculo;
                 navegacion.RutaTerminada -= AlTerminarNavegacion;
                 navegacion.SenalCambiada -= AlCambiarSenal;
-                navegacion.Terminar(); // fuera el GPS de fondo y la notificación
+                navegacion.HaLlegado -= AlLlegar;
+                navegacion.Finalizar(); // fuera el GPS de fondo y la notificación
             }
             if (tarjetaRuta != null)
             {
                 tarjetaRuta.DesplegadaCambiada -= AlDesplegarHojaRuta;
                 tarjetaRuta.FinalizarPulsado -= QuitarRuta;
+                hojaLlegada.FinalizarPulsado -= QuitarRuta;
             }
             if (rutas != null)
             {
@@ -3118,6 +3242,7 @@ namespace PriceMap.UI
                 buscador?.Repintar();
                 tarjetaManiobra?.Repintar();
                 tarjetaRuta?.Repintar();
+                tarjetaLlegada?.Repintar();
                 hojaComoLlegar?.Repintar();
             });
         }
@@ -3150,6 +3275,7 @@ namespace PriceMap.UI
             buscador?.PonerZonaSegura((Screen.height - segura.yMax) * escala, segura.yMin * escala);
             // La tarjeta de la ruta, como la hoja: hasta el borde, con su contenido encima de la barra de gestos
             tarjetaRuta?.PonerMargenInferior(segura.yMin * escala);
+            hojaLlegada?.PonerMargenInferior(segura.yMin * escala);
             hojaComoLlegar?.PonerMargenInferior(segura.yMin * escala);
             ColocarAtribucion();
             ColocarControlesRuta();
@@ -3174,6 +3300,8 @@ namespace PriceMap.UI
             Ocupar(buscador); // la cápsula (o lo que cubre la hoja desplegada)
             Ocupar(tarjetaManiobra); // las tarjetas de la ruta (ocultas sin ruta: no cuentan)
             Ocupar(tarjetaRuta);
+            Ocupar(tarjetaLlegada);
+            Ocupar(hojaLlegada);
             Ocupar(hojaComoLlegar); // y los minutos de sus rutas (cerrada, no hay)
             if (minutosRuta != null) foreach (var e in minutosRuta.Etiquetas) if (e.Visible) Ocupar(e.Texto);
             return zonasOcupadas;
@@ -3208,7 +3336,8 @@ namespace PriceMap.UI
         internal void ActualizarCapas(float escala)
         {
             CentrarAlAbrir();
-            // Navegando (historia 2.7, parte 2c): ¿más de 10 s sin lecturas del GPS? La pastilla sigue a la señal y a la ficha
+            // Navegando (historia 2.7, parte 2c): ¿más de 10 s sin lecturas del GPS? La pastilla sigue a la señal y a la ficha.
+            // Ya en el destino: ¿ha pasado el minuto? (historia 2.9)
             if (Navegando) navegacion.Comprobar();
             ActualizarPastillaSenal();
             // «Iniciar» (parte 5b): la cámara ha llegado al usuario y empieza la navegación

@@ -22,14 +22,20 @@ namespace PriceMap.Aplicacion
     /// SinSenal, SenalCambiada y el contador del desvío a cero: no se recalcula hasta la primera lectura nueva, que lo
     /// deshace (y el desvío cuenta desde cero).
     ///
+    /// Llegar (historia 2.9): con una posición a 30 m o menos del destino o del final de la línea (ReglaNavegacion.HaLlegado),
+    /// Llegado y HaLlegado, una vez por ruta: se cancela el recálculo, la notificación pasa a "Has llegado a &lt;destino&gt;" y
+    /// desde ahí las posiciones solo avisan (Actualizado, para la cámara), sin maniobras, desvíos ni señal. La ruta sigue
+    /// Activa (con el GPS de fondo) hasta Finalizar o hasta que Comprobar la cierra al minuto (Automatico).
+    ///
     /// Eventos para las visitas (AD-9; los consumirá ServicioVisitas en la épica 4): RutaIniciada, TiempoRestanteCambiado
-    /// (al cambiar el minuto) y RutaTerminada. No crea visitas. Se usa desde el hilo principal (la UI).
+    /// (al cambiar el minuto), HaLlegado y RutaTerminada. No crea visitas. Se usa desde el hilo principal (la UI).
     /// </summary>
     public sealed class ServicioNavegacion
     {
         public static readonly TimeSpan TiempoDesvio = TimeSpan.FromSeconds(ParametrosNegocio.NavegacionDesvioSegundos);
         public static readonly TimeSpan EsperaReintento = TimeSpan.FromSeconds(ParametrosNegocio.NavegacionReintentoSegundos);
         public static readonly TimeSpan TiempoSinSenal = TimeSpan.FromSeconds(ParametrosNegocio.NavegacionSinSenalSegundos);
+        public static readonly TimeSpan TiempoCierre = TimeSpan.FromSeconds(ParametrosNegocio.LlegadaCierreSegundos);
         /// <summary>Hueco entre dos Comprobar a partir del cual la app estaba en segundo plano (no cuenta como sin señal).</summary>
         static readonly TimeSpan PausaComprobacion = TimeSpan.FromSeconds(1);
 
@@ -38,6 +44,7 @@ namespace PriceMap.Aplicacion
         readonly Func<TimeSpan, CancellationToken, Task> esperar;
         readonly Func<DateTime> reloj;
         readonly Func<string, int, string> textoNotificacion;
+        readonly Func<string, string> textoLlegada;
 
         ReglaNavegacion regla;
         CancellationTokenSource sesion; // la navegación en curso; se cancela al terminar (recálculos y reintentos)
@@ -48,20 +55,23 @@ namespace PriceMap.Aplicacion
         DateTime ultimaLectura; // hora de la última lectura del GPS (o de Empezar)
         int lecturasVistas;     // IUbicacion.Lecturas la última vez que se miró
         DateTime ultimaComprobacion; // la última llamada a Comprobar (o Empezar)
+        DateTime horaLlegada;        // con Llegado: cuándo (la ruta se cierra sola al minuto)
 
         /// <param name="ubicacion">Posiciones del usuario y GPS de fondo (IniciarRuta, ActualizarNotificacion, TerminarRuta).</param>
         /// <param name="rutas">Recálculo (Calcular: servicios y, sin conexión, la aproximada).</param>
         /// <param name="esperar">Espera cancelable del reintento (en la app, Task.Delay); las pruebas pasan una controlada.</param>
         /// <param name="reloj">Hora actual para el desvío (por defecto, DateTime.UtcNow).</param>
         /// <param name="textoNotificacion">Texto de la notificación con el destino y los minutos (la app lo saca de Localization).</param>
+        /// <param name="textoLlegada">Texto de la notificación al llegar, con el destino (la app lo saca de Localization).</param>
         public ServicioNavegacion(ServicioUbicacion ubicacion, ServicioRutas rutas, Func<TimeSpan, CancellationToken, Task> esperar,
-            Func<DateTime> reloj = null, Func<string, int, string> textoNotificacion = null)
+            Func<DateTime> reloj = null, Func<string, int, string> textoNotificacion = null, Func<string, string> textoLlegada = null)
         {
             this.ubicacion = ubicacion ?? throw new ArgumentNullException(nameof(ubicacion));
             this.rutas = rutas ?? throw new ArgumentNullException(nameof(rutas));
             this.esperar = esperar ?? throw new ArgumentNullException(nameof(esperar));
             this.reloj = reloj ?? (() => DateTime.UtcNow);
             this.textoNotificacion = textoNotificacion ?? ((destino, minutos) => $"Navegando a {destino} · {minutos} min");
+            this.textoLlegada = textoLlegada ?? (destino => $"Has llegado a {destino}");
             this.ubicacion.Cambiado += AlCambiarUbicacion;
         }
 
@@ -97,10 +107,19 @@ namespace PriceMap.Aplicacion
         /// </summary>
         public bool SinSenal { get; private set; }
 
+        /// <summary>Se ha llegado al destino y la ruta aún no ha terminado (historia 2.9).</summary>
+        public bool Llegado { get; private set; }
+
+        /// <summary>Se llega al destino, una vez por ruta: el nombre del destino (historia 2.9; lo usará la épica 4).</summary>
+        public event Action<string> HaLlegado;
+
         /// <summary>SinSenal ha cambiado navegando (se pierde o vuelve la señal). Al terminar la ruta no se avisa.</summary>
         public event Action SenalCambiada;
 
-        /// <summary>Hay un estado nuevo (posición nueva, o ruta nueva al empezar o al recalcular).</summary>
+        /// <summary>
+        /// Hay un estado nuevo (posición nueva, o ruta nueva al empezar o al recalcular). Con Llegado, solo una posición
+        /// nueva: el estado se queda como al llegar.
+        /// </summary>
         public event Action Actualizado;
 
         /// <summary>La ruta se ha recalculado (Ruta es la nueva); llega antes de su Actualizado.</summary>
@@ -120,7 +139,7 @@ namespace PriceMap.Aplicacion
 
         /// <summary>
         /// Empieza a seguir la ruta hacia el destino (Ir). Con otra en marcha, la termina antes (Manual). El primer
-        /// estado sale de la posición actual (sin ella, del principio de la ruta).
+        /// estado sale de la posición actual (sin ella, del principio de la ruta); si ya está en el destino, llega.
         /// </summary>
         public void Empezar(Ruta ruta, Coordenada destino, string nombreDestino, ModoViaje modo)
         {
@@ -134,6 +153,7 @@ namespace PriceMap.Aplicacion
             Recalculando = false;
             desvioDesde = null;
             SinSenal = false;
+            Llegado = false;
             ultimaLectura = reloj();
             ultimaComprobacion = ultimaLectura;
             lecturasVistas = ubicacion.Lecturas;
@@ -143,9 +163,15 @@ namespace PriceMap.Aplicacion
             ultimoMinuto = Estado.MinutosRestantes;
             var r = ubicacion.IniciarRuta(Notificacion(ultimoMinuto));
             GpsDeFondo = r.Ok && r.Valor;
+            var s = sesion;
             RutaIniciada?.Invoke(Destino);
+            if (!ReferenceEquals(s, sesion)) return; // terminada desde el aviso
+            if (ultimaPosicion.HasValue && Llegar(ultimaPosicion.Value)) return;
             Actualizado?.Invoke();
         }
+
+        /// <summary>«Finalizar ruta»: antes de llegar, Manual; ya en el destino, Llegada.</summary>
+        public void Finalizar() => Terminar(Llegado ? MotivoFinRuta.Llegada : MotivoFinRuta.Manual);
 
         /// <summary>Termina la ruta: fuera el GPS de fondo y la notificación, y RutaTerminada. Sin ruta, nada.</summary>
         public void Terminar(MotivoFinRuta motivo = MotivoFinRuta.Manual)
@@ -162,6 +188,7 @@ namespace PriceMap.Aplicacion
             ultimaPosicion = null;
             origenRuta = null;
             SinSenal = false; // sin aviso: la pantalla quita la pastilla al terminar
+            Llegado = false;
             GpsDeFondo = false;
             ubicacion.TerminarRuta();
             RutaTerminada?.Invoke(motivo);
@@ -181,12 +208,19 @@ namespace PriceMap.Aplicacion
 
         /// <summary>
         /// Mira la señal del GPS (la pantalla lo llama en cada fotograma): una lectura nueva (aunque repita la coordenada)
-        /// la mantiene o la recupera; más de 10 s sin ninguna, SinSenal, el desvío a cero y SenalCambiada. Sin ruta, nada.
+        /// la mantiene o la recupera; más de 10 s sin ninguna, SinSenal, el desvío a cero y SenalCambiada. Ya en el destino,
+        /// la señal no importa: termina la ruta (Automatico) al minuto de llegar. Sin ruta, nada.
         /// </summary>
         public void Comprobar()
         {
             if (!Activa) return;
             var ahora = reloj();
+            if (Llegado)
+            {
+                if (ahora < horaLlegada) horaLlegada = ahora; // el reloj ha saltado atrás: el minuto cuenta desde aquí
+                if (ahora - horaLlegada >= TiempoCierre) Terminar(MotivoFinRuta.Automatico);
+                return;
+            }
             // Más de 1 s sin llamar: la app no estaba delante (LateUpdate parado). Ese tiempo no cuenta como sin señal
             if (ahora - ultimaComprobacion > PausaComprobacion) ultimaLectura = ahora;
             ultimaComprobacion = ahora;
@@ -216,7 +250,9 @@ namespace PriceMap.Aplicacion
         void Seguir(Coordenada posicion)
         {
             ultimaPosicion = posicion;
+            if (Llegado) { Actualizado?.Invoke(); return; } // solo la posición: la cámara sigue
             Estado = regla.Seguir(posicion, Estado);
+            if (Llegar(posicion)) return;
             var ahora = reloj();
             if (Estado.FueraDeRuta)
             {
@@ -227,9 +263,29 @@ namespace PriceMap.Aplicacion
                 if (!Recalculando && desdeOtroSitio && ahora - desvioDesde.Value > TiempoDesvio) _ = Recalcular(posicion, sesion);
             }
             else desvioDesde = null;
-            if (!Activa) return;
+            if (!Activa || Llegado) return; // un recálculo de la caché acaba al momento y puede haber llegado
             AvisarMinuto();
             Actualizado?.Invoke();
+        }
+
+        /// <summary>
+        /// Si la posición está en el destino, llega: fuera el recálculo en curso, la notificación de llegada, HaLlegado y
+        /// Actualizado. Devuelve si ha llegado.
+        /// </summary>
+        bool Llegar(Coordenada posicion)
+        {
+            if (!PuntoDestino.HasValue || !regla.HaLlegado(posicion, PuntoDestino.Value)) return false;
+            Llegado = true;
+            horaLlegada = reloj();
+            desvioDesde = null;
+            Recalculando = false;
+            var antes = sesion;
+            var propia = sesion = new CancellationTokenSource();
+            antes?.Cancel(); // un recálculo pedido ya no cambia la ruta
+            ubicacion.ActualizarNotificacion(textoLlegada(Destino));
+            HaLlegado?.Invoke(Destino);
+            if (ReferenceEquals(propia, sesion)) Actualizado?.Invoke(); // si no, terminada desde el aviso
+            return true;
         }
 
         /// <summary>
@@ -276,6 +332,7 @@ namespace PriceMap.Aplicacion
                     Estado = regla.Seguir(ultimaPosicion ?? desde);
                     RutaCambiada?.Invoke();
                     if (!ReferenceEquals(s, sesion)) return; // terminada desde el aviso
+                    if (Llegar(ultimaPosicion ?? desde)) return; // la línea nueva acaba donde ya está
                     AvisarMinuto();
                     Actualizado?.Invoke();
                     return;

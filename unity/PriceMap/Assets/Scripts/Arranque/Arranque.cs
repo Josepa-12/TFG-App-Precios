@@ -74,9 +74,10 @@ namespace PriceMap.Arranque
                 : new ServicioRutas(new RutasValhalla(), new RutasOsrm(), Task.Delay, local: callesGuardadas);
             // Seguir la ruta tras Ir (historia 2.7, parte 1): recálculo con las mismas rutas y la notificación en es-ES
             var navegacion = new ServicioNavegacion(ubicacion, rutas, Task.Delay,
-                textoNotificacion: (destino, minutos) => Textos.T(ClavesTexto.NotificacionNavegando, destino, minutos));
+                textoNotificacion: (destino, minutos) => Textos.T(ClavesTexto.NotificacionNavegando, destino, minutos),
+                textoLlegada: destino => Textos.T(ClavesTexto.LlegadaA, destino));
             // Indicaciones por voz (historia 2.8): el TextToSpeech de Android; en el PC, el editor y la captura, callada
-            voz = new ServicioVoz(navegacion, CrearVoz(), preferencias);
+            voz = new ServicioVoz(navegacion, CrearVoz(), preferencias, textoLlegada: destino => Textos.T(ClavesTexto.LlegadaA, destino));
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
                     navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz, calles: calles))

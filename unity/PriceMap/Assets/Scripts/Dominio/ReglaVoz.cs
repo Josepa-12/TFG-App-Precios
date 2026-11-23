@@ -10,7 +10,7 @@ namespace PriceMap.Dominio
     ///    veces esa distancia;
     ///  - Momento: a 40 m en coche o 15 m a pie, el texto corto («Gire a la derecha.»). Si la maniobra ya está a esa
     ///    distancia al pasar la anterior, solo este.
-    /// La salida y la llegada no se dicen (la llegada es la historia 2.9); sin textos (OSRM, ruta aproximada) no hay
+    /// La salida y la llegada no se dicen (la llegada la dice ServicioVoz, historia 2.9); sin textos (OSRM, ruta aproximada) no hay
     /// maniobra siguiente y calla. Tras un recálculo, Reiniciar: se empieza de cero con las maniobras nuevas. Pura.
     /// </summary>
     public sealed class ReglaVoz

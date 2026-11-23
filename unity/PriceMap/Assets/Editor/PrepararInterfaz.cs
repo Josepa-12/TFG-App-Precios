@@ -233,6 +233,10 @@ namespace PriceMap.EditorTools
             [ClavesTexto.ComoLlegarAnuncioAproxMinuto] = "Ruta aproximada, alrededor de 1 minuto, llegada hacia las {0}, unos {1}",
             [ClavesTexto.ComoLlegarAnuncioRapida] = "{0}, más rápida",
             [ClavesTexto.ComoLlegarElegida] = "{0}, seleccionada",
+            [ClavesTexto.LlegadaTitulo] = "Has llegado",
+            [ClavesTexto.LlegadaA] = "Has llegado a {0}",
+            [ClavesTexto.LlegadaCierre] = "La ruta se cerrará en 1 minuto",
+            [ClavesTexto.LlegadaAnuncio] = "Has llegado a {0}. La ruta se cerrará en un minuto.",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

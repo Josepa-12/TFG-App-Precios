@@ -351,6 +351,16 @@ namespace PriceMap.UI
         /// <summary>TalkBack de la fila del destino: {0} nombre, {1} detalle ("Destino: Clínica Areas, Clínica privada, en coche").</summary>
         public const string RutaAnuncioDestino = "ruta.anuncio.destino";
 
+        // Llegar (historia 2.9)
+        /// <summary>Título de la tarjeta de arriba al llegar ("Has llegado").</summary>
+        public const string LlegadaTitulo = "llegada.titulo";
+        /// <summary>La voz, la notificación y la tarjeta para TalkBack: {0} destino ("Has llegado a Clínica Areas").</summary>
+        public const string LlegadaA = "llegada.a";
+        /// <summary>Debajo de «Finalizar ruta» al llegar ("La ruta se cerrará en 1 minuto").</summary>
+        public const string LlegadaCierre = "llegada.cierre";
+        /// <summary>Lo que anuncia TalkBack al llegar: {0} destino.</summary>
+        public const string LlegadaAnuncio = "llegada.anuncio";
+
         // Hoja «Cómo llegar» (parte 5b, 23/11/2026)
         /// <summary>Título de la hoja.</summary>
         public const string ComoLlegarTitulo = "comollegar.titulo";
@@ -381,6 +391,7 @@ namespace PriceMap.UI
 
         public static readonly string[] Todas =
         {
+            LlegadaTitulo, LlegadaA, LlegadaCierre, LlegadaAnuncio,
             ComoLlegarTitulo, ComoLlegarA, ComoLlegarCerrar, ComoLlegarCalculando, ComoLlegarDetalle, ComoLlegarMasRapida,
             ComoLlegarIniciar, ComoLlegarAnuncio, ComoLlegarAnuncioMinuto, ComoLlegarAnuncioAprox, ComoLlegarAnuncioAproxMinuto,
             ComoLlegarAnuncioRapida, ComoLlegarElegida,

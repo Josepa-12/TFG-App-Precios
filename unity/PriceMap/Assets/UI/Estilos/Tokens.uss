@@ -18,6 +18,7 @@
     --color-reward-ink: #13235B;
     --color-reward-edge: #C99300;
     --color-success: #0E7A4F;
+    --color-success-ink: #FFFFFF; /* marca de hecho sobre success (historia 2.9) */
     --color-danger: #D6334A;
     --color-control-edge: #6E7A99;
     --color-focus: #2F5BEA;
@@ -199,6 +200,10 @@
     --cerca-glifo: 22px;
     /* Tarjetas de la ruta (historia 2.6, parte 2a): flecha de la maniobra (28 dp) y de la siguiente (20 dp), asa */
     --maniobra-icono: 28px;
+    --llegada-marca: 44px;         /* círculo de la marca de "Has llegado" (historia 2.9) */
+    --radio-llegada-marca: 22px;   /* 44 / 2 */
+    --llegada-boton-alto: 52px;
+    --radio-llegada-boton: 26px;   /* 52 / 2 */
     --maniobra-icono-siguiente: 20px;
     --asa-ancho: 36px;
     --asa-alto: 4px;
@@ -222,6 +227,7 @@
     --color-reward-ink: #1A1300;
     --color-reward-edge: #C99A2E;
     --color-success: #4ADE9B;
+    --color-success-ink: #0B1020;
     --color-danger: #FF6B81;
     --color-control-edge: #7F8BAA;
     --color-focus: #8FB0FF;
@@ -287,4 +293,6 @@
 .t-caption { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 12px; }
 /* Maniobra de la ruta (tarjeta de acciones, historia 2.6 parte 2a): 20 sp, 800 */
 .t-maniobra { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 20px; }
+/* "Has llegado" (historia 2.9): el destino y el aviso del cierre, 15 sp, 600 */
+.t-llegada { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 15px; }
 .t-price { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 22px; }

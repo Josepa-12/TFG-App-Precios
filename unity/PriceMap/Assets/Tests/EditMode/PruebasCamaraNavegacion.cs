@@ -865,11 +865,26 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_AtrasPorElCamino_QuitaLaRutaYNoEmpieza()
+        public void Pantalla_AtrasPorElCamino_NoQuitaLaRutaYEmpieza()
         {
             IrAAreas();
             int dejados = mapa.dejados;
             Assert.IsTrue(pantalla.Atras());
+            Assert.IsTrue(pantalla.RutaActiva);
+            Assert.AreEqual(dejados, mapa.dejados);
+            Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
+            reloj = reloj.AddSeconds(2);
+            pantalla.ActualizarCapas(Escala);
+            Assert.IsTrue(nav.Activa);
+            Assert.IsTrue(pantalla.TarjetasRutaVisibles);
+        }
+
+        [Test]
+        public void Pantalla_QuitarLaRutaPorElCamino_NoEmpieza()
+        {
+            IrAAreas();
+            int dejados = mapa.dejados;
+            pantalla.QuitarRuta(); // p. ej. una ubicación compartida con la app
             Assert.IsFalse(pantalla.RutaActiva);
             Assert.Greater(mapa.dejados, dejados);
             Assert.AreEqual(EstadoSeguimiento.Apagado, pantalla.EstadoCamara);
@@ -951,11 +966,13 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_TerminarConAtras_NoSigue()
+        public void Pantalla_AtrasNavegando_LaCamaraSigueYAlTerminarYaNo()
         {
             IrAAreas();
             PasarEspera();
             Assert.IsTrue(pantalla.Atras());
+            Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
+            pantalla.QuitarRuta();
             Assert.AreEqual(EstadoSeguimiento.Apagado, pantalla.EstadoCamara);
             Assert.AreEqual(Icono.Navegar, BotonUbicacion.Icono);
             Assert.AreEqual(PantallaMapa.ClaveBotonUbicacion(pantalla.AccionUbicacionActual()), pantalla.ClaveBotonUbicacion());
