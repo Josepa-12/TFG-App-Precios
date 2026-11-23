@@ -604,6 +604,27 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void DireccionBuscada_SinRed_MinutosYRutaAproximados()
+        {
+            Crear();
+            var punto = M(300, 300);
+            pantalla.ElegirResultado(ResultadoBusqueda.DeDireccion(
+                new Direccion("Calle Ancha 10", "Sanlúcar de Barrameda", punto, "Calle Ancha", "10"), 424));
+            Assert.AreEqual("Calle Ancha, 10", pantalla.Ficha.Titulo.text);
+            CaenLosDos(ModoViaje.Coche);
+            local.De(ModoViaje.Coche).Responder(240, 1200, aproximada: true);
+            Assert.AreEqual(4, Fila.Coche.Minutos);
+            Assert.IsTrue(Fila.Coche.Aproximados, "Como en cualquier punto libre.");
+
+            Fila.PulsarIr();
+            CaenLosDos(ModoViaje.Coche);
+            local.De(ModoViaje.Coche).Responder(240, 1200, aproximada: true);
+            Assert.IsTrue(mapa.aproximada);
+            Assert.AreEqual("Calle Ancha, 10", Abajo.DestinoNombre.text);
+            Assert.AreEqual("Sin conexión: ruta aproximada", Aviso.Texto.text);
+        }
+
+        [Test]
         public void TalkBack_SeAnunciaElToastYElFocoVaALaTarjetaDeArriba()
         {
             Crear();

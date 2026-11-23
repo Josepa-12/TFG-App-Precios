@@ -17,7 +17,8 @@ namespace PriceMap.UI
     /// no llega al mapa. La abre y cierra PantallaMapa; nada se guarda (AD-3).
     ///
     /// La misma hoja sirve de ficha de punto libre (historia 2.5, AbrirPunto): título con la dirección o las
-    /// coordenadas, "Punto en el mapa" y la localidad; sin muestra ni precios.
+    /// coordenadas, "Punto en el mapa" y la localidad; sin muestra ni precios. También la de una dirección o un punto
+    /// del mapa elegidos en el buscador, ya con sus datos.
     /// </summary>
     public class FichaLugar : VisualElement
     {
@@ -60,6 +61,8 @@ namespace PriceMap.UI
         public Lugar Lugar { get; private set; }
         /// <summary>Punto libre de la ficha (historia 2.5); null con la ficha de un lugar.</summary>
         public Coordenada? Punto { get; private set; }
+        /// <summary>Dirección o punto del mapa del buscador que enseña la ficha, con sus datos ya sabidos; null en los demás.</summary>
+        public Aplicacion.ResultadoBusqueda Conocido { get; private set; }
         /// <summary>Coordenada de lo que enseña la ficha: el lugar o el punto libre.</summary>
         public Coordenada? Posicion => Lugar != null ? Lugar.Posicion : Punto;
         /// <summary>Con un punto libre: true mientras se espera su dirección ("Buscando la dirección…").</summary>
@@ -144,6 +147,7 @@ namespace PriceMap.UI
         {
             Lugar = lugar ?? throw new ArgumentNullException(nameof(lugar));
             Punto = null;
+            Conocido = null;
             BuscandoDireccion = false;
             RemoveFromClassList(ClasePunto);
             Titulo.text = lugar.Nombre;
@@ -216,22 +220,59 @@ namespace PriceMap.UI
         /// ("36,7781, -6,3515") hasta que llegue la dirección, subtítulo "Punto en el mapa" y, debajo, "Buscando la
         /// dirección…" si se va a preguntar (buscando) o nada. Nada se guarda (FR17).
         /// </summary>
-        public void AbrirPunto(Coordenada punto, bool buscando)
+        public void AbrirPunto(Coordenada punto, bool buscando) =>
+            AbrirPunto(punto, null, TextoCoordenadas(punto, textos), textos(ClavesTexto.PuntoTipo), buscando, null);
+
+        /// <summary>
+        /// Ficha de punto libre de una dirección o un punto del mapa del buscador, con sus datos ya sabidos (22/11/2026):
+        /// nunca sale "Buscando la dirección…". Dirección: "Calle Ancha, 10" (sin calle, el nombre del resultado), "Punto
+        /// en el mapa" y la localidad si la hay y no repite el título; un sitio con nombre propio además de calle
+        /// (23/11/2026), su nombre y debajo "Avenida Calzada, 20, Sanlúcar de Barrameda". Punto del mapa: su nombre y, en
+        /// el sitio de "Punto en el mapa", su categoría ("Banco").
+        /// </summary>
+        public void AbrirPunto(Aplicacion.ResultadoBusqueda conocido)
+        {
+            if (conocido == null) throw new ArgumentNullException(nameof(conocido));
+            bool esDireccion = conocido.Tipo == Aplicacion.TipoResultado.Direccion;
+            string titulo = (esDireccion ? TituloDireccion(conocido.Direccion, textos) : null) ?? conocido.Nombre.Trim();
+            if (titulo.Length == 0) titulo = TextoCoordenadas(conocido.Posicion, textos);
+            string tipo = esDireccion ? "" : FilaResultado.Mayuscula(FilaResultado.TipoDe(conocido, textos));
+            if (string.IsNullOrWhiteSpace(tipo)) tipo = textos(ClavesTexto.PuntoTipo);
+            string localidad = esDireccion ? conocido.Direccion?.Localidad?.Trim() : null;
+            if (string.Equals(localidad, titulo, StringComparison.OrdinalIgnoreCase)) localidad = null;
+            if (esDireccion && TieneNombrePropio(conocido.Nombre, conocido.Direccion))
+            {
+                localidad = string.IsNullOrWhiteSpace(localidad) ? titulo : Textos.Formatear(textos(ClavesTexto.PuntoAnuncio), titulo, localidad);
+                titulo = conocido.Nombre.Trim();
+            }
+            AbrirPunto(conocido.Posicion, conocido, titulo, tipo, false, localidad);
+        }
+
+        // El sitio está en una calle y su nombre no es la calle ni "calle número" (sin contar mayúsculas, tildes ni signos)
+        static bool TieneNombrePropio(string nombre, Aplicacion.Direccion d)
+        {
+            string n = ReglaBusqueda.Normalizar(nombre);
+            return d != null && !string.IsNullOrWhiteSpace(d.Calle) && n.Length > 0
+                && n != ReglaBusqueda.Normalizar(d.Calle) && n != ReglaBusqueda.Normalizar(d.Calle + " " + d.Numero);
+        }
+
+        void AbrirPunto(Coordenada punto, Aplicacion.ResultadoBusqueda conocido, string titulo, string tipo, bool buscando, string localidad)
         {
             Lugar = null;
             Punto = punto;
+            Conocido = conocido;
             AddToClassList(ClasePunto);
-            Titulo.text = TextoCoordenadas(punto, textos);
+            Titulo.text = titulo;
             Muestra.style.display = DisplayStyle.None;
             GotaPunto.style.display = DisplayStyle.Flex;
             RepintarGota(); // el tema pudo cambiar con la ficha cerrada
-            Tipo.text = textos(ClavesTexto.PuntoTipo);
+            Tipo.text = tipo;
             EscalaFuente.Olvidar(Contenido);
             Contenido.Clear();
             areas.Clear();
             filas.Clear();
             SinPrecio = null;
-            PonerLineaDireccion(buscando, null);
+            PonerLineaDireccion(buscando, localidad);
             Acciones.Reiniciar(textos(ClavesTexto.FichaIrPunto));
             Contenido.scrollOffset = Vector2.zero;
             Mostrar(true);

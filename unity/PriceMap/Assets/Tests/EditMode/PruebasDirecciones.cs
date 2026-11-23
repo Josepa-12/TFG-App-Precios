@@ -72,8 +72,14 @@ namespace PriceMap.Tests.EditMode
                 return p.Tcs.Task;
             }
 
-            public Task<Resultado<Direccion>> Inverso(Coordenada punto, CancellationToken ct) =>
-                Task.FromResult(Resultado<Direccion>.Fallo("sin conexión"));
+            /// <summary>Veces que se ha preguntado la dirección de un punto (/reverse).</summary>
+            public int Inversas;
+
+            public Task<Resultado<Direccion>> Inverso(Coordenada punto, CancellationToken ct)
+            {
+                Inversas++;
+                return Task.FromResult(Resultado<Direccion>.Fallo("sin conexión"));
+            }
         }
 
         static readonly Direccion CalleAncha = new Direccion("Calle Ancha 10", "Sanlúcar de Barrameda", AlNorte(Cabildo, 1234));
@@ -372,7 +378,7 @@ namespace PriceMap.Tests.EditMode
             espera = new EsperaFalsa();
             pantalla.Inicializar(mapa, tema, servicioLugares, Ahora, arbol, filtro,
                 busqueda: new ServicioBusqueda(servicioLugares, mapa, Ahora),
-                direcciones: new BuscadorDirecciones(geo, espera.Esperar));
+                direcciones: new BuscadorDirecciones(geo, espera.Esperar), geocodificador: geo);
             tema.Iniciar();
             filtro.Iniciar();
             hoja = pantalla.Buscador;
@@ -557,7 +563,7 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void TocarUnaDireccionCentraElMapaYPliegaLaHoja()
+        public void TocarUnaDireccionAbreSuFichaYConservaLaBusqueda()
         {
             CrearPantalla();
             AbrirYEscribir("calle ancha 10");
@@ -565,7 +571,20 @@ namespace PriceMap.Tests.EditMode
             pantalla.ElegirResultado(fila.Resultado);
             Assert.AreEqual(CalleAncha.Posicion, mapa.centrados.Last());
             Assert.IsFalse(hoja.Abierta);
-            Assert.IsNull(pantalla.Ficha.Lugar, "Las direcciones no tienen ficha (2.5).");
+            Assert.IsNull(pantalla.Ficha.Lugar);
+            Assert.AreEqual(CalleAncha.Posicion, pantalla.PuntoAbierto);
+            Assert.AreEqual("Calle Ancha 10", pantalla.Ficha.Titulo.text, "Sin la calle aparte, el nombre del resultado.");
+            Assert.AreEqual("Sanlúcar de Barrameda", pantalla.Ficha.Direccion.text);
+            Assert.IsFalse(pantalla.Ficha.BuscandoDireccion);
+
+            pantalla.CerrarFicha();
+            Assert.IsTrue(hoja.Visible);
+            Assert.AreEqual("calle ancha 10", hoja.Campo.value, "Cerrar la ficha no borra la búsqueda.");
+            Assert.AreEqual(1, FilasDireccion.Count());
+            hoja.Abrir();
+            pantalla.Buscar(hoja.Campo.value); // lo que hace la pantalla al desplegar la hoja
+            Assert.AreEqual(1, geo.Peticiones.Count, "Tampoco se vuelve a buscar.");
+            Assert.AreEqual(0, geo.Inversas, "Ni se pregunta la dirección del punto.");
         }
 
         [Test]

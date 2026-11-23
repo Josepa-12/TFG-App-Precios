@@ -158,3 +158,6 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-hoja-navegacion-finalizar-ruta.md`
   summary: Probar en el móvil el gesto de la hoja de la ruta (tocar, arrastrar arriba/abajo, pulsar «Finalizar ruta», arrastrar desde el botón) y TalkBack «Desplegar»/«Plegar».
   evidence: En EditMode los eventos de puntero se envían con el destino puesto a mano y la disposición forzada por reflexión.
+- source_spec: `_bmad-output/implementation-artifacts/spec-ir-a-una-direccion-buscada.md`
+  summary: Un resultado de dirección de Photon que es un lugar de la app (mismo nombre y sitio) abre una ficha de punto libre sin precios.
+  evidence: Revisión (edge case). `ServicioBusqueda` quita los puntos repetidos con `ReglaPuntosInteres.EsRepetido`, pero las direcciones de Photon no se comparan; el lugar sale encima en la lista.

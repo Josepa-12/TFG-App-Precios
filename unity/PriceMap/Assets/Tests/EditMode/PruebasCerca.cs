@@ -556,14 +556,19 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void TocarUnPuntoCentraElMapaYPliegaLaHoja()
+        public void TocarUnPuntoAbreSuFichaConSuCategoria()
         {
             AbrirYElegir(CategoriaPoi.Salud);
             var punto = hoja.Filas.First(f => f.Resultado.Tipo == TipoResultado.Punto).Resultado;
             pantalla.ElegirResultado(punto);
             Assert.AreEqual(punto.Posicion, mapaPantalla.centrados.Last());
             Assert.IsFalse(hoja.Abierta);
-            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.AreEqual(punto.Posicion, pantalla.PuntoAbierto);
+            Assert.AreEqual(punto.Nombre, pantalla.Ficha.Titulo.text);
+            Assert.AreEqual(FilaResultado.Mayuscula(FilaResultado.TipoDe(punto, T)), pantalla.Ficha.Tipo.text);
+            pantalla.CerrarFicha();
+            Assert.IsTrue(pantalla.CercaActiva, "La lista sigue al cerrar la ficha.");
+            Assert.IsNotEmpty(hoja.Filas);
         }
 
         [Test]
@@ -773,7 +778,8 @@ namespace PriceMap.Tests.EditMode
             ActivarTalkBack(AssistiveSupport.activeHierarchy.rootNodes.First(n => n.label == fila.Anuncio));
             Assert.AreEqual(fila.Resultado.Posicion, mapaPantalla.centrados.Last());
             Assert.IsFalse(hoja.Abierta);
-            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.AreEqual(fila.Resultado.Posicion, pantalla.PuntoAbierto);
+            Assert.AreSame(pantalla.Ficha.Titulo, pantalla.Accesibilidad.Enfocado);
         }
 
         [Test]

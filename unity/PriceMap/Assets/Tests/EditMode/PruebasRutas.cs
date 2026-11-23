@@ -1450,6 +1450,228 @@ namespace PriceMap.Tests.EditMode
             Assert.IsTrue(geo.Inversas.Single().Ct.IsCancellationRequested);
         }
 
+        // ───────────────── Dirección o punto del mapa elegidos en el buscador (22/11/2026) ─────────────────
+
+        /// <summary>Elige ese resultado en el buscador con un geocodificador que cuenta las preguntas de dirección.</summary>
+        GeoFalso Elegir(ResultadoBusqueda resultado)
+        {
+            var geo = new GeoFalso();
+            Crear(EstadoUbicacion.Activa, Cabildo, geocodificador: geo);
+            pantalla.ElegirResultado(resultado);
+            return geo;
+        }
+
+        static ResultadoBusqueda DeDireccion(Direccion d) => ResultadoBusqueda.DeDireccion(d, 100);
+
+        static ResultadoBusqueda DePunto(string nombre, CategoriaPoi categoria, bool sanidadPublica = false) =>
+            ResultadoBusqueda.DePunto(new PuntoInteres(1, nombre, "bank", "bank", 1, CalleAncha), categoria, sanidadPublica, 100, 3);
+
+        /// <summary>Ficha de punto libre en CalleAncha con esos textos, los minutos pidiéndose y sin preguntar la dirección.</summary>
+        void ComprobarFichaConocida(GeoFalso geo, string titulo, string tipo, string debajo)
+        {
+            Assert.IsTrue(pantalla.FichaAbierta);
+            Assert.AreEqual(CalleAncha, pantalla.PuntoAbierto);
+            Assert.AreEqual(CalleAncha, pantalla.PuntoChincheta, "Con su chincheta.");
+            Assert.AreEqual(titulo, Ficha.Titulo.text);
+            Assert.AreEqual(tipo, Ficha.Tipo.text);
+            Assert.AreEqual(DisplayStyle.Flex, Ficha.GotaPunto.style.display.value);
+            Assert.AreEqual(DisplayStyle.None, Ficha.Muestra.style.display.value);
+            Assert.AreEqual(debajo ?? "", Ficha.Direccion.text);
+            Assert.AreEqual(debajo != null ? DisplayStyle.Flex : DisplayStyle.None, Ficha.Direccion.style.display.value);
+            Assert.IsFalse(Ficha.BuscandoDireccion);
+            Assert.IsEmpty(geo.Inversas, "Sin petición a /reverse.");
+            Assert.IsTrue(Ficha.AccionesVisibles);
+            valhalla.De(ModoViaje.Coche).Responder(120);
+            valhalla.De(ModoViaje.APie).Responder(300);
+            Assert.AreEqual("2 min", Fila.Coche.Tiempo.text);
+            Assert.AreEqual("5 min", Fila.APie.Tiempo.text);
+        }
+
+        [Test]
+        public void Buscada_DireccionConCalle()
+        {
+            var geo = Elegir(DeDireccion(DireccionCalleAncha));
+            ComprobarFichaConocida(geo, "Calle Ancha, 10", "Punto en el mapa", "Sanlúcar de Barrameda");
+        }
+
+        [Test]
+        public void Buscada_DireccionSinCalle_ElNombreDelResultado()
+        {
+            var geo = Elegir(DeDireccion(new Direccion("Plaza del Cabildo", "Sanlúcar de Barrameda", CalleAncha)));
+            ComprobarFichaConocida(geo, "Plaza del Cabildo", "Punto en el mapa", "Sanlúcar de Barrameda");
+        }
+
+        [Test]
+        public void Buscada_LaLocalidadNoRepiteElTituloNiSaleVacia()
+        {
+            var geo = Elegir(DeDireccion(new Direccion("Chipiona", "chipiona", CalleAncha)));
+            ComprobarFichaConocida(geo, "Chipiona", "Punto en el mapa", null);
+            pantalla.ElegirResultado(DeDireccion(new Direccion("Calle Real", "", CalleAncha, "Calle Real")));
+            Assert.AreEqual("Calle Real", Ficha.Titulo.text);
+            Assert.AreEqual(DisplayStyle.None, Ficha.Direccion.style.display.value);
+            Fila.PulsarIr();
+            Assert.AreEqual("Calle Real", Abajo.DestinoNombre.text);
+            Assert.AreEqual("Punto en el mapa", Abajo.DestinoDetalle.text);
+        }
+
+        [Test]
+        public void Buscada_SitioConNombreYCalle_ElNombreYDebajoLaDireccion()
+        {
+            const string debajo = "Avenida Calzada, 20, Sanlúcar de Barrameda";
+            var geo = Elegir(DeDireccion(new Direccion("Hotel Guadalquivir", "Sanlúcar de Barrameda", CalleAncha, "Avenida Calzada", "20")));
+            ComprobarFichaConocida(geo, "Hotel Guadalquivir", "Punto en el mapa", debajo);
+            Fila.PulsarIr();
+            Assert.AreEqual("Hotel Guadalquivir", Abajo.DestinoNombre.text);
+            Assert.AreEqual(debajo, Abajo.DestinoDetalle.text);
+            Assert.IsNotNull(pantalla.RutaDibujada, "Estaba en la caché: se dibuja ya.");
+            Assert.AreEqual("Ruta a Hotel Guadalquivir", Arriba.Principal.text);
+            Assert.IsEmpty(geo.Inversas);
+        }
+
+        [Test]
+        public void Buscada_SitioConNombreYCalle_SinLocalidadNiNumero()
+        {
+            var geo = Elegir(DeDireccion(new Direccion("Hotel Guadalquivir", "", CalleAncha, "Avenida Calzada")));
+            ComprobarFichaConocida(geo, "Hotel Guadalquivir", "Punto en el mapa", "Avenida Calzada");
+        }
+
+        [TestCase("Calle Ancha", "", "Calle Ancha")]
+        [TestCase("CALLE ANCHÁ", "", "Calle Ancha")]
+        [TestCase("calle ancha", "10", "Calle Ancha, 10")]
+        [TestCase("Calle Ancha 10", "10", "Calle Ancha, 10")]
+        [TestCase("Calle Ancha, 10", "10", "Calle Ancha, 10")]
+        public void Buscada_ElNombreEsLaCalle_DebajoLaLocalidad(string nombre, string numero, string titulo)
+        {
+            var geo = Elegir(DeDireccion(new Direccion(nombre, "Sanlúcar de Barrameda", CalleAncha, "Calle Ancha", numero)));
+            ComprobarFichaConocida(geo, titulo, "Punto en el mapa", "Sanlúcar de Barrameda");
+        }
+
+        [Test]
+        public void Buscada_PuntoDelMapa()
+        {
+            var geo = Elegir(DePunto("Caixabank", CategoriaPoi.Bancos));
+            ComprobarFichaConocida(geo, "Caixabank", "Banco", null);
+        }
+
+        [Test]
+        public void Buscada_PuntoDelMapa_SanidadPublicaYSinCategoria()
+        {
+            var geo = Elegir(DePunto("Centro de Salud", CategoriaPoi.Salud, sanidadPublica: true));
+            ComprobarFichaConocida(geo, "Centro de Salud", "Centro sanitario público", null);
+            geo = Elegir(DePunto("Algo", CategoriaPoi.Ninguna));
+            Assert.AreEqual("Algo", Ficha.Titulo.text);
+            Assert.AreEqual("Punto en el mapa", Ficha.Tipo.text);
+            Assert.IsEmpty(geo.Inversas);
+        }
+
+        [Test]
+        public void Buscada_Ir_RutaAlPuntoYReabrirSinPreguntar()
+        {
+            var geo = Elegir(DeDireccion(DireccionCalleAncha));
+            Fila.PulsarIr();
+            Assert.IsTrue(pantalla.RutaActiva);
+            Assert.AreEqual(CalleAncha, valhalla.De(ModoViaje.Coche).Destino);
+            Assert.AreEqual("Calle Ancha, 10", Abajo.DestinoNombre.text);
+            Assert.AreEqual("Sanlúcar de Barrameda", Abajo.DestinoDetalle.text);
+            Assert.AreEqual(FilaResultado.GlifoChincheta, Abajo.GlifoDestino);
+            valhalla.De(ModoViaje.Coche).Responder(120, 300);
+            Assert.AreEqual("Ruta a Calle Ancha, 10", Arriba.Principal.text);
+            Assert.IsNotNull(mapa.linea);
+
+            pantalla.ReabrirFichaRuta();
+            Assert.AreEqual("Calle Ancha, 10", Ficha.Titulo.text);
+            Assert.AreEqual("Sanlúcar de Barrameda", Ficha.Direccion.text);
+            Assert.IsEmpty(geo.Inversas, "Reabierta, tampoco se pregunta.");
+            pantalla.CerrarFicha();
+            Assert.AreEqual(CalleAncha, pantalla.PuntoChincheta);
+
+            // Con otra ficha por medio (un punto libre de verdad, que sí pregunta), al reabrir vuelve la dirección
+            pantalla.AbrirPunto(Cabildo);
+            Assert.AreEqual(1, geo.Inversas.Count);
+            Assert.IsNull(Ficha.Conocido);
+            pantalla.CerrarFicha();
+            pantalla.ReabrirFichaRuta();
+            Assert.AreEqual("Calle Ancha, 10", Ficha.Titulo.text);
+            Assert.AreEqual(1, geo.Inversas.Count);
+        }
+
+        [Test]
+        public void Buscada_IrAUnPuntoDelMapa_ElDestinoLlevaSuCategoria()
+        {
+            var geo = Elegir(DePunto("Caixabank", CategoriaPoi.Bancos));
+            Fila.PulsarIr();
+            Assert.AreEqual("Caixabank", Abajo.DestinoNombre.text);
+            Assert.AreEqual("Banco", Abajo.DestinoDetalle.text);
+            Assert.AreEqual(Textos.Formatear(T(ClavesTexto.RutaAnuncioDestino), "Caixabank", "Banco"), Abajo.AnuncioDestino);
+            pantalla.ReabrirFichaRuta();
+            Assert.AreEqual("Caixabank", Ficha.Titulo.text);
+            Assert.AreEqual("Banco", Ficha.Tipo.text);
+            Assert.IsEmpty(geo.Inversas);
+        }
+
+        [Test]
+        public void Buscada_TrasQuitarLaRuta_OtraRutaNoHeredaLoSabido()
+        {
+            var geo = Elegir(DePunto("Caixabank", CategoriaPoi.Bancos));
+            Fila.PulsarIr();
+            pantalla.QuitarRuta();
+            pantalla.AbrirPunto(CalleAncha); // el mismo sitio, ahora como punto libre
+            Assert.AreEqual("36,7781, -6,3515", Ficha.Titulo.text);
+            Assert.AreEqual("Punto en el mapa", Ficha.Tipo.text);
+            Assert.IsTrue(Ficha.BuscandoDireccion);
+            Assert.AreEqual(1, geo.Inversas.Count);
+            Fila.PulsarIr();
+            Assert.AreEqual("Punto en el mapa", Abajo.DestinoDetalle.text);
+            pantalla.ReabrirFichaRuta();
+            Assert.IsNull(Ficha.Conocido);
+
+            pantalla.AbrirFicha(Areas);
+            Assert.IsNull(Ficha.Conocido);
+        }
+
+        [Test]
+        public void Buscada_CancelaLaDireccionDelPuntoAnterior()
+        {
+            var geo = new GeoFalso();
+            Crear(EstadoUbicacion.Activa, Cabildo, geocodificador: geo);
+            pantalla.AbrirPunto(Cabildo);
+            pantalla.ElegirResultado(DePunto("Caixabank", CategoriaPoi.Bancos));
+            Assert.IsTrue(geo.Inversas.Single().Ct.IsCancellationRequested);
+            geo.Inversas.Single().Responder(DireccionCalleAncha);
+            Assert.AreEqual("Caixabank", Ficha.Titulo.text);
+        }
+
+        [Test]
+        public void Buscada_TalkBackModalYSeCierraConAtrasXYMapa()
+        {
+            AccesibilidadPantalla.LectorForzado = () => false; // sin jerarquía: el recorrido se calcula igual
+            Elegir(DeDireccion(DireccionCalleAncha));
+            Assert.IsTrue(Acc.Modal);
+            Assert.AreSame(Ficha.Titulo, Acc.Enfocado);
+            var recorrido = Acc.Recorrido();
+            Assert.AreEqual("Calle Ancha, 10, Sanlúcar de Barrameda", recorrido[0]);
+            Assert.AreEqual("Punto en el mapa", recorrido[1]);
+            CollectionAssert.Contains(recorrido, "Ir a este punto");
+            Assert.AreEqual("Cerrar ficha", recorrido.Last());
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsFalse(Acc.Modal);
+            Assert.IsNull(pantalla.PuntoChincheta);
+            Assert.AreSame(pantalla.Buscador, Acc.Enfocado, "El foco vuelve a la cápsula del buscador.");
+
+            pantalla.ElegirResultado(DePunto("Caixabank", CategoriaPoi.Bancos));
+            Assert.AreEqual("Caixabank", Acc.Recorrido()[0]);
+            Assert.AreEqual("Banco", Acc.Recorrido()[1]);
+            Ficha.BotonCerrar.Pulsar();
+            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.AreSame(pantalla.Buscador, Acc.Enfocado);
+
+            pantalla.ElegirResultado(DePunto("Caixabank", CategoriaPoi.Bancos));
+            Ficha.TocarFuera();
+            Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.IsNull(pantalla.PuntoChincheta);
+            Assert.AreSame(pantalla.Buscador, Acc.Enfocado);
+        }
+
         class Inversa
         {
             public CancellationToken Ct;

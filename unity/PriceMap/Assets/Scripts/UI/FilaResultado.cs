@@ -137,7 +137,7 @@ namespace PriceMap.UI
             return clave != null ? textos(clave) : "";
         }
 
-        static string Mayuscula(string s) =>
+        internal static string Mayuscula(string s) =>
             string.IsNullOrEmpty(s) ? s : char.ToUpper(s[0], System.Globalization.CultureInfo.InvariantCulture) + s.Substring(1);
 
         static Label Etiqueta(string texto, string nombre, string clase, string tipografia)

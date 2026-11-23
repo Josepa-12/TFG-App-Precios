@@ -71,6 +71,7 @@ namespace PriceMap.UI
         ModoViaje modoRuta;
         Lugar lugarRuta;                       // destino de la ruta para reabrir su ficha (o el punto libre)
         Coordenada? puntoRuta;
+        ResultadoBusqueda conocidoRuta;        // dirección o punto del mapa del buscador en puntoRuta; null si no se eligió ahí
         string nombreRuta;                     // "Ruta a Clínica Areas" con una ruta sin textos de maniobra
         CancellationTokenSource peticionRuta;  // petición de la ruta en curso; null si no hay ninguna
         // Seguir la ruta (historia 2.7, parte 1)
@@ -956,17 +957,16 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Toque en un resultado: un lugar abre su ficha (que centra el mapa y pliega la hoja); un punto de interés
-        /// centra el mapa en él y pliega la hoja (su ficha llega en la 2.5); una dirección, igual que un punto.
-        /// «Ir a este punto» (historia 2.5, parte 2) abre la ficha de punto libre en su coordenada.
+        /// Toque en un resultado: un lugar abre su ficha (que centra el mapa y pliega la hoja); «Ir a este punto»
+        /// (historia 2.5, parte 2) abre la ficha de punto libre en su coordenada; una dirección o un punto de interés,
+        /// la misma ficha con sus datos ya sabidos, sin preguntar a Photon (22/11/2026).
         /// </summary>
         public void ElegirResultado(ResultadoBusqueda resultado)
         {
             if (resultado == null || buscador == null || ModalUbicacionAbierta) return;
             if (resultado.Tipo == TipoResultado.Lugar) { AbrirFicha(resultado.Lugar); return; }
             if (resultado.Tipo == TipoResultado.Coordenada) { AbrirPunto(resultado.Posicion); return; }
-            mapa.Centrar(resultado.Posicion);
-            PlegarBuscador();
+            AbrirPunto(resultado.Posicion, resultado);
         }
 
         // ───────────────────────── Encuentra cerca (historia 2.4, parte 1) ─────────────────────────
@@ -1249,8 +1249,8 @@ namespace PriceMap.UI
         /// <summary>
         /// Toque en el mapa (px de pantalla, origen arriba a la izquierda) con la escala px → dp dada. Con el menú
         /// "Precios" abierto solo lo cierra y con una ventana de ubicación no hace nada; con la ficha abierta la
-        /// cierra. Si no, abre la ficha del marcador visible más cercano a menos de 24 dp (los puntos de interés no
-        /// abren nada: su ficha es de la épica 2). Devuelve true si ha abierto una ficha.
+        /// cierra. Si no, abre la ficha del marcador visible más cercano a menos de 24 dp (tocar un punto de
+        /// interés en el mapa no abre nada: su ficha se abre desde el buscador). Devuelve true si ha abierto una ficha.
         /// </summary>
         public bool TocarMapa(PuntoPantalla punto, float escala)
         {
@@ -1336,11 +1336,16 @@ namespace PriceMap.UI
         /// coordenadas de título y, si hay geocodificador, la petición de su dirección a Photon. Se centra y se
         /// cierra como la ficha de un lugar. Nada se guarda (FR17).
         /// </summary>
-        public void AbrirPunto(Coordenada punto)
+        public void AbrirPunto(Coordenada punto) => AbrirPunto(punto, null);
+
+        /// <param name="conocido">Dirección o punto del mapa del buscador en ese punto: la ficha sale ya con sus datos
+        /// y no se pregunta a Photon. Null: se pregunta la dirección.</param>
+        void AbrirPunto(Coordenada punto, ResultadoBusqueda conocido)
         {
             if (ficha == null || ModalUbicacionAbierta) return;
             bool yaAbierta = PrepararFicha();
-            ficha.AbrirPunto(punto, buscando: geocodificador != null);
+            if (conocido != null) ficha.AbrirPunto(conocido);
+            else ficha.AbrirPunto(punto, buscando: geocodificador != null);
             ActualizarVistaRuta(); // con ruta, sus tarjetas se ocultan (la línea sigue)
             PedirTiempos();
             CentrarEnFicha(punto);
@@ -1353,7 +1358,7 @@ namespace PriceMap.UI
             if (capa != null) capa.Fijado = null;
             FichaModalEnTalkBack();
 
-            if (geocodificador != null)
+            if (conocido == null && geocodificador != null)
             {
                 var cts = new CancellationTokenSource();
                 peticionPunto = cts;
@@ -1554,6 +1559,7 @@ namespace PriceMap.UI
             modoRuta = modo;
             lugarRuta = ficha.Lugar;
             puntoRuta = ficha.Punto;
+            conocidoRuta = ficha.Conocido;
             nombreRuta = ficha.Lugar != null ? ficha.Lugar.Nombre : ficha.Titulo.text;
             mapa.QuitarRuta(); // sin línea mientras llega la nueva
             tarjetaManiobra.MostrarCalculando();
@@ -1749,7 +1755,8 @@ namespace PriceMap.UI
 
         /// <summary>
         /// La fila del destino de la hoja: el lugar con el glifo de su tipo en el color de su plantilla y "categoría ·
-        /// en coche"; el punto libre con la chincheta y su dirección (si aún no la tiene, "Punto en el mapa").
+        /// en coche"; el punto libre con la chincheta y su dirección (si no la tiene, "Punto en el mapa"; un punto del
+        /// mapa elegido en el buscador, su categoría).
         /// </summary>
         void PonerDestinoRuta()
         {
@@ -1769,7 +1776,8 @@ namespace PriceMap.UI
             {
                 if (fichaDelPunto) nombre = ficha.Titulo.text; // "Calle Ancha, 10" en cuanto llega la dirección
                 string direccion = fichaDelPunto && !ficha.BuscandoDireccion ? ficha.Direccion.text : null;
-                detalle = string.IsNullOrWhiteSpace(direccion) ? Textos.T(ClavesTexto.PuntoTipo) : direccion;
+                detalle = !string.IsNullOrWhiteSpace(direccion) ? direccion
+                    : fichaDelPunto ? ficha.Tipo.text : Textos.T(ClavesTexto.PuntoTipo);
                 anuncioDetalle = detalle;
                 glifo = FilaResultado.GlifoChincheta;
                 clase = TarjetaRuta.ClaseIconoPunto;
@@ -2121,6 +2129,7 @@ namespace PriceMap.UI
             rutaDibujada = null;
             lugarRuta = null;
             puntoRuta = null;
+            conocidoRuta = null;
             toast?.Ocultar();
             if (!FichaAbierta) CancelarDireccionPunto(); // la del punto de destino ya no hace falta
             tarjetaRuta?.Plegar(porUsuario: false); // la siguiente empieza plegada
@@ -2143,7 +2152,7 @@ namespace PriceMap.UI
             toast?.Ocultar(); // no se queda encima de la ficha
             pastillaSenal?.Ocultar(); // vuelve al cerrarla si aún no hay señal (ActualizarCapas)
             if (lugarRuta != null) AbrirFicha(lugarRuta);
-            else if (puntoRuta.HasValue) AbrirPunto(puntoRuta.Value);
+            else if (puntoRuta.HasValue) AbrirPunto(puntoRuta.Value, conocidoRuta);
             else return;
             if (!FichaAbierta) return;
             ficha.Acciones.Elegir(modoRuta);
@@ -2391,6 +2400,8 @@ namespace PriceMap.UI
                 accesibilidad.PedirFoco(tarjetaRuta.Cuerpo);
                 return;
             }
+            // Elegido en el buscador (dirección o punto del mapa): no hay marcador, el foco vuelve a la cápsula
+            if (ficha.Conocido != null) { accesibilidad.PedirFoco(buscador); return; }
             accesibilidad.PedirFoco(marcador != null && marcador.Visible ? marcador.Cuerpo : null);
         }
 

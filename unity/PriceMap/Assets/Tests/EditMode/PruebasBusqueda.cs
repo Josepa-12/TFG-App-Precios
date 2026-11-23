@@ -426,14 +426,24 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void TocarUnPuntoCentraElMapaYPliegaLaHoja()
+        public void TocarUnPuntoAbreSuFichaYConservaLaBusqueda()
         {
             AbrirYEscribir("mercadona");
             var punto = hoja.Filas.Single(f => f.Resultado.Tipo == TipoResultado.Punto).Resultado;
             pantalla.ElegirResultado(punto);
             Assert.AreEqual(punto.Posicion, mapaPantalla.centrados.Last());
             Assert.IsFalse(hoja.Abierta);
+            Assert.IsTrue(pantalla.FichaAbierta);
+            Assert.AreEqual(punto.Posicion, pantalla.PuntoAbierto);
+            Assert.AreEqual("Mercadona", pantalla.Ficha.Titulo.text);
+            Assert.AreEqual("Supermercado", pantalla.Ficha.Tipo.text, "Su categoría, como en la fila.");
+            Assert.IsTrue(Oculto(pantalla.Ficha.Direccion));
+
+            Assert.IsTrue(pantalla.Atras());
             Assert.IsFalse(pantalla.FichaAbierta);
+            Assert.IsTrue(hoja.Visible);
+            Assert.AreEqual("mercadona", hoja.Campo.value, "Cerrar la ficha no borra la búsqueda.");
+            Assert.IsTrue(hoja.Filas.Any(f => f.Resultado.Tipo == TipoResultado.Punto));
         }
 
         [Test]

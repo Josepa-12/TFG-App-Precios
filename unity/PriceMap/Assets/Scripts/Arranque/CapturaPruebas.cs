@@ -1626,6 +1626,7 @@ namespace PriceMap.Arranque
                 if (buscador.Campo.value != "" || buscador.MostrandoResultados) Debug.LogError("PriceMap: la X no ha vaciado la búsqueda.");
 
                 yield return Direcciones(buscador);
+                yield return DireccionFicha(buscador);
                 yield return Enlace(buscador);
                 yield return Compartido(buscador);
             }
@@ -1678,6 +1679,71 @@ namespace PriceMap.Arranque
             pantalla.BorrarBusqueda();
             yield return null;
             if (pantalla.Direcciones.Pendiente) Debug.LogError("PriceMap: la X no ha cancelado la petición de direcciones.");
+        }
+
+        /// <summary>
+        /// Ir a una dirección buscada (22/11/2026), capturas "direccion-ficha" (claro) y "direccion-ficha-oscuro": elegir
+        /// «Calle Ancha 10» (un resultado fijo, sin depender de Photon) abre la ficha de punto libre ya con la dirección,
+        /// los minutos e Ir. Comprueba los textos, el centrado, la chincheta y que al cerrarla sigue el texto del buscador;
+        /// después, lo mismo con el primer punto del mapa que salga (nombre y categoría), captura "punto-ficha" (claro).
+        /// </summary>
+        IEnumerator DireccionFicha(HojaBuscador buscador)
+        {
+            const string texto = "calle ancha 10";
+            var calleAncha = new Coordenada(36.7781, -6.3515);
+            var direccion = new Direccion("Calle Ancha 10", "Sanlúcar de Barrameda", calleAncha, "Calle Ancha", "10");
+            buscador.Abrir();
+            buscador.Campo.value = texto;
+            yield return new WaitForSeconds(1f);
+            if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+            pantalla.ElegirResultado(ResultadoBusqueda.DeDireccion(direccion, pantalla.PuntoCercania().DistanciaMetros(calleAncha)));
+            yield return new WaitForSeconds(2f);
+            yield return new WaitForEndOfFrame();
+            var ficha = pantalla.Ficha;
+            Debug.Log($"PriceMap: dirección elegida: título \"{ficha.Titulo.text}\"; subtítulo \"{ficha.Tipo.text}\"; debajo \"{ficha.Direccion.text}\"; " +
+                      $"coche \"{ficha.Acciones.Coche.Tiempo.text}\", a pie \"{ficha.Acciones.APie.Tiempo.text}\"");
+            if (pantalla.PuntoAbierto != calleAncha || buscador.Abierta) Debug.LogError("PriceMap: elegir una dirección no ha abierto su ficha.");
+            if (ficha.Titulo.text != "Calle Ancha, 10" || ficha.Direccion.text != "Sanlúcar de Barrameda" || ficha.BuscandoDireccion)
+                Debug.LogError("PriceMap: la ficha de la dirección elegida no lleva sus datos.");
+            if (!ficha.AccionesVisibles || ficha.Acciones.Coche.Estado != EstadoTiempo.Minutos)
+                Debug.LogError("PriceMap: la ficha de la dirección elegida no enseña los minutos.");
+            if (pantalla.Chincheta == null || !pantalla.Chincheta.Visible) Debug.LogError("PriceMap: con la ficha de la dirección no se ve la chincheta.");
+            ComprobarCentrado("La dirección elegida", calleAncha);
+            SolapesFicha("dirección elegida");
+            yield return Capturar("direccion-ficha");
+            yield return new WaitForSeconds(1f);
+            tema.Alternar();
+            yield return new WaitForSeconds(1.5f);
+            yield return new WaitForEndOfFrame();
+            yield return Capturar("direccion-ficha-oscuro");
+            yield return new WaitForSeconds(1f);
+            tema.Alternar();
+
+            pantalla.Atras();
+            yield return null;
+            if (pantalla.FichaAbierta || !buscador.Visible || buscador.Campo.value != texto)
+                Debug.LogError($"PriceMap: al cerrar la ficha de la dirección no ha vuelto el buscador con su texto (\"{buscador.Campo.value}\").");
+
+            var punto = pantalla.Busqueda?.Buscar("caixabank", pantalla.PuntoCercania()).FirstOrDefault(r => r.Tipo == TipoResultado.Punto)
+                        ?? pantalla.Busqueda?.Buscar("mercadona", pantalla.PuntoCercania()).FirstOrDefault(r => r.Tipo == TipoResultado.Punto);
+            if (punto == null) Debug.Log("PriceMap: ni \"caixabank\" ni \"mercadona\" están en las teselas cargadas.");
+            else
+            {
+                pantalla.ElegirResultado(punto);
+                yield return new WaitForSeconds(2f); // el tema claro, los minutos y el centrado
+                yield return new WaitForEndOfFrame();
+                Debug.Log($"PriceMap: punto del mapa elegido: título \"{ficha.Titulo.text}\"; subtítulo \"{ficha.Tipo.text}\"; debajo \"{ficha.Direccion.text}\"");
+                if (pantalla.PuntoAbierto != punto.Posicion || ficha.Titulo.text != punto.Nombre || ficha.BuscandoDireccion)
+                    Debug.LogError("PriceMap: elegir un punto del mapa no ha abierto su ficha.");
+                if (ficha.Acciones.Coche.Estado != EstadoTiempo.Minutos) Debug.LogError("PriceMap: la ficha del punto del mapa no enseña los minutos.");
+                SolapesFicha("punto del mapa elegido");
+                yield return Capturar("punto-ficha");
+                yield return new WaitForSeconds(1f);
+                pantalla.CerrarFicha();
+                yield return new WaitForSeconds(0.5f);
+            }
+            pantalla.BorrarBusqueda();
+            yield return null;
         }
 
         /// <summary>
