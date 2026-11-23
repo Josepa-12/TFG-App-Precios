@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Reglas de seguridad de PriceMap. Todo lo que no se abre aquí queda denegado.
+// Cada colección la abre la historia que la necesita, con sus pruebas en pruebas/.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Datos privados de cada usuario: su documento y todas sus subcolecciones
+    // (con rules_version '2', «=**» vale también para el propio documento).
+    //
+    // OJO: los «allow» se suman, así que otra regla no puede recortar lo que abre esta.
+    // Cuando lleguen «visitas» y «aportes» (inmutables; AD-6, épica 4) hay que SUSTITUIR
+    // esta regla por subcolecciones con nombre, no ampliarla ni añadir otra al lado.
+    match /usuarios/{uid}/{resto=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}

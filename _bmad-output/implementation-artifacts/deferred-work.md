@@ -194,3 +194,15 @@
 - source_spec: `spec-3-1-bienvenida-privacidad-y-consentimientos.md`
   summary: Probar la bienvenida en un móvil (instalación limpia en Android 13+ y anterior, y actualización).
   evidence: Diálogos reales de permisos, denegar dos veces, cerrar el diálogo sin responder, TalkBack, fundido de la pantalla de inicio y copiar el correo (Unity no tiene menú de copiar en Android).
+
+- source_spec: `spec-3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexion.md`
+  summary: Meter el SDK de Firebase en la app (parte 2 de la 3.2; `spec-3-2b-firebase-dentro-de-la-app.md`).
+  evidence: El spec entero medía 1.946 tokens y el usuario eligió partirlo.
+
+- source_spec: `spec-3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexion.md`
+  summary: Al abrir visitas y aportes (épica 4), sustituir la regla recursiva de `usuarios/<uid>` por subcolecciones con nombre y validar campos y tamaños.
+  evidence: Firestore suma los `allow`: con `{resto=**}` no se puede estrechar `visitas` (AD-6), y una cuenta puede escribir cualquier campo o gastar la cuota.
+
+- source_spec: `spec-3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexion.md`
+  summary: En la 3.2b, comprobar desde la app que las reglas publicadas en `pricemap-98f78` son las del repositorio.
+  evidence: Las pruebas usan el emulador; el usuario las publica a mano y nada compara lo publicado.

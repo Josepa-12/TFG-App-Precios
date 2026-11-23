@@ -964,6 +964,11 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
       - La copia de seguridad de Android se desactiva (`allowBackup=false`): si no, al reinstalar se daría por visto el aviso.
     - **Comprobación:** tras la revisión de código (13 arreglos) pasan 1540 pruebas, el APK se genera y las capturas de PC muestran los tres pasos y el aviso en claro, oscuro y al 200 % sin cortes.
     - **Pendiente:** en el móvil, instalación limpia en Android 13+ y anterior; volver a leer el aviso desde Ajustes (3.5) y completarlo con los derechos del RGPD.
+  - *Historia 3.2 (parte 1): reglas de seguridad de Firestore (24/11/2026).* **[Parcial]**
+    - **Motivo:** antes de guardar nada en la nube hace falta que cada usuario solo pueda leer y escribir lo suyo (NFR-8).
+    - **Solución:** proyecto de Firebase en el plan gratuito y `firebase/firestore.rules` en el repositorio: todo denegado salvo `usuarios/<uid>` y sus subcolecciones, solo para su dueño. El `google-services.json` queda fuera de git, porque el repositorio es público.
+    - **Comprobación:** 22 pruebas con el emulador de Firestore (lo propio, lo ajeno, sin sesión, otras colecciones y lotes mezclados). La revisión rompió las reglas a propósito de varias formas: ocho pasaban las primeras pruebas, así que se ampliaron hasta que todas fallan.
+    - **Pendiente:** publicar las reglas en la consola; en la épica 4, sustituir la regla general por subcolecciones con nombre (las visitas y los aportes no se pueden modificar).
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -1143,3 +1148,4 @@ Ideas de trabajo futuro ya identificadas:
 | 23/11/2026 | Pantalla de inicio (revisión de código): 18 arreglos (9 de ellos pruebas que faltaban), 1488 pruebas en verde, APK y captura de PC bien | Entre ellos: TalkBack podía perder el foco al irse la pantalla, el destino del pin se calculaba con el mapa ya alejado y, si Unity cambia sus recursos, ahora la compilación falla en vez de volver el gris de Unity sin avisar |
 | 24/11/2026 | Historia 3.1 (decisiones del usuario): bienvenida de tres pasos (maqueta A), aviso completo dentro de la app con nombre y correo del responsable, «Empezar» siempre activo | Consentimiento explícito sin obligar a contestar: no se pide ningún permiso que no se acepte |
 | 24/11/2026 | Historia 3.1 implementada y revisada (13 arreglos, 1540 pruebas en verde, APK y capturas bien) | La revisión encontró que con toques rápidos se podía pasar la bienvenida sin leerla, que el aviso no decía que los puntos marcados en el mapa se envían a Photon y que la copia de seguridad de Android podía dar el aviso por visto al reinstalar |
+| 24/11/2026 | Historia 3.2 partida en dos (decisión del usuario): reglas de seguridad y Firebase dentro de la app. La parte 1, implementada y revisada (13 arreglos, 22 pruebas de reglas en verde) | Son entregas independientes; las reglas son la frontera de seguridad y se prueban con el emulador sin tocar el proyecto real |

@@ -27,6 +27,7 @@ U="C:/Program Files/Unity/Hub/Editor/6000.3.28f1/Editor/Unity.exe"
 "$U" -batchmode -projectPath unity/PriceMap -runTests -testPlatform EditMode -testResults <scratch>/r.xml -logFile <scratch>/t.log
 "$U" -batchmode -quit -buildTarget Android -projectPath unity/PriceMap -executeMethod PriceMap.EditorTools.ConfigurarAndroid.CompilarApk -logFile <scratch>/b.log
 ```
+Reglas de Firestore (al tocar `firebase/`): `cd firebase/pruebas && npm ci && npm test` (emulador, proyecto ficticio; puerto 8080 libre: en Git Bash el emulador puede quedarse abierto, mejor PowerShell). La build de PC necesita `-buildTarget Win64` si antes se compiló Android.
 Tras build de PC: borrar `Assets/AddressableAssetsData/link.xml` (y su `.meta`) y deshacer `Windows/addressables_content_state.bin`.
 
 ## Proceso
@@ -68,6 +69,7 @@ Tras build de PC: borrar `Assets/AddressableAssetsData/link.xml` (y su `.meta`) 
 - 2.9 (llegar y terminar, `spec-2-9`; maqueta B; capturas `llegada(-oscuro)`) hecha y revisada (11 arreglos), 1445/1445 y APK bien, commit de seguridad sin push. Atrás ya no termina una ruta: solo «Finalizar ruta». Con ella la épica 2 tiene todas sus historias hechas (parar y avisar).
 - Pantalla de inicio nativa (`spec-pantalla-de-inicio`, maqueta A; sin logo de Unity) hecha y revisada (18 arreglos, 9 de ellos pruebas), 1488/1488 y APK bien, commit de seguridad sin push. En PC y captura no sale. **Falta probarla en el móvil** (lista en `deferred-work`).
 - 3.1 (bienvenida, privacidad y consentimientos; maqueta A, textos en `docs/diseno/bienvenida/textos.md`; capturas `bienvenida-1..3(-oscuro)`, `bienvenida-aviso(-oscuro)`, `bienvenida-200*`) hecha y revisada (13 arreglos), 1540/1540 y APK bien, commit de seguridad sin push. `allowBackup=false`. Falta probarla en el móvil. Sprint 3-1 en `review`.
-- **Siguiente:** probar en el móvil (5b, calles guardadas, 2.8b, 2.9, pantalla de inicio y 3.1); retrospectiva de la épica 2 (opcional); 3.2 (necesita Firebase y `google-services.json`).
+- Firebase: proyecto `pricemap-98f78` creado por el usuario; `google-services.json` en `Assets`, fuera de git (repositorio público). 3.2 partida en dos: parte 1 (`firebase/`: reglas y 22 pruebas con emulador, `LEEME.md`) hecha y revisada (13 arreglos), commit de seguridad sin push; **el usuario tiene que publicar las reglas en la consola**. Al llegar `visitas` (épica 4), sustituir la regla recursiva.
+- **Siguiente:** 3.2 parte 2 (`spec-3-2b-firebase-dentro-de-la-app.md`: SDK 14.1.0); probar en el móvil (5b, calles guardadas, 2.8b, 2.9, pantalla de inicio y 3.1); retrospectiva de la épica 2 (opcional).
 - Decidido: los textos de maniobra de Valhalla se aceptan en forma de usted («Gire a la derecha…»).
-- Pendientes abiertos: pruebas en un móvil real (TalkBack, arrastre, rutas reales por calles de sentido único); Photon no encuentra «calle ancha 10». Épicas 3+ necesitan el proyecto de Firebase y `google-services.json` (spec 3.2).
+- Pendientes abiertos: pruebas en un móvil real (TalkBack, arrastre, rutas reales por calles de sentido único); Photon no encuentra «calle ancha 10».

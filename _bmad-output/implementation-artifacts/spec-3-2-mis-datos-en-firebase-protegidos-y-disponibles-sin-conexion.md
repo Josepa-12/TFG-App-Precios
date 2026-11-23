@@ -1,88 +1,95 @@
 ---
-title: 'Historia 3.2: mis datos en Firebase, protegidos y disponibles sin conexión'
+title: 'Historia 3.2 (parte 1): reglas de seguridad de Firestore'
 type: 'feature'
-created: '2026-11-18'
-status: 'draft'
+created: '2026-11-24'
+status: 'done'
+baseline_commit: '621109aed8c58a7ac5b3869d11379fd66ddcc1dc'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
-  - '{project-root}/_bmad-output/planning-artifacts/epics.md#Épica 3'
-  - '{project-root}/_bmad-output/planning-artifacts/architecture/architecture-TFG-App-Precios-2026-11-16/ARCHITECTURE-SPINE.md'
+  - '{project-root}/_bmad-output/implementation-artifacts/epic-3-context.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
 ## Intent
 
-**Problem:** La app no tiene servidor. Las épicas 3–9 necesitan Firebase (Auth y Firestore) con persistencia sin conexión y reglas que protejan los datos de cada usuario (AD-2, AD-5, AD-6, AD-7, AD-8, NFR-8).
+**Problem:** La app no tiene servidor. Antes de guardar nada en Firestore hacen falta reglas que protejan los datos de cada usuario (AD-5, AD-6, AD-7, NFR-8), versionadas y probadas.
 
-**Approach:** Firebase Unity SDK (Auth, Firestore) tras el adaptador `PriceMap.Adaptadores.Firebase`, con persistencia activada. `firebase/firestore.rules` versionado con la regla base de `usuarios/<uid>`, probado con emulador y arnés de Node.
+**Approach:** Carpeta `firebase/` con `firestore.rules` (regla base de `usuarios/<uid>`), su configuración, pruebas con el emulador y un `LEEME.md` para el usuario.
 
 ## Boundaries & Constraints
 
 **Always:**
-- **Requisitos previos del usuario** (el agente no puede): proyecto de Firebase en plan Spark; app Android `com.pricemap.app` con la SHA-1 del keystore de depuración/publicación; activar Auth (Google y correo con enlace) y Firestore; `google-services.json` en `unity/PriceMap/Assets/`. El agente prepara lo demás y documenta los pasos en `firebase/LEEME.md`.
-- **SDK:** `com.google.firebase.app`, `.auth`, `.firestore` 14.1.0 (o la última compatible con 6000.3), `.tgz` locales en `unity/PriceMap/Packages/` referenciados por ruta en `manifest.json`. Dependencias Android con EDM4U.
-- **Ensamblado** `PriceMap.Adaptadores.Firebase` → Firebase, Aplicación, Dominio. Ningún otro referencia Firebase (prueba que recorre los `.asmdef`).
-- **Inicio:** `FirebaseApp.CheckAndFixDependenciesAsync` en el Arranque; si falla (p. ej. PC sin `google-services.json`), sigue sin cuenta ni servidor, con log `PriceMap:`.
-- **Persistencia:** `FirebaseFirestore.Settings.PersistenceEnabled = true`, caché ilimitada razonable (100 MB). Único almacén local de datos dinámicos (AD-8).
+- Decidido (usuario, 24/11/2026): la 3.2 va en dos partes; esta es la 1 (reglas); la 2 (`spec-3-2b`) mete el SDK en la app.
+- Decidido (24/11/2026; el repositorio es público): `google-services.json` fuera de git, y también lo que se genera de él (`google-services-desktop.json`, `google-services.xml`).
+- Requisitos previos hechos (usuario, 24/11/2026): proyecto `pricemap-98f78` (Spark), app con SHA-1, Auth con Google y enlace por correo, Firestore Standard `(default)` en modo producción (comprobado: existe y deniega) y el json en su sitio. Node y Java 21 están instalados: las reglas se prueban con el emulador.
 - **Reglas base** (`firebase/firestore.rules`): todo denegado por defecto; `usuarios/{uid}` y subcolecciones: lectura/escritura solo si `request.auth.uid == uid`. Las demás colecciones las abren sus historias.
 - **Pruebas de reglas:** `firebase/pruebas/` con `@firebase/rules-unit-testing` y emulador (`firebase emulators:exec`): propio permitido, ajeno denegado, sin sesión denegado.
-- **Configuración:** `firebase/firebase.json` y `.firebaserc` con marcador `PRICEMAP_PROJECT_ID` que rellena el usuario.
-- `google-services.json` fuera de git si el usuario lo prefiere (preguntar al revisar); `.gitignore` preparado.
+- **Configuración:** `firebase/firebase.json` y `.firebaserc` con el proyecto `pricemap-98f78`.
 
-**Never:** sin Cloud Functions, Storage ni plan Blaze (AD-7); nada fuera del adaptador usa Firebase.
+**Never:** Cloud Functions, Storage ni plan Blaze (AD-7); iniciar sesión en Firebase ni desplegar (lo hace el usuario); tocar el proyecto de Unity.
 
 ## I/O & Edge-Case Matrix
 
 | Scenario | Input / State | Expected Output / Behavior |
 |----------|--------------|---------------------------|
-| Arranque con Firebase | `google-services.json` válido | Firebase listo; log "PriceMap: Firebase listo" |
-| Arranque sin configuración | PC o sin json | La app arranca sin servidor; log de aviso; nada falla |
 | Leer lo propio | uid A lee `usuarios/A` | Permitido (emulador) |
 | Leer lo ajeno | uid A lee `usuarios/B` | Denegado |
 | Escribir lo ajeno | uid A escribe `usuarios/B/favoritos/x` | Denegado |
 | Sin sesión | Lee `usuarios/A` | Denegado |
 | Otra colección | Escribe `cualquiera/x` | Denegado |
-| Asmdef | UI referencia Firebase | La prueba de capas falla |
+| Escribir lo propio | uid A escribe `usuarios/A` y `usuarios/A/favoritos/x` | Permitido |
+| Listar usuarios | uid A lista `usuarios` | Denegado |
 
 </frozen-after-approval>
 
-## Open Questions
-
-1. **Requisitos previos** (sin proyecto de Firebase la historia se bloquea). A) El agente deja todo preparado (adaptador que compila con el SDK, reglas, pruebas con emulador) y el usuario solo añade `google-services.json` (recomendado). B) Esperar a que el usuario cree el proyecto.
-2. **¿Emulador disponible?** Necesita Node y Java. Sin Java, las pruebas de reglas van a `deferred-work`.
-
 ## Code Map
 
-- Nuevos: `Scripts/Adaptadores/Firebase/` (asmdef, `InicioFirebase.cs`, `AlmacenFirestore.cs` base con `Resultado<T>`).
-- `Packages/manifest.json` (paquetes locales), `Assets/Plugins/Android/` (dependencias EDM4U).
-- `Arranque/Arranque.cs`: inicio asíncrono de Firebase sin bloquear el mapa.
-- `firebase/`: `firestore.rules`, `firebase.json`, `.firebaserc`, `pruebas/` (package.json, reglas.test.js), `LEEME.md`.
-- Tests: `PruebasCapas.cs` (ningún asmdef fuera del adaptador referencia Firebase).
+- `firebase/firestore.rules`, `firebase/firebase.json` (reglas y emulador de Firestore), `firebase/.firebaserc` (`pricemap-98f78`), `firebase/LEEME.md`.
+- `firebase/pruebas/`: `package.json` con versiones fijas de `firebase-tools` y `@firebase/rules-unit-testing`, `package-lock.json` y `reglas.test.js` (el ejecutor de pruebas de Node, sin más dependencias). `npm test` arranca el emulador con un proyecto `demo-…`: nunca el real ni la red de Firebase. `node_modules` ya está ignorado.
+- `.gitignore` (raíz): el json de Firebase ya está; añadir lo generado (`google-services-desktop.json*`, `Assets/Plugins/Android/FirebaseApp.androidlib/`) y los registros del emulador (`*-debug.log`, `.firebase/`).
+- `LEEME.md` (para quien monte el proyecto): qué hay, cómo probar las reglas y cómo publicarlas (pegarlas en la consola, Firestore → Reglas, o `firebase deploy --only firestore:rules`), y que `google-services.json` va aparte.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `firebase/` con reglas base, configuración y pruebas de emulador.
-- [ ] Instalar el SDK y EDM4U; adaptador `Adaptadores/Firebase` con persistencia.
-- [ ] Arranque tolerante a la falta de configuración.
-- [ ] Prueba de capas.
-- [ ] `firebase/LEEME.md` con los pasos del usuario.
+- [x] `firebase/`: reglas, configuración y `LEEME.md`.
+- [x] `firebase/pruebas/`: una prueba por fila de la matriz, y más si una regla lo pide.
+- [x] `.gitignore`.
 
 **Acceptance Criteria:**
-- Dada la suite de reglas con el emulador, cuando se ejecuta, entonces cada fila de reglas de la matriz pasa.
-- Dada la suite EditMode y la build de PC sin `google-services.json`, cuando se ejecutan, entonces pasan y la app arranca.
+- Dado el emulador, cuando se ejecuta `npm test`, entonces pasan todas, y una regla rota a propósito (abrir `usuarios`) las hace fallar.
+- Dado `git status`, cuando se acaba, entonces no hay nada secreto ni generado por subir.
+
+## Implementation Notes
 
 ## Spec Change Log
 
 ## Review Triage Log
 
+| Hallazgo | Veredicto | Motivo | Destino |
+|---|---|---|---|
+| BH1 la regla recursiva no se puede estrechar después | medium | Firestore suma los `allow`: AD-6 (visitas) exigirá sustituirla. La pide el spec; se avisa en el fichero y queda para la épica 4 | patch |
+| BH2/EC7 sin límite de campos ni tamaño | medium | Cada historia fijará los campos de lo suyo (AD-6, AD-18); hoy no hay ninguno que validar | defer |
+| BH3/EC3 clave de administrador sin ignorar | medium | `git check-ignore` no la cubre y el repositorio es público | patch |
+| BH4/EC2 copias de `google-services.json` | medium | Solo se ignora una ruta exacta | patch |
+| BH5 patrones sueltos | low | `*-debug.log` vale para todo el repositorio | patch |
+| BH6 `firebase` sin fijar | low | Entra como dependencia de otra | patch |
+| BH7 dos ficheros a la vez se pisarían | low | Comparten proyecto y `clearFirestore` | patch |
+| BH8 «fail 0» sin pruebas | low | Se nombra el fichero en el script | patch |
+| BH9 comentario falso | low | Hay rutas sin sembrar | patch |
+| BH10/EC5/EC6/VG1/VG2 denegaciones sin probar | medium | Ocho reglas rotas a propósito pasaban 13/13 | patch |
+| BH11/VG5 lo publicado puede no ser lo del repositorio | medium | Aquí no se inicia sesión: se comprueba al usar Firebase desde la app (3.2b) | defer |
+| EC1 sin `location` en `firebase.json` | low | La base ya existe (comprobado) y solo importaría al crearla | reject |
+| EC4 sin límite de tiempo | low | Se añade al script | patch |
+| VG3 solo se prueba `favoritos` | medium | Falta prueba con otra subcolección | patch |
+| VG4 fuera del camino normal | medium | Se añade a los comandos de `CLAUDE.md` al cerrar | patch |
+
 ## Verification
 
 **Commands:**
-- `cd firebase/pruebas && npm test` (emulador).
-- Pruebas EditMode por lotes; `CompilarApk` y build de PC.
+- `cd firebase/pruebas && npm ci && npm test`.
 
 **Manual checks:**
-- Con `google-services.json`, el log del móvil dice "Firebase listo".
+- El usuario publica las reglas en la consola.

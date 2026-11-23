@@ -60,7 +60,7 @@ development_status:
 
   epic-3: in-progress
   3-1-bienvenida-privacidad-y-consentimientos: review
-  3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexión: ready-for-dev
+  3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexión: in-progress  # parte 1 (reglas) hecha y revisada; falta la 2 (SDK)
   3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta: ready-for-dev
   3-4-elegir-cuenta-de-cliente-o-de-negocio: ready-for-dev
   3-5-perfil-y-ajustes: ready-for-dev

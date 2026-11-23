@@ -30,3 +30,18 @@ node_modules/
 
 # Python
 __pycache__/
+
+# Firebase: configuración del proyecto y claves (repositorio público; historia 3.2)
+google-services*.json
+google-services*.json.meta
+*-firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json.meta
+serviceAccount*.json
+serviceAccount*.json.meta
+unity/PriceMap/Assets/Plugins/Android/FirebaseApp.androidlib/
+unity/PriceMap/Assets/Plugins/Android/FirebaseApp.androidlib.meta
+google-services.xml*
+
+# Firebase: emulador y línea de comandos
+.firebase/
+firebase/**/*-debug.log
