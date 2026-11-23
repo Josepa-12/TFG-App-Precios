@@ -80,6 +80,9 @@ namespace PriceMap.UI
         int maniobraMostrada = int.MinValue;   // índice de la maniobra siguiente en la tarjeta (se anuncia al cambiar)
         double avanceDibujado = double.NaN;    // avance con el que se recortó la línea por última vez
         Ruta rutaRecortada;                    // ruta de la línea recortada (otra al recalcular: se redibuja)
+        bool centrarAlAbrir = true;            // las primeras posiciones centran el mapa (CentrarAlAbrir)
+        DateTime? finCentradoAlAbrir;          // hasta cuándo; null antes de la primera posición
+        Coordenada? centradaAlAbrir;           // la última en la que se centró
         // La cámara sigue al usuario (historia 2.7, parte 2b)
         SeguimientoCamara seguimiento;         // esperando 2 s → siguiendo → suelto; apagado sin navegación
         ReglaRumbo rumboMarcha;                // rumbo de la marcha sacado de las posiciones
@@ -140,6 +143,7 @@ namespace PriceMap.UI
             seguimiento = new SeguimientoCamara(() => RelojCamara());
             rumboMarcha = new ReglaRumbo(() => RelojCamara());
             this.mapa.Centrar(VistaInicial);
+            this.mapa.GestoUsuario += AlGestoUsuario; // suelta la cámara que sigue (2.7b) y anula el centrado al abrir
 
             raiz = raizDocumento?.Q("raiz");
             if (raiz == null) return; // sin interfaz (p. ej. en pruebas): el mapa funciona igual
@@ -252,7 +256,6 @@ namespace PriceMap.UI
                 this.navegacion.RecalculoFallido += AlFallarRecalculo;
                 this.navegacion.RutaTerminada += AlTerminarNavegacion;
                 this.navegacion.SenalCambiada += AlCambiarSenal;
-                this.mapa.GestoUsuario += AlGestoUsuario; // la cámara que sigue se suelta (historia 2.7, parte 2b)
             }
             else this.navegacion = null;
 
@@ -355,6 +358,24 @@ namespace PriceMap.UI
                 case AccionUbicacion.Centrar: mapa.Centrar(ubicacion.Posicion.Value); break;
                 case AccionUbicacion.OrientarNorte: mapa.OrientarNorte(); break;
             }
+        }
+
+        /// <summary>
+        /// Al abrir la app: la primera posición del usuario centra el mapa en ella, con el zoom y el giro que haya, y
+        /// también las que lleguen en los CentradoAlAbrirSegundos siguientes (la primera puede ser antigua o poco
+        /// precisa). Si el usuario mueve el mapa, usa el zoom o abre una ficha, se acaba. Nada se guarda.
+        /// </summary>
+        void CentrarAlAbrir()
+        {
+            if (!centrarAlAbrir) return;
+            var posicion = ubicacion?.Posicion;
+            if (!posicion.HasValue) return;
+            var instante = RelojCamara();
+            finCentradoAlAbrir = finCentradoAlAbrir ?? instante.AddSeconds(ParametrosNegocio.CentradoAlAbrirSegundos);
+            if (instante > finCentradoAlAbrir) { centrarAlAbrir = false; return; }
+            if (posicion == centradaAlAbrir) return;
+            centradaAlAbrir = posicion;
+            mapa.Centrar(posicion.Value);
         }
 
         /// <summary>Lo que haría ahora el botón de ubicación, con la distancia en pantalla al centro y el giro del mapa.</summary>
@@ -1289,6 +1310,7 @@ namespace PriceMap.UI
         /// </summary>
         bool PrepararFicha()
         {
+            centrarAlAbrir = false; // la ficha centra lo suyo
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             // La hoja del buscador se pliega y la cápsula se oculta mientras la ficha está abierta
             if (buscador != null)
@@ -1996,6 +2018,7 @@ namespace PriceMap.UI
         {
             try
             {
+                centrarAlAbrir = false;
                 SoltarCamara();
             }
             catch (Exception e)
@@ -2004,9 +2027,9 @@ namespace PriceMap.UI
             }
         }
 
-        // Botones de zoom (y su versión de TalkBack): navegando, sueltan la cámara antes de acercar o alejar
-        void Acercar() { SoltarCamara(); mapa.Acercar(); }
-        void Alejar() { SoltarCamara(); mapa.Alejar(); }
+        // Botones de zoom (y su versión de TalkBack): anulan el centrado al abrir y, navegando, sueltan la cámara
+        void Acercar() { centrarAlAbrir = false; SoltarCamara(); mapa.Acercar(); }
+        void Alejar() { centrarAlAbrir = false; SoltarCamara(); mapa.Alejar(); }
 
         /// <summary>Icono del botón de ubicación: recentrar con la cámara suelta; si no, el de siempre. Su etiqueta, al día.</summary>
         void ActualizarBotonUbicacion()
@@ -2555,6 +2578,7 @@ namespace PriceMap.UI
             if (filtro != null) filtro.Cambiado -= AlCambiarFiltro;
             if (voz != null) voz.ModoCambiado -= AlCambiarModoVoz;
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
+            if (mapa != null) mapa.GestoUsuario -= AlGestoUsuario;
             if (ficha != null && mapa != null)
             {
                 mapa.Toque -= AlTocarMapa;
@@ -2570,7 +2594,6 @@ namespace PriceMap.UI
                 navegacion.RecalculoFallido -= AlFallarRecalculo;
                 navegacion.RutaTerminada -= AlTerminarNavegacion;
                 navegacion.SenalCambiada -= AlCambiarSenal;
-                if (mapa != null) mapa.GestoUsuario -= AlGestoUsuario;
                 navegacion.Terminar(); // fuera el GPS de fondo y la notificación
             }
             if (tarjetaRuta != null)
@@ -2805,6 +2828,7 @@ namespace PriceMap.UI
         /// </summary>
         internal void ActualizarCapas(float escala)
         {
+            CentrarAlAbrir();
             // Navegando (historia 2.7, parte 2c): ¿más de 10 s sin lecturas del GPS? La pastilla sigue a la señal y a la ficha
             if (Navegando) navegacion.Comprobar();
             ActualizarPastillaSenal();

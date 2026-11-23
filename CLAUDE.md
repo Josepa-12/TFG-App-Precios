@@ -60,6 +60,7 @@ Tras build de PC: borrar `Assets/AddressableAssetsData/link.xml` (y su `.meta`) 
 - Cambio 1 (hoja de la ruta que solo informa, `spec-hoja-navegacion-finalizar-ruta`; capturas `ruta-desplegada`, `ruta-desplegada-oscuro`) hecho y revisado (6 arreglos), 1130/1130, commit de seguridad sin push.
 - Cambio 3 (cursor más grande, `spec-cursor-mas-grande`; `MarcadorPosicion.Disco` bajo la flecha) hecho y revisado (7 arreglos), 1150/1150.
 - Cambio 4 (ir a una dirección o punto del mapa buscados, `spec-ir-a-una-direccion-buscada`; `FichaLugar.AbrirPunto(ResultadoBusqueda)`+`Conocido`, `conocidoRuta`; capturas `direccion-ficha(-oscuro)`, `punto-ficha`) hecho y revisado (6 arreglos), 1168/1168.
-- **Siguiente:** abrir la app centrada en la posición (pedido el 23/11), luego cambio 5 («Ir» → elegir ruta → «Iniciar», `spec-como-llegar-elegir-ruta`); prueba de la 2.8b; luego 2.9.
+- Abrir la app centrada en la posición (`spec-abrir-centrada-en-la-posicion`; `PantallaMapa.CentrarAlAbrir`, 10 s, nada guardado) hecho y revisado (4 arreglos), 1175/1175.
+- **Siguiente:** cambio 5 («Ir» → elegir ruta → «Iniciar», `spec-como-llegar-elegir-ruta`); prueba de la 2.8b; luego 2.9.
 - Decidido: los textos de maniobra de Valhalla se aceptan en forma de usted («Gire a la derecha…»).
 - Pendientes abiertos: pruebas en un móvil real (TalkBack, arrastre, rutas reales por calles de sentido único); Photon no encuentra «calle ancha 10». Épicas 3+ necesitan el proyecto de Firebase y `google-services.json` (spec 3.2).

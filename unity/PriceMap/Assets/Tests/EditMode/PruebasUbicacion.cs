@@ -79,6 +79,8 @@ namespace PriceMap.Tests.EditMode
             public float Giro => giro;
             public Coordenada Centro => centro;
             public void OrientarNorte() { nortes++; giro = 0f; }
+            public event Action GestoUsuario;
+            public void Gesto() => GestoUsuario?.Invoke();
             public event System.Action<PuntoPantalla> Toque { add { } remove { } }
             public event System.Action<PuntoPantalla> PulsacionLarga { add { } remove { } }
             public Coordenada? Desproyectar(PuntoPantalla punto) => null;
@@ -498,6 +500,89 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(AccionUbicacion.Nada, m.servicio.AlTocarBoton());
         }
 
+        // ───────────────────────── Centrado al abrir ─────────────────────────
+
+        static readonly Coordenada OtroSitio = new Coordenada(36.7750, -6.3500);
+
+        [Test]
+        public void AlAbrirSeCentraEnLasPosicionesDeLosPrimeros10Segundos()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Buscando);
+            var m = Pantalla(gps);
+            var reloj = Ahora;
+            m.pantalla.RelojCamara = () => reloj;
+            m.pantalla.ActualizarCapas(Escala);
+            CollectionAssert.AreEqual(new[] { PantallaMapa.VistaInicial }, m.mapa.centrados, "Buscando, la vista inicial.");
+
+            reloj = reloj.AddSeconds(60); // el plazo empieza con la primera posición
+            gps.Poner(EstadoUbicacion.Activa, Usuario);
+            m.pantalla.ActualizarCapas(Escala);
+            m.pantalla.ActualizarCapas(Escala);
+            CollectionAssert.AreEqual(new[] { PantallaMapa.VistaInicial, Usuario }, m.mapa.centrados, "Una vez por posición.");
+
+            reloj = reloj.AddSeconds(10); // la primera era poco precisa: llega la buena
+            gps.Poner(EstadoUbicacion.Activa, OtroSitio);
+            m.pantalla.ActualizarCapas(Escala);
+            CollectionAssert.AreEqual(new[] { PantallaMapa.VistaInicial, Usuario, OtroSitio }, m.mapa.centrados);
+
+            reloj = reloj.AddSeconds(0.1);
+            gps.Poner(EstadoUbicacion.Activa, Usuario);
+            m.pantalla.ActualizarCapas(Escala);
+            gps.Poner(EstadoUbicacion.Buscando);
+            m.pantalla.ActualizarCapas(Escala);
+            gps.Poner(EstadoUbicacion.Activa, OtroSitio);
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreEqual(3, m.mapa.centrados.Count, "Después se mueve el cursor y no el mapa.");
+        }
+
+        [Test]
+        public void AlAbrirUnGestoTrasLaPrimeraPosicionDejaDeCentrar()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Activa, Usuario); // ya con posición en el primer fotograma
+            var m = Pantalla(gps);
+            m.pantalla.RelojCamara = () => Ahora;
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreEqual(Usuario, m.mapa.centro);
+            m.mapa.Gesto();
+            gps.Poner(EstadoUbicacion.Activa, OtroSitio);
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreEqual(2, m.mapa.centrados.Count);
+        }
+
+        [Test]
+        public void AlAbrirSinPermisoYAlConcederloSeCentra()
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.SinPermiso);
+            var m = Pantalla(gps);
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreEqual(1, m.mapa.centrados.Count);
+            gps.Poner(EstadoUbicacion.Activa, Usuario);
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreEqual(Usuario, m.mapa.centro);
+        }
+
+        [TestCase("gesto")]
+        [TestCase("acercar")]
+        [TestCase("alejar")]
+        [TestCase("ficha")]
+        public void AlAbrirSiElUsuarioYaHaUsadoElMapaNoSeCentra(string accion)
+        {
+            var gps = new UbicacionFalsa();
+            gps.Poner(EstadoUbicacion.Buscando);
+            var m = Pantalla(gps);
+            if (accion == "gesto") m.mapa.Gesto();
+            else if (accion == "ficha") { m.pantalla.AbrirPunto(OtroSitio); m.pantalla.CerrarFicha(); }
+            else m.arbol.Q<BotonRedondo>("boton-" + accion).Pulsar();
+            gps.Poner(EstadoUbicacion.Activa, Usuario);
+            m.pantalla.ActualizarCapas(Escala);
+            CollectionAssert.DoesNotContain(m.mapa.centrados, Usuario);
+            m.pantalla.TocarUbicacion();
+            CollectionAssert.Contains(m.mapa.centrados, Usuario, "El botón sigue centrando.");
+        }
+
         [Test]
         public void TocarConPosicionCentraElMapaEnElUsuario()
         {
@@ -645,6 +730,7 @@ namespace PriceMap.Tests.EditMode
             m.mapa.giro = giro;
             m.mapa.proyecciones[Lejos] = new PuntoPantalla(900f, 900f, 300f);
             m.mapa.proyecciones[Arrastrado] = new PuntoPantalla(600f, 900f, 300f); // 100 px = 50 dp
+            m.mapa.Gesto(); // el usuario ya ha movido el mapa: no se centra solo al abrir
             m.mapa.centro = Lejos;
             m.pantalla.ActualizarCapas(Escala);
             return m;

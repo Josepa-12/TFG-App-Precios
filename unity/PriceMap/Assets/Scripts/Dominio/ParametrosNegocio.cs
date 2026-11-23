@@ -98,6 +98,10 @@ namespace PriceMap.Dominio
         /// </summary>
         public const double NavegacionSinSenalSegundos = 10.0;
 
+        /// <summary>Al abrir la app, segundos desde la primera posición en que el mapa se sigue centrando en las siguientes
+        /// (la primera del móvil puede ser antigua o poco precisa).</summary>
+        public const double CentradoAlAbrirSegundos = 10.0;
+
         // Indicaciones por voz (historia 2.8; decisiones del 22/11/2026)
         /// <summary>Metros a los que se dice la maniobra en el momento («Gire a la derecha.») en coche.</summary>
         public const double VozMomentoCocheMetros = 40.0;
