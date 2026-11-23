@@ -659,10 +659,6 @@ MonoBehaviour:
     m_Localized: Calculando la hora de llegada
     m_Metadata:
       m_Items: []
-  - m_Id: 1164695238074376
-    m_Localized: Sin hora de llegada
-    m_Metadata:
-      m_Items: []
   - m_Id: 1164695238074377
     m_Localized: Quitar ruta
     m_Metadata:
@@ -794,6 +790,59 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 1903538279014412
     m_Localized: 'Destino: {0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812797341696
+    m_Localized: "C\xF3mo llegar"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701824
+    m_Localized: a {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701825
+    m_Localized: Cerrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701826
+    m_Localized: "Calculando\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701827
+    m_Localized: "Llegada {0} \xB7 {1}"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701828
+    m_Localized: "{0} \xB7 M\xE1s r\xE1pida"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701829
+    m_Localized: Iniciar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701830
+    m_Localized: '{0} minutos, llegada {1}, {2}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701831
+    m_Localized: 1 minuto, llegada {0}, {1}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701832
+    m_Localized: Ruta aproximada, unos {0} minutos, llegada hacia las {1}, unos {2}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701833
+    m_Localized: Ruta aproximada, alrededor de 1 minuto, llegada hacia las {0}, unos
+      {1}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701834
+    m_Localized: "{0}, m\xE1s r\xE1pida"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701835
+    m_Localized: '{0}, seleccionada'
     m_Metadata:
       m_Items: []
   references:

@@ -95,26 +95,7 @@ namespace PriceMap.UI
         /// Lo que lee TalkBack en un modo: "Coche, 6 minutos", "A pie, 1 minuto", "Coche, sin tiempo" o "Coche,
         /// calculando el tiempo"; aproximados, "Coche, unos 4 minutos". "Seleccionado" lo añade el estado del nodo.
         /// </summary>
-        public string Anuncio(ModoViaje modo)
-        {
-            var b = Boton(modo);
-            string nombre = b.Nombre.text;
-            switch (b.Estado)
-            {
-                case EstadoTiempo.Minutos when b.Aproximados:
-                    return b.Minutos == 1
-                        ? Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutoAprox), nombre)
-                        : Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutosAprox), nombre, b.Minutos);
-                case EstadoTiempo.Minutos:
-                    return b.Minutos == 1
-                        ? Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinuto), nombre)
-                        : Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutos), nombre, b.Minutos);
-                case EstadoTiempo.Calculando:
-                    return Textos.Formatear(textos(ClavesTexto.FichaAnuncioCalculando), nombre);
-                default:
-                    return Textos.Formatear(textos(ClavesTexto.FichaAnuncioSinTiempo), nombre);
-            }
-        }
+        public string Anuncio(ModoViaje modo) => Boton(modo).Anuncio(textos);
 
         /// <summary>Aviso de TalkBack al cambiar de modo: "A pie, 15 minutos, seleccionado".</summary>
         public string AnuncioElegido(ModoViaje modo) => Textos.Formatear(textos(ClavesTexto.FichaModoElegido), Anuncio(modo));
@@ -192,6 +173,27 @@ namespace PriceMap.UI
                 EstadoTiempo.Calculando => textos(ClavesTexto.FichaCalculando),
                 _ => textos(ClavesTexto.FichaSinTiempo),
             };
+        }
+
+        /// <summary>Lo que lee TalkBack: el nombre del modo y su tiempo (FilaAcciones.Anuncio).</summary>
+        public string Anuncio(Func<string, string> textos)
+        {
+            string nombre = Nombre.text;
+            switch (Estado)
+            {
+                case EstadoTiempo.Minutos when Aproximados:
+                    return Minutos == 1
+                        ? Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutoAprox), nombre)
+                        : Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutosAprox), nombre, Minutos);
+                case EstadoTiempo.Minutos:
+                    return Minutos == 1
+                        ? Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinuto), nombre)
+                        : Textos.Formatear(textos(ClavesTexto.FichaAnuncioMinutos), nombre, Minutos);
+                case EstadoTiempo.Calculando:
+                    return Textos.Formatear(textos(ClavesTexto.FichaAnuncioCalculando), nombre);
+                default:
+                    return Textos.Formatear(textos(ClavesTexto.FichaAnuncioSinTiempo), nombre);
+            }
         }
 
         /// <summary>Lado del icono (dp): el de la maqueta (18).</summary>

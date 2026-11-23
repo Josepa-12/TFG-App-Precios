@@ -101,7 +101,7 @@ namespace PriceMap.UI
             foreach (var m in marcadores)
             {
                 // Fuera del filtro (o de la categoría) no hace falta proyectarlo: se oculta igual
-                bool incluido = Incluye(m.Lugar);
+                bool incluido = Incluye(m.Lugar) || (FijadoSiempre && m == Fijado);
                 var p = incluido ? mapa.Proyectar(m.Lugar.Posicion) : PuntoPantalla.Ninguno;
                 var dp = new Vector2(p.X * escalaDp, p.Y * escalaDp);
                 bool ver = incluido && p.Delante && !float.IsNaN(dp.x) && !float.IsNaN(dp.y)
@@ -156,6 +156,9 @@ namespace PriceMap.UI
         /// y gana a cualquier otro que lo pise. Null sin ficha.
         /// </summary>
         public MarcadorLugar Fijado { get; set; }
+
+        /// <summary>El fijado se ve aunque no entre en el filtro: el destino mientras se elige su ruta («Cómo llegar»).</summary>
+        public bool FijadoSiempre { get; set; }
 
         /// <summary>
         /// Orden de los solapes: el fijado; después los que tienen precio; entre iguales, el que ya se veía en el

@@ -8,8 +8,6 @@ namespace PriceMap.UI
     {
         /// <summary>Sin navegación: la cámara es del usuario, como siempre.</summary>
         Apagado,
-        /// <summary>Recién pulsado Ir: se ve la ruta entera; a los 2 s pasa a Siguiendo.</summary>
-        Esperando,
         /// <summary>La cámara sigue al usuario, inclinada y con el rumbo arriba.</summary>
         Siguiendo,
         /// <summary>El usuario ha movido el mapa: no se vuelve a centrar sola («Volver a centrar»).</summary>
@@ -17,13 +15,14 @@ namespace PriceMap.UI
     }
 
     /// <summary>
-    /// Estados de la cámara al navegar (historia 2.7, parte 2b), sin Unity: Empezar (Esperando, o Siguiendo al instante
-    /// con «reducir animaciones») → a los CamaraEsperaSeguirSegundos, Siguiendo → un gesto del usuario, Suelto →
-    /// «Volver a centrar», Siguiendo otra vez. Terminar lo apaga. Reloj inyectable.
+    /// Estados de la cámara al navegar (historia 2.7, parte 2b; «Iniciar», parte 5b de «Cómo llegar»), sin Unity: Empezar
+    /// (Siguiendo, y Acercando mientras la cámara llega al usuario; con «reducir animaciones» llega al momento) → un gesto
+    /// del usuario, Suelto (sin dejar de contar lo que falta para llegar) → «Volver a centrar», Siguiendo otra vez.
+    /// Terminar lo apaga. Reloj inyectable.
     /// </summary>
     public sealed class SeguimientoCamara
     {
-        public static readonly TimeSpan Espera = TimeSpan.FromSeconds(ParametrosNegocio.CamaraEsperaSeguirSegundos);
+        public static readonly TimeSpan Acercamiento = TimeSpan.FromSeconds(ParametrosNegocio.CamaraAcercarSegundos);
 
         readonly Func<DateTime> reloj;
         DateTime desde;
@@ -42,25 +41,31 @@ namespace PriceMap.UI
         /// <summary>El usuario la ha soltado: el botón de ubicación es «Volver a centrar».</summary>
         public bool Suelto => Estado == EstadoSeguimiento.Suelto;
 
-        /// <summary>Empieza la navegación: espera 2 s viendo la ruta entera o, sin espera, sigue ya.</summary>
-        public void Empezar(bool sinEspera)
+        /// <summary>«Iniciar» pulsado y la cámara aún de camino al usuario (aunque la haya soltado): la navegación no ha empezado.</summary>
+        public bool Acercando { get; private set; }
+
+        /// <summary>«Iniciar»: la cámara va al usuario; al momento (sin animaciones), ya ha llegado.</summary>
+        public void Empezar(bool alMomento)
         {
             desde = reloj();
-            Estado = sinEspera ? EstadoSeguimiento.Siguiendo : EstadoSeguimiento.Esperando;
+            Estado = EstadoSeguimiento.Siguiendo;
+            Acercando = !alMomento;
         }
 
-        /// <summary>Pasa de Esperando a Siguiendo al cumplirse los 2 s; true justo cuando pasa.</summary>
-        public bool Avanzar()
+        /// <summary>True, una sola vez, al cumplirse el tiempo en que la cámara llega (o si el reloj salta atrás).</summary>
+        public bool Llegar()
         {
-            if (Estado != EstadoSeguimiento.Esperando || reloj() - desde < Espera) return false;
-            Estado = EstadoSeguimiento.Siguiendo;
+            if (!Acercando) return false;
+            var pasado = reloj() - desde;
+            if (pasado >= TimeSpan.Zero && pasado < Acercamiento) return false;
+            Acercando = false;
             return true;
         }
 
         /// <summary>Un gesto del usuario (o los botones de zoom): deja de seguir. True si cambia algo.</summary>
         public bool Soltar()
         {
-            if (Estado != EstadoSeguimiento.Esperando && Estado != EstadoSeguimiento.Siguiendo) return false;
+            if (Estado != EstadoSeguimiento.Siguiendo) return false;
             Estado = EstadoSeguimiento.Suelto;
             return true;
         }
@@ -72,6 +77,10 @@ namespace PriceMap.UI
         }
 
         /// <summary>Termina la navegación: la cámara vuelve a ser del usuario.</summary>
-        public void Terminar() => Estado = EstadoSeguimiento.Apagado;
+        public void Terminar()
+        {
+            Estado = EstadoSeguimiento.Apagado;
+            Acercando = false;
+        }
     }
 }

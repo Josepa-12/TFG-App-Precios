@@ -651,10 +651,6 @@ MonoBehaviour:
     m_Key: ruta.anuncio.calculando
     m_Metadata:
       m_Items: []
-  - m_Id: 1164695238074376
-    m_Key: ruta.anuncio.fallo
-    m_Metadata:
-      m_Items: []
   - m_Id: 1164695238074377
     m_Key: ruta.quitar
     m_Metadata:
@@ -785,6 +781,58 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 1903538279014412
     m_Key: ruta.anuncio.destino
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812797341696
+    m_Key: comollegar.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701824
+    m_Key: comollegar.a
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701825
+    m_Key: comollegar.cerrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701826
+    m_Key: comollegar.calculando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701827
+    m_Key: comollegar.detalle
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701828
+    m_Key: comollegar.masrapida
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701829
+    m_Key: comollegar.iniciar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701830
+    m_Key: comollegar.anuncio
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701831
+    m_Key: comollegar.anuncio.minuto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701832
+    m_Key: comollegar.anuncio.aprox
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701833
+    m_Key: comollegar.anuncio.aprox.minuto
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701834
+    m_Key: comollegar.anuncio.rapida
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2203812826701835
+    m_Key: comollegar.elegida
     m_Metadata:
       m_Items: []
   m_Metadata:

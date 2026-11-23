@@ -346,13 +346,6 @@ namespace PriceMap.UI
             Anuncio = textos(ClavesTexto.RutaAnuncioCalculando);
         }
 
-        /// <summary>Sin ruta: "—" en las tres columnas.</summary>
-        public void MostrarFallo()
-        {
-            Poner(textos(ClavesTexto.FichaSinTiempo), textos(ClavesTexto.FichaSinTiempo), textos(ClavesTexto.FichaSinTiempo), "km");
-            Anuncio = textos(ClavesTexto.RutaAnuncioFallo);
-        }
-
         /// <summary>
         /// La ruta llegada, con la hora local de ahora para la llegada. La aproximada (parte 2b) lleva "≈" en los tres
         /// valores y TalkBack dice "Ruta aproximada. Llegada hacia las 13:34, unos 4 minutos, unos 1,2 km".

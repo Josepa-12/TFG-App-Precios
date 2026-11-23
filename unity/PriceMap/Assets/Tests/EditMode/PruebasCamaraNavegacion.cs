@@ -156,7 +156,9 @@ namespace PriceMap.Tests.EditMode
         {
             Assert.AreEqual(3.0, ParametrosNegocio.RumboDistanciaMinimaMetros);
             Assert.AreEqual(1.0, ParametrosNegocio.RumboVelocidadMinima);
-            Assert.AreEqual(2.0, ParametrosNegocio.CamaraEsperaSeguirSegundos);
+            Assert.AreEqual(0.9, ParametrosNegocio.CamaraAcercarSegundos);
+            Assert.Less(ParametrosNegocio.CamaraAcercarSegundos, 1.0, "Menos de 1 s.");
+            Assert.Greater(ParametrosNegocio.CamaraAcercarSegundos, ParametrosNegocio.CamaraTransicionSegundos, "La cámara ha llegado.");
             Assert.AreEqual(45f, ParametrosNegocio.CamaraSeguirInclinacion);
             Assert.AreEqual(350f, ParametrosNegocio.CamaraSeguirDistanciaCoche);
             Assert.AreEqual(180f, ParametrosNegocio.CamaraSeguirDistanciaPie);
@@ -168,7 +170,7 @@ namespace PriceMap.Tests.EditMode
         // ───────────────────────── SeguimientoCamara ─────────────────────────
 
         [Test]
-        public void Seguimiento_EsperaDosSegundosSigueSeSueltaYRecentra()
+        public void Seguimiento_LlegaUnaVezSigueSeSueltaYRecentra()
         {
             reloj = Ahora;
             var s = new SeguimientoCamara(() => reloj);
@@ -176,38 +178,62 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(s.Soltar(), "Sin navegación no hay nada que soltar.");
             s.Recentrar();
             Assert.AreEqual(EstadoSeguimiento.Apagado, s.Estado);
-            s.Empezar(sinEspera: false);
-            Assert.AreEqual(EstadoSeguimiento.Esperando, s.Estado);
-            reloj = reloj.AddSeconds(1.9);
-            Assert.IsFalse(s.Avanzar());
+            s.Empezar(alMomento: false);
+            Assert.IsTrue(s.Siguiendo, "La cámara ya va al usuario.");
+            Assert.IsTrue(s.Acercando);
+            reloj = reloj.AddSeconds(0.8);
+            Assert.IsFalse(s.Llegar());
             reloj = reloj.AddSeconds(0.1);
-            Assert.IsTrue(s.Avanzar());
+            Assert.IsTrue(s.Llegar());
+            Assert.IsFalse(s.Acercando);
             Assert.IsTrue(s.Siguiendo);
-            Assert.IsFalse(s.Avanzar(), "Solo una vez.");
+            Assert.IsFalse(s.Llegar(), "Solo una vez.");
             Assert.IsTrue(s.Soltar());
             Assert.IsTrue(s.Suelto);
             Assert.IsFalse(s.Soltar());
             reloj = reloj.AddMinutes(5);
-            s.Avanzar();
             Assert.IsTrue(s.Suelto, "No se vuelve a centrar solo.");
             s.Recentrar();
             Assert.IsTrue(s.Siguiendo);
             s.Terminar();
             Assert.AreEqual(EstadoSeguimiento.Apagado, s.Estado);
-            s.Empezar(sinEspera: true);
+            s.Empezar(alMomento: true);
             Assert.IsTrue(s.Siguiendo, "Sin animaciones, sigue ya.");
+            Assert.IsFalse(s.Acercando, "Y ha llegado.");
         }
 
         [Test]
-        public void Seguimiento_SoltarEnLaEspera()
+        public void Seguimiento_SoltarPorElCamino_LlegaIgualSuelto()
         {
             reloj = Ahora;
             var s = new SeguimientoCamara(() => reloj);
-            s.Empezar(sinEspera: false);
+            s.Empezar(alMomento: false);
             Assert.IsTrue(s.Soltar());
-            reloj = reloj.AddSeconds(3);
-            Assert.IsFalse(s.Avanzar());
+            Assert.IsTrue(s.Acercando);
+            reloj = reloj.AddSeconds(1);
+            Assert.IsTrue(s.Llegar());
             Assert.IsTrue(s.Suelto);
+        }
+
+        [Test]
+        public void Seguimiento_ElRelojSaltaAtras_NoSeQuedaEsperando()
+        {
+            reloj = Ahora;
+            var s = new SeguimientoCamara(() => reloj);
+            s.Empezar(alMomento: false);
+            reloj = reloj.AddHours(-1);
+            Assert.IsTrue(s.Llegar());
+        }
+
+        [Test]
+        public void Seguimiento_TerminarPorElCamino_YaNoLlega()
+        {
+            reloj = Ahora;
+            var s = new SeguimientoCamara(() => reloj);
+            s.Empezar(alMomento: false);
+            s.Terminar();
+            reloj = reloj.AddSeconds(2);
+            Assert.IsFalse(s.Llegar());
         }
 
         // ───────────────────────── Cámara real ─────────────────────────
@@ -467,7 +493,8 @@ namespace PriceMap.Tests.EditMode
             public IReadOnlyList<PuntoInteres> PuntosInteres => Array.Empty<PuntoInteres>();
             public event Action PuntosInteresCambiados { add { } remove { } }
             public float DistanciaCamara => 900f;
-            public float Giro => 0f;
+            public float giro;
+            public float Giro => giro;
             public Coordenada Centro => default;
             public void OrientarNorte() { }
             public event Action<PuntoPantalla> Toque;
@@ -502,6 +529,7 @@ namespace PriceMap.Tests.EditMode
         PantallaMapa pantalla;
         MapaFalso mapa;
         VisualElement arbol;
+        float giroMapa; // el del mapa antes de Iniciar
 
         [SetUp]
         public void Preparar()
@@ -510,6 +538,7 @@ namespace PriceMap.Tests.EditMode
             SynchronizationContext.SetSynchronizationContext(null); // las continuaciones corren al responder
             Textos.Forzados = T;
             reloj = Ahora;
+            giroMapa = 0f;
             valhalla = new RutasFalsas();
             gps = new UbicacionFalsa { Posicion = M(0, 0) };
             ubicacion = new ServicioUbicacion(gps, new PreferenciasFalsas());
@@ -549,14 +578,14 @@ namespace PriceMap.Tests.EditMode
             prefs.Guardar(ServicioUbicacion.ClaveExplicacion, "1");
             var tema = new ServicioTema(prefs, new SistemaClaro());
             var filtro = new ServicioFiltro(prefs);
-            mapa = new MapaFalso();
+            mapa = new MapaFalso { giro = giroMapa };
             pantalla.Inicializar(mapa, tema, Lugares(), Ahora, arbol, filtro, ubicacion, sistema, rutas: rutas, navegacion: nav);
             pantalla.RelojCamara = () => reloj;
             tema.Iniciar();
             filtro.Iniciar();
         }
 
-        /// <summary>Ficha de Clínica Areas, Ir en ese modo y la ruta llega.</summary>
+        /// <summary>Ficha de Clínica Areas, Ir en ese modo, la ruta llega e Iniciar: la cámara va al usuario.</summary>
         void IrAAreas(ModoViaje modo = ModoViaje.Coche)
         {
             CrearPantalla();
@@ -564,15 +593,17 @@ namespace PriceMap.Tests.EditMode
             pantalla.Ficha.Acciones.Tocar(modo);
             pantalla.Ficha.Acciones.PulsarIr();
             valhalla.De(modo).Responder(RutaEle());
-            Assert.IsTrue(pantalla.Navegando);
+            pantalla.IniciarRuta(0);
+            Assert.AreEqual(!sistema.AnimacionesQuitadas, pantalla.AcercandoCamara);
         }
 
-        /// <summary>Pasan los 2 s y un fotograma: la cámara pasa a seguir.</summary>
+        /// <summary>La cámara llega al usuario y pasa un fotograma: empieza la navegación.</summary>
         void PasarEspera()
         {
-            reloj = reloj.AddSeconds(2);
+            reloj = reloj.AddSeconds(1);
             pantalla.ActualizarCapas(Escala);
             Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
+            Assert.IsTrue(pantalla.Navegando);
         }
 
         /// <summary>Se mueve a esa posición pasados esos segundos desde la anterior.</summary>
@@ -585,16 +616,28 @@ namespace PriceMap.Tests.EditMode
         BotonRedondo BotonUbicacion => pantalla.BotonUbicacion;
 
         [Test]
-        public void Pantalla_Empezar_RutaEnteraYALos2sSigue45Y350m()
+        public void Pantalla_Iniciar_LaCamaraVaAlUsuarioA45Y350mYAlLlegarEmpieza()
         {
+            giroMapa = 77f;
             IrAAreas();
-            Assert.AreEqual(EstadoSeguimiento.Esperando, pantalla.EstadoCamara);
-            Assert.AreEqual(1, mapa.encuadres, "Primero la ruta entera.");
-            Assert.IsEmpty(mapa.seguidos);
-            reloj = reloj.AddSeconds(1.5);
+            Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
+            Assert.AreEqual(1, mapa.encuadres, "Solo el de «Cómo llegar».");
+            Assert.IsNotEmpty(mapa.seguidos, "La cámara se acerca ya.");
+            Assert.AreEqual(350f, mapa.seguidos.Last().distancia);
+            Assert.AreEqual(0f, mapa.seguidos.Last().giro, 0.1f, "El rumbo del principio de la ruta.");
+            Assert.IsTrue(mapa.seguidos.Last().animado);
+            reloj = reloj.AddSeconds(0.8);
             pantalla.ActualizarCapas(Escala);
-            Assert.IsEmpty(mapa.seguidos, "Aún no han pasado 2 s.");
-            PasarEspera();
+            Assert.IsFalse(nav.Activa, "Aún no ha llegado: ni navegación ni tarjetas.");
+            Assert.IsFalse(pantalla.TarjetasRutaVisibles);
+            Assert.AreEqual(DisplayStyle.None, pantalla.TarjetaManiobra.style.display.value);
+            Assert.AreEqual(DisplayStyle.None, pantalla.TarjetaRuta.style.display.value);
+            reloj = reloj.AddSeconds(0.1);
+            pantalla.ActualizarCapas(Escala);
+            Assert.IsTrue(pantalla.Navegando);
+            Assert.AreEqual(DisplayStyle.Flex, pantalla.TarjetaManiobra.style.display.value);
+            Assert.AreSame(pantalla.TarjetaManiobra, pantalla.Accesibilidad.Enfocado);
+            Assert.AreEqual(1, mapa.encuadres, "Y no se vuelve a encuadrar la ruta.");
             var s = mapa.seguidos.Last();
             Assert.AreEqual(45f, s.inclinacion);
             Assert.AreEqual(350f, s.distancia);
@@ -613,6 +656,9 @@ namespace PriceMap.Tests.EditMode
         {
             sistema.AnimacionesQuitadas = true;
             IrAAreas();
+            Assert.IsTrue(pantalla.Navegando, "Al momento.");
+            Assert.IsTrue(pantalla.TarjetasRutaVisibles);
+            Assert.AreEqual(1, mapa.encuadres, "Solo el de «Cómo llegar».");
             Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
             Assert.IsNotEmpty(mapa.seguidos);
             Assert.IsFalse(mapa.seguidos.Last().animado);
@@ -724,6 +770,8 @@ namespace PriceMap.Tests.EditMode
             pantalla.AbrirFicha(Areas);
             pantalla.Ficha.Acciones.PulsarIr();
             valhalla.De(ModoViaje.Coche).Responder(RutaEle());
+            pantalla.IniciarRuta(0);
+            Assert.IsTrue(pantalla.Navegando, "Al momento.");
             Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
             Assert.IsNotEmpty(mapa.seguidos);
             Assert.IsFalse(mapa.seguidos.Last().animado);
@@ -734,6 +782,9 @@ namespace PriceMap.Tests.EditMode
         {
             gps.Rumbo = 200f;
             IrAAreas(ModoViaje.APie);
+            Assert.IsTrue(pantalla.AcercandoCamara);
+            Assert.AreEqual(200f, mapa.seguidos.Last().giro, 0.01f, "Ya al acercarse.");
+            Assert.AreEqual(180f, mapa.seguidos.Last().distancia);
             PasarEspera();
             Ir(M(0, 5));
             var s = mapa.seguidos.Last();
@@ -798,14 +849,49 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_GestoEnLaEspera_TambienSuelta()
+        public void Pantalla_GestoPorElCamino_EmpiezaIgualConLaCamaraSuelta()
         {
             IrAAreas();
+            int seguidos = mapa.seguidos.Count;
             mapa.Gesto();
             Assert.AreEqual(EstadoSeguimiento.Suelto, pantalla.EstadoCamara);
-            reloj = reloj.AddSeconds(3);
+            Assert.AreEqual(Icono.Recentrar, BotonUbicacion.Icono);
+            reloj = reloj.AddSeconds(1);
             pantalla.ActualizarCapas(Escala);
-            Assert.IsEmpty(mapa.seguidos);
+            Assert.IsTrue(pantalla.Navegando, "Empieza igual.");
+            Assert.IsTrue(pantalla.TarjetasRutaVisibles);
+            Assert.AreEqual(EstadoSeguimiento.Suelto, pantalla.EstadoCamara);
+            Assert.AreEqual(seguidos, mapa.seguidos.Count, "Sin recolocar.");
+        }
+
+        [Test]
+        public void Pantalla_AtrasPorElCamino_QuitaLaRutaYNoEmpieza()
+        {
+            IrAAreas();
+            int dejados = mapa.dejados;
+            Assert.IsTrue(pantalla.Atras());
+            Assert.IsFalse(pantalla.RutaActiva);
+            Assert.Greater(mapa.dejados, dejados);
+            Assert.AreEqual(EstadoSeguimiento.Apagado, pantalla.EstadoCamara);
+            reloj = reloj.AddSeconds(2);
+            pantalla.ActualizarCapas(Escala);
+            Assert.IsFalse(nav.Activa);
+            Assert.IsTrue(pantalla.Buscador.Visible);
+        }
+
+        [Test]
+        public void Pantalla_FichaPorElCamino_EmpiezaDebajoYAlCerrarlaSigue()
+        {
+            IrAAreas();
+            pantalla.AbrirFicha(Areas);
+            reloj = reloj.AddSeconds(1);
+            pantalla.ActualizarCapas(Escala);
+            Assert.IsTrue(nav.Activa);
+            Assert.IsFalse(pantalla.TarjetasRutaVisibles);
+            int seguidos = mapa.seguidos.Count;
+            pantalla.CerrarFicha();
+            Assert.IsTrue(pantalla.TarjetasRutaVisibles);
+            Assert.Greater(mapa.seguidos.Count, seguidos);
         }
 
         [Test]
@@ -834,12 +920,14 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_RecentrarEnLaEspera_SigueYa()
+        public void Pantalla_RecentrarPorElCamino_SigueOtraVez()
         {
             IrAAreas();
+            mapa.Gesto();
+            int seguidos = mapa.seguidos.Count;
             BotonUbicacion.Pulsar();
             Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
-            Assert.IsNotEmpty(mapa.seguidos);
+            Assert.Greater(mapa.seguidos.Count, seguidos);
         }
 
         [Test]
@@ -874,16 +962,21 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Pantalla_OtraRuta_EmpiezaOtraVezEsperando()
+        public void Pantalla_OtraRuta_LaCamaraVaOtraVezAlUsuario()
         {
             IrAAreas();
             PasarEspera();
             mapa.Gesto();
             pantalla.ReabrirFichaRuta();
-            pantalla.Ficha.Acciones.PulsarIr(); // la ruta sale de la caché al momento
-            Assert.IsTrue(pantalla.Navegando);
-            Assert.AreEqual(EstadoSeguimiento.Esperando, pantalla.EstadoCamara);
+            pantalla.Ficha.Acciones.PulsarIr(); // las rutas salen de la caché al momento
+            Assert.IsTrue(pantalla.Navegando, "Abrir «Cómo llegar» no termina la de antes.");
+            mapa.Gesto(); // mover el mapa con la hoja no cambia la cámara de la navegación
+            pantalla.IniciarRuta(0);
+            Assert.IsFalse(nav.Activa, "«Iniciar» la termina.");
+            Assert.IsTrue(pantalla.AcercandoCamara);
+            Assert.AreEqual(EstadoSeguimiento.Siguiendo, pantalla.EstadoCamara);
             Assert.AreEqual(Icono.Navegar, BotonUbicacion.Icono);
+            PasarEspera();
         }
 
         [Test]

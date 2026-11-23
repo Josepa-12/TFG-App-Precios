@@ -170,3 +170,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-varias-rutas-la-mas-rapida.md`
   summary: Probar en el móvil las alternativas reales (Valhalla y OSRM): ninguna prueba ejecuta los constructores sin parámetros de los dos adaptadores.
   evidence: Revisión de la 5a (verification-gap): cambiar de sitio la URL y el cuerpo no rompería ninguna prueba; ya pasaba antes.
+- source_spec: `_bmad-output/implementation-artifacts/spec-como-llegar-elegir-ruta.md`
+  summary: Al cerrar «Cómo llegar» con la X, recuperar también el zoom que había antes de encuadrar las rutas.
+  evidence: Revisión de la 5b (ciega). `IMapa.Encuadrar` cambia la distancia desde la 2.6b y no hay cómo reponerla; la ficha vuelve centrada, pero con el mapa alejado.
+- source_spec: `_bmad-output/implementation-artifacts/spec-como-llegar-elegir-ruta.md`
+  summary: Probar «Cómo llegar» en un móvil (alternativas reales, desplazar las tarjetas, TalkBack, paso de Iniciar a navegar) y ver si las etiquetas de minutos se pisan o si bloquear el móvil justo tras «Iniciar» molesta.
+  evidence: En el PC solo hay rutas falsas y sin TalkBack; si se bloquea en los 0,9 s de acercamiento, la navegación empieza al volver.

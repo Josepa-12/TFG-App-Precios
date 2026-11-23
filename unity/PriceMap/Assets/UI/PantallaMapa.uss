@@ -1925,3 +1925,257 @@
     color: var(--color-surface);
     -unity-text-align: middle-center;
 }
+
+/* ───────── «Cómo llegar» (parte 5b; maqueta A del 22/11/2026) ─────────
+   Mientras se elige ruta (.eligiendo-ruta) no se ven la píldora ni las columnas de botones (la cápsula ya la oculta la
+   ficha). La hoja va anclada abajo, con como mucho el 60 % del alto y la lista de rutas desplazable. */
+.pm-raiz.eligiendo-ruta .hueco-precios,
+.pm-raiz.eligiendo-ruta .pila-derecha {
+    display: none;
+}
+
+.hueco-como-llegar,
+.capa-minutos-ruta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.como-llegar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: var(--como-llegar-alto-max);
+    padding: var(--espacio-2) var(--espacio-4) 0 var(--espacio-4);
+    background-color: var(--color-surface);
+    border-top-left-radius: var(--radio-sheet);
+    border-top-right-radius: var(--radio-sheet);
+    border-top-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-color: var(--color-border);
+}
+
+.como-llegar__asa {
+    width: var(--asa-ancho);
+    height: var(--asa-alto);
+    flex-shrink: 0;
+    align-self: center;
+    margin-bottom: var(--espacio-2);
+    border-radius: 2px;
+    background-color: var(--color-border);
+}
+
+.como-llegar__cabecera {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.como-llegar__textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: var(--espacio-3);
+}
+
+.como-llegar__titulo,
+.como-llegar__destino,
+.como-llegar__ruta-minutos,
+.como-llegar__ruta-detalle,
+.como-llegar__estado,
+.como-llegar__detalle-estado {
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-text);
+}
+
+.como-llegar__destino,
+.como-llegar__ruta-detalle,
+.como-llegar__detalle-estado {
+    color: var(--color-muted);
+}
+
+.como-llegar__cerrar {
+    flex-shrink: 0;
+    background-color: var(--color-surface-2);
+}
+
+/* Coche / a pie: dos mitades sobre surface-2; la elegida, blanca (surface) con su borde */
+.como-llegar__modos {
+    flex-direction: row;
+    flex-shrink: 0;
+    margin-top: var(--espacio-3);
+    padding: var(--espacio-1);
+    border-radius: var(--radio-md);
+    background-color: var(--color-surface-2);
+}
+
+.como-llegar .acciones__modo {
+    flex-direction: row;
+    flex-wrap: wrap; /* con el texto grande, los minutos pasan a la línea de abajo */
+    margin-right: 0;
+    border-width: 1px;
+    border-radius: var(--radio-sm);
+    border-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--color-muted);
+}
+
+.como-llegar .acciones__modo--elegido {
+    border-color: var(--color-control-edge);
+    background-color: var(--color-surface);
+    color: var(--color-text);
+}
+
+.como-llegar .acciones__modo:focus {
+    border-width: 2px;
+    border-color: var(--color-focus);
+}
+
+.como-llegar .acciones__modo-nombre,
+.como-llegar .acciones__modo-tiempo {
+    color: var(--color-muted);
+    white-space: nowrap;
+    -unity-font: url("Fuentes/NunitoSans-ExtraBold.ttf");
+}
+
+.como-llegar .acciones__modo-tiempo {
+    margin-left: var(--espacio-1);
+}
+
+.como-llegar .acciones__modo--elegido .acciones__modo-nombre,
+.como-llegar .acciones__modo--elegido .acciones__modo-tiempo {
+    color: var(--color-text);
+}
+
+/* Rutas: la lista se desplaza si no cabe (texto grande). Como en la ficha, ni el contenedor ni sus hijos encogen */
+.como-llegar__lista {
+    flex-shrink: 1;
+}
+
+.como-llegar__lista .unity-scroll-view__content-and-vertical-scroll-container {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.como-llegar__lista .unity-scroll-view__content-viewport {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.como-llegar__lista .unity-scroll-view__content-container {
+    flex-shrink: 0;
+    padding-bottom: var(--espacio-4);
+}
+
+.como-llegar__estado,
+.como-llegar__detalle-estado,
+.como-llegar__ruta {
+    flex-shrink: 0;
+}
+
+.como-llegar__estado {
+    margin-top: var(--espacio-4);
+}
+
+.como-llegar__detalle-estado {
+    margin-top: var(--espacio-1);
+}
+
+.como-llegar__ruta {
+    flex-direction: row;
+    align-items: center;
+    margin-top: var(--espacio-3);
+    padding: var(--espacio-3);
+    border-radius: var(--radio-md);
+    border-width: 2px;
+    border-color: var(--color-border);
+    background-color: var(--color-surface);
+}
+
+.como-llegar__ruta:active,
+.como-llegar__ruta--elegida {
+    background-color: var(--color-surface-2);
+}
+
+.como-llegar__ruta--elegida {
+    border-color: var(--color-accent);
+}
+
+.como-llegar__ruta:focus {
+    border-color: var(--color-focus);
+}
+
+.como-llegar__ruta-textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin-right: var(--espacio-3);
+}
+
+.como-llegar__iniciar {
+    flex-shrink: 0;
+    min-height: var(--zona-tactil-min);
+    padding: 0 18px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radio-iniciar);
+    border-width: 2px;
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+}
+
+.como-llegar__iniciar:active {
+    opacity: 0.85;
+}
+
+/* Sobre el acento, el foco no se vería con su mismo color */
+.como-llegar__iniciar:focus {
+    border-color: var(--color-text);
+}
+
+.como-llegar__iniciar-texto {
+    margin: 0;
+    padding: 0;
+    color: var(--color-accent-ink);
+    -unity-text-align: middle-center;
+}
+
+.como-llegar__hueco {
+    flex-shrink: 0;
+}
+
+/* Minutos sobre la línea de cada ruta: .minutos-ruta mide 0×0 en la coordenada; su píldora va centrada en ella */
+.minutos-ruta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+}
+
+.minutos-ruta__texto {
+    position: absolute;
+    left: 0;
+    top: 0;
+    translate: -50% -50%;
+    margin: 0;
+    padding: 3px 10px;
+    border-radius: var(--radio-minutos);
+    border-width: 1px;
+    border-color: var(--color-control-edge);
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    white-space: nowrap;
+}
+
+.minutos-ruta--elegida .minutos-ruta__texto {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+    color: var(--color-accent-ink);
+}

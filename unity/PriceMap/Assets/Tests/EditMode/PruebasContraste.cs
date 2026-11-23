@@ -164,6 +164,39 @@ namespace PriceMap.Tests.EditMode
         }
 
         /// <summary>
+        /// «Cómo llegar» (parte 5b): textos de la hoja (modos y tarjetas, elegidos o no) y de las etiquetas de minutos ≥ 4,5:1;
+        /// borde del modo y de la tarjeta elegidos ≥ 3:1; las líneas no elegidas (relleno o borde) ≥ 3:1 sobre las calles y
+        /// el fondo, y distintas de la elegida.
+        /// </summary>
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ComoLlegarCumpleElContraste(bool oscuro)
+        {
+            var c = Tema(oscuro);
+            var p = PaletaMapa.De(oscuro ? TemaMapa.Oscuro : TemaMapa.Claro);
+            foreach (var fondo in new[] { "surface", "surface-2" })
+            {
+                Assert.GreaterOrEqual(Contraste(c["text"], c[fondo]), 4.5f, $"minutos y títulos sobre {fondo}");
+                Assert.GreaterOrEqual(Contraste(c["muted"], c[fondo]), 4.5f, $"detalle y modo no elegido sobre {fondo}");
+                Assert.GreaterOrEqual(Contraste(c["accent"], c[fondo]), 3f, $"borde de la tarjeta elegida sobre {fondo}");
+                Assert.GreaterOrEqual(Contraste(c["control-edge"], c[fondo]), 3f, $"borde del modo elegido sobre {fondo}");
+            }
+            Assert.GreaterOrEqual(Contraste(c["accent-ink"], c["accent"]), 4.5f, "«Iniciar» y la etiqueta de la elegida");
+            Assert.AreNotEqual(p.ruta, p.rutaAlternativa);
+            foreach (var (nombre, fondo) in new[] { ("fondo", p.fondo), ("calle", p.calle), ("calle menor", p.calleMenor) })
+            {
+                float linea = Mathf.Max(Contraste(p.rutaAlternativa, fondo), Contraste(p.rutaAlternativaBorde, fondo));
+                Assert.GreaterOrEqual(linea, 3f, $"línea no elegida sobre {nombre}");
+            }
+            var uss = File.ReadAllText(Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            string Bloque(string selector) => Regex.Match(uss, Regex.Escape(selector) + @"\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            StringAssert.Contains("background-color: var(--color-accent);", Bloque(".como-llegar__iniciar"));
+            StringAssert.Contains("color: var(--color-accent-ink);", Bloque(".como-llegar__iniciar-texto"));
+            StringAssert.Contains("background-color: var(--color-accent);", Bloque(".minutos-ruta--elegida .minutos-ruta__texto"));
+            StringAssert.Contains("color: var(--color-accent-ink);", Bloque(".minutos-ruta--elegida .minutos-ruta__texto"));
+        }
+
+        /// <summary>
         /// Flecha y "Buscando señal GPS" (historia 2.7, parte 2c): la flecha (#2F5BEA, en oscuro #4C7DFF) se distingue
         /// (≥ 3:1) de su borde blanco y, con él, de cualquier color del mapa; la pastilla lleva los colores del toast (texto
         /// ≥ 4,5:1) y se ve sobre el mapa.

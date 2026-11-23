@@ -633,13 +633,14 @@ namespace PriceMap.Tests.EditMode
             filtro.Iniciar();
         }
 
-        /// <summary>Ficha de Clínica Areas, Ir y la ruta llega.</summary>
+        /// <summary>Ficha de Clínica Areas, Ir, la ruta llega e Iniciar.</summary>
         void IrAAreas(Ruta ruta = null)
         {
             CrearPantalla();
             pantalla.AbrirFicha(Areas);
             pantalla.Ficha.Acciones.PulsarIr();
             valhalla.De(ModoViaje.Coche).Responder(ruta ?? RutaEle());
+            pantalla.Iniciar();
         }
 
         [Test]
@@ -794,7 +795,7 @@ namespace PriceMap.Tests.EditMode
             pantalla.Ficha.Acciones.PulsarIr();
             valhalla.Peticiones.Last().Fallar();
             local.Peticiones.Last().Responder(RutaSinManiobras(aproximada: true));
-            Assert.IsTrue(pantalla.Navegando);
+            pantalla.Iniciar();
             Ir(M(150, 0));
             Assert.AreEqual("Ruta aproximada por las calles guardadas", Arriba.Principal.text);
             Assert.AreEqual("Quedan 450 m", Arriba.Distancia.text);
@@ -913,7 +914,8 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual("Quitar ruta", Abajo.TextoFinalizar.text, "Sin navegación, «Quitar ruta».");
             Abajo.Desplegar();
             pantalla.ReabrirFichaRuta();
-            pantalla.Ficha.Acciones.PulsarIr(); // la ruta sale de la caché
+            pantalla.Ficha.Acciones.PulsarIr(); // las rutas salen de la caché
+            pantalla.Iniciar();
             Assert.IsTrue(pantalla.Navegando);
             Assert.IsFalse(Abajo.Desplegada, "La siguiente empieza plegada.");
         }
@@ -992,7 +994,8 @@ namespace PriceMap.Tests.EditMode
         {
             IrAAreas();
             pantalla.ReabrirFichaRuta();
-            pantalla.Ficha.Acciones.PulsarIr(); // la ruta sale de la caché al momento
+            pantalla.Ficha.Acciones.PulsarIr(); // las rutas salen de la caché al momento
+            pantalla.Iniciar();
             CollectionAssert.AreEqual(new[] { "iniciada Clínica Areas", "terminada Manual", "iniciada Clínica Areas" }, eventos);
             Assert.AreEqual(1, gps.Terminadas);
             Assert.AreEqual(2, gps.Iniciadas.Count);
@@ -1014,6 +1017,7 @@ namespace PriceMap.Tests.EditMode
             pantalla.AbrirFicha(Areas);
             pantalla.Ficha.Acciones.PulsarIr();
             valhalla.De(ModoViaje.Coche).Responder(RutaEle());
+            pantalla.Iniciar();
             Assert.IsFalse(pantalla.Navegando);
             Assert.IsEmpty(gps.Iniciadas);
             Assert.AreEqual(3, mapa.linea.Count);

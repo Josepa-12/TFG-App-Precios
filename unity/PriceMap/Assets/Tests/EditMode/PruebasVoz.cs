@@ -752,6 +752,7 @@ namespace PriceMap.Tests.EditMode
             pantalla.Ficha.Acciones.Tocar(modo);
             pantalla.Ficha.Acciones.PulsarIr();
             valhalla.De(modo).Responder(RutaLarga());
+            pantalla.Iniciar();
             Assert.IsTrue(pantalla.Navegando);
         }
 

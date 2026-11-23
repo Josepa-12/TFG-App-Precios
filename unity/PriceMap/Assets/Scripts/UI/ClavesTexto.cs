@@ -272,8 +272,6 @@ namespace PriceMap.UI
         public const string RutaAnuncioMinuto = "ruta.anuncio.minuto";
         /// <summary>TalkBack de la tarjeta de abajo mientras llega la ruta.</summary>
         public const string RutaAnuncioCalculando = "ruta.anuncio.calculando";
-        /// <summary>TalkBack de la tarjeta de abajo si no hay ruta.</summary>
-        public const string RutaAnuncioFallo = "ruta.anuncio.fallo";
         /// <summary>Botón X de la tarjeta de abajo ("Quitar ruta").</summary>
         public const string RutaQuitar = "ruta.quitar";
 
@@ -353,14 +351,45 @@ namespace PriceMap.UI
         /// <summary>TalkBack de la fila del destino: {0} nombre, {1} detalle ("Destino: Clínica Areas, Clínica privada, en coche").</summary>
         public const string RutaAnuncioDestino = "ruta.anuncio.destino";
 
+        // Hoja «Cómo llegar» (parte 5b, 23/11/2026)
+        /// <summary>Título de la hoja.</summary>
+        public const string ComoLlegarTitulo = "comollegar.titulo";
+        /// <summary>Debajo del título: {0} destino ("a Mesón El Rancho").</summary>
+        public const string ComoLlegarA = "comollegar.a";
+        /// <summary>La X de la hoja para TalkBack.</summary>
+        public const string ComoLlegarCerrar = "comollegar.cerrar";
+        /// <summary>Mientras llegan las rutas ("Calculando…").</summary>
+        public const string ComoLlegarCalculando = "comollegar.calculando";
+        /// <summary>Detalle de una ruta: {0} hora de llegada, {1} distancia ("Llegada 22:54 · 2,8 km").</summary>
+        public const string ComoLlegarDetalle = "comollegar.detalle";
+        /// <summary>Detalle de la más rápida: {0} el detalle ("Llegada 22:54 · 2,8 km · Más rápida").</summary>
+        public const string ComoLlegarMasRapida = "comollegar.masrapida";
+        /// <summary>Botón de cada ruta ("Iniciar").</summary>
+        public const string ComoLlegarIniciar = "comollegar.iniciar";
+        /// <summary>TalkBack de una ruta: {0} minutos, {1} hora, {2} distancia ("7 minutos, llegada 22:54, 2,8 km").</summary>
+        public const string ComoLlegarAnuncio = "comollegar.anuncio";
+        /// <summary>Igual con un minuto: {0} hora, {1} distancia.</summary>
+        public const string ComoLlegarAnuncioMinuto = "comollegar.anuncio.minuto";
+        /// <summary>TalkBack de la ruta aproximada: {0} minutos, {1} hora, {2} distancia.</summary>
+        public const string ComoLlegarAnuncioAprox = "comollegar.anuncio.aprox";
+        /// <summary>Igual con un minuto: {0} hora, {1} distancia.</summary>
+        public const string ComoLlegarAnuncioAproxMinuto = "comollegar.anuncio.aprox.minuto";
+        /// <summary>TalkBack de la más rápida: {0} el anuncio ("…, más rápida").</summary>
+        public const string ComoLlegarAnuncioRapida = "comollegar.anuncio.rapida";
+        /// <summary>Aviso de TalkBack al elegir una ruta: {0} su anuncio ("…, seleccionada").</summary>
+        public const string ComoLlegarElegida = "comollegar.elegida";
+
         public static readonly string[] Todas =
         {
+            ComoLlegarTitulo, ComoLlegarA, ComoLlegarCerrar, ComoLlegarCalculando, ComoLlegarDetalle, ComoLlegarMasRapida,
+            ComoLlegarIniciar, ComoLlegarAnuncio, ComoLlegarAnuncioMinuto, ComoLlegarAnuncioAprox, ComoLlegarAnuncioAproxMinuto,
+            ComoLlegarAnuncioRapida, ComoLlegarElegida,
             RutaFinalizar, RutaDesplegar, RutaPlegar, RutaEnCoche, RutaAPie, RutaDestinoDetalle, RutaAnuncioDestino,
             VozBoton, VozTodo, VozImportante, VozNada, VozValorTodo, VozValorImportante, VozValorNada,
             SenalBuscando, SenalRecuperada,
             UbicacionRecentrar, UbicacionSiguiendo,
             RutaCalculando, RutaFallo, RutaA, RutaDespues, RutaLlegada, RutaMin, RutaAnuncio, RutaAnuncioMinuto,
-            RutaAnuncioCalculando, RutaAnuncioFallo, RutaQuitar,
+            RutaAnuncioCalculando, RutaQuitar,
             RutaAproximada, RutaValorAprox, RutaAnuncioAprox, RutaAnuncioAproxMinuto, FichaMinutosAprox,
             FichaAnuncioMinutosAprox, FichaAnuncioMinutoAprox, ToastRutaAproximada, ToastSinCalles,
             RutaEn, RutaQuedan, RutaAnuncioManiobra, ToastRecalculoFallo, NotificacionNavegando,

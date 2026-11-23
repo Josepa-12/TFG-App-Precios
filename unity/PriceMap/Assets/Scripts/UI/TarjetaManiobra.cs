@@ -74,11 +74,8 @@ namespace PriceMap.UI
             MostrarCalculando();
         }
 
-        /// <summary>Recién pulsado Ir: "Calculando la ruta…", sin siguiente.</summary>
+        /// <summary>Antes de la primera ruta: "Calculando la ruta…", sin siguiente.</summary>
         public void MostrarCalculando() => Poner(TipoManiobra.Recto, true, textos(ClavesTexto.RutaCalculando), null, TipoManiobra.Otra);
-
-        /// <summary>Sin ruta: "No se ha podido calcular la ruta", sin flecha ni siguiente.</summary>
-        public void MostrarFallo() => Poner(TipoManiobra.Otra, false, textos(ClavesTexto.RutaFallo), null, TipoManiobra.Otra);
 
         /// <summary>
         /// La ruta llegada: la primera maniobra con texto y la siguiente con texto (sin el punto final de Valhalla); sin

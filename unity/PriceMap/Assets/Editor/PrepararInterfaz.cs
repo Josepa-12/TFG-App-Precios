@@ -187,7 +187,6 @@ namespace PriceMap.EditorTools
             [ClavesTexto.RutaAnuncio] = "Llegada {0}, {1} minutos, {2}",
             [ClavesTexto.RutaAnuncioMinuto] = "Llegada {0}, 1 minuto, {1}",
             [ClavesTexto.RutaAnuncioCalculando] = "Calculando la hora de llegada",
-            [ClavesTexto.RutaAnuncioFallo] = "Sin hora de llegada",
             [ClavesTexto.RutaQuitar] = "Quitar ruta",
             [ClavesTexto.RutaAproximada] = "Ruta aproximada por las calles guardadas",
             [ClavesTexto.RutaValorAprox] = "≈ {0}",
@@ -221,6 +220,19 @@ namespace PriceMap.EditorTools
             [ClavesTexto.RutaAPie] = "a pie",
             [ClavesTexto.RutaDestinoDetalle] = "{0} · {1}",
             [ClavesTexto.RutaAnuncioDestino] = "Destino: {0}, {1}",
+            [ClavesTexto.ComoLlegarTitulo] = "Cómo llegar",
+            [ClavesTexto.ComoLlegarA] = "a {0}",
+            [ClavesTexto.ComoLlegarCerrar] = "Cerrar",
+            [ClavesTexto.ComoLlegarCalculando] = "Calculando…",
+            [ClavesTexto.ComoLlegarDetalle] = "Llegada {0} · {1}",
+            [ClavesTexto.ComoLlegarMasRapida] = "{0} · Más rápida",
+            [ClavesTexto.ComoLlegarIniciar] = "Iniciar",
+            [ClavesTexto.ComoLlegarAnuncio] = "{0} minutos, llegada {1}, {2}",
+            [ClavesTexto.ComoLlegarAnuncioMinuto] = "1 minuto, llegada {0}, {1}",
+            [ClavesTexto.ComoLlegarAnuncioAprox] = "Ruta aproximada, unos {0} minutos, llegada hacia las {1}, unos {2}",
+            [ClavesTexto.ComoLlegarAnuncioAproxMinuto] = "Ruta aproximada, alrededor de 1 minuto, llegada hacia las {0}, unos {1}",
+            [ClavesTexto.ComoLlegarAnuncioRapida] = "{0}, más rápida",
+            [ClavesTexto.ComoLlegarElegida] = "{0}, seleccionada",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

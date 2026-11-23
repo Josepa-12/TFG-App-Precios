@@ -89,6 +89,13 @@ namespace PriceMap.Aplicacion
         void QuitarRuta();
 
         /// <summary>
+        /// Dibuja las líneas de las rutas entre las que se elige («Cómo llegar», parte 5b), más claras y finas que la de
+        /// MostrarRuta (la elegida) y por debajo de ella. Sustituyen a las anteriores. Mientras se elige (también con la
+        /// lista vacía: una sola ruta) todas van por encima de los edificios, para verlas enteras; null deja de elegir.
+        /// </summary>
+        void MostrarAlternativas(IReadOnlyList<IReadOnlyList<Coordenada>> lineas) { }
+
+        /// <summary>
         /// Mueve y acerca la vista al instante para que todos los puntos quepan en ese rectángulo de la pantalla (px,
         /// origen arriba a la izquierda), sin cambiar el giro ni la inclinación y sin pasar los límites de la cámara.
         /// </summary>

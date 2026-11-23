@@ -129,6 +129,32 @@ namespace PriceMap.Arranque
             (TipoManiobra.Llegada, "Su destino está a la izquierda.", 9, 0),
         };
 
+        // Otras dos en coche («Cómo llegar», parte 5b; datos fijos de Valhalla del 23/11/2026): por el norte y por el sur
+        static readonly Coordenada[] CalleCocheNorte =
+        {
+            C(36.777913, -6.352773), C(36.778103, -6.352915), C(36.778279, -6.352559), C(36.778455, -6.352203),
+            C(36.778784, -6.351581), C(36.779015, -6.351277), C(36.779246, -6.350842), C(36.779727, -6.350056),
+            C(36.780373, -6.349052), C(36.781217, -6.348376), C(36.781608, -6.348038), C(36.781758, -6.348080),
+            C(36.781982, -6.348321), C(36.782395, -6.348691), C(36.782781, -6.349031), C(36.783259, -6.349504),
+            C(36.783570, -6.349850), C(36.783090, -6.350380), C(36.782706, -6.350823), C(36.781805, -6.351850),
+            C(36.781511, -6.352207), C(36.781220, -6.351887), C(36.780925, -6.351553), C(36.780568, -6.351110),
+            C(36.780269, -6.350727),
+        };
+
+        static readonly Coordenada[] CalleCocheSur =
+        {
+            C(36.777913, -6.352773), C(36.778103, -6.352915), C(36.778279, -6.352559), C(36.778455, -6.352203),
+            C(36.778784, -6.351581), C(36.779015, -6.351277), C(36.779246, -6.350842), C(36.778789, -6.350617),
+            C(36.778234, -6.350358), C(36.777672, -6.350136), C(36.777619, -6.350395), C(36.777191, -6.351159),
+            C(36.776506, -6.350910), C(36.776531, -6.350607), C(36.776549, -6.349805), C(36.777188, -6.349971),
+            C(36.777246, -6.349671), C(36.777366, -6.349371), C(36.777495, -6.349124), C(36.778009, -6.348473),
+            C(36.778700, -6.347470), C(36.778871, -6.347670), C(36.779077, -6.347763), C(36.779629, -6.347875),
+            C(36.779871, -6.347758), C(36.780598, -6.347085), C(36.780801, -6.347005), C(36.781043, -6.347153),
+            C(36.781342, -6.347538), C(36.781758, -6.348080), C(36.782395, -6.348691), C(36.783259, -6.349504),
+            C(36.783570, -6.349850), C(36.782706, -6.350823), C(36.781511, -6.352207), C(36.780925, -6.351553),
+            C(36.780269, -6.350727),
+        };
+
         /// <summary>Solo en la captura "ruta-aproximada": las rutas falsas fallan como sin conexión.</summary>
         static bool sinConexion;
 
@@ -150,6 +176,23 @@ namespace PriceMap.Arranque
                 }
                 else ruta = new Ruta(new[] { origen, destino }, origen.DistanciaMetros(destino), segundos, Array.Empty<Maniobra>());
                 return System.Threading.Tasks.Task.FromResult(Resultado<Ruta>.Exito(ruta));
+            }
+
+            /// <summary>En coche a Clínica Areas, tres («Cómo llegar»): 4, 7 y 10 min; las demás, la de Calcular sola.</summary>
+            public async System.Threading.Tasks.Task<Resultado<IReadOnlyList<Ruta>>> Alternativas(Coordenada origen, Coordenada destino,
+                ModoViaje modo, System.Threading.CancellationToken ct)
+            {
+                var r = await Calcular(origen, destino, modo, ct);
+                if (!r.Ok) return Resultado<IReadOnlyList<Ruta>>.Fallo(r.Error);
+                var rutas = new List<Ruta> { r.Valor };
+                if (modo == ModoViaje.Coche && r.Valor.Maniobras.Count > 0)
+                    foreach (var (puntos, segundos) in new[] { (CalleCocheNorte, 400.0), (CalleCocheSur, 560.0) })
+                    {
+                        double metros = 0;
+                        for (int i = 1; i < puntos.Length; i++) metros += puntos[i - 1].DistanciaMetros(puntos[i]);
+                        rutas.Add(new Ruta(puntos, metros, segundos, r.Valor.Maniobras));
+                    }
+                return Resultado<IReadOnlyList<Ruta>>.Exito(rutas);
             }
         }
 
@@ -249,6 +292,7 @@ namespace PriceMap.Arranque
             yield return Busqueda();
             yield return Cerca();
             yield return Punto();
+            yield return ComoLlegar();
             yield return Ruta();
             yield return RutaAproximada();
             yield return Navegacion();
@@ -790,10 +834,124 @@ namespace PriceMap.Arranque
         }
 
         /// <summary>
+        /// «Cómo llegar» (parte 5b), capturas "como-llegar", "como-llegar-oscuro" y "como-llegar-200": desde la ficha de
+        /// Clínica Areas, Ir abre la hoja con tres rutas. Comprueba que las tres caben enteras entre el borde de arriba y la
+        /// hoja, sus etiquetas y sus tarjetas, que no se ven la píldora, la cápsula ni la ficha, y que tocar la línea de la
+        /// segunda la elige sin empezar (la oscura). Con la fuente al 200 %, que la lista se desplaza. Después, «Iniciar»:
+        /// primero la cámara y luego las tarjetas.
+        /// </summary>
+        IEnumerator ComoLlegar()
+        {
+            var lugar = pantalla?.Capa?.Marcadores.Select(m => m.Lugar).FirstOrDefault(l => l.Id == "clinica-areas");
+            var camara = FindFirstObjectByType<CamaraMapa>();
+            if (lugar == null || pantalla.Navegacion == null || pantalla.ComoLlegar == null || camara == null)
+            { Debug.LogError("PriceMap: no se puede capturar «Cómo llegar»."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var relojAntes = pantalla.RelojLocal;
+            var fuenteAntes = EscalaFuente.Forzada;
+            pantalla.RelojLocal = () => new DateTime(2026, 11, 23, 22, 47, 0, DateTimeKind.Local);
+            pantalla.Rutas.VaciarCache();
+            try
+            {
+                if (tema.Actual != Tema.Claro) { tema.Alternar(); yield return new WaitForSeconds(1.5f); }
+                pantalla.AbrirFicha(lugar);
+                yield return new WaitForSeconds(1f);
+                pantalla.Ficha.Acciones.PulsarIr();
+                yield return EsperarOpciones();
+                yield return new WaitForSeconds(2f); // teselas del encuadre
+                yield return new WaitForEndOfFrame();
+                ComprobarComoLlegar("claro", 0);
+                yield return Capturar("como-llegar");
+                yield return new WaitForSeconds(1f);
+
+                // Tocar la línea de la segunda (por el norte) la elige
+                pantalla.TocarMapa(mapa.Proyectar(CalleCocheNorte[19]), pantalla.EscalaDp);
+                tema.Alternar();
+                yield return new WaitForSeconds(1.5f);
+                yield return new WaitForEndOfFrame();
+                ComprobarComoLlegar("oscuro", 1);
+                yield return Capturar("como-llegar-oscuro");
+                yield return new WaitForSeconds(1f);
+                tema.Alternar();
+
+                // Texto del sistema al 200 %
+                EscalaFuente.Forzada = () => 2f;
+                EscalaFuente.Aplicar(pantalla.ComoLlegar, 2f);
+                yield return new WaitForSeconds(1.5f);
+                yield return new WaitForEndOfFrame();
+                var lista = pantalla.ComoLlegar.Lista;
+                Debug.Log($"PriceMap: cómo llegar al 200 %: hoja {pantalla.ComoLlegar.worldBound}; lista {lista.contentContainer.layout.height:F0} dp en {lista.contentViewport.layout.height:F0}");
+                if (lista.contentContainer.layout.height <= lista.contentViewport.layout.height) Debug.LogError("PriceMap: con el texto al 200 % la lista no se desplaza.");
+                yield return Capturar("como-llegar-200");
+                yield return new WaitForSeconds(1f);
+                EscalaFuente.Forzada = fuenteAntes;
+                EscalaFuente.Aplicar(pantalla.ComoLlegar, EscalaFuente.Sistema);
+                yield return null;
+
+                // «Iniciar» de la segunda: primero la cámara, después las tarjetas
+                pantalla.ComoLlegar.Tarjetas[1].PulsarIniciar();
+                yield return null;
+                if (!pantalla.AcercandoCamara || pantalla.TarjetasRutaVisibles || pantalla.Navegacion.Activa)
+                    Debug.LogError("PriceMap: tras «Iniciar» la cámara no va primero al cursor.");
+                yield return EsperarTarjetas();
+                Debug.Log($"PriceMap: tras «Iniciar»: navegando {pantalla.Navegando}; cámara a {camara.distancia:F0} m, inclinada {camara.inclinacion:F0}°; {pantalla.RutaDibujada?.Puntos.Count ?? 0} puntos");
+                if (!pantalla.Navegando || pantalla.RutaDibujada.Puntos.Count != CalleCocheNorte.Length) Debug.LogError("PriceMap: «Iniciar» no ha empezado la segunda ruta.");
+                if (camara.distancia > ParametrosNegocio.CamaraSeguirDistanciaCoche * 1.2f) Debug.LogError("PriceMap: las tarjetas han salido antes de llegar la cámara.");
+            }
+            finally
+            {
+                EscalaFuente.Forzada = fuenteAntes;
+                if (pantalla.EligiendoRuta) pantalla.CerrarFicha();
+                pantalla.QuitarRuta();
+                pantalla.RelojLocal = relojAntes;
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            camara.inclinacion = 50f;
+            camara.giro = -15f;
+            camara.distancia = 900f;
+            mapa.Centrar(PantallaMapa.VistaInicial);
+            yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>La hoja con las tres rutas, la elegida resaltada, y todas encuadradas encima; Debug.LogError si no.</summary>
+        void ComprobarComoLlegar(string caso, int elegida)
+        {
+            var hoja = pantalla.ComoLlegar;
+            float escala = pantalla.EscalaDp;
+            Debug.Log($"PriceMap: cómo llegar ({caso}): hoja {hoja.worldBound}; {hoja.Titulo.text} {hoja.Destino.text}; coche \"{hoja.Coche.Tiempo.text}\", a pie \"{hoja.APie.Tiempo.text}\"; " +
+                      string.Join(" / ", hoja.Tarjetas.Where(t => t.Visible).Select(t => $"{t.Minutos.text} · {t.Detalle.text}{(t.Elegida ? " (elegida)" : "")} {t.worldBound}")) +
+                      $"; TalkBack: {string.Join(" | ", pantalla.Accesibilidad.Recorrido())}");
+            if (!pantalla.EligiendoRuta || hoja.Rutas != 3) { Debug.LogError($"PriceMap: «Cómo llegar» ({caso}) no enseña tres rutas."); return; }
+            if (hoja.Elegida != elegida || !hoja.Tarjetas[elegida].Elegida) Debug.LogError($"PriceMap: la elegida ({caso}) es la {hoja.Elegida + 1} y no la {elegida + 1}.");
+            if (pantalla.Navegacion.Activa) Debug.LogError($"PriceMap: «Cómo llegar» ({caso}) ha empezado la navegación.");
+            float suelo = hoja.worldBound.yMin / escala;
+            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+            foreach (var r in pantalla.OpcionesRuta)
+                foreach (var c in r.Puntos)
+                {
+                    var p = mapa.Proyectar(c);
+                    x0 = Mathf.Min(x0, p.X); y0 = Mathf.Min(y0, p.Y); x1 = Mathf.Max(x1, p.X); y1 = Mathf.Max(y1, p.Y);
+                }
+            Debug.Log($"PriceMap: cómo llegar ({caso}): rutas en x {x0:F0}–{x1:F0}, y {y0:F0}–{y1:F0} px; hoja desde y {suelo:F0} (pantalla {Screen.width}×{Screen.height})");
+            if (y0 < 0f || y1 > suelo || x0 < 0f || x1 > Screen.width) Debug.LogError($"PriceMap: las rutas ({caso}) no caben enteras encima de la hoja.");
+            foreach (var e in pantalla.MinutosRuta.Etiquetas)
+                if (!e.Visible || e.Texto.worldBound.width <= 0f || e.Texto.worldBound.yMax > hoja.worldBound.yMin)
+                    Debug.LogError($"PriceMap: la etiqueta \"{e.Texto.text}\" ({caso}) no se ve encima de la hoja ({e.Texto.worldBound}).");
+            foreach (var t in hoja.Tarjetas)
+                if (t.Iniciar.worldBound.height < 47.5f) Debug.LogError($"PriceMap: «Iniciar» ({caso}) mide {t.Iniciar.worldBound}.");
+            if (hoja.Tarjetas[2].worldBound.yMax > Screen.height * escala) Debug.LogError($"PriceMap: la tercera ruta ({caso}) no cabe en la hoja.");
+            if (pantalla.Pildora != null && pantalla.Pildora.parent.resolvedStyle.display != DisplayStyle.None) Debug.LogError($"PriceMap: eligiendo ruta ({caso}) se ve la píldora.");
+            if (pantalla.Buscador.Visible) Debug.LogError($"PriceMap: eligiendo ruta ({caso}) se ve la cápsula.");
+            if (pantalla.Ficha.resolvedStyle.display != DisplayStyle.None) Debug.LogError($"PriceMap: eligiendo ruta ({caso}) se ve la ficha.");
+        }
+
+        /// <summary>
         /// Historia 2.6 (parte 2a), capturas "ruta" (claro, coche) y "ruta-oscuro" (a pie): desde la ficha de Clínica
-        /// Areas, Ir dibuja la ruta por las calles (RutasFalsas), la encuadra y enseña las dos tarjetas. Comprueba que
-        /// la ruta entera cae entre las dos tarjetas y dentro de la pantalla, que no se ven la píldora, el botón de tema ni
-        /// la cápsula, y que el botón de ubicación queda encima de la tarjeta de abajo. La segunda reabre la ficha desde la
+        /// Areas, Ir e Iniciar dibujan la ruta por las calles (RutasFalsas) y enseñan las dos tarjetas, con la cámara en el
+        /// usuario. Comprueba que no se ven la píldora, el botón de tema ni la cápsula, y que el botón de ubicación queda
+        /// encima de la tarjeta de abajo. La segunda reabre la ficha desde la
         /// tarjeta, elige "A pie" e Ir. Al acabar, atrás quita la ruta; deja el tema y la preferencia como estaban.
         /// </summary>
         IEnumerator Ruta()
@@ -809,7 +967,8 @@ namespace PriceMap.Arranque
                 pantalla.AbrirFicha(lugar);
                 yield return new WaitForSeconds(1f);
                 pantalla.Ficha.Acciones.PulsarIr();
-                yield return new WaitForSeconds(2f);
+                yield return EsperarRuta();
+                yield return new WaitForSeconds(1f);
                 yield return new WaitForEndOfFrame();
                 ComprobarRuta("coche");
                 yield return Capturar("ruta");
@@ -822,7 +981,8 @@ namespace PriceMap.Arranque
                 if (!pantalla.FichaAbierta) Debug.LogError("PriceMap: reabrir la ficha desde la ruta no ha funcionado.");
                 pantalla.Ficha.Acciones.Tocar(ModoViaje.APie);
                 pantalla.Ficha.Acciones.PulsarIr();
-                yield return new WaitForSeconds(2f);
+                yield return EsperarRuta();
+                yield return new WaitForSeconds(1f);
                 yield return new WaitForEndOfFrame();
                 ComprobarRuta("a pie");
                 yield return Capturar("ruta-oscuro");
@@ -988,7 +1148,7 @@ namespace PriceMap.Arranque
                 pantalla.Ficha.Acciones.Tocar(ModoViaje.Coche);
                 pantalla.Ficha.Acciones.PulsarIr();
                 yield return EsperarRuta();
-                yield return new WaitForSeconds(2.5f); // la ruta entera y después la cámara sigue
+                yield return new WaitForSeconds(1f);
                 var hoja = pantalla.TarjetaRuta;
                 float altoPlegada = hoja.worldBound.height;
                 hoja.Tocar();
@@ -1047,7 +1207,7 @@ namespace PriceMap.Arranque
 
         /// <summary>
         /// Historia 2.7 (parte 2b), capturas "navegacion-sigue" (claro y oscuro) y "volver-centrar": Ir a Clínica Areas en
-        /// coche y la ubicación falsa a la mitad de Calle Regina (4 m a un lado); pasados los 2 s y la transición, la
+        /// coche y la ubicación falsa a la mitad de Calle Regina (4 m a un lado); pasada la transición, la
         /// cámara sigue: inclinada 45°, a 350 m, con el rumbo de la marcha arriba y el punto sobre la línea en el tercio de
         /// abajo. Después, un gesto mueve el mapa y el botón de ubicación pasa al icono de recentrar ("Volver a centrar").
         /// </summary>
@@ -1075,13 +1235,13 @@ namespace PriceMap.Arranque
                 yield return EsperarRuta();
                 var nav = pantalla.Navegacion;
                 if (!nav.Activa) { Debug.LogError("PriceMap: Ir no ha empezado la navegación."); yield break; }
-                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Esperando)
-                    Debug.LogError($"PriceMap: al pulsar Ir la cámara debería esperar 2 s con la ruta entera ({pantalla.EstadoCamara}).");
+                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Siguiendo)
+                    Debug.LogError($"PriceMap: al iniciar la cámara debería seguir ({pantalla.EstadoCamara}).");
                 var a = CalleCoche[3];
                 var b = CalleCoche[4];
                 var mitad = new Coordenada((a.Latitud + b.Latitud) / 2 - 0.00003, (a.Longitud + b.Longitud) / 2 + 0.000025);
                 ubicacionCaptura.Mover(mitad);
-                yield return new WaitForSeconds(3.5f); // los 2 s y la transición
+                yield return new WaitForSeconds(3.5f); // la transición
                 yield return new WaitForEndOfFrame();
                 var estado = nav.Estado;
                 var visto = pantalla.PosicionMostrada;
@@ -1090,7 +1250,7 @@ namespace PriceMap.Arranque
                 Debug.Log($"PriceMap: cámara que sigue: {pantalla.EstadoCamara}; inclinación {camara.inclinacion:F1}°, distancia {camara.distancia:F0} m, " +
                           $"giro {camara.giro:F0}° (rumbo {pantalla.RumboCamara:F0}°); punto {visto} (proyectado {estado.Proyectado}, a {estado.DistanciaRuta:F1} m) " +
                           $"en ({enPantalla.X:F0}, {enPantalla.Y:F0}) px, objetivo ({objetivo.X:F0}, {objetivo.Y:F0}); botón \"{Textos.T(pantalla.ClaveBotonUbicacion())}\"");
-                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Siguiendo) Debug.LogError("PriceMap: la cámara no sigue a los 2 s.");
+                if (pantalla.EstadoCamara != UI.EstadoSeguimiento.Siguiendo) Debug.LogError("PriceMap: la cámara no sigue.");
                 if (Mathf.Abs(camara.inclinacion - ParametrosNegocio.CamaraSeguirInclinacion) > 1f) Debug.LogError("PriceMap: la cámara no está inclinada 45°.");
                 if (Mathf.Abs(camara.distancia - ParametrosNegocio.CamaraSeguirDistanciaCoche) > 5f) Debug.LogError("PriceMap: la cámara no está a 350 m.");
                 if (!visto.HasValue || visto.Value.DistanciaMetros(estado.Proyectado) > 0.5) Debug.LogError("PriceMap: en coche el punto no va sobre la línea.");
@@ -1174,7 +1334,7 @@ namespace PriceMap.Arranque
                 var b = CalleCoche[4];
                 var mitad = new Coordenada((a.Latitud + b.Latitud) / 2 - 0.00003, (a.Longitud + b.Longitud) / 2 + 0.000025);
                 ubicacionCaptura.Mover(mitad);
-                yield return new WaitForSeconds(3.5f); // los 2 s y la transición
+                yield return new WaitForSeconds(3.5f); // la transición
                 yield return new WaitForEndOfFrame();
                 Debug.Log($"PriceMap: flecha: visible {marcador.FlechaVisible}, ángulo {marcador.AnguloFlecha:F1}° (rumbo {pantalla.RumboCamara:F0}°, giro {mapa.Giro:F0}°), " +
                           $"cono {marcador.ConoVisible}, círculo {marcador.Punto.resolvedStyle.display}, atenuada {marcador.Atenuado}");
@@ -1276,7 +1436,7 @@ namespace PriceMap.Arranque
                 var a = CalleCoche[3];
                 var b = CalleCoche[4];
                 ubicacionCaptura.Mover(new Coordenada((a.Latitud + b.Latitud) / 2 - 0.00003, (a.Longitud + b.Longitud) / 2 + 0.000025));
-                yield return new WaitForSeconds(3.5f); // los 2 s y la transición
+                yield return new WaitForSeconds(3.5f); // la transición
                 if (!pantalla.BotonVozVisible) Debug.LogError("PriceMap: navegando no se ve el botón de voz.");
                 pantalla.BotonVoz.Pulsar();
                 yield return new WaitForSeconds(0.5f);
@@ -1332,13 +1492,32 @@ namespace PriceMap.Arranque
             yield return new WaitForSeconds(1f);
         }
 
-        // Hasta que llega la ruta (o el fallo), como mucho 20 s; luego un fotograma para que se disponga
+        // Ir ya pulsado: hasta que llegan las rutas de «Cómo llegar» (o el fallo), «Iniciar» de la primera y hasta que la
+        // cámara ha llegado y se ven las tarjetas
         IEnumerator EsperarRuta()
         {
+            yield return EsperarOpciones();
+            if (pantalla.OpcionesRuta == null) { Debug.LogError("PriceMap: no han llegado las rutas de «Cómo llegar»."); yield break; }
+            pantalla.IniciarRuta(0);
+            yield return EsperarTarjetas();
+        }
+
+        // Hasta que llegan las rutas (o el fallo), como mucho 20 s; luego un fotograma para que se disponga la hoja
+        IEnumerator EsperarOpciones()
+        {
             float limite = Time.realtimeSinceStartup + 20f;
-            while (pantalla.RutaDibujada == null && pantalla.TarjetaRuta.Minutos.text == Textos.T(ClavesTexto.FichaCalculando) &&
+            while (pantalla.OpcionesRuta == null && pantalla.ComoLlegar.Estado.text == Textos.T(ClavesTexto.ComoLlegarCalculando) &&
                    Time.realtimeSinceStartup < limite)
                 yield return null;
+            yield return null;
+            yield return new WaitForEndOfFrame();
+        }
+
+        // Hasta que la cámara llega al usuario y salen las tarjetas, como mucho 5 s; luego un fotograma para que se dispongan
+        IEnumerator EsperarTarjetas()
+        {
+            float limite = Time.realtimeSinceStartup + 5f;
+            while (!pantalla.TarjetasRutaVisibles && Time.realtimeSinceStartup < limite) yield return null;
             yield return null;
             yield return new WaitForEndOfFrame();
         }
@@ -1362,7 +1541,7 @@ namespace PriceMap.Arranque
             if (!anuncios.Contains(Textos.T(ClavesTexto.ToastRutaAproximada))) Debug.LogError($"PriceMap: TalkBack no anuncia el toast ({caso}).");
         }
 
-        /// <summary>La ruta dibujada cabe entera entre las dos tarjetas y los controles son los de la ruta; Debug.LogError si no.</summary>
+        /// <summary>Con la ruta iniciada se ven las dos tarjetas y los controles son los de la ruta; Debug.LogError si no.</summary>
         void ComprobarRuta(string caso)
         {
             var ruta = pantalla.RutaDibujada;
@@ -1375,15 +1554,6 @@ namespace PriceMap.Arranque
             if (ruta == null || ruta.Puntos.Count < 2) { Debug.LogError($"PriceMap: ruta ({caso}) sin dibujar."); return; }
             if (escala <= 0f || abajo.resolvedStyle.display == DisplayStyle.None || arriba.resolvedStyle.display == DisplayStyle.None)
             { Debug.LogError($"PriceMap: ruta ({caso}) sin las dos tarjetas a la vista."); return; }
-            float techo = arriba.worldBound.yMax / escala, suelo = abajo.worldBound.yMin / escala;
-            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
-            foreach (var c in ruta.Puntos)
-            {
-                var p = mapa.Proyectar(c);
-                x0 = Mathf.Min(x0, p.X); y0 = Mathf.Min(y0, p.Y); x1 = Mathf.Max(x1, p.X); y1 = Mathf.Max(y1, p.Y);
-            }
-            Debug.Log($"PriceMap: ruta ({caso}) en pantalla x {x0:F0}–{x1:F0}, y {y0:F0}–{y1:F0} px; libre entre y {techo:F0} y {suelo:F0} px (ancho {Screen.width})");
-            if (y0 < techo || y1 > suelo || x0 < 0f || x1 > Screen.width) Debug.LogError($"PriceMap: la ruta ({caso}) no cabe entera entre las dos tarjetas.");
             if (pantalla.Pildora != null && pantalla.Pildora.resolvedStyle.display != DisplayStyle.None && pantalla.Pildora.parent.resolvedStyle.display != DisplayStyle.None)
                 Debug.LogError($"PriceMap: con ruta ({caso}) se ve la píldora de precios.");
             if (pantalla.BotonTema.parent.resolvedStyle.display != DisplayStyle.None) Debug.LogError($"PriceMap: con ruta ({caso}) se ve el botón de tema.");

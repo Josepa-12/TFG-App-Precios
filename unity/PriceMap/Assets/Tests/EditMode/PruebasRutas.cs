@@ -1363,18 +1363,20 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void IrConRuta_CierraLaFichaDibujaEncuadraYEnsenaLasTarjetas()
+        public void IrEIniciar_CierraLaFichaDibujaEncuadraYEnsenaLasTarjetas()
         {
             CrearConPosicion();
             IrAAreas();
-            Assert.IsFalse(pantalla.FichaAbierta, "Ir cierra la ficha.");
-            Assert.IsTrue(pantalla.RutaActiva);
-            ComprobarControlesDeRuta(true);
+            Assert.IsFalse(pantalla.RutaActiva, "Ir no empieza: abre «Cómo llegar».");
 
             var p = valhalla.De(ModoViaje.Coche);
             Assert.AreEqual(Cabildo, p.Origen, "Desde la posición actual.");
             Assert.AreEqual(Areas.Posicion, p.Destino);
             p.ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
+            Assert.IsFalse(pantalla.FichaAbierta, "Iniciar cierra la ficha.");
+            Assert.IsTrue(pantalla.RutaActiva);
+            ComprobarControlesDeRuta(true);
 
             Assert.AreEqual(3, mapa.linea.Count, "La línea va por los puntos de la ruta.");
             Assert.IsNotEmpty(mapa.encuadres, "La ruta se encuadra.");
@@ -1397,26 +1399,18 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void IrAntesDeLaRuta_CalculandoYAlLlegarLineaYTarjetas()
+        public void IrEIniciar_MenosDeUnKilometroEnMetros()
         {
             CrearConPosicion();
             IrAAreas();
-            Assert.AreEqual("Calculando la ruta…", Arriba.Principal.text);
-            Assert.IsFalse(Visible(Arriba.FilaSiguiente));
-            Assert.AreEqual("…", Abajo.Llegada.text);
-            Assert.AreEqual("…", Abajo.Minutos.text);
-            Assert.AreEqual("…", Abajo.Distancia.text);
-            Assert.IsNull(mapa.linea, "Sin línea mientras llega.");
-            Assert.IsEmpty(mapa.encuadres);
-
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 950);
-            Assert.IsNotNull(mapa.linea);
+            pantalla.Iniciar();
             Assert.AreEqual("950", Abajo.Distancia.text);
             Assert.AreEqual("m", Abajo.RotuloDistancia.text);
         }
 
         [Test]
-        public void IrConLosMinutosYaCalculados_UsaLaCacheSinPedirNada()
+        public void IrConLosMinutosYaCalculados_LaHojaLosTieneYPideLasRutas()
         {
             CrearConPosicion();
             pantalla.AbrirFicha(Areas);
@@ -1424,9 +1418,17 @@ namespace PriceMap.Tests.EditMode
             valhalla.De(ModoViaje.APie).Responder(900);
             gps.Posicion = new Coordenada(36.77799, -6.3528); // 10 m: la caché sigue valiendo
             Fila.PulsarIr();
-            Assert.AreEqual(2, valhalla.Peticiones.Count, "Sin peticiones nuevas.");
-            Assert.IsNotNull(mapa.linea, "La ruta sale al momento.");
-            Assert.AreEqual("4", Abajo.Minutos.text);
+            Assert.AreEqual(3, valhalla.Peticiones.Count, "Solo las rutas del modo elegido.");
+            Assert.AreEqual("4 min", pantalla.ComoLlegar.Coche.Tiempo.text);
+            Assert.AreEqual("15 min", pantalla.ComoLlegar.APie.Tiempo.text);
+
+            // Otra vez sin moverse: las rutas salen de la caché al momento
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(250, 1200);
+            pantalla.CerrarComoLlegar();
+            Fila.PulsarIr();
+            Assert.AreEqual(3, valhalla.Peticiones.Count);
+            Assert.AreEqual("5 min", pantalla.ComoLlegar.Tarjetas[0].Minutos.text);
+            Assert.IsNotNull(mapa.linea);
         }
 
         [Test]
@@ -1449,27 +1451,11 @@ namespace PriceMap.Tests.EditMode
             IrAAreas();
             valhalla.De(ModoViaje.Coche).Fallar();
             osrm.De(ModoViaje.Coche).Responder(240, 1200); // sin textos de maniobra
+            pantalla.Iniciar();
             Assert.AreEqual("Ruta a Clínica Areas", Arriba.Principal.text);
             Assert.AreEqual("Ruta a Clínica Areas", Arriba.Anuncio);
             Assert.IsFalse(Visible(Arriba.FilaSiguiente));
             Assert.IsNotNull(mapa.linea);
-        }
-
-        [Test]
-        public void Falla_TextoDelFalloRayasYSinLinea()
-        {
-            CrearConPosicion();
-            IrAAreas();
-            valhalla.De(ModoViaje.Coche).Fallar();
-            osrm.De(ModoViaje.Coche).Fallar();
-            Assert.AreEqual("No se ha podido calcular la ruta", Arriba.Principal.text);
-            Assert.IsFalse(Visible(Arriba.IconoPrincipal), "Sin flecha.");
-            Assert.AreEqual("—", Abajo.Llegada.text);
-            Assert.AreEqual("—", Abajo.Minutos.text);
-            Assert.AreEqual("—", Abajo.Distancia.text);
-            Assert.IsNull(mapa.linea);
-            Assert.IsNull(pantalla.RutaDibujada);
-            ComprobarControlesDeRuta(true);
         }
 
         [Test]
@@ -1478,6 +1464,7 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
             // Con ruta: el botón de ubicación abajo a la izquierda y la atribución, encima de la tarjeta (sin medida, 120 dp)
             var pila = raizArbol.Q("pila-derecha");
             var atribucion = raizArbol.Q("atribucion");
@@ -1502,16 +1489,16 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void QuitarRuta_ConAtrasYSinDibujarLaQueLlegaTarde()
+        public void QuitarRuta_ConAtras()
         {
-            valhalla.IgnorarCancelacion = true;
             CrearConPosicion();
             IrAAreas();
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
             Assert.IsTrue(pantalla.Atras());
             Assert.IsFalse(pantalla.RutaActiva);
             ComprobarControlesDeRuta(false);
-            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
-            Assert.IsNull(mapa.linea, "La respuesta tardía no dibuja nada.");
+            Assert.IsNull(mapa.linea);
             Assert.IsFalse(pantalla.Atras(), "Sin ruta, atrás ya no hace nada.");
         }
 
@@ -1521,6 +1508,7 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas(ModoViaje.APie);
             valhalla.De(ModoViaje.APie).ResponderConManiobras(900, 1100);
+            pantalla.Iniciar();
             int encuadres = mapa.encuadres.Count;
 
             pantalla.ReabrirFichaRuta();
@@ -1550,13 +1538,15 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
             pantalla.ReabrirFichaRuta();
             Fila.APie.Pulsar();
             Fila.PulsarIr();
-            Assert.IsFalse(pantalla.FichaAbierta);
-            Assert.IsNull(mapa.linea, "La del coche se quita mientras llega la nueva.");
+            Assert.IsNull(mapa.linea, "La del coche se oculta mientras se elige.");
             var p = valhalla.De(ModoViaje.APie);
             p.ResponderConManiobras(900, 1100);
+            pantalla.Iniciar();
+            Assert.IsFalse(pantalla.FichaAbierta);
             Assert.AreSame(p.Tcs.Task.Result.Valor, pantalla.RutaDibujada);
             Assert.AreEqual("15", Abajo.Minutos.text);
             ComprobarControlesDeRuta(true);
@@ -1571,6 +1561,7 @@ namespace PriceMap.Tests.EditMode
             pantalla.PulsarLargoMapa(px);
             Fila.PulsarIr();
             valhalla.De(ModoViaje.Coche).Responder(120, 300);
+            pantalla.Iniciar();
             Assert.AreEqual("Ruta a 36,7781, -6,3515", Arriba.Principal.text);
             // El destino conserva su chincheta con la ficha cerrada, como los lugares su marcador
             mapa.proyectar = c => c == CalleAncha ? new PuntoPantalla(200f, 300f, 300f) : PuntoPantalla.Ninguno;
@@ -1597,6 +1588,7 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
             pantalla.RecibirCompartido("farmacia de guardia");
             Assert.IsFalse(pantalla.RutaActiva, "Lo compartido no se pierde detrás de la ruta.");
             Assert.IsNull(mapa.linea);
@@ -1611,13 +1603,9 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             AccesibilidadPantalla.LectorForzado = () => false;
             IrAAreas();
-            Assert.AreSame(Arriba, Acc.Enfocado, "Al pulsar Ir el foco va a la tarjeta de arriba.");
-            var calculando = Acc.Recorrido();
-            Assert.AreEqual("Calculando la ruta…", calculando[0], string.Join(" | ", calculando));
-            Assert.Contains("Calculando la hora de llegada", calculando);
-
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
-            Assert.AreSame(Arriba, Acc.Enfocado, "Al dibujarse la ruta, el foco va a la tarjeta de arriba.");
+            pantalla.Iniciar();
+            Assert.AreSame(Arriba, Acc.Enfocado, "Al iniciar la ruta, el foco va a la tarjeta de arriba.");
             var recorrido = Acc.Recorrido();
             Assert.AreEqual("Sal hacia el norte por Calle Ancha. Después, gira a la derecha en Calle Santo Domingo", recorrido[0],
                 string.Join(" | ", recorrido));
@@ -1657,6 +1645,7 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
             Abajo.Tocar();
             Assert.IsFalse(pantalla.FichaAbierta, "Tocar la hoja ya no reabre la ficha.");
             Assert.IsTrue(pantalla.RutaActiva);
@@ -1666,18 +1655,16 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Hoja_SinNavegacion_CalculandoYConFalloIgualConQuitarRuta()
+        public void Hoja_SinNavegacion_ConQuitarRuta()
         {
             CrearConPosicion();
             IrAAreas();
-            Abajo.Tocar(); // calculando
+            valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
+            Abajo.Tocar();
             Assert.IsTrue(Abajo.Desplegada);
             Assert.AreEqual("Quitar ruta", Abajo.TextoFinalizar.text);
             Assert.IsFalse(pantalla.FichaAbierta);
-            valhalla.De(ModoViaje.Coche).Fallar();
-            osrm.De(ModoViaje.Coche).Fallar();
-            Assert.IsTrue(pantalla.RutaActiva);
-            Assert.AreEqual("Quitar ruta", Abajo.TextoFinalizar.text, "Con fallo, igual.");
             Assert.IsTrue(pantalla.Atras(), "Atrás pliega.");
             Assert.IsFalse(Abajo.Desplegada);
             Assert.IsTrue(pantalla.RutaActiva);
@@ -1694,9 +1681,11 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(240, 1200);
+            pantalla.Iniciar();
             Abajo.Desplegar();
             pantalla.QuitarRuta();
             IrAAreas();
+            pantalla.Iniciar();
             Assert.IsFalse(Abajo.Desplegada, "La siguiente empieza plegada.");
         }
 
@@ -1708,6 +1697,8 @@ namespace PriceMap.Tests.EditMode
             mapa.suelo[(px.X, px.Y)] = CalleAncha;
             pantalla.PulsarLargoMapa(px);
             Fila.PulsarIr();
+            valhalla.De(ModoViaje.Coche).Responder(120);
+            pantalla.Iniciar();
             Assert.AreEqual("36,7781, -6,3515", Abajo.DestinoNombre.text);
             Assert.AreEqual(FilaResultado.GlifoChincheta, Abajo.GlifoDestino);
             Assert.IsTrue(Abajo.DestinoIcono.ClassListContains(TarjetaRuta.ClaseIconoPunto));
@@ -1836,7 +1827,7 @@ namespace PriceMap.Tests.EditMode
         static readonly Direccion DireccionCalleAncha =
             new Direccion("Calle Ancha 10", "Sanlúcar de Barrameda", CalleAncha, "Calle Ancha", "10");
 
-        /// <summary>Punto libre con geocodificador: Ir con la ficha en ese estado de la dirección.</summary>
+        /// <summary>Punto libre con geocodificador: Ir e Iniciar con la ficha en ese estado de la dirección.</summary>
         GeoFalso IrAlPuntoConDireccion(bool llegaAntes)
         {
             var geo = new GeoFalso();
@@ -1846,6 +1837,8 @@ namespace PriceMap.Tests.EditMode
             pantalla.PulsarLargoMapa(px);
             if (llegaAntes) geo.Inversas.Single().Responder(DireccionCalleAncha);
             Fila.PulsarIr();
+            valhalla.De(ModoViaje.Coche).Responder(120);
+            pantalla.Iniciar();
             return geo;
         }
 
@@ -1875,6 +1868,20 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(calle, Abajo.DestinoNombre.text, "La fila se rehace al llegar la dirección.");
             Assert.AreEqual("Sanlúcar de Barrameda", Abajo.DestinoDetalle.text);
             Assert.AreEqual(Textos.Formatear(T(ClavesTexto.RutaAnuncioDestino), calle, "Sanlúcar de Barrameda"), Abajo.AnuncioDestino);
+        }
+
+        [Test]
+        public void ComoLlegar_PuntoLibre_DireccionQueLlegaConLaHojaAbierta()
+        {
+            var geo = new GeoFalso();
+            Crear(EstadoUbicacion.Activa, Cabildo, geocodificador: geo);
+            var px = new PuntoPantalla(100f, 200f, 300f);
+            mapa.suelo[(px.X, px.Y)] = CalleAncha;
+            pantalla.PulsarLargoMapa(px);
+            Fila.PulsarIr();
+            Assert.AreEqual("a 36,7781, -6,3515", pantalla.ComoLlegar.Destino.text);
+            geo.Inversas.Single().Responder(DireccionCalleAncha);
+            Assert.AreEqual("a " + FichaLugar.TituloDireccion(DireccionCalleAncha, T), pantalla.ComoLlegar.Destino.text);
         }
 
         [Test]
@@ -1945,6 +1952,8 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual("Calle Real", Ficha.Titulo.text);
             Assert.AreEqual(DisplayStyle.None, Ficha.Direccion.style.display.value);
             Fila.PulsarIr();
+            valhalla.De(ModoViaje.Coche).Responder(120);
+            pantalla.Iniciar();
             Assert.AreEqual("Calle Real", Abajo.DestinoNombre.text);
             Assert.AreEqual("Punto en el mapa", Abajo.DestinoDetalle.text);
         }
@@ -1956,9 +1965,11 @@ namespace PriceMap.Tests.EditMode
             var geo = Elegir(DeDireccion(new Direccion("Hotel Guadalquivir", "Sanlúcar de Barrameda", CalleAncha, "Avenida Calzada", "20")));
             ComprobarFichaConocida(geo, "Hotel Guadalquivir", "Punto en el mapa", debajo);
             Fila.PulsarIr();
+            valhalla.De(ModoViaje.Coche).Responder(120);
+            pantalla.Iniciar();
             Assert.AreEqual("Hotel Guadalquivir", Abajo.DestinoNombre.text);
             Assert.AreEqual(debajo, Abajo.DestinoDetalle.text);
-            Assert.IsNotNull(pantalla.RutaDibujada, "Estaba en la caché: se dibuja ya.");
+            Assert.IsNotNull(pantalla.RutaDibujada);
             Assert.AreEqual("Ruta a Hotel Guadalquivir", Arriba.Principal.text);
             Assert.IsEmpty(geo.Inversas);
         }
@@ -2004,12 +2015,14 @@ namespace PriceMap.Tests.EditMode
         {
             var geo = Elegir(DeDireccion(DireccionCalleAncha));
             Fila.PulsarIr();
-            Assert.IsTrue(pantalla.RutaActiva);
+            Assert.AreEqual("a Calle Ancha, 10", pantalla.ComoLlegar.Destino.text);
             Assert.AreEqual(CalleAncha, valhalla.De(ModoViaje.Coche).Destino);
+            valhalla.De(ModoViaje.Coche).Responder(120, 300);
+            pantalla.Iniciar();
+            Assert.IsTrue(pantalla.RutaActiva);
             Assert.AreEqual("Calle Ancha, 10", Abajo.DestinoNombre.text);
             Assert.AreEqual("Sanlúcar de Barrameda", Abajo.DestinoDetalle.text);
             Assert.AreEqual(FilaResultado.GlifoChincheta, Abajo.GlifoDestino);
-            valhalla.De(ModoViaje.Coche).Responder(120, 300);
             Assert.AreEqual("Ruta a Calle Ancha, 10", Arriba.Principal.text);
             Assert.IsNotNull(mapa.linea);
 
@@ -2035,6 +2048,8 @@ namespace PriceMap.Tests.EditMode
         {
             var geo = Elegir(DePunto("Caixabank", CategoriaPoi.Bancos));
             Fila.PulsarIr();
+            valhalla.De(ModoViaje.Coche).Responder(120);
+            pantalla.Iniciar();
             Assert.AreEqual("Caixabank", Abajo.DestinoNombre.text);
             Assert.AreEqual("Banco", Abajo.DestinoDetalle.text);
             Assert.AreEqual(Textos.Formatear(T(ClavesTexto.RutaAnuncioDestino), "Caixabank", "Banco"), Abajo.AnuncioDestino);
@@ -2049,13 +2064,16 @@ namespace PriceMap.Tests.EditMode
         {
             var geo = Elegir(DePunto("Caixabank", CategoriaPoi.Bancos));
             Fila.PulsarIr();
+            valhalla.De(ModoViaje.Coche).Responder(120);
+            pantalla.Iniciar();
             pantalla.QuitarRuta();
             pantalla.AbrirPunto(CalleAncha); // el mismo sitio, ahora como punto libre
             Assert.AreEqual("36,7781, -6,3515", Ficha.Titulo.text);
             Assert.AreEqual("Punto en el mapa", Ficha.Tipo.text);
             Assert.IsTrue(Ficha.BuscandoDireccion);
             Assert.AreEqual(1, geo.Inversas.Count);
-            Fila.PulsarIr();
+            Fila.PulsarIr(); // las rutas salen de la caché
+            pantalla.Iniciar();
             Assert.AreEqual("Punto en el mapa", Abajo.DestinoDetalle.text);
             pantalla.ReabrirFichaRuta();
             Assert.IsNull(Ficha.Conocido);
@@ -2151,6 +2169,7 @@ namespace PriceMap.Tests.EditMode
             CrearConPosicion();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).ResponderConManiobras(45, 350);
+            pantalla.Iniciar();
             Assert.AreEqual("Llegada 13:30, 1 minuto, 350 m", Abajo.Anuncio);
         }
 
@@ -2219,7 +2238,7 @@ namespace PriceMap.Tests.EditMode
                      {
                          ClavesTexto.RutaCalculando, ClavesTexto.RutaFallo, ClavesTexto.RutaA, ClavesTexto.RutaDespues,
                          ClavesTexto.RutaLlegada, ClavesTexto.RutaMin, ClavesTexto.RutaAnuncio, ClavesTexto.RutaAnuncioMinuto,
-                         ClavesTexto.RutaAnuncioCalculando, ClavesTexto.RutaAnuncioFallo, ClavesTexto.RutaQuitar,
+                         ClavesTexto.RutaAnuncioCalculando, ClavesTexto.RutaQuitar,
                      })
                 CollectionAssert.Contains(ClavesTexto.Todas, clave);
         }

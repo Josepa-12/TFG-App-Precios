@@ -145,6 +145,8 @@
     --radio-posicion-disco: 24px;  /* 48 / 2 */
     --radio-poi-icono: 12px;       /* 24 / 2 */
     --radio-frescura-punto: 4.5px; /* 9 / 2 */
+    --radio-iniciar: 24px;   /* «Iniciar» de «Cómo llegar»: 48 / 2 */
+    --radio-minutos: 13px;   /* etiqueta de minutos de una ruta: 26 / 2 */
     --radio-toast: 12px;     /* toast (DESIGN.md) */
     --radio-columna: 16px;   /* columna de controles (prototipo .ctrl-stack) */
     --radio-opcion: 12px;    /* opciones del menú "Precios" (prototipo .cat-menu button) */
@@ -176,6 +178,7 @@
     --modal-ancho-max: 360px;
     /* Ficha del lugar (historia 1.8; DESIGN components.sheet) */
     --ficha-alto-max: 72%;
+    --como-llegar-alto-max: 60%; /* «Cómo llegar» (parte 5b): deja sitio a las rutas encima (HojaComoLlegar.AltoMaximo) */
     --muestra-plantilla: 10px;
     --frescura-punto: 9px;
     /* Buscador (historia 2.2; DESIGN components.capsule y sheet; prototipo .dock): cápsula de 56 dp como mínimo

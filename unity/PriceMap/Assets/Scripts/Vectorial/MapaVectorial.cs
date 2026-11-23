@@ -325,7 +325,63 @@ namespace PriceMap.Vectorial
         {
             puntosRuta = null;
             anchoRuta = 0f;
-            DestruirObjetoRuta();
+            DestruirLineas(ref objetoRuta);
+        }
+
+        // Rutas no elegidas de «Cómo llegar» (parte 5b)
+        Material mAlternativa, mAlternativaBorde;
+        List<List<Vector3>> alternativas; // sus puntos (en el mundo); null sin ellas
+        GameObject objetoAlternativas;
+        float anchoAlternativas;          // ancho (m) de la ruta con el que se construyeron (las suyas son más finas)
+
+        /// <summary>Para las pruebas: el objeto de las líneas de las alternativas (null sin ellas) y sus materiales.</summary>
+        internal GameObject ObjetoAlternativas => objetoAlternativas;
+        internal Material MaterialAlternativa => mAlternativa;
+        internal Material MaterialBordeAlternativa => mAlternativaBorde;
+
+        /// <summary>Lo que sube la cola de las líneas mientras se elige: se dibujan después de los edificios, que no las tapan.</summary>
+        public const int ColaEligiendo = 500;
+        bool eligiendo; // «Cómo llegar» abierta
+
+        /// <summary>
+        /// Dibuja las rutas no elegidas (más claras y finas, debajo de la elegida), todas por encima de los edificios; null
+        /// deja de elegir.
+        /// </summary>
+        public void MostrarAlternativas(IReadOnlyList<IReadOnlyList<Coordenada>> lineas)
+        {
+            alternativas = null;
+            eligiendo = lineas != null;
+            ColocarColas();
+            if (lineas != null)
+                foreach (var linea in lineas)
+                {
+                    if (linea == null || linea.Count < 2) continue;
+                    var puntos = new List<Vector3>(linea.Count);
+                    foreach (var c in linea) puntos.Add(Geo.ALocal(c.Latitud, c.Longitud));
+                    (alternativas ??= new List<List<Vector3>>()).Add(puntos);
+                }
+            ConstruirAlternativas();
+        }
+
+        void ConstruirAlternativas()
+        {
+            DestruirLineas(ref objetoAlternativas);
+            anchoAlternativas = 0f;
+            if (alternativas == null) return;
+            MaterialesRuta();
+            anchoAlternativas = AnchoRutaAhora();
+            float ancho = anchoAlternativas * ParametrosNegocio.RutaAlternativaAncho;
+            var borde = new Malla();
+            var relleno = new Malla();
+            foreach (var puntos in alternativas)
+            {
+                Linea(borde, puntos, ancho);
+                Linea(relleno, puntos, ancho * ProporcionRellenoRuta);
+            }
+            objetoAlternativas = new GameObject("Rutas alternativas");
+            objetoAlternativas.transform.SetParent(transform, false);
+            Pieza(objetoAlternativas.transform, "Borde de las alternativas", borde, mAlternativaBorde, false);
+            Pieza(objetoAlternativas.transform, "Relleno de las alternativas", relleno, mAlternativa, false);
         }
 
         /// <summary>Encuadra los puntos en el rectángulo libre (px, origen arriba a la izquierda) con la cámara del mapa.</summary>
@@ -392,7 +448,7 @@ namespace PriceMap.Vectorial
         // Borde (más ancho, cola 1960) y relleno (cola 1970) encima de las calles; los edificios (después) la tapan
         void ConstruirRuta()
         {
-            DestruirObjetoRuta();
+            DestruirLineas(ref objetoRuta);
             if (puntosRuta == null) return;
             MaterialesRuta();
             anchoRuta = AnchoRutaAhora();
@@ -406,13 +462,14 @@ namespace PriceMap.Vectorial
             Pieza(objetoRuta.transform, "Relleno de la ruta", relleno, mRuta, false);
         }
 
-        void DestruirObjetoRuta()
+        // Destruye el objeto de unas líneas con sus mallas
+        static void DestruirLineas(ref GameObject lineas)
         {
-            if (objetoRuta == null) return;
-            foreach (var f in objetoRuta.GetComponentsInChildren<MeshFilter>(true))
+            if (lineas == null) return;
+            foreach (var f in lineas.GetComponentsInChildren<MeshFilter>(true))
                 if (f.sharedMesh != null) Destruir(f.sharedMesh);
-            Destruir(objetoRuta);
-            objetoRuta = null;
+            Destruir(lineas);
+            lineas = null;
         }
 
         // Se crean al dibujar la primera ruta (puede llegar antes que Start, o sin Start en las pruebas)
@@ -429,7 +486,22 @@ namespace PriceMap.Vectorial
             }
             mRutaBorde = Plano("Borde de la ruta", 1960);
             mRuta = Plano("Relleno de la ruta", 1970);
+            // Las alternativas, entre las calles (1950) y la ruta
+            mAlternativaBorde = Plano("Borde de las alternativas", 1952);
+            mAlternativa = Plano("Relleno de las alternativas", 1955);
+            ColocarColas();
             ColorearRuta();
+        }
+
+        // Siguiendo la ruta, entre las calles y los edificios; eligiendo, por encima de ellos
+        void ColocarColas()
+        {
+            if (mRuta == null) return;
+            int mas = eligiendo ? ColaEligiendo : 0;
+            mAlternativaBorde.renderQueue = 1952 + mas;
+            mAlternativa.renderQueue = 1955 + mas;
+            mRutaBorde.renderQueue = 1960 + mas;
+            mRuta.renderQueue = 1970 + mas;
         }
 
         void ColorearRuta()
@@ -438,6 +510,8 @@ namespace PriceMap.Vectorial
             var p = PaletaMapa.De(tema);
             mRuta.color = rutaAproximada ? p.rutaAproximada : p.ruta;
             mRutaBorde.color = rutaAproximada ? p.rutaAproximadaBorde : p.rutaBorde;
+            mAlternativa.color = p.rutaAlternativa;
+            mAlternativaBorde.color = p.rutaAlternativaBorde;
         }
 
         /// <summary>Para las pruebas: aplica ya el tema a la línea (en la app lo hace Update).</summary>
@@ -501,6 +575,7 @@ namespace PriceMap.Vectorial
             if (mRuta != null && tema != temaRuta) ColorearRuta();
             if (mSuelo != null) ActualizarTeselas();
             if (puntosRuta != null && RehacerRuta(anchoRuta, AnchoRutaAhora())) ConstruirRuta();
+            if (alternativas != null && RehacerRuta(anchoAlternativas, AnchoRutaAhora())) ConstruirAlternativas();
             if (camara != null && sombras) QualitySettings.shadowDistance = Mathf.Clamp(camara.distancia * 2.2f, 250f, 5000f);
         }
 

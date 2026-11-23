@@ -379,6 +379,12 @@ namespace PriceMap.UI
         /// <summary>Enseña u oculta la fila de modos e Ir (historia 2.6): sin servicio de rutas, la fila queda vacía.</summary>
         public void MostrarAcciones(bool visible) => Acciones.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
 
+        /// <summary>
+        /// La tapa (o la destapa) la hoja «Cómo llegar», que se abre encima: no se ve ni se toca, pero sigue abierta con
+        /// sus datos para cuando se cierre la hoja.
+        /// </summary>
+        public void Tapar(bool tapada) => style.display = Abierta && !tapada ? DisplayStyle.Flex : DisplayStyle.None;
+
         public void Mostrar(bool abierta)
         {
             Abierta = abierta;

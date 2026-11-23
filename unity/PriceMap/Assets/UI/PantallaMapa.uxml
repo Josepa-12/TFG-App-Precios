@@ -12,6 +12,8 @@
         <ui:VisualElement name="capa-posicion" class="capa-posicion" picking-mode="Ignore" />
         <!-- Chincheta del punto libre (ChinchetaPunto, historia 2.5): encima de todo lo del mapa, debajo de los controles -->
         <ui:VisualElement name="capa-chincheta" class="capa-chincheta" picking-mode="Ignore" />
+        <!-- Minutos de cada ruta de «Cómo llegar» sobre su línea (CapaMinutosRuta, parte 5b): sin capturar toques -->
+        <ui:VisualElement name="capa-minutos-ruta" class="capa-minutos-ruta" picking-mode="Ignore" />
         <!-- Zona segura: sus márgenes los pone PantallaMapa con Screen.safeArea -->
         <ui:VisualElement name="zona-segura" class="zona-segura" picking-mode="Ignore">
             <!-- Arriba a la derecha: columna de cristal con tema y ubicación (prototipo .ctrl-stack) y, solo con
@@ -43,6 +45,9 @@
         <!-- Ficha del lugar (FichaLugar, historia 1.8): velo transparente y hoja desde abajo, encima de los controles
              del mapa y debajo de las ventanas de ubicación -->
         <ui:VisualElement name="hueco-ficha" class="hueco-ficha" picking-mode="Ignore" />
+        <!-- «Cómo llegar» (HojaComoLlegar, parte 5b): hoja desde abajo con las rutas; encima de la ficha, que tapa, y sin velo
+             (el mapa se puede mover y sus líneas se tocan) -->
+        <ui:VisualElement name="hueco-como-llegar" class="hueco-como-llegar" picking-mode="Ignore" />
         <!-- Buscador (HojaBuscador, historia 2.2): cápsula abajo que se despliega en hoja, encima de los controles del
              mapa (abierta los tapa); se oculta con la ficha abierta, así que nunca están las dos a la vez -->
         <ui:VisualElement name="hueco-buscador" class="hueco-buscador" picking-mode="Ignore" />

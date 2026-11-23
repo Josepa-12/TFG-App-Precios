@@ -537,6 +537,7 @@ namespace PriceMap.Tests.EditMode
             pantalla.Ficha.Acciones.Tocar(modo);
             pantalla.Ficha.Acciones.PulsarIr();
             valhalla.De(modo).Responder(RutaEle());
+            pantalla.Iniciar();
             Assert.IsTrue(pantalla.Navegando);
         }
 
@@ -550,6 +551,23 @@ namespace PriceMap.Tests.EditMode
                 segundos -= paso;
                 pantalla.ActualizarCapas(Escala);
             } while (segundos > 0);
+        }
+
+        [TestCase(ModoViaje.Coche)]
+        [TestCase(ModoViaje.APie)]
+        public void Pantalla_ConLaCamaraDeCamino_YaConElAspectoDeNavegar(ModoViaje modo)
+        {
+            CrearPantalla();
+            pantalla.AbrirFicha(Areas);
+            pantalla.Ficha.Acciones.Tocar(modo);
+            pantalla.Ficha.Acciones.PulsarIr();
+            valhalla.De(modo).Responder(RutaEle());
+            Fotograma();
+            Assert.IsFalse(Marcador.FlechaVisible, "Eligiendo, el círculo.");
+            pantalla.IniciarRuta(0);
+            Fotograma();
+            Assert.IsTrue(pantalla.AcercandoCamara);
+            Assert.AreEqual(modo == ModoViaje.Coche, Marcador.FlechaVisible);
         }
 
         [Test]

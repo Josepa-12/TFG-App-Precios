@@ -35,6 +35,16 @@ namespace PriceMap.Dominio
         /// </summary>
         public const int RutaAlternativasPlazoSegundos = 7;
 
+        // Elegir entre las rutas en el mapa («Cómo llegar», parte 5b; decisiones del 22 y 23/11/2026)
+        /// <summary>Distancia (dp) a la línea de una ruta hasta la que un toque en el mapa la elige.</summary>
+        public const float RutaToqueDp = 24f;
+        /// <summary>Si la elegida está a estos dp o menos de la más cercana (un tramo común), el toque no la cambia.</summary>
+        public const float RutaToqueEmpateDp = 2f;
+        /// <summary>Ancho de la línea de una ruta no elegida, como parte del de la elegida.</summary>
+        public const float RutaAlternativaAncho = 0.6f;
+        /// <summary>Metros hasta los que dos rutas van por el mismo sitio (para la parte propia de cada una).</summary>
+        public const double RutaParteComunMetros = 20.0;
+
         // Línea y encuadre de la ruta (historia 2.6, parte 2a; decisiones del 20/11/2026)
         /// <summary>Ancho de la línea de la ruta en el suelo, con su borde (una calle de Sanlúcar), en metros.</summary>
         public const float RutaAnchoMetros = 9f;
@@ -84,8 +94,11 @@ namespace PriceMap.Dominio
         public const double RumboDistanciaMinimaMetros = 3.0;
         /// <summary>Velocidad (m/s) hasta la que se considera parado: se queda el último rumbo de la marcha.</summary>
         public const double RumboVelocidadMinima = 1.0;
-        /// <summary>Segundos que se ve la ruta entera tras Ir antes de que la cámara pase a seguir.</summary>
-        public const double CamaraEsperaSeguirSegundos = 2.0;
+        /// <summary>
+        /// Segundos que tarda la cámara en llegar al usuario tras «Iniciar» (a los 0,9 s, al 98,9 % de la transición):
+        /// entonces empieza la navegación (parte 5b de «Cómo llegar»; menos de 1 s).
+        /// </summary>
+        public const double CamaraAcercarSegundos = 0.9;
         /// <summary>Inclinación de la cámara al seguir (grados desde la horizontal; 85 es la vista cenital).</summary>
         public const float CamaraSeguirInclinacion = 45f;
         /// <summary>Distancia (m) de la cámara a la posición al seguir en coche.</summary>

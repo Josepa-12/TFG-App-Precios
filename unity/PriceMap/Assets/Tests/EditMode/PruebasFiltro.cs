@@ -331,9 +331,11 @@ namespace PriceMap.Tests.EditMode
             // ficha abierta la cápsula se oculta, así que nunca queda encima de ella
             var buscador = arbol.Q("hueco-buscador");
             Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(buscador), "El buscador va justo debajo de la explicación.");
-            Assert.AreEqual(raiz.childCount - 3, raiz.IndexOf(ficha), "La ficha va justo debajo del buscador.");
+            // «Cómo llegar» (parte 5b), entre los dos: se abre encima de la ficha, que queda tapada
+            Assert.AreEqual(raiz.childCount - 3, raiz.IndexOf(arbol.Q("hueco-como-llegar")), "«Cómo llegar» va justo debajo del buscador.");
+            Assert.AreEqual(raiz.childCount - 4, raiz.IndexOf(ficha), "La ficha va justo debajo de «Cómo llegar».");
             Assert.AreEqual(DisplayStyle.None, p.Ficha.style.display.value, "Cerrada, la ficha no tapa la píldora.");
-            Assert.AreEqual(raiz.childCount - 4, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
+            Assert.AreEqual(raiz.childCount - 5, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
         }
 
         static readonly Dictionary<FiltroPrecios, string> ClaveEsperada = new Dictionary<FiltroPrecios, string>

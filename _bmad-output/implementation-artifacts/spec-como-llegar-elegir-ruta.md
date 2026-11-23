@@ -2,7 +2,8 @@
 title: '«Cómo llegar»: elegir entre varias rutas e Iniciar (parte 5b)'
 type: 'feature'
 created: '2026-11-22'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '35290b0efde85fa792851c132a529c1eb39986fb'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -61,10 +62,10 @@ Rutas bajo `unity/PriceMap/Assets`.
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Mapa: líneas de alternativas, etiquetas y elegir por toque.
-- [ ] `HojaComoLlegar` + `PantallaMapa` (Ir, elegir, modo, Iniciar con la cámara primero, X/atrás, TalkBack).
-- [ ] Textos, estilos y contraste.
-- [ ] Pruebas por fila de la matriz; capturas `como-llegar(-oscuro)` con 3 rutas falsas.
+- [x] Mapa: líneas de alternativas, etiquetas y elegir por toque.
+- [x] `HojaComoLlegar` + `PantallaMapa` (Ir, elegir, modo, Iniciar con la cámara primero, X/atrás, TalkBack).
+- [x] Textos, estilos y contraste.
+- [x] Pruebas por fila de la matriz; capturas `como-llegar(-oscuro)` con 3 rutas falsas.
 
 **Acceptance Criteria:**
 - Dada la suite EditMode, cuando se ejecuta, entonces pasan todas.
@@ -75,6 +76,41 @@ Rutas bajo `unity/PriceMap/Assets`.
 ## Spec Change Log
 
 ## Review Triage Log
+
+Revisión del 23/11/2026 (tres capas; BH = ciega, EC = casos límite, VG = huecos de verificación).
+
+| # | Hallazgo | Veredicto | Ruta y prueba |
+|---|----------|-----------|---------------|
+| VG1 | El doble del mapa no distingue `null` (dejar de elegir) de lista vacía (una ruta) | medium | patch: el doble guarda el valor tal cual y se comprueba en Iniciar, cerrar y una ruta |
+| VG2 | Colas subidas sin probar en el orden de la app (alternativas antes de los materiales) | medium | patch: segundo mapa nuevo en la prueba |
+| VG3 | Los minutos de la ficha que llegan con la hoja abierta no se prueban | medium | patch: tiempos a mano y dos pruebas |
+| VG4 | La dirección inversa que llega con la hoja abierta no se prueba | medium | patch: prueba en PruebasRutas |
+| VG5 | Rumbo y distancia al acercarse se comprueban con los valores del respaldo | medium | patch: giro 77 del mapa y comprobación antes de llegar |
+| VG6, BH14 | `EtiquetaEn` sin probar | medium | patch: capa en un panel real (dentro, fuera, pisadas) |
+| VG7, BH14 | `encuadreSuelto` sin probar | medium | patch: medir, gesto, cambio de modo |
+| VG8 | Perder la posición con la hoja abierta no se prueba | medium | patch: prueba |
+| BH14 | Ir con la cámara aún de camino, sin probar | low | patch: prueba (la navegación empieza debajo y la línea es la de la hoja) |
+| VG9, BH15, EC10 | `MostrarFallo` de las dos tarjetas y `RutaAnuncioFallo` sin uso; el comentario de la X | low | patch: borrados, con su texto de la tabla |
+| EC1 | El modo dejado a medias se queda en «…» | medium | patch: vuelve a lo que dice la ficha |
+| EC2 | Un tiempo de la ficha que falla tarde pisa con «—» los minutos ya vistos | low | patch: una condición más |
+| BH9a, EC9 | Los «Iniciar» se leen todos igual en TalkBack | medium | patch: «Iniciar, 7 minutos, llegada…» |
+| BH9c | Al cambiar de modo se anuncia «sin tiempo» cuando se está calculando | low | patch: «…» antes del anuncio |
+| BH8 | El cursor no es flecha hasta que llega la cámara | low | patch: flecha también al acercarse |
+| BH12 | El encuadre deja fuera al usuario o al destino si están apartados de la calle | low | patch: sus puntos entran en el encuadre |
+| BH11 | Al cerrar con X no vuelve el zoom | low | defer: encuadrar cambia la distancia desde la 2.6b y `IMapa` no tiene cómo reponerla |
+| BH1, EC5 | Rutas y horas sin refrescar con la hoja abierta mucho rato | low | rechazado: poco habitual, la navegación recalcula y enseña la hora real; pide estado nuevo |
+| BH2, EC3 | Sin reintento tras un fallo | low | rechazado: la matriz fija «texto del fallo y X»; X e Ir reintenta |
+| BH3, EC4 | Posición perdida y recuperada con la hoja abierta: no se pide sola | low | rechazado: raro, y X e Ir lo resuelve |
+| BH4, EC6 | Bloquear en los 0,9 s tras Iniciar: no empieza hasta volver | low | rechazado: ventana de 0,9 s; avisado al usuario como límite |
+| BH5, EC7 | Toast de ruta aproximada perdido si se abre una ficha en los 0,9 s | low | rechazado: raro, y la tarjeta ya dice «Ruta aproximada» |
+| BH6 | La cámara se recoloca un poco al medirse las tarjetas | low | rechazado: transición suave de unos dp; las capturas no lo enseñan |
+| BH7, EC11 | La llegada es por tiempo (0,9 s) | false | El spec pide «menos de 1 s» y, con un gesto, «empieza igual»: un plazo fijo es lo que lo garantiza |
+| BH9b, d | No se anuncia cuántas rutas hay; 0,9 s sin foco | low | rechazado: el recorrido enseña las tarjetas y el foco llega con la de la maniobra |
+| BH10 | Los minutos de la ficha no se actualizan con los de la hoja | low | rechazado: el Code Map lo acepta («unos segundos de diferencia») |
+| BH13, EC8 | Etiquetas de minutos que se pisan | low | rechazado: van en la parte propia de cada ruta; la pisada se elige por su línea o su tarjeta |
+| BH16 | Las rutas falsas de la captura repiten las maniobras de la primera | low | rechazado: solo datos de la captura |
+
+Sin intent_gap ni bad_spec. 16 arreglos, 1 diferido.
 
 ## Verification
 

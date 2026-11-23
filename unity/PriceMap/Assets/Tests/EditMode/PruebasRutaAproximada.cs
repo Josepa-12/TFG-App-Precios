@@ -580,8 +580,13 @@ namespace PriceMap.Tests.EditMode
             Crear();
             IrAAreas();
             CaenLosDos(ModoViaje.Coche);
-            Assert.IsFalse(Aviso.Visible, "Sin toast mientras se calcula.");
             local.De(ModoViaje.Coche).Responder(240, 1200, aproximada: true);
+            Assert.IsFalse(Aviso.Visible, "Sin toast al elegir.");
+            Assert.AreEqual(1, pantalla.ComoLlegar.Rutas, "La aproximada sola.");
+            Assert.AreEqual("≈" + Duro + "4 min", pantalla.ComoLlegar.Tarjetas[0].Minutos.text);
+            Assert.AreEqual("Llegada ≈" + Duro + "13:34 · ≈" + Duro + "1,2" + Duro + "km", pantalla.ComoLlegar.Tarjetas[0].Detalle.text);
+            Assert.AreEqual("Ruta aproximada, unos 4 minutos, llegada hacia las 13:34, unos 1,2 km", pantalla.ComoLlegar.Tarjetas[0].Anuncio);
+            pantalla.Iniciar();
 
             Assert.IsNotNull(mapa.linea, "La línea por las calles guardadas.");
             Assert.IsTrue(mapa.aproximada, "Con los colores suaves.");
@@ -619,6 +624,7 @@ namespace PriceMap.Tests.EditMode
             Fila.PulsarIr();
             CaenLosDos(ModoViaje.Coche);
             local.De(ModoViaje.Coche).Responder(240, 1200, aproximada: true);
+            pantalla.Iniciar();
             Assert.IsTrue(mapa.aproximada);
             Assert.AreEqual("Calle Ancha, 10", Abajo.DestinoNombre.text);
             Assert.AreEqual("Sin conexión: ruta aproximada", Aviso.Texto.text);
@@ -637,6 +643,7 @@ namespace PriceMap.Tests.EditMode
                 IrAAreas();
                 CaenLosDos(ModoViaje.Coche);
                 local.De(ModoViaje.Coche).Responder(45, 350, aproximada: true);
+                pantalla.Iniciar();
                 Assert.AreSame(Arriba, pantalla.Accesibilidad.Enfocado);
                 Assert.Contains("Sin conexión: ruta aproximada", oidos);
                 Assert.AreEqual("Ruta aproximada. Llegada hacia las 13:30, alrededor de 1 minuto, unos 350 m", Abajo.Anuncio);
@@ -649,39 +656,17 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void FichaReabierta_LaAproximadaLlegaSinToastNiAnuncio()
+        public void FichaReabierta_SeVaElToast()
         {
             Crear();
             IrAAreas();
             CaenLosDos(ModoViaje.Coche);
-            var p = local.De(ModoViaje.Coche);
-            pantalla.ReabrirFichaRuta();
-            Assert.IsTrue(pantalla.FichaAbierta);
-            p.Responder(240, 1200, aproximada: true);
-            Assert.IsNotNull(mapa.linea, "La línea sí se dibuja.");
-            Assert.IsFalse(Aviso.Visible, "Sin toast sobre la ficha.");
-            Assert.IsFalse(anuncios.Contains("Sin conexión: ruta aproximada"), "Ni se anuncia dentro de la ficha.");
-
-            // Un toast a la vista se quita al reabrir la ficha
-            Fila.PulsarIr(); // Ir otra vez desde la ficha reabierta: las tarjetas vuelven a la vista
-            CaenLosDos(ModoViaje.Coche);
             local.De(ModoViaje.Coche).Responder(240, 1200, aproximada: true);
+            Assert.IsFalse(anuncios.Contains("Sin conexión: ruta aproximada"), "Al elegir no se anuncia.");
+            pantalla.Iniciar();
             Assert.IsTrue(Aviso.Visible);
             pantalla.ReabrirFichaRuta();
             Assert.IsFalse(Aviso.Visible, "Al reabrir la ficha se va el toast.");
-        }
-
-        [Test]
-        public void SinCalles_ConLaFichaReabierta_SinToast()
-        {
-            Crear();
-            IrAAreas();
-            CaenLosDos(ModoViaje.Coche);
-            var p = local.De(ModoViaje.Coche);
-            pantalla.ReabrirFichaRuta();
-            p.Fallar();
-            Assert.IsFalse(Aviso.Visible);
-            Assert.IsFalse(anuncios.Any(a => a.StartsWith("Sin conexión")));
         }
 
         [Test]
@@ -691,6 +676,8 @@ namespace PriceMap.Tests.EditMode
             IrAAreas();
             CaenLosDos(ModoViaje.Coche);
             local.De(ModoViaje.Coche).Responder(45, 350, aproximada: true);
+            Assert.AreEqual("Ruta aproximada, alrededor de 1 minuto, llegada hacia las 13:30, unos 350 m", pantalla.ComoLlegar.Tarjetas[0].Anuncio);
+            pantalla.Iniciar();
             Assert.AreEqual("Ruta aproximada. Llegada hacia las 13:30, alrededor de 1 minuto, unos 350 m", Abajo.Anuncio);
 
             pantalla.QuitarRuta();
@@ -710,6 +697,7 @@ namespace PriceMap.Tests.EditMode
             Crear();
             IrAAreas();
             valhalla.De(ModoViaje.Coche).Responder(240, 1200);
+            pantalla.Iniciar();
             Assert.IsNotNull(mapa.linea);
             Assert.IsFalse(mapa.aproximada);
             Assert.AreEqual("4", Abajo.Minutos.text);
@@ -718,29 +706,29 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void SinCallesQueUnan_FalloRayasYToast()
+        public void SinCallesQueUnan_ElFalloYPorQueEnLaHoja()
         {
             Crear();
             IrAAreas();
             CaenLosDos(ModoViaje.Coche);
             local.De(ModoViaje.Coche).Fallar("No hay calles guardadas que unan el origen y el destino.");
-            Assert.AreEqual("No se ha podido calcular la ruta", Arriba.Principal.text);
-            Assert.AreEqual("—", Abajo.Llegada.text);
-            Assert.AreEqual("—", Abajo.Minutos.text);
-            Assert.AreEqual("—", Abajo.Distancia.text);
+            Assert.AreEqual("No se ha podido calcular la ruta", pantalla.ComoLlegar.Estado.text);
+            Assert.AreEqual("Sin conexión: no hay calles guardadas para esta ruta", pantalla.ComoLlegar.DetalleEstado.text);
+            Assert.AreEqual(0, pantalla.ComoLlegar.Rutas);
+            Assert.AreEqual("—", pantalla.ComoLlegar.Coche.Tiempo.text);
             Assert.IsNull(mapa.linea);
-            Assert.IsTrue(Aviso.Visible);
-            Assert.AreEqual("Sin conexión: no hay calles guardadas para esta ruta", Aviso.Texto.text);
-            Assert.Contains("Sin conexión: no hay calles guardadas para esta ruta", anuncios);
+            Assert.IsFalse(Aviso.Visible);
+            Assert.Contains("No se ha podido calcular la ruta. Sin conexión: no hay calles guardadas para esta ruta", anuncios);
         }
 
         [Test]
-        public void SinServicioLocal_ElFalloNoLlevaToast()
+        public void SinServicioLocal_ElFalloSinMas()
         {
             Crear(new ServicioRutas(valhalla, osrm, esperas.Esperar, () => Ahora));
             IrAAreas();
             CaenLosDos(ModoViaje.Coche);
-            Assert.AreEqual("No se ha podido calcular la ruta", Arriba.Principal.text);
+            Assert.AreEqual("No se ha podido calcular la ruta", pantalla.ComoLlegar.Estado.text);
+            Assert.AreEqual("", pantalla.ComoLlegar.DetalleEstado.text);
             Assert.IsFalse(Aviso.Visible);
         }
 
@@ -757,7 +745,7 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual("≈" + Duro + "14 min", Fila.APie.Tiempo.text);
             Assert.AreEqual("Coche, unos 4 minutos", Fila.Anuncio(ModoViaje.Coche));
             Assert.AreEqual("A pie, unos 14 minutos", Fila.Anuncio(ModoViaje.APie));
-            Assert.IsFalse(Aviso.Visible, "El toast solo con Ir.");
+            Assert.IsFalse(Aviso.Visible, "El toast solo con Iniciar.");
 
             // Una ruta de 1 minuto y, en otra ficha, sin camino: "—"
             Fila.PonerMinutos(ModoViaje.Coche, 1, aproximados: true);
@@ -771,13 +759,13 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void Cancelar_QuitarLaRutaMientrasCalculaNoDibujaNada()
+        public void Cancelar_CerrarLaHojaMientrasCalculaNoDibujaNada()
         {
             Crear();
             IrAAreas();
             CaenLosDos(ModoViaje.Coche);
             var p = local.De(ModoViaje.Coche);
-            pantalla.QuitarRuta();
+            pantalla.CerrarComoLlegar();
             Assert.IsTrue(p.Ct.IsCancellationRequested, "Se cancela el cálculo local.");
             p.Responder(240, 1200, aproximada: true);
             Assert.IsNull(mapa.linea);
