@@ -7,9 +7,9 @@ using UnityEngine;
 namespace PriceMap.Adaptadores.Rutas
 {
     /// <summary>
-    /// Lee la respuesta de <c>/route/v1</c> de OSRM (historia 2.6). Pura: no sale a la red. De las alternativas se
-    /// queda con la de menor distancia (la más corta, como Valhalla con <c>shortest</c>). Línea en polyline6,
-    /// distancias en metros y duraciones en segundos. Las maniobras llegan sin texto: solo su tipo, con el
+    /// Lee la respuesta de <c>/route/v1</c> de OSRM (historia 2.6). Pura: no sale a la red. La ruta de siempre es
+    /// la de menos tiempo de las alternativas (parte 5a de «Cómo llegar»). Línea en polyline6, distancias en metros y
+    /// duraciones en segundos. Las maniobras llegan sin texto: solo su tipo, con el
     /// modificador, y su punto (<c>location</c>, lon/lat).
     /// </summary>
     internal static class LecturaOsrm
@@ -20,53 +20,65 @@ namespace PriceMap.Adaptadores.Rutas
         [Serializable] class Paso { public double distance; public ManiobraJson maneuver; }
         [Serializable] class ManiobraJson { public string type; public string modifier; public double[] location; }
 
+        /// <summary>La de menos tiempo de las alternativas que se pueden leer.</summary>
         public static Resultado<Ruta> Leer(string json)
         {
-            if (string.IsNullOrWhiteSpace(json)) return Resultado<Ruta>.Fallo("Respuesta vacía de OSRM.");
+            var r = LeerTodas(json);
+            return r.Ok ? Resultado<Ruta>.Exito(ReglaAlternativas.Juntar(r.Valor)[0]) : Resultado<Ruta>.Fallo(r.Error);
+        }
+
+        /// <summary>Las alternativas en el orden en que llegan; las que no se pueden leer se saltan. Fallo si no queda ninguna.</summary>
+        public static Resultado<IReadOnlyList<Ruta>> LeerTodas(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return Fallo("Respuesta vacía de OSRM.");
             Respuesta r;
             try { r = JsonUtility.FromJson<Respuesta>(json); }
-            catch (Exception e) { return Resultado<Ruta>.Fallo("Respuesta de OSRM ilegible: " + e.Message); }
-            if (r == null) return Resultado<Ruta>.Fallo("Respuesta de OSRM ilegible.");
+            catch (Exception e) { return Fallo("Respuesta de OSRM ilegible: " + e.Message); }
+            if (r == null) return Fallo("Respuesta de OSRM ilegible.");
             if (!string.Equals(r.code, "Ok", StringComparison.Ordinal))
-                return Resultado<Ruta>.Fallo("OSRM no da ruta (" + (string.IsNullOrWhiteSpace(r.code) ? "sin código" : r.code)
-                                             + (string.IsNullOrWhiteSpace(r.message) ? ")." : "): " + r.message));
-            if (r.routes == null || r.routes.Length == 0) return Resultado<Ruta>.Fallo("OSRM no da ninguna ruta.");
+                return Fallo("OSRM no da ruta (" + (string.IsNullOrWhiteSpace(r.code) ? "sin código" : r.code)
+                             + (string.IsNullOrWhiteSpace(r.message) ? ")." : "): " + r.message));
+            if (r.routes == null || r.routes.Length == 0) return Fallo("OSRM no da ninguna ruta.");
 
-            // La alternativa más corta en distancia que se pueda leer
-            RutaJson elegida = null;
-            IReadOnlyList<Coordenada> linea = null;
+            var rutas = new List<Ruta>();
             string error = null;
             foreach (var ruta in r.routes)
             {
-                if (ruta == null || (elegida != null && ruta.distance >= elegida.distance)) continue;
+                if (ruta == null) continue;
                 try
                 {
-                    var puntos = Polilinea.Decodificar(ruta.geometry, 6);
-                    if (puntos.Count < 2) { error = "una alternativa de OSRM no tiene línea."; continue; }
-                    elegida = ruta;
-                    linea = puntos;
+                    var linea = Polilinea.Decodificar(ruta.geometry, 6);
+                    if (linea.Count < 2) { error = "una alternativa de OSRM no tiene línea."; continue; }
+                    rutas.Add(new Ruta(linea, ruta.distance, ruta.duration, Maniobras(ruta, linea[0])));
                 }
                 catch (FormatException e)
                 {
                     error = "línea de OSRM rota: " + e.Message;
                 }
             }
-            if (elegida == null) return Resultado<Ruta>.Fallo("OSRM no da ninguna ruta legible" + (error != null ? ": " + error : "."));
+            return rutas.Count > 0
+                ? Resultado<IReadOnlyList<Ruta>>.Exito(rutas.AsReadOnly())
+                : Fallo("OSRM no da ninguna ruta legible" + (error != null ? ": " + error : "."));
+        }
 
+        static Resultado<IReadOnlyList<Ruta>> Fallo(string error) => Resultado<IReadOnlyList<Ruta>>.Fallo(error);
+
+        static IReadOnlyList<Maniobra> Maniobras(RutaJson ruta, Coordenada respaldo)
+        {
             var maniobras = new List<Maniobra>();
-            if (elegida.legs != null)
-                foreach (var tramo in elegida.legs)
+            if (ruta.legs == null) return maniobras.AsReadOnly();
+            foreach (var tramo in ruta.legs)
+            {
+                if (tramo?.steps == null) continue;
+                foreach (var paso in tramo.steps)
                 {
-                    if (tramo?.steps == null) continue;
-                    foreach (var paso in tramo.steps)
-                    {
-                        var m = paso?.maneuver;
-                        if (m == null) continue;
-                        var donde = m.location != null && m.location.Length >= 2 ? new Coordenada(m.location[1], m.location[0]) : linea[0];
-                        maniobras.Add(new Maniobra(Tipo(m.type, m.modifier), "", donde, paso.distance));
-                    }
+                    var m = paso?.maneuver;
+                    if (m == null) continue;
+                    var donde = m.location != null && m.location.Length >= 2 ? new Coordenada(m.location[1], m.location[0]) : respaldo;
+                    maniobras.Add(new Maniobra(Tipo(m.type, m.modifier), "", donde, paso.distance));
                 }
-            return Resultado<Ruta>.Exito(new Ruta(linea, elegida.distance, elegida.duration, maniobras.AsReadOnly()));
+            }
+            return maniobras.AsReadOnly();
         }
 
         /// <summary>Tipo y modificador de una maniobra de OSRM en el tipo común.</summary>

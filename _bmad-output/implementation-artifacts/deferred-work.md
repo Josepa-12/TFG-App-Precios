@@ -167,3 +167,6 @@
 - source_spec: none
   summary: Buscar también en las calles de las teselas guardadas lo que Photon no encuentra («calle fariñas»).
   evidence: Pedido por el usuario el 23/11/2026 como cambio aparte, tras comprobar que Photon no da esa calle de Sanlúcar.
+- source_spec: `_bmad-output/implementation-artifacts/spec-varias-rutas-la-mas-rapida.md`
+  summary: Probar en el móvil las alternativas reales (Valhalla y OSRM): ninguna prueba ejecuta los constructores sin parámetros de los dos adaptadores.
+  evidence: Revisión de la 5a (verification-gap): cambiar de sitio la URL y el cuerpo no rompería ninguna prueba; ya pasaba antes.

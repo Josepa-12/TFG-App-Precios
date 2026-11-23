@@ -91,7 +91,7 @@ namespace PriceMap.Arranque
 
         static Coordenada C(double lat, double lon) => new Coordenada(lat, lon);
 
-        // Valhalla, coche, "shortest": Calle Zarate, Regina, Santa Ana, Ancha, Las Cruces, Diego Benítez y Mar
+        // Coche, calles reales sacadas de Valhalla, datos fijos: Calle Zarate, Regina, Santa Ana, Ancha, Las Cruces, Diego Benítez y Mar
         static readonly Coordenada[] CalleCoche =
         {
             C(36.777913, -6.352773), C(36.778103, -6.352915), C(36.778279, -6.352559), C(36.778455, -6.352203),

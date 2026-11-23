@@ -51,7 +51,7 @@ context:
 ## Code Map
 
 Rutas bajo `unity/PriceMap/Assets`.
-- `ServicioRutas` da las alternativas ordenadas (parte 5a, `spec-varias-rutas-la-mas-rapida`).
+- `ServicioRutas.Alternativas` da las rutas ordenadas (parte 5a). Al llegar, los minutos del modo elegido en la hoja son los de la primera (la ficha puede decir unos segundos de diferencia).
 - `Scripts/UI/PantallaMapa.cs`: `Ir`, `PedirRuta`, `DibujarRuta`, `FalloRuta`, `EmpezarNavegacion` (hoy `seguimiento.Empezar` con 2 s: desde «Iniciar», sin espera), `SeguirCamara`/`PuntoSeguir` (piden `Navegando` y tarjetas visibles; antes de empezar no lo están), `ActualizarCapas` (cada fotograma, para el plazo con `RelojCamara`), `EncuadrarRuta`/`ZonaEncuadre`, `TocarMapa`, `PulsarLargo…`, `Atras`, `AlCambiarTema`, `CerrarFicha`, `ReabrirFichaRuta` (reabre la ficha con su modo, también lo elegido en el buscador, `conocidoRuta`), `CentrarAlAbrir`. Un solo estado «eligiendo ruta» que tape cápsula, píldora y tarjetas como la ficha.
 - `Scripts/Aplicacion/IMapa.cs` y `Scripts/Vectorial/MapaVectorial.cs` (`MostrarRuta`, `ConstruirRuta`, `ColorearRuta`, colas 1960/1970, `PaletaMapa`): líneas de alternativas (miembros por defecto para los dobles) debajo de la elegida.
 - Toque en una línea: proyectar sus puntos (`Proyectar`) y medir a los tramos en dp; regla pura. Etiquetas de minutos: capa como la de marcadores, en el punto medio de la parte propia de cada ruta.

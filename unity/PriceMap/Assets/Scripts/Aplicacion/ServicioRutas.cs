@@ -14,6 +14,9 @@ namespace PriceMap.Aplicacion
     /// las calles guardadas, sin red), se le pide la ruta aproximada; esa no se guarda en la caché, para que al volver la
     /// red la siguiente petición vaya a los servicios.
     ///
+    /// Alternativas (parte 5a de «Cómo llegar») da hasta tres rutas para elegir, por tiempo, con los mismos pasos, el
+    /// mismo límite por servicio y las mismas reglas de caché.
+    ///
     /// PedirTiempos pide coche y a pie a la vez y avisa de cada uno (TiempoCalculado). Cada petición, y Cancelar,
     /// cancela las anteriores: de ellas no llega ningún aviso. Se usa desde el hilo principal (la UI).
     /// </summary>
@@ -29,17 +32,18 @@ namespace PriceMap.Aplicacion
         readonly IRutas local;
         readonly Func<TimeSpan, CancellationToken, Task> esperar;
         readonly Func<DateTime> reloj;
-        readonly List<Guardada> cache = new List<Guardada>();
+        readonly List<Guardada<Ruta>> cache = new List<Guardada<Ruta>>();
+        readonly List<Guardada<IReadOnlyList<Ruta>>> cacheAlternativas = new List<Guardada<IReadOnlyList<Ruta>>>();
         readonly Dictionary<ModoViaje, Ruta> ultimas = new Dictionary<ModoViaje, Ruta>();
         CancellationTokenSource actual; // los tiempos en curso; null si no hay ninguno
         int pendientes;
 
-        sealed class Guardada
+        sealed class Guardada<T>
         {
             public Coordenada Origen, Destino;
             public ModoViaje Modo;
             public DateTime Hora;
-            public Ruta Ruta;
+            public T Valor;
         }
 
         /// <summary>Tiempo de un modo para el destino pedido: la ruta o el fallo (el modo queda sin tiempo).</summary>
@@ -126,45 +130,72 @@ namespace PriceMap.Aplicacion
         }
 
         /// <summary>
-        /// La ruta más corta en ese modo: de la caché, del principal o del de reserva y, si los dos fallan, la aproximada
-        /// del servicio local (sin guardarla). Fallo si ninguno la da; cancelar termina en OperationCanceledException.
+        /// La ruta de siempre en ese modo (en coche, la más rápida): de la caché, del principal o del de reserva y, si los
+        /// dos fallan, la aproximada del servicio local (sin guardarla). Fallo si ninguno la da; cancelar termina en
+        /// OperationCanceledException.
         /// </summary>
         public async Task<Resultado<Ruta>> Calcular(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
-            var guardada = Buscar(origen, destino, modo);
+            var guardada = Buscar(cache, origen, destino, modo);
             if (guardada != null) return Resultado<Ruta>.Exito(guardada);
 
-            var r = await ConLimite(principal, origen, destino, modo, ct);
-            if (!r.Ok && reserva != null)
-            {
-                var r2 = await ConLimite(reserva, origen, destino, modo, ct);
-                r = r2.Ok ? r2 : Resultado<Ruta>.Fallo(r.Error + " Reserva: " + r2.Error);
-            }
-            ct.ThrowIfCancellationRequested();
-            if (r.Ok && r.Valor == null) r = Resultado<Ruta>.Fallo("El servicio de rutas no ha dado ninguna ruta.");
-            if (r.Ok)
-            {
-                Guardar(origen, destino, modo, r.Valor);
-                return r;
-            }
-            if (local == null) return r;
-            var r3 = await ConLimite(local, origen, destino, modo, ct);
-            ct.ThrowIfCancellationRequested();
-            if (r3.Ok && r3.Valor != null) return r3; // la aproximada no va a la caché
-            return Resultado<Ruta>.Fallo(r.Error + " Calles guardadas: " + (r3.Ok ? "sin ruta." : r3.Error));
+            var (r, delMovil) = await PorOrden((s, t) => s.Calcular(origen, destino, modo, t), ruta => ruta != null, ct);
+            if (r.Ok && !delMovil) Guardar(cache, origen, destino, modo, r.Valor);
+            return r;
         }
 
-        /// <summary>Pregunta a un servicio con el tiempo máximo; pasado, o si lanza, es un fallo.</summary>
-        async Task<Resultado<Ruta>> ConLimite(IRutas rutas, Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
+        /// <summary>
+        /// Hasta tres rutas distintas para elegir, de menos a más tiempo, con los mismos pasos que Calcular; si fallan los
+        /// dos servicios, la aproximada sola. Al llegar, la primera queda como la ruta guardada de Calcular si no tenía ya
+        /// una. Fallo si ninguno da rutas; cancelar termina en OperationCanceledException.
+        /// </summary>
+        public async Task<Resultado<IReadOnlyList<Ruta>>> Alternativas(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
+        {
+            ct.ThrowIfCancellationRequested();
+            var guardadas = Buscar(cacheAlternativas, origen, destino, modo);
+            if (guardadas != null) return Resultado<IReadOnlyList<Ruta>>.Exito(guardadas);
+
+            var (r, delMovil) = await PorOrden((s, t) => s.Alternativas(origen, destino, modo, t), rutas => rutas != null && rutas.Count > 0, ct);
+            if (r.Ok && !delMovil)
+            {
+                Guardar(cacheAlternativas, origen, destino, modo, r.Valor);
+                if (Buscar(cache, origen, destino, modo) == null) Guardar(cache, origen, destino, modo, r.Valor[0]);
+            }
+            return r;
+        }
+
+        /// <summary>
+        /// Pregunta al principal, al de reserva y al local, por ese orden, hasta que uno dé ruta. delMovil: la ha dado el
+        /// local (aproximada: no va a la caché).
+        /// </summary>
+        async Task<(Resultado<T> r, bool delMovil)> PorOrden<T>(Func<IRutas, CancellationToken, Task<Resultado<T>>> pedir,
+            Func<T, bool> hayRuta, CancellationToken ct)
+        {
+            var r = await ConLimite(principal, pedir, hayRuta, ct);
+            if (!r.Ok && reserva != null)
+            {
+                var r2 = await ConLimite(reserva, pedir, hayRuta, ct);
+                r = r2.Ok ? r2 : Resultado<T>.Fallo(r.Error + " Reserva: " + r2.Error);
+            }
+            ct.ThrowIfCancellationRequested();
+            if (r.Ok || local == null) return (r, false);
+            var r3 = await ConLimite(local, pedir, hayRuta, ct);
+            ct.ThrowIfCancellationRequested();
+            return r3.Ok ? (r3, true) : (Resultado<T>.Fallo(r.Error + " Calles guardadas: " + r3.Error), true);
+        }
+
+        /// <summary>Pregunta a un servicio con el tiempo máximo; pasado, si lanza o si no da ninguna ruta, es un fallo.</summary>
+        async Task<Resultado<T>> ConLimite<T>(IRutas rutas, Func<IRutas, CancellationToken, Task<Resultado<T>>> pedir,
+            Func<T, bool> hayRuta, CancellationToken ct)
         {
             ct.ThrowIfCancellationRequested();
             using var limite = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            Task<Resultado<Ruta>> peticion;
-            try { peticion = rutas.Calcular(origen, destino, modo, limite.Token); }
+            Task<Resultado<T>> peticion;
+            try { peticion = pedir(rutas, limite.Token); }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
-            catch (Exception e) { return Resultado<Ruta>.Fallo(Mensaje(e)); }
-            if (peticion == null) return Resultado<Ruta>.Fallo("El servicio de rutas no ha devuelto ninguna tarea.");
+            catch (Exception e) { return Resultado<T>.Fallo(Mensaje(e)); }
+            if (peticion == null) return Resultado<T>.Fallo("El servicio de rutas no ha devuelto ninguna tarea.");
 
             if (!peticion.IsCompleted)
             {
@@ -176,14 +207,15 @@ namespace PriceMap.Aplicacion
                 {
                     ct.ThrowIfCancellationRequested();
                     Observar(peticion);
-                    return Resultado<Ruta>.Fallo($"El servicio de rutas no responde en {ParametrosNegocio.RutaTiempoMaximoSegundos} s.");
+                    return Resultado<T>.Fallo($"El servicio de rutas no responde en {ParametrosNegocio.RutaTiempoMaximoSegundos} s.");
                 }
             }
 
             ct.ThrowIfCancellationRequested();
             try
             {
-                return await peticion;
+                var r = await peticion;
+                return !r.Ok || hayRuta(r.Valor) ? r : Resultado<T>.Fallo("El servicio de rutas no ha dado ninguna ruta.");
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -191,7 +223,7 @@ namespace PriceMap.Aplicacion
             }
             catch (Exception e)
             {
-                return Resultado<Ruta>.Fallo(Mensaje(e));
+                return Resultado<T>.Fallo(Mensaje(e));
             }
         }
 
@@ -199,27 +231,31 @@ namespace PriceMap.Aplicacion
         static void Observar(Task t) =>
             t?.ContinueWith(x => _ = x.Exception, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
 
-        Ruta Buscar(Coordenada origen, Coordenada destino, ModoViaje modo)
+        T Buscar<T>(List<Guardada<T>> en, Coordenada origen, Coordenada destino, ModoViaje modo) where T : class
         {
             var ahora = reloj();
-            cache.RemoveAll(g => ahora - g.Hora >= DuracionCache || ahora < g.Hora);
-            foreach (var g in cache)
+            en.RemoveAll(g => ahora - g.Hora >= DuracionCache || ahora < g.Hora);
+            foreach (var g in en)
                 if (g.Modo == modo && g.Destino == destino && g.Origen.DistanciaMetros(origen) <= ParametrosNegocio.RutaCacheMetros)
-                    return g.Ruta;
+                    return g.Valor;
             return null;
         }
 
-        void Guardar(Coordenada origen, Coordenada destino, ModoViaje modo, Ruta ruta)
+        void Guardar<T>(List<Guardada<T>> en, Coordenada origen, Coordenada destino, ModoViaje modo, T valor)
         {
-            cache.RemoveAll(g => g.Modo == modo && g.Destino == destino && g.Origen.DistanciaMetros(origen) <= ParametrosNegocio.RutaCacheMetros);
-            cache.Add(new Guardada { Origen = origen, Destino = destino, Modo = modo, Hora = reloj(), Ruta = ruta });
+            en.RemoveAll(g => g.Modo == modo && g.Destino == destino && g.Origen.DistanciaMetros(origen) <= ParametrosNegocio.RutaCacheMetros);
+            en.Add(new Guardada<T> { Origen = origen, Destino = destino, Modo = modo, Hora = reloj(), Valor = valor });
         }
 
-        /// <summary>Rutas guardadas en la caché (para las pruebas).</summary>
+        /// <summary>Rutas de Calcular guardadas en la caché (para las pruebas).</summary>
         public int EnCache => cache.Count;
 
         /// <summary>Vacía la caché (la captura de PC, para que la ruta sin red no salga de una guardada antes).</summary>
-        public void VaciarCache() => cache.Clear();
+        public void VaciarCache()
+        {
+            cache.Clear();
+            cacheAlternativas.Clear();
+        }
 
         static string Mensaje(Exception e) => string.IsNullOrWhiteSpace(e.Message) ? e.GetType().Name : e.Message;
     }

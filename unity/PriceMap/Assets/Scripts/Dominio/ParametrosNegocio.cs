@@ -24,6 +24,17 @@ namespace PriceMap.Dominio
         /// <summary>Minutos que vale una ruta guardada en la caché (solo en memoria).</summary>
         public const int RutaCacheMinutos = 2;
 
+        // Varias rutas para elegir (parte 5a de «Cómo llegar»; decisiones del 23/11/2026)
+        /// <summary>Rutas distintas que se ofrecen como mucho.</summary>
+        public const int RutaAlternativasMaximo = 3;
+        /// <summary>Dos rutas son la misma si sus metros y sus segundos se diferencian en esta parte o menos.</summary>
+        public const double RutaAlternativasMargen = 0.02;
+        /// <summary>
+        /// Segundos, desde que se piden las alternativas a Valhalla, que se espera a su segunda petición (la más corta).
+        /// Menos que RutaTiempoMaximoSegundos, para dar las de la primera antes de que el servicio corte.
+        /// </summary>
+        public const int RutaAlternativasPlazoSegundos = 7;
+
         // Línea y encuadre de la ruta (historia 2.6, parte 2a; decisiones del 20/11/2026)
         /// <summary>Ancho de la línea de la ruta en el suelo, con su borde (una calle de Sanlúcar), en metros.</summary>
         public const float RutaAnchoMetros = 9f;

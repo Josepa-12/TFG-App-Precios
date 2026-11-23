@@ -2,7 +2,8 @@
 title: 'Varias rutas y la más rápida primero (parte 5a de «Cómo llegar»)'
 type: 'feature'
 created: '2026-11-23'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '4b00c3f29594e3586f339beee1cebf9c551f3acd'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -61,10 +62,10 @@ Rutas bajo `unity/PriceMap/Assets`.
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `Scripts/Dominio` -- regla pura de ordenar, quitar repetidas y limitar.
-- [ ] `Scripts/Aplicacion/IRutas.cs`, `ServicioRutas.cs` -- alternativas con reserva, local, límite y caché.
-- [ ] `Scripts/Adaptadores/Rutas` -- Valhalla y OSRM con alternativas; `Calcular` en coche, la más rápida.
-- [ ] `Tests/EditMode` -- una prueba por fila de la matriz.
+- [x] `Scripts/Dominio` -- regla pura de ordenar, quitar repetidas y limitar.
+- [x] `Scripts/Aplicacion/IRutas.cs`, `ServicioRutas.cs` -- alternativas con reserva, local, límite y caché.
+- [x] `Scripts/Adaptadores/Rutas` -- Valhalla y OSRM con alternativas; `Calcular` en coche, la más rápida.
+- [x] `Tests/EditMode` -- una prueba por fila de la matriz.
 
 **Acceptance Criteria:**
 - Dada la suite EditMode, cuando se ejecuta, entonces pasan todas.
@@ -75,6 +76,30 @@ Rutas bajo `unity/PriceMap/Assets`.
 ## Spec Change Log
 
 ## Review Triage Log
+
+Revisión 1 (23/11/2026). BH = Blind Hunter, EC = Edge Case Hunter, VG = Verification Gap.
+
+| # | Hallazgo | Veredicto | Evidencia | Ruta |
+|---|----------|-----------|-----------|------|
+| 1 | (VG) El umbral «menos de tres» solo se prueba con una y con tres | gap | Ninguna prueba con dos ni con una repetida; `LaSegundaFalla` no cuenta peticiones | patch |
+| 2 | (VG) Nadie mira la URL que pide OSRM | gap | El servidor falso responde igual a cualquier URL | patch |
+| 3 | (VG) Los constructores sin parámetros no los ejecuta ninguna prueba | gap | Ya pasaba con la llamada directa | defer |
+| 4 | (BH, EC) OSRM a pie elige por tiempo | low | La intención habla de Valhalla; andando, tiempo y distancia van juntos y así la lista y la ficha coinciden | rechazado |
+| 5 | (BH, EC, VG) `Calcular` y la primera de la lista pueden no coincidir | low | El viaje de Valhalla es el de menor coste; la diferencia es de segundos. En 5b los minutos del modo elegido salen de la lista | rechazado aquí; anotado en 5b |
+| 6 | (BH, EC) Una ruta sin duración quedaría la primera | low | Valhalla y OSRM siempre la dan; sería un estado no demostrado | rechazado |
+| 7 | (BH, EC) Con el hilo parado más de 1 s se pierden las de la primera y va a OSRM | low | Cierto y raro (app en pausa a mitad); OSRM da rutas igualmente | rechazado |
+| 8 | (BH) Una lista incompleta se guarda 2 min | low | El spec la da por buena | rechazado |
+| 9 | (BH) Las dos cachés caducan por separado | low | Como mucho una petición de más | rechazado |
+| 10 | (BH) Sin espera antes de la segunda petición | low | Va detrás de la primera; un 429 deja la lista sin la más corta | rechazado |
+| 11 | (BH) Peticiones iguales a la vez (ficha y lista) | low | Se piden cosas distintas (con y sin alternativas) | rechazado |
+| 12 | (BH) La lista espera a la segunda petición | low | La segunda tarda menos de 1 s; tope 7 s | rechazado |
+| 13 | (BH) «La más corta siempre sale» no es exacto con tres rápidas | false | La matriz congelada dice una sola petición con tres | rechazado |
+| 14 | (BH) Las alternativas saltadas no dejan rastro | low | Solo depuración | rechazado |
+| 15 | (BH) Un éxito sin ruta pasa ahora a la reserva | false | Mejora buscada y probada con listas | rechazado |
+| 16 | (BH) Excepción sin observar al cancelar la segunda | low | El observador se pone después del `throw` | patch |
+| 17 | (BH) El servicio no comprueba el contrato de la lista | low | Los dos adaptadores pasan por la regla | rechazado |
+| 18 | (BH, VG) Comentario «shortest» en `CapturaPruebas` | low | L. 94 | patch |
+| 19 | (BH) Memoria y `CLAUDE.md` | low | Archivos de contexto | al cerrar |
 
 ## Verification
 

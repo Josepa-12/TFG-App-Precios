@@ -11,11 +11,13 @@ namespace PriceMap.Adaptadores.Rutas
     /// es una polilínea de precisión 6; las longitudes van en kilómetros (o millas si así lo dice <c>units</c>) y
     /// los tiempos en segundos. Cada maniobra empieza en el punto <c>begin_shape_index</c> de su tramo y trae su
     /// texto (<c>instruction</c>) en el idioma pedido y el corto para la voz
-    /// (<c>verbal_succinct_transition_instruction</c>, historia 2.8).
+    /// (<c>verbal_succinct_transition_instruction</c>, historia 2.8). Las alternativas llegan en <c>alternates</c>, cada
+    /// una con su viaje de la misma forma (parte 5a de «Cómo llegar»).
     /// </summary>
     internal static class LecturaValhalla
     {
-        [Serializable] class Respuesta { public Viaje trip; public string error; }
+        [Serializable] class Respuesta { public Viaje trip; public Alternativa[] alternates; public string error; }
+        [Serializable] class Alternativa { public Viaje trip; }
         [Serializable] class Viaje { public Tramo[] legs; public Resumen summary; public string units; }
         [Serializable] class Tramo { public ManiobraJson[] maneuvers; public string shape; public Resumen summary; }
         [Serializable] class Resumen { public double length; public double time; }
@@ -23,18 +25,51 @@ namespace PriceMap.Adaptadores.Rutas
 
         const double MetrosPorMilla = 1609.344;
 
+        /// <summary>La ruta del viaje (sin las alternativas).</summary>
         public static Resultado<Ruta> Leer(string json)
         {
-            if (string.IsNullOrWhiteSpace(json)) return Resultado<Ruta>.Fallo("Respuesta vacía de Valhalla.");
+            var r = Abrir(json);
+            return r.Ok ? LeerViaje(r.Valor.trip, r.Valor.error) : Resultado<Ruta>.Fallo(r.Error);
+        }
+
+        /// <summary>
+        /// El viaje y sus alternativas en el orden en que llegan; las que no se pueden leer se saltan. Fallo (el del viaje)
+        /// si no queda ninguna.
+        /// </summary>
+        public static Resultado<IReadOnlyList<Ruta>> LeerTodas(string json)
+        {
+            var r = Abrir(json);
+            if (!r.Ok) return Resultado<IReadOnlyList<Ruta>>.Fallo(r.Error);
+            var rutas = new List<Ruta>();
+            var viaje = LeerViaje(r.Valor.trip, r.Valor.error);
+            if (viaje.Ok) rutas.Add(viaje.Valor);
+            if (r.Valor.alternates != null)
+                foreach (var a in r.Valor.alternates)
+                {
+                    var alternativa = LeerViaje(a?.trip, null);
+                    if (alternativa.Ok) rutas.Add(alternativa.Valor);
+                }
+            return rutas.Count > 0
+                ? Resultado<IReadOnlyList<Ruta>>.Exito(rutas.AsReadOnly())
+                : Resultado<IReadOnlyList<Ruta>>.Fallo(viaje.Error);
+        }
+
+        static Resultado<Respuesta> Abrir(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return Resultado<Respuesta>.Fallo("Respuesta vacía de Valhalla.");
             Respuesta r;
             try { r = JsonUtility.FromJson<Respuesta>(json); }
-            catch (Exception e) { return Resultado<Ruta>.Fallo("Respuesta de Valhalla ilegible: " + e.Message); }
-            if (r == null) return Resultado<Ruta>.Fallo("Respuesta de Valhalla ilegible.");
-            var legs = r.trip?.legs;
-            if (legs == null || legs.Length == 0)
-                return Resultado<Ruta>.Fallo("Valhalla no da ruta" + (string.IsNullOrWhiteSpace(r.error) ? "." : ": " + r.error));
+            catch (Exception e) { return Resultado<Respuesta>.Fallo("Respuesta de Valhalla ilegible: " + e.Message); }
+            return r != null ? Resultado<Respuesta>.Exito(r) : Resultado<Respuesta>.Fallo("Respuesta de Valhalla ilegible.");
+        }
 
-            double porUnidad = string.Equals(r.trip.units, "miles", StringComparison.OrdinalIgnoreCase) ? MetrosPorMilla : 1000.0;
+        static Resultado<Ruta> LeerViaje(Viaje viaje, string error)
+        {
+            var legs = viaje?.legs;
+            if (legs == null || legs.Length == 0)
+                return Resultado<Ruta>.Fallo("Valhalla no da ruta" + (string.IsNullOrWhiteSpace(error) ? "." : ": " + error));
+
+            double porUnidad = string.Equals(viaje.units, "miles", StringComparison.OrdinalIgnoreCase) ? MetrosPorMilla : 1000.0;
             var puntos = new List<Coordenada>();
             var maniobras = new List<Maniobra>();
             double metros = 0, segundos = 0;
@@ -65,7 +100,7 @@ namespace PriceMap.Adaptadores.Rutas
             }
             if (puntos.Count < 2) return Resultado<Ruta>.Fallo("La ruta de Valhalla no tiene línea.");
             // El resumen del viaje manda si lo trae
-            var resumen = r.trip.summary;
+            var resumen = viaje.summary;
             if (resumen != null && (resumen.length > 0 || resumen.time > 0))
             {
                 metros = resumen.length * porUnidad;

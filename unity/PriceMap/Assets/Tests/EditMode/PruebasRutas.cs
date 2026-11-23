@@ -21,7 +21,7 @@ namespace PriceMap.Tests.EditMode
     /// <summary>
     /// Rutas y tiempos de la ficha (historia 2.6, parte 1): polilínea, lectores de Valhalla y OSRM con JSON en línea,
     /// URL y cuerpo de las peticiones, ServicioRutas (dos modos, reserva, 8 s, caché y cancelación) con servicios
-    /// falsos, y la fila de acciones en la pantalla real, una prueba por fila de la matriz. Nada sale a la red.
+    /// falsos, las alternativas (parte 5a de «Cómo llegar»), y la fila de acciones en la pantalla real, una prueba por fila de la matriz. Nada sale a la red.
     /// </summary>
     public class PruebasRutas
     {
@@ -295,6 +295,9 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(8, ParametrosNegocio.RutaTiempoMaximoSegundos);
             Assert.AreEqual(20.0, ParametrosNegocio.RutaCacheMetros);
             Assert.AreEqual(2, ParametrosNegocio.RutaCacheMinutos);
+            Assert.AreEqual(3, ParametrosNegocio.RutaAlternativasMaximo);
+            Assert.AreEqual(0.02, ParametrosNegocio.RutaAlternativasMargen);
+            Assert.Less(ParametrosNegocio.RutaAlternativasPlazoSegundos, ParametrosNegocio.RutaTiempoMaximoSegundos);
             Assert.AreEqual(TimeSpan.FromSeconds(8), ServicioRutas.TiempoMaximo);
             Assert.AreEqual(TimeSpan.FromMinutes(2), ServicioRutas.DuracionCache);
         }
@@ -305,18 +308,24 @@ namespace PriceMap.Tests.EditMode
         static readonly Coordenada DestinoExacto = new Coordenada(36.7781412345, -6.3514812345);
 
         [Test]
-        public void Valhalla_CuerpoConShortestIdiomaManiobrasYPrecisiones()
+        public void Valhalla_CuerpoConLaMasRapidaEnCocheIdiomaManiobrasYPrecisiones()
         {
             Assert.AreEqual("https://valhalla1.openstreetmap.de/route", RutasValhalla.Url);
             Assert.AreEqual(
                 "{\"locations\":[{\"lat\":36.77791,\"lon\":-6.35281},{\"lat\":36.778141,\"lon\":-6.351481}]," +
-                "\"costing\":\"auto\",\"costing_options\":{\"auto\":{\"shortest\":true}},\"language\":\"es-ES\"," +
+                "\"costing\":\"auto\",\"costing_options\":{\"auto\":{\"shortest\":false}},\"language\":\"es-ES\"," +
                 "\"directions_type\":\"instructions\",\"units\":\"kilometers\"}",
                 RutasValhalla.Cuerpo(OrigenExacto, DestinoExacto, ModoViaje.Coche),
                 "Origen con 5 decimales y destino con 6.");
             var aPie = RutasValhalla.Cuerpo(OrigenExacto, DestinoExacto, ModoViaje.APie);
             StringAssert.Contains("\"costing\":\"pedestrian\"", aPie);
             StringAssert.Contains("\"costing_options\":{\"pedestrian\":{\"shortest\":true}}", aPie);
+            StringAssert.DoesNotContain("alternates", aPie);
+            var varias = RutasValhalla.Cuerpo(OrigenExacto, DestinoExacto, ModoViaje.Coche, 2);
+            StringAssert.Contains("\"shortest\":false", varias);
+            StringAssert.Contains("\"alternates\":2,", varias);
+            StringAssert.Contains("\"costing_options\":{\"auto\":{\"shortest\":true}}",
+                RutasValhalla.Cuerpo(OrigenExacto, DestinoExacto, ModoViaje.Coche, laMasCorta: true));
         }
 
         [Test]
@@ -387,24 +396,25 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(TipoManiobra.Otra, LecturaValhalla.Tipo(28));
         }
 
-        // Dos alternativas: la primera más rápida pero más larga; se queda la más corta (la segunda)
+        // Tres alternativas: la primera más corta pero más lenta, la segunda la más rápida y la tercera con la línea rota
         const string RespuestaOsrm = @"{""code"":""Ok"",""routes"":[
-            {""geometry"":""_p~iF~ps|U_ulLnnqC"",""legs"":[{""steps"":[]}],""distance"":950.2,""duration"":120.0,""weight"":120},
+            {""geometry"":""_p~iF~ps|U_ulLnnqC"",""legs"":[{""steps"":[]}],""distance"":150.2,""duration"":320.0,""weight"":320},
             {""geometry"":""wyvceA~xvbK_NoqAgVqb@"",""legs"":[{""steps"":[
               {""geometry"":""x"",""maneuver"":{""bearing_after"":90,""location"":[-6.3528,36.7779],""type"":""depart""},""distance"":120.4,""duration"":20,""name"":""Plaza del Cabildo""},
               {""geometry"":""x"",""maneuver"":{""location"":[-6.35148,36.77814],""modifier"":""right"",""type"":""turn""},""distance"":60.1,""duration"":30,""name"":""Calle Ancha""},
               {""geometry"":""x"",""maneuver"":{""location"":[-6.350911,36.778512],""type"":""arrive""},""distance"":0,""duration"":0,""name"":""""}],
-              ""distance"":180.5,""duration"":150.0}],""distance"":180.5,""duration"":150.0,""weight"":150}],
+              ""distance"":180.5,""duration"":150.0}],""distance"":180.5,""duration"":150.0,""weight"":150},
+            {""geometry"":""_p~iF~ps|U_"",""legs"":[],""distance"":100,""duration"":10,""weight"":10}],
             ""waypoints"":[]}";
 
         [Test]
-        public void LecturaOsrm_SeQuedaLaAlternativaMasCortaConManiobrasSinTexto()
+        public void LecturaOsrm_SeQuedaLaAlternativaMasRapidaConManiobrasSinTexto()
         {
             var r = LecturaOsrm.Leer(RespuestaOsrm);
             Assert.IsTrue(r.Ok, r.Error);
             var ruta = r.Valor;
-            Assert.AreEqual(180.5, ruta.Metros, 1e-6, "La de menor distancia, aunque tarde más.");
-            Assert.AreEqual(150.0, ruta.Segundos, 1e-6);
+            Assert.AreEqual(150.0, ruta.Segundos, 1e-6, "La de menos tiempo, aunque sea más larga.");
+            Assert.AreEqual(180.5, ruta.Metros, 1e-6);
             Assert.AreEqual(3, ruta.Puntos.Count);
             Assert.AreEqual(3, ruta.Maniobras.Count);
             Assert.AreEqual(TipoManiobra.Salida, ruta.Maniobras[0].Tipo);
@@ -567,6 +577,431 @@ namespace PriceMap.Tests.EditMode
             Assert.IsNull(mapa.linea);
             Assert.IsTrue(pantalla.Buscador.Visible, "Vuelve la cápsula, no las tarjetas.");
             Assert.AreEqual(DisplayStyle.None, pantalla.TarjetaRuta.style.display.value);
+        }
+
+        // ───────────────────────── Varias rutas (parte 5a de «Cómo llegar») ─────────────────────────
+
+        static Ruta R(double metros, double segundos, bool aproximada = false) =>
+            new Ruta(new[] { Cabildo, CalleAncha }, metros, segundos, null, aproximada);
+
+        static void Son(IEnumerable<Ruta> rutas, params (double metros, double segundos)[] esperadas) =>
+            CollectionAssert.AreEqual(esperadas.Select(e => $"{e.metros:0} m {e.segundos:0} s"), rutas.Select(x => $"{x.Metros:0} m {x.Segundos:0} s"));
+
+        [Test]
+        public void ReglaAlternativas_OrdenaPorTiempoQuitaRepetidasYLimita()
+        {
+            Son(ReglaAlternativas.Juntar(new[] { R(9700, 2825), null, R(10360, 1319) }), (10360, 1319), (9700, 2825));
+            Son(ReglaAlternativas.Juntar(new[] { R(1000, 100), R(980, 102) }), (1000, 100)); // justo el 2 %
+            Son(ReglaAlternativas.Juntar(new[] { R(1000, 100), R(970, 100) }), (970, 100), (1000, 100)); // otros metros
+            Son(ReglaAlternativas.Juntar(new[] { R(1000, 100), R(1000, 103) }), (1000, 100), (1000, 103)); // otro tiempo
+            Assert.IsEmpty(ReglaAlternativas.Juntar(null));
+        }
+
+        [Test]
+        public void ReglaAlternativas_SiSobranLaMasCortaSigueEntreLasOpciones()
+        {
+            Son(ReglaAlternativas.Juntar(new[] { R(5000, 400), R(8000, 100), R(7000, 200), R(6000, 300) }), (8000, 100), (7000, 200), (5000, 400));
+            Son(ReglaAlternativas.Juntar(new[] { R(5000, 100), R(8000, 400), R(7000, 200), R(6000, 300) }), (5000, 100), (7000, 200), (6000, 300));
+        }
+
+        /// <summary>Un viaje de Valhalla (línea legible o rota) con esos metros y segundos.</summary>
+        static string Viaje(double metros, double segundos, string linea = Linea6) =>
+            "{\"legs\":[{\"maneuvers\":[],\"shape\":\"" + linea + "\"}],\"summary\":{\"length\":"
+            + (metros / 1000.0).ToString(System.Globalization.CultureInfo.InvariantCulture) + ",\"time\":"
+            + segundos.ToString(System.Globalization.CultureInfo.InvariantCulture) + "},\"units\":\"kilometers\"}";
+
+        static string RespuestaVarias(string viaje, params string[] alternativas) =>
+            "{\"trip\":" + viaje + (alternativas.Length == 0 ? "" :
+                ",\"alternates\":[" + string.Join(",", alternativas.Select(a => "{\"trip\":" + a + "}")) + "]") + "}";
+
+        const string LineaRota = "_p~iF~ps|U_";
+
+        /// <summary>El servidor de Valhalla o de OSRM: cada petición queda pendiente hasta que la prueba responde.</summary>
+        class ServidorFalso
+        {
+            public bool IgnorarCancelacion;
+            public readonly List<(string texto, CancellationToken ct, TaskCompletionSource<Resultado<string>> tcs)> Peticiones =
+                new List<(string, CancellationToken, TaskCompletionSource<Resultado<string>>)>();
+
+            public Task<Resultado<string>> Pedir(string texto, CancellationToken ct)
+            {
+                var tcs = new TaskCompletionSource<Resultado<string>>();
+                Peticiones.Add((texto, ct, tcs));
+                if (!IgnorarCancelacion) ct.Register(() => tcs.TrySetCanceled());
+                return tcs.Task;
+            }
+
+            public void Responder(string json) => Peticiones.Last().tcs.TrySetResult(Resultado<string>.Exito(json));
+            public void Fallar() => Peticiones.Last().tcs.TrySetResult(Resultado<string>.Fallo("sin conexión"));
+        }
+
+        readonly ServidorFalso servidor = new ServidorFalso();
+        Esperas plazos;
+
+        Task<Resultado<IReadOnlyList<Ruta>>> PedirAValhalla(ModoViaje modo, CancellationToken ct = default)
+        {
+            servidor.Peticiones.Clear();
+            plazos = new Esperas();
+            return new RutasValhalla(servidor.Pedir, plazos.Esperar).Alternativas(Cabildo, CalleAncha, modo, ct);
+        }
+
+        [Test]
+        public void Alternativas_CocheConTres_UnaSolaPeticionYPorTiempo()
+        {
+            var t = PedirAValhalla(ModoViaje.Coche);
+            StringAssert.Contains("\"alternates\":2,", servidor.Peticiones.Single().texto);
+            StringAssert.Contains("\"shortest\":false", servidor.Peticiones.Single().texto);
+            servidor.Responder(RespuestaVarias(Viaje(10000, 1300), Viaje(9000, 2000), Viaje(9500, 1200)));
+            Assert.IsTrue(t.Result.Ok, t.Result.Error);
+            Son(t.Result.Valor, (9500, 1200), (10000, 1300), (9000, 2000));
+            Assert.AreEqual(1, servidor.Peticiones.Count);
+            Assert.AreEqual(3, t.Result.Valor[0].Puntos.Count, "Cada alternativa con su línea.");
+        }
+
+        [Test]
+        public void Alternativas_CocheConUna_LaSegundaDetrasAnadeLaMasCorta()
+        {
+            var t = PedirAValhalla(ModoViaje.Coche);
+            Assert.AreEqual(1, servidor.Peticiones.Count, "Detrás, no a la vez.");
+            servidor.Responder(RespuestaVarias(Viaje(10360, 1319)));
+            Assert.IsFalse(t.IsCompleted);
+            Assert.AreEqual(2, servidor.Peticiones.Count);
+            StringAssert.Contains("\"shortest\":true", servidor.Peticiones[1].texto);
+            StringAssert.DoesNotContain("alternates", servidor.Peticiones[1].texto);
+            servidor.Responder(RespuestaVarias(Viaje(9700, 2825)));
+            Son(t.Result.Valor, (10360, 1319), (9700, 2825));
+            Assert.AreEqual(2, servidor.Peticiones.Count);
+        }
+
+        [Test]
+        public void Alternativas_CocheConDos_LaSegundaPoneLaMasCortaEnSuSitioPorTiempo()
+        {
+            foreach (var segundosCorta in new[] { 2825, 1600 })
+            {
+                var t = PedirAValhalla(ModoViaje.Coche);
+                servidor.Responder(RespuestaVarias(Viaje(10360, 1319), Viaje(11000, 2000)));
+                Assert.AreEqual(2, servidor.Peticiones.Count);
+                StringAssert.Contains("\"shortest\":true", servidor.Peticiones[1].texto);
+                servidor.Responder(RespuestaVarias(Viaje(9700, segundosCorta)));
+                if (segundosCorta == 2825) Son(t.Result.Valor, (10360, 1319), (11000, 2000), (9700, 2825));
+                else Son(t.Result.Valor, (10360, 1319), (9700, 1600), (11000, 2000));
+            }
+        }
+
+        [Test]
+        public void Alternativas_CocheConTresYDosRepetidas_TambienSePideLaMasCorta()
+        {
+            var t = PedirAValhalla(ModoViaje.Coche);
+            servidor.Responder(RespuestaVarias(Viaje(10000, 1300), Viaje(10050, 1310), Viaje(11000, 2000)));
+            Assert.AreEqual(2, servidor.Peticiones.Count, "Solo dos distintas.");
+            StringAssert.Contains("\"shortest\":true", servidor.Peticiones[1].texto);
+            servidor.Responder(RespuestaVarias(Viaje(9000, 2500)));
+            Son(t.Result.Valor, (10000, 1300), (11000, 2000), (9000, 2500));
+        }
+
+        [Test]
+        public void Alternativas_LaCortaEsLaMisma_UnaRuta()
+        {
+            var t = PedirAValhalla(ModoViaje.Coche);
+            servidor.Responder(RespuestaVarias(Viaje(1000, 200)));
+            servidor.Responder(RespuestaVarias(Viaje(990, 202)));
+            Son(t.Result.Valor, (1000, 200));
+        }
+
+        [Test]
+        public void Alternativas_LaSegundaFalla_LasDeLaPrimera()
+        {
+            var t = PedirAValhalla(ModoViaje.Coche);
+            servidor.Responder(RespuestaVarias(Viaje(10000, 1300), Viaje(9000, 2000)));
+            Assert.AreEqual(2, servidor.Peticiones.Count);
+            servidor.Fallar();
+            Assert.IsTrue(t.Result.Ok);
+            Son(t.Result.Valor, (10000, 1300), (9000, 2000));
+
+            t = PedirAValhalla(ModoViaje.Coche);
+            servidor.Responder(RespuestaVarias(Viaje(10000, 1300)));
+            Assert.AreEqual(2, servidor.Peticiones.Count);
+            servidor.Peticiones.Last().tcs.TrySetException(new InvalidOperationException("rota"));
+            Assert.IsTrue(t.Result.Ok);
+            Son(t.Result.Valor, (10000, 1300));
+        }
+
+        [Test]
+        public void Alternativas_LaSegundaNoRespondeATiempo_LasDeLaPrimera()
+        {
+            var t = PedirAValhalla(ModoViaje.Coche);
+            Assert.AreEqual(TimeSpan.FromSeconds(7), plazos.Lista.Single().duracion, "El plazo se cuenta desde el principio.");
+            servidor.Responder(RespuestaVarias(Viaje(10000, 1300)));
+            plazos.VencerTodas();
+            Assert.IsTrue(t.Result.Ok);
+            Son(t.Result.Valor, (10000, 1300));
+            Assert.IsTrue(servidor.Peticiones[1].ct.IsCancellationRequested, "La segunda se corta.");
+
+            // El plazo vence durante la primera: ya no hay segunda
+            t = PedirAValhalla(ModoViaje.Coche);
+            plazos.VencerTodas();
+            servidor.Responder(RespuestaVarias(Viaje(10000, 1300)));
+            Son(t.Result.Valor, (10000, 1300));
+            Assert.AreEqual(1, servidor.Peticiones.Count);
+        }
+
+        [Test]
+        public void Alternativas_LaSegundaNoResponde_ElServicioNoPasaALaReserva()
+        {
+            var plazo = new Esperas();
+            var otro = new ServicioRutas(new RutasValhalla(servidor.Pedir, plazo.Esperar), osrm, esperas.Esperar, () => reloj);
+            servidor.Peticiones.Clear();
+            var t = otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None);
+            servidor.Responder(RespuestaVarias(Viaje(10000, 1300)));
+            plazo.VencerTodas(); // a los 7 s
+            esperas.VencerTodas(); // a los 8 s: ya no cuenta
+            Son(t.Result.Valor, (10000, 1300));
+            Assert.IsEmpty(osrm.Peticiones);
+        }
+
+        [Test]
+        public void Alternativas_APie_PorTiempoYNuncaSegundaPeticion()
+        {
+            var t = PedirAValhalla(ModoViaje.APie);
+            StringAssert.Contains("\"pedestrian\":{\"shortest\":true}", servidor.Peticiones.Single().texto);
+            StringAssert.Contains("\"alternates\":2,", servidor.Peticiones.Single().texto);
+            servidor.Responder(RespuestaVarias(Viaje(1000, 800), Viaje(1100, 700)));
+            Son(t.Result.Valor, (1100, 700), (1000, 800));
+            Assert.AreEqual(1, servidor.Peticiones.Count);
+            Assert.IsEmpty(plazos.Lista);
+        }
+
+        [Test]
+        public void Alternativas_UnaRota_SeSaltaYLasDemasValen()
+        {
+            var t = PedirAValhalla(ModoViaje.APie);
+            servidor.Responder(RespuestaVarias(Viaje(1000, 800), Viaje(900, 700, LineaRota), Viaje(1200, 600)));
+            Son(t.Result.Valor, (1200, 600), (1000, 800));
+
+            t = PedirAValhalla(ModoViaje.APie); // la rota es la del viaje
+            servidor.Responder(RespuestaVarias(Viaje(1000, 800, LineaRota), Viaje(1200, 600)));
+            Son(t.Result.Valor, (1200, 600));
+
+            t = PedirAValhalla(ModoViaje.APie);
+            servidor.Responder(RespuestaVarias(Viaje(1000, 800, LineaRota)));
+            Assert.IsFalse(t.Result.Ok, "Ninguna legible.");
+        }
+
+        [Test]
+        public void Alternativas_ValhallaFalla_Fallo()
+        {
+            var t = PedirAValhalla(ModoViaje.Coche);
+            servidor.Fallar();
+            Assert.IsFalse(t.Result.Ok);
+            Assert.AreEqual(1, servidor.Peticiones.Count);
+        }
+
+        [Test]
+        public void Alternativas_Osrm_PorTiempoYTresComoMucho()
+        {
+            var t = new RutasOsrm(servidor.Pedir).Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None);
+            string Una(double metros, double segundos, string linea = Linea6) =>
+                "{\"geometry\":\"" + linea + "\",\"legs\":[],\"distance\":" + metros + ",\"duration\":" + segundos + "}";
+            servidor.Responder("{\"code\":\"Ok\",\"routes\":[" + string.Join(",", Una(3000, 400), Una(2000, 300), Una(1800, 100, LineaRota),
+                Una(5000, 500), Una(4000, 200)) + "]}");
+            Assert.IsTrue(t.Result.Ok, t.Result.Error);
+            Son(t.Result.Valor, (4000, 200), (2000, 300), (3000, 400));
+        }
+
+        [TestCase(ModoViaje.Coche)]
+        [TestCase(ModoViaje.APie)]
+        public void Osrm_PideSuUrlUnaSolaVez(ModoViaje modo)
+        {
+            string url = RutasOsrm.Url(Cabildo, CalleAncha, modo);
+            servidor.Peticiones.Clear();
+            var una = new RutasOsrm(servidor.Pedir).Calcular(Cabildo, CalleAncha, modo, CancellationToken.None);
+            servidor.Responder(RespuestaOsrm);
+            Assert.IsTrue(una.Result.Ok, una.Result.Error);
+            Assert.AreEqual(url, servidor.Peticiones.Single().texto);
+
+            servidor.Peticiones.Clear();
+            var varias = new RutasOsrm(servidor.Pedir).Alternativas(Cabildo, CalleAncha, modo, CancellationToken.None);
+            servidor.Responder(RespuestaOsrm);
+            Assert.IsTrue(varias.Result.Ok, varias.Result.Error);
+            Assert.AreEqual(url, servidor.Peticiones.Single().texto);
+        }
+
+        [Test]
+        public void Calcular_EnCoche_LaMasRapidaConUnaPeticion()
+        {
+            servidor.Peticiones.Clear();
+            var t = new RutasValhalla(servidor.Pedir, esperas.Esperar).Calcular(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None);
+            StringAssert.Contains("\"shortest\":false", servidor.Peticiones.Single().texto);
+            StringAssert.DoesNotContain("alternates", servidor.Peticiones.Single().texto);
+            servidor.Responder(RespuestaVarias(Viaje(10360, 1319)));
+            Assert.AreEqual(1319, t.Result.Valor.Segundos);
+
+            var o = new RutasOsrm(servidor.Pedir).Calcular(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None);
+            servidor.Responder(RespuestaOsrm);
+            Assert.AreEqual(150.0, o.Result.Valor.Segundos, "OSRM, la de menos tiempo.");
+        }
+
+        /// <summary>Servicio con alternativas propias, que responde al momento (o falla).</summary>
+        class RutasConLista : IRutas
+        {
+            public Ruta[] Lista; // null = fallo
+            public int Pedidas, Calculadas;
+
+            public Task<Resultado<Ruta>> Calcular(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
+            {
+                Calculadas++;
+                return Task.FromResult(Lista == null ? Resultado<Ruta>.Fallo("sin conexión") : Resultado<Ruta>.Exito(Lista[0]));
+            }
+
+            public Task<Resultado<IReadOnlyList<Ruta>>> Alternativas(Coordenada origen, Coordenada destino, ModoViaje modo, CancellationToken ct)
+            {
+                Pedidas++;
+                return Task.FromResult(Lista == null
+                    ? Resultado<IReadOnlyList<Ruta>>.Fallo("sin conexión")
+                    : Resultado<IReadOnlyList<Ruta>>.Exito(Lista));
+            }
+        }
+
+        [Test]
+        public void Alternativas_ValhallaFalla_LasDeLaReserva()
+        {
+            var principal = new RutasConLista();
+            var reserva = new RutasConLista { Lista = new[] { R(2000, 100), R(1000, 200) } };
+            var otro = new ServicioRutas(principal, reserva, esperas.Esperar, () => reloj);
+            var r = otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result;
+            Son(r.Valor, (2000, 100), (1000, 200));
+
+            principal.Lista = new Ruta[0]; // una lista vacía tampoco vale
+            otro.VaciarCache();
+            Son(otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result.Valor, (2000, 100), (1000, 200));
+        }
+
+        [Test]
+        public void Alternativas_ValhallaTardaOchoSegundos_LasDeLaReserva()
+        {
+            var reserva = new RutasConLista { Lista = new[] { R(2000, 100) } };
+            var otro = new ServicioRutas(valhalla, reserva, esperas.Esperar, () => reloj);
+            var t = otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None);
+            Assert.AreEqual(TimeSpan.FromSeconds(8), esperas.Lista.Single().duracion);
+            esperas.VencerTodas();
+            Assert.IsTrue(valhalla.Peticiones.Single().Ct.IsCancellationRequested);
+            Son(t.Result.Valor, (2000, 100));
+        }
+
+        [Test]
+        public void Alternativas_SinRed_LaAproximadaSolaYSinGuardar()
+        {
+            var principal = new RutasConLista();
+            var local = new RutasFalsas(); // solo Calcular: la lista por defecto de IRutas
+            var otro = new ServicioRutas(principal, new RutasConLista(), esperas.Esperar, () => reloj, local);
+            var t = otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None);
+            local.Peticiones.Single().Tcs.TrySetResult(Resultado<Ruta>.Exito(R(1200, 240, aproximada: true)));
+            Son(t.Result.Valor, (1200, 240));
+            Assert.IsTrue(t.Result.Valor[0].Aproximada);
+            Assert.AreEqual(0, otro.EnCache);
+
+            // Vuelve la red: no estaba guardada
+            principal.Lista = new[] { R(1000, 100) };
+            Son(otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result.Valor, (1000, 100));
+            Assert.AreEqual(2, principal.Pedidas);
+        }
+
+        [Test]
+        public void Alternativas_TodosFallan_Fallo()
+        {
+            var otro = new ServicioRutas(new RutasConLista(), new RutasConLista(), esperas.Esperar, () => reloj, new RutasConLista());
+            var r = otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result;
+            Assert.IsFalse(r.Ok);
+            StringAssert.Contains("Calles guardadas", r.Error);
+        }
+
+        [Test]
+        public void Alternativas_Cache_LaMismaListaSinRedYLaPrimeraParaCalcular()
+        {
+            var principal = new RutasConLista { Lista = new[] { R(2000, 100), R(1000, 200) } };
+            var otro = new ServicioRutas(principal, null, esperas.Esperar, () => reloj);
+            Resultado<IReadOnlyList<Ruta>> Pedir(Coordenada origen, ModoViaje modo = ModoViaje.Coche) =>
+                otro.Alternativas(origen, CalleAncha, modo, CancellationToken.None).Result;
+            var primera = Pedir(Cabildo).Valor;
+
+            reloj = Ahora.AddSeconds(119);
+            Assert.AreSame(primera, Pedir(new Coordenada(Cabildo.Latitud + 10.0 / 111195.0, Cabildo.Longitud)).Valor);
+            Assert.AreEqual(1, principal.Pedidas);
+            Assert.AreSame(primera[0], otro.Calcular(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result.Valor);
+            Assert.AreEqual(0, principal.Calculadas, "Calcular usa la primera de la lista.");
+
+            Pedir(Cabildo, ModoViaje.APie); // otro modo
+            Assert.AreEqual(2, principal.Pedidas);
+            Pedir(new Coordenada(Cabildo.Latitud + 30.0 / 111195.0, Cabildo.Longitud)); // más de 20 m
+            Assert.AreEqual(3, principal.Pedidas);
+
+            reloj = Ahora.AddSeconds(120); // 2 min
+            Pedir(Cabildo);
+            Assert.AreEqual(4, principal.Pedidas);
+            otro.VaciarCache();
+            Pedir(Cabildo);
+            Assert.AreEqual(5, principal.Pedidas);
+        }
+
+        [Test]
+        public void Alternativas_SiCalcularYaLaTenia_NoSeCambia()
+        {
+            var principal = new RutasConLista { Lista = new[] { R(3000, 90) } };
+            var otro = new ServicioRutas(principal, null, esperas.Esperar, () => reloj);
+            var deLaFicha = otro.Calcular(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result.Valor;
+            principal.Lista = new[] { R(2000, 80), R(1000, 200) };
+            Son(otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result.Valor, (2000, 80), (1000, 200));
+            Assert.AreSame(deLaFicha, otro.Calcular(Cabildo, CalleAncha, ModoViaje.Coche, CancellationToken.None).Result.Valor);
+            Assert.AreEqual(1, otro.EnCache);
+        }
+
+        [TestCase(1)]
+        [TestCase(2)]
+        public void Alternativas_CancelarDuranteLaPrimeraOLaSegunda(int cual)
+        {
+            servidor.Peticiones.Clear();
+            var cts = new CancellationTokenSource();
+            var t = PedirAValhalla(ModoViaje.Coche, cts.Token);
+            if (cual == 2) servidor.Responder(RespuestaVarias(Viaje(10000, 1300)));
+            Assert.AreEqual(cual, servidor.Peticiones.Count);
+            cts.Cancel();
+            Assert.Catch<OperationCanceledException>(() => t.GetAwaiter().GetResult());
+            Assert.IsTrue(t.IsCanceled);
+
+            // Igual con el servicio por delante: ni reserva ni caché
+            cts = new CancellationTokenSource();
+            servidor.Peticiones.Clear();
+            var otro = new ServicioRutas(new RutasValhalla(servidor.Pedir, new Esperas().Esperar), osrm, esperas.Esperar, () => reloj);
+            t = otro.Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, cts.Token);
+            if (cual == 2) servidor.Responder(RespuestaVarias(Viaje(10000, 1300)));
+            cts.Cancel();
+            Assert.IsTrue(t.IsCanceled);
+            Assert.IsEmpty(osrm.Peticiones);
+            Assert.AreEqual(0, otro.EnCache);
+        }
+
+        [Test]
+        public void Alternativas_CancelarConUnaRespuestaQueLlegaIgual()
+        {
+            var sordo = new ServidorFalso { IgnorarCancelacion = true };
+            var cts = new CancellationTokenSource();
+            var t = new RutasValhalla(sordo.Pedir, new Esperas().Esperar).Alternativas(Cabildo, CalleAncha, ModoViaje.Coche, cts.Token);
+            cts.Cancel();
+            sordo.Responder(RespuestaVarias(Viaje(10000, 1300)));
+            Assert.IsTrue(t.IsCanceled);
+            Assert.AreEqual(1, sordo.Peticiones.Count, "Cancelada, no hay segunda.");
+        }
+
+        [Test]
+        public void Alternativas_PorDefecto_LaDeCalcularSola()
+        {
+            IRutas falsas = valhalla;
+            var t = falsas.Alternativas(Cabildo, CalleAncha, ModoViaje.APie, CancellationToken.None);
+            valhalla.De(ModoViaje.APie).Responder(60, 500);
+            Son(t.Result.Valor, (500, 60));
+            t = falsas.Alternativas(Cabildo, CalleAncha, ModoViaje.APie, CancellationToken.None);
+            valhalla.De(ModoViaje.APie).Fallar();
+            Assert.IsFalse(t.Result.Ok);
         }
 
         // ───────────────────────── Fila de la ficha (matriz) ─────────────────────────
