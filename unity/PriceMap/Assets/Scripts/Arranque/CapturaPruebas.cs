@@ -1142,7 +1142,7 @@ namespace PriceMap.Arranque
         /// <summary>
         /// Historia 2.7 (parte 2c), capturas "navegacion-flecha" (claro y oscuro) y "sin-senal": Ir a Clínica Areas en
         /// coche, la ubicación falsa a la mitad de Calle Regina y la cámara siguiendo: la posición es la flecha hacia arriba,
-        /// sin cono. Después la ubicación deja de dar lecturas: a los 10 s la flecha se atenúa, sale la pastilla "Buscando
+        /// sin cono. Después la ubicación deja de dar lecturas: a los 10 s el disco se atenúa, sale la pastilla "Buscando
         /// señal GPS" bajo la tarjeta de arriba y TalkBack lo anuncia; al volver las lecturas se va con "Señal GPS
         /// recuperada". Atrás termina la ruta y vuelve el círculo.
         /// </summary>
@@ -1195,18 +1195,20 @@ namespace PriceMap.Arranque
                 yield return new WaitForEndOfFrame();
                 var pastilla = pantalla.PastillaSenal;
                 Debug.Log($"PriceMap: sin señal: {nav.SinSenal}; pastilla \"{pastilla.Texto.text}\" visible {pastilla.Visible} en {pastilla.Texto.worldBound} " +
-                          $"(tarjeta de arriba {pantalla.TarjetaManiobra.worldBound}); atenuada {marcador.Atenuado} ({marcador.resolvedStyle.opacity:F2}); " +
+                          $"(tarjeta de arriba {pantalla.TarjetaManiobra.worldBound}); atenuada {marcador.Atenuado} (disco {marcador.Disco.resolvedStyle.opacity:F2}, flecha {marcador.Flecha.resolvedStyle.opacity:F2}, marcador {marcador.resolvedStyle.opacity:F2}); " +
                           $"anuncios: {string.Join(" | ", anuncios)}");
                 if (!nav.SinSenal || !pastilla.Visible || pastilla.Texto.text != Textos.T(ClavesTexto.SenalBuscando))
                     Debug.LogError("PriceMap: sin lecturas del GPS no ha salido «Buscando señal GPS».");
-                if (!marcador.Atenuado || !marcador.FlechaVisible) Debug.LogError("PriceMap: sin señal la flecha no está atenuada.");
+                if (!marcador.Atenuado || !marcador.FlechaVisible || Mathf.Abs(marcador.Disco.resolvedStyle.opacity - MarcadorPosicion.OpacidadDiscoSinSenal) > 0.01f
+                    || marcador.resolvedStyle.opacity < 1f || marcador.Flecha.resolvedStyle.opacity < 1f)
+                    Debug.LogError("PriceMap: sin señal no está atenuado solo el disco de la flecha.");
                 if (pastilla.Texto.worldBound.yMin < pantalla.TarjetaManiobra.worldBound.yMax)
                     Debug.LogError("PriceMap: la pastilla no está bajo la tarjeta de arriba.");
                 if (!anuncios.Contains(Textos.T(ClavesTexto.SenalBuscando))) Debug.LogError("PriceMap: TalkBack no anuncia «Buscando señal GPS».");
                 yield return Capturar("sin-senal");
                 tema.Alternar();
                 yield return new WaitForSeconds(1.5f);
-                if (!pastilla.Visible || !marcador.Atenuado) Debug.LogError("PriceMap: en oscuro no se ve la pastilla o la flecha no está atenuada.");
+                if (!pastilla.Visible || !marcador.Atenuado) Debug.LogError("PriceMap: en oscuro no se ve la pastilla o el disco no está atenuado.");
                 yield return Capturar("sin-senal-oscuro");
                 tema.Alternar();
                 yield return new WaitForSeconds(1.5f);

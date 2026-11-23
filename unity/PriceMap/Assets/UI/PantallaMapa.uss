@@ -422,6 +422,11 @@
     color: var(--color-flecha);
 }
 
+/* Sin señal (disco al 70 %): azul oscuro también en el tema oscuro */
+.marcador-posicion--sin-senal .marcador-posicion__flecha {
+    color: var(--color-flecha-sin-senal);
+}
+
 /* Chincheta del punto libre (historia 2.5). .chincheta mide 0×0 y está justo en la coordenada (ChinchetaPunto la
    mueve con translate); la gota (dibujada con Painter2D) tiene la punta en ella y la sombra va centrada debajo.
    Su color es el del borde y el centro; el de la gota, el del cuerpo. --chincheta-borde: grosor del borde en

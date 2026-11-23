@@ -51,6 +51,7 @@
     /* Flecha de la navegación en coche (historia 2.7, parte 2c): mismo azul, sin borde, sobre un disco
        blanco (--color-posicion-borde); en oscuro, más clara */
     --color-flecha: #2F5BEA;
+    --color-flecha-sin-senal: #2F5BEA; /* en los dos temas: la clara no se distingue sobre el disco atenuado */
     /* Chincheta del punto libre (historia 2.5, maqueta del 19/11/2026): azul marino (--color-text del claro) con
        borde y centro blancos; en oscuro, blanca con borde fino y centro azul marino. Sombra pequeña en el suelo */
     --color-chincheta: #13235B;

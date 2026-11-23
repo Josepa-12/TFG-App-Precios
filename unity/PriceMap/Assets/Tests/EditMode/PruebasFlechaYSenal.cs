@@ -611,6 +611,7 @@ namespace PriceMap.Tests.EditMode
             Assert.AreNotEqual(DisplayStyle.None, Marcador.Punto.style.display.value);
             Assert.IsTrue(Marcador.Atenuado);
             Assert.AreEqual(0.4f, Marcador.style.opacity.value, 1e-4f);
+            Assert.AreEqual(StyleKeyword.Null, Marcador.Disco.style.opacity.keyword);
             Assert.IsTrue(pantalla.PastillaSenal.Visible);
             Assert.AreEqual("Buscando señal GPS", pantalla.PastillaSenal.Texto.text);
         }
@@ -639,9 +640,12 @@ namespace PriceMap.Tests.EditMode
             anuncios.Clear();
             Fotograma(12);
             Assert.IsTrue(Marcador.Atenuado);
-            Assert.AreEqual(MarcadorPosicion.OpacidadSinSenal, Marcador.style.opacity.value, 1e-4f);
+            Assert.AreEqual(0.7f, Marcador.Disco.style.opacity.value, 1e-4f, "El disco, atenuado.");
+            Assert.IsTrue(Marcador.ClassListContains(MarcadorPosicion.ClaseSinSenal));
+            Assert.AreEqual(StyleKeyword.Null, Marcador.style.opacity.keyword, "La flecha se ve entera.");
+            Assert.AreEqual(StyleKeyword.Null, Marcador.Flecha.style.opacity.keyword);
             Assert.AreEqual(0.4f, MarcadorPosicion.OpacidadSinSenal, 1e-4f);
-            Assert.IsTrue(Marcador.FlechaVisible, "La flecha se queda, atenuada.");
+            Assert.IsTrue(Marcador.FlechaVisible, "La flecha se queda.");
             Assert.AreEqual(posicion, Marcador.Posicion, "En su último sitio.");
             var pastilla = pantalla.PastillaSenal;
             Assert.IsTrue(pastilla.Visible);
@@ -653,6 +657,27 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(peticiones, valhalla.Peticiones.Count, "Sin recálculo.");
             Fotograma(5);
             Assert.AreEqual(1, anuncios.Count, "Una vez.");
+        }
+
+        [Test]
+        public void SinSenal_LaAtenuacionPasaDelDiscoAlMarcadorYVuelve()
+        {
+            var m = new MarcadorPosicion();
+            var mapaMarcador = new MapaFalso();
+            void Poner(bool flecha, bool atenuado) =>
+                m.Actualizar(mapaMarcador, Cabildo, 0f, 1f, 4000f, 4000f, flecha, 0f, atenuado);
+            void Comprobar(bool marcador, bool disco, string cuando)
+            {
+                Assert.IsTrue(m.Visible, cuando);
+                Assert.AreEqual(marcador, m.style.opacity.keyword == StyleKeyword.Undefined, cuando + ": marcador");
+                Assert.AreEqual(disco, m.Disco.style.opacity.keyword == StyleKeyword.Undefined, cuando + ": disco");
+                Assert.AreEqual(disco, m.ClassListContains(MarcadorPosicion.ClaseSinSenal), cuando + ": clase");
+            }
+            Poner(true, true); Comprobar(false, true, "flecha sin señal");
+            Poner(false, true); Comprobar(true, false, "círculo sin señal");
+            Poner(true, true); Comprobar(false, true, "otra vez la flecha");
+            Poner(true, false); Comprobar(false, false, "con señal");
+            Poner(false, false); Comprobar(false, false, "círculo con señal");
         }
 
         [Test]
@@ -680,6 +705,8 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(pantalla.PastillaSenal.Visible);
             Assert.IsFalse(Marcador.Atenuado);
             Assert.AreEqual(StyleKeyword.Null, Marcador.style.opacity.keyword);
+            Assert.AreEqual(StyleKeyword.Null, Marcador.Disco.style.opacity.keyword);
+            Assert.IsFalse(Marcador.ClassListContains(MarcadorPosicion.ClaseSinSenal));
             CollectionAssert.AreEqual(new[] { "Señal GPS recuperada" }, anuncios);
             Fotograma();
             Assert.AreEqual(1, anuncios.Count);

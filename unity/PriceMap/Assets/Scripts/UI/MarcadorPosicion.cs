@@ -12,7 +12,8 @@ namespace PriceMap.UI
     /// translate); no captura toques.
     ///
     /// Historia 2.7, parte 2c: navegando en coche es una flecha (sin cono) con el rumbo de la marcha, girada respecto
-    /// al norte (rumbo − giro del mapa: con la cámara siguiendo, hacia arriba); sin señal del GPS, todo al 40 %.
+    /// al norte (rumbo − giro del mapa: con la cámara siguiendo, hacia arriba); sin señal del GPS, al 40 %;
+    /// con la flecha, solo su disco (al 70 %).
     ///
     /// Cursor más grande (maqueta B del 22/11/2026): punto de 24 dp con borde de 4 y cono de 100; la flecha (30 dp,
     /// sin borde) va sobre un disco blanco de 48 dp con sombra suave que no gira.
@@ -24,8 +25,12 @@ namespace PriceMap.UI
         public const float MargenDp = 50f;
         /// <summary>Apertura total del cono (grados).</summary>
         const float AperturaCono = 60f;
-        /// <summary>Opacidad de la posición sin señal del GPS (se queda en su último sitio).</summary>
+        /// <summary>Opacidad del círculo y el cono sin señal del GPS (se quedan en su último sitio).</summary>
         public const float OpacidadSinSenal = 0.4f;
+        /// <summary>Opacidad del disco de la flecha sin señal: con menos, en oscuro la flecha se confunde con él.</summary>
+        public const float OpacidadDiscoSinSenal = 0.7f;
+        /// <summary>Clase con la flecha y sin señal: la flecha, en --color-flecha-sin-senal.</summary>
+        public const string ClaseSinSenal = "marcador-posicion--sin-senal";
 
         public VisualElement Punto { get; }
         public VisualElement Cono { get; }
@@ -44,7 +49,7 @@ namespace PriceMap.UI
         public bool FlechaVisible { get; private set; }
         /// <summary>Ángulo de la flecha en pantalla (grados, sentido horario desde arriba): rumbo − giro del mapa.</summary>
         public float AnguloFlecha { get; private set; }
-        /// <summary>Atenuado (sin señal del GPS): opacidad 0,4.</summary>
+        /// <summary>Sin señal del GPS: el círculo y el cono (o, con la flecha, su disco) atenuados.</summary>
         public bool Atenuado { get; private set; }
         /// <summary>Punto de la coordenada en dp del panel.</summary>
         public Vector2 Posicion { get; private set; }
@@ -96,7 +101,7 @@ namespace PriceMap.UI
         /// Proyecta la posición con la cámara de este fotograma y orienta el cono. Sin posición, detrás de la
         /// cámara o fuera de la pantalla (con margen), se oculta. escalaDp convierte píxeles de pantalla en dp.
         /// Con flecha (navegando en coche), la flecha hacia rumboFlecha (sin él, al norte) en lugar del círculo y el cono;
-        /// atenuado (sin señal), todo al 40 %.
+        /// atenuado (sin señal), al 40 % el círculo y el cono o, con la flecha, solo su disco (al 70 %).
         /// </summary>
         public void Actualizar(IMapa mapa, Coordenada? posicion, float? rumbo, float escalaDp, float anchoPx, float altoPx,
             bool flecha = false, float? rumboFlecha = null, bool atenuado = false)
@@ -122,13 +127,17 @@ namespace PriceMap.UI
                 style.display = ver ? DisplayStyle.Flex : DisplayStyle.None;
             }
 
-            if (atenuado != Atenuado)
+            // Con la flecha solo se atenúa el disco (los dos a la vez se confundían en oscuro); sin ella, todo
+            bool conFlecha = ver && flecha;
+            Atenuado = atenuado;
+            Atenuar(this, atenuado && !conFlecha, OpacidadSinSenal);
+            Atenuar(Disco, atenuado && conFlecha, OpacidadDiscoSinSenal);
+            if (ClassListContains(ClaseSinSenal) != (atenuado && conFlecha))
             {
-                Atenuado = atenuado;
-                style.opacity = atenuado ? new StyleFloat(OpacidadSinSenal) : new StyleFloat(StyleKeyword.Null);
+                EnableInClassList(ClaseSinSenal, atenuado && conFlecha);
+                Flecha.MarkDirtyRepaint(); // su color llega con el estilo
             }
 
-            bool conFlecha = ver && flecha;
             if (conFlecha)
             {
                 float angulo = AnguloEnPantalla(rumboFlecha ?? 0f, mapa.Giro);
@@ -161,6 +170,13 @@ namespace PriceMap.UI
                 ConoVisible = cono;
                 Cono.style.display = cono ? DisplayStyle.Flex : DisplayStyle.None;
             }
+        }
+
+        // Solo escribe el estilo si cambia (se llama en cada fotograma)
+        static void Atenuar(VisualElement e, bool atenuado, float opacidad)
+        {
+            if (atenuado == (e.style.opacity.keyword == StyleKeyword.Undefined)) return;
+            e.style.opacity = atenuado ? new StyleFloat(opacidad) : new StyleFloat(StyleKeyword.Null);
         }
 
         /// <summary>Vuelve a dibujar el cono (su color llega con el estilo).</summary>
