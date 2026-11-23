@@ -10,6 +10,7 @@ import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.Window;
 
+import com.pricemap.inicio.PuenteInicio;
 import com.pricemap.ruta.PuenteUbicacionRuta;
 import com.unity3d.player.IUnityPermissionRequestSupport;
 import com.unity3d.player.IUnityPlayerLifecycleEvents;
@@ -19,12 +20,12 @@ import com.unity3d.player.UnityPlayer;
 import com.unity3d.player.UnityPlayerForActivityOrService;
 
 /**
- * Actividad de PriceMap (historia 2.8, parte 2; FR21): copia de la plantilla UnityPlayerActivity de Unity 6000.3 con un
- * cambio. Mientras C# dice que hay ruta (seguir(true), con el servicio de ruta en marcha), al ir a segundo plano
- * (pantalla bloqueada u otra app delante) no se pausa el reproductor de Unity: la navegación, los recálculos y la voz
- * siguen a tiempo real, y se avisa a C# ("AlSegundoPlano" "1": pocos fotogramas y sin dibujar el mapa); al volver, "0".
- * Sin ruta, todo como la plantilla (Unity se pausa y C# apaga el GPS, NFR-3). Si la ruta acaba con la app detrás, se
- * hace entonces la pausa que se saltó.
+ * Actividad de PriceMap (historia 2.8, parte 2; FR21): copia de la plantilla UnityPlayerActivity de Unity 6000.3 con dos
+ * cambios. Uno: pone la pantalla de inicio (com.pricemap.inicio) encima de Unity desde onCreate. Otro: mientras C# dice
+ * que hay ruta (seguir(true), con el servicio de ruta en marcha), al ir a segundo plano (pantalla bloqueada u otra app
+ * delante) no se pausa el reproductor de Unity: la navegación, los recálculos y la voz siguen a tiempo real, y se avisa a
+ * C# ("AlSegundoPlano" "1": pocos fotogramas y sin dibujar el mapa); al volver, "0". Sin ruta, todo como la plantilla
+ * (Unity se pausa y C# apaga el GPS, NFR-3). Si la ruta acaba con la app detrás, se hace entonces la pausa que se saltó.
  */
 public class ActividadPrincipal extends Activity implements IUnityPlayerLifecycleEvents, IUnityPermissionRequestSupport, IUnityPlayerSupport
 {
@@ -92,6 +93,7 @@ public class ActividadPrincipal extends Activity implements IUnityPlayerLifecycl
     {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
+        PuenteInicio.prepararVentana(this);
 
         String cmdLine = updateUnityCommandLineArguments(getIntent().getStringExtra("unity"));
         getIntent().putExtra("unity", cmdLine);
@@ -100,6 +102,7 @@ public class ActividadPrincipal extends Activity implements IUnityPlayerLifecycl
         setContentView(mUnityPlayer.getFrameLayout());
         mUnityPlayer.getFrameLayout().requestFocus();
         instancia = this;
+        PuenteInicio.mostrar(this, mUnityPlayer.getFrameLayout()); // encima de Unity, que tarda 2-3 s en dibujar
     }
 
     @Override
@@ -126,7 +129,10 @@ public class ActividadPrincipal extends Activity implements IUnityPlayerLifecycl
     // Quit Unity
     @Override protected void onDestroy ()
     {
-        if (instancia == this) instancia = null;
+        if (instancia == this) {
+            instancia = null;
+            PuenteInicio.quitar(); // la de una actividad más nueva, no
+        }
         // Sin actividad nadie pararía el servicio de ruta (GPS, notificación y procesador despierto): se para con ella
         seguirEnSegundoPlano = false;
         if (PuenteUbicacionRuta.enMarcha()) PuenteUbicacionRuta.parar();
@@ -140,6 +146,7 @@ public class ActividadPrincipal extends Activity implements IUnityPlayerLifecycl
     {
         super.onStop();
         parada = true;
+        PuenteInicio.fijarArranque(this); // el tema pudo cambiar en la app: el próximo arranque, con él
         if (siguiendo()) { paradaSaltada = true; avisar(true); return; }
         mUnityPlayer.onStop();
     }

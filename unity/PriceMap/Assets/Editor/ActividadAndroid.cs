@@ -11,7 +11,8 @@ namespace PriceMap.EditorTools
     /// MAIN/LAUNCHER) pasa a ser la de la app, <c>com.pricemap.app.ActividadPrincipal</c>
     /// (Assets/Plugins/Android/ActividadPrincipal.java): navegando no pausa Unity en segundo plano. Se queda con sus
     /// filtros (los de compartir los añade después CompartirAndroid) y se le quita lo que solo usa GameActivity
-    /// (<c>android.app.lib_name</c>). La app usa la entrada Activity (ConfigurarAndroid).
+    /// (<c>android.app.lib_name</c>). La app usa la entrada Activity (ConfigurarAndroid). Con aceleración gráfica (Unity la
+    /// quita): la pantalla de inicio se anima encima de Unity.
     /// </summary>
     public class ActividadAndroid : IPostGenerateGradleAndroidProject
     {
@@ -38,6 +39,7 @@ namespace PriceMap.EditorTools
             if (actividad == null) { Debug.LogWarning("PriceMap: no hay actividad lanzadora en " + manifiesto + "; se queda la de Unity."); return; }
 
             actividad.SetAttribute("name", EspacioAndroid, Actividad);
+            actividad.SetAttribute("hardwareAccelerated", EspacioAndroid, "true");
             foreach (var meta in actividad.SelectNodes($"meta-data[@android:name='{SoloGameActivity}']", nombres).Cast<XmlNode>().ToList())
                 actividad.RemoveChild(meta);
             xml.Save(manifiesto);

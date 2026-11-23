@@ -182,3 +182,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-9-llegar-y-terminar-la-ruta.md`
   summary: En el móvil: llegada real, cierre al minuto (también bloqueado) y que la notificación desaparezca.
   evidence: En el PC la posición es falsa y no hay notificación; si Android pausara Unity, el minuto se cerraría al volver.
+
+- source_spec: `spec-pantalla-de-inicio.md`
+  summary: Probar en el móvil la parte nativa de la pantalla de inicio (en el repositorio no hay pruebas instrumentadas de Android).
+  evidence: Las pruebas solo leen el Java. Comprobar que sale, `irse` la quita y después se puede tocar el mapa; que se va sola a los 15 s; tema guardado oscuro con el sistema claro (y en Android 8–11 el arranque con el del sistema); sin fotograma negro; pin hasta el punto azul; sin animaciones; TalkBack; y que `hardwareAccelerated` no afecta al mapa ni al teclado.

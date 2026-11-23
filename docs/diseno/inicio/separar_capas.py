@@ -2,8 +2,8 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-SRC = r'C:/Users/guape/Documents/TFG-App-Precios/docs/diseno/inicio/inicio-pricemap.png'
-OUT = r'C:/Users/guape/AppData/Local/Temp/claude/967482c3100680b3/5fb0986d-b7c3-4bd8-9010-d36de9ef35c4/scratchpad/inicio'
+SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'inicio-pricemap.png')
+OUT = os.path.dirname(os.path.abspath(__file__))
 os.makedirs(OUT, exist_ok=True)
 im = Image.open(SRC).convert('RGB')
 print(im.size, im.getpixel((5, 5)), im.getpixel((420, 300)))

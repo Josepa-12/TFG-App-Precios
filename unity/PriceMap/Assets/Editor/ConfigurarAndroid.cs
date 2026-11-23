@@ -41,8 +41,16 @@ namespace PriceMap.EditorTools
 
             EditorUserBuildSettings.buildAppBundle = false; // APK instalable a mano
             PonerIconos();
+            QuitarLogoUnity();
             AssetDatabase.SaveAssets();
             Debug.Log($"PriceMap: Android configurado ({Identificador}, minSdk 26, targetSdk 35, IL2CPP ARM64, vertical, Activity).");
+        }
+
+        /// <summary>Sin el logo de Unity al abrir: en Android sale la pantalla de inicio propia (PuenteInicio); en PC, nada.</summary>
+        public static void QuitarLogoUnity()
+        {
+            PlayerSettings.SplashScreen.show = false;
+            PlayerSettings.SplashScreen.showUnityLogo = false;
         }
 
         public const string IconoApp = "Assets/Iconos/IconoApp.png";       // logo redondeado (clásico y PC)
@@ -130,6 +138,7 @@ namespace PriceMap.EditorTools
             PlayerSettings.defaultScreenHeight = 915;
             PlayerSettings.resizableWindow = false;
             PonerIconos();
+            QuitarLogoUnity();
             var informe = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
                 scenes = new[] { PrepararEscenaPrincipal.RutaEscena },

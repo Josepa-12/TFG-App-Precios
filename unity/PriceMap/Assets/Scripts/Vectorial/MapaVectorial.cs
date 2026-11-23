@@ -149,7 +149,7 @@ namespace PriceMap.Vectorial
             var pivote = camara != null ? camara.pivote : Vector3.zero;
             var geo = Geo.AGeo(pivote);
             var centro = Geo.Tesela(geo.lat, geo.lon, zoom);
-            int radioCarga = radio + (camara != null && camara.distancia > distanciaAnilloExtra ? 1 : 0);
+            int radioCarga = RadioCarga;
             if (centro == centroAplicado && radioCarga == radioAplicado) return;
             centroAplicado = centro;
             radioAplicado = radioCarga;
@@ -158,6 +158,49 @@ namespace PriceMap.Vectorial
             foreach (var t in plan.aLiberar) Liberar(t);
             foreach (var t in plan.aCargar) { pendientes.Add(t); cola.Enqueue(t); }
         }
+
+        int RadioCarga => radio + (camara != null && camara.distancia > distanciaAnilloExtra ? 1 : 0);
+
+        // Lo que se mira de más por cada lado al preguntar por la vista (parte de la pantalla): al irse la pantalla de
+        // inicio el mapa se acerca desde más lejos y se ve algo más
+        const float MargenVista = (ParametrosNegocio.InicioAcercarDesde - 1f) / 2f;
+        const int MuestrasVista = 5; // por lado: una tesela mide unos 2 km, más que lo que hay entre dos
+
+        /// <summary>
+        /// Si están construidas todas las teselas que se ven con la cámara de ahora (de las que se cargan con este centro:
+        /// el horizonte no cuenta). Con el centro recién cambiado cuenta ya el nuevo.
+        /// </summary>
+        public bool VistaCargada
+        {
+            get
+            {
+                var c = Camara();
+                var centro = TeselaEn(c != null ? c.pivote : Vector3.zero);
+                if (!cargadas.ContainsKey(centro)) return false;
+                var cam = c != null ? c.GetComponent<Camera>() : null;
+                if (cam == null) return true;
+                for (int i = 0; i < MuestrasVista; i++)
+                    for (int j = 0; j < MuestrasVista; j++)
+                    {
+                        float x = Mathf.Lerp(-MargenVista, 1f + MargenVista, i / (MuestrasVista - 1f));
+                        float y = Mathf.Lerp(-MargenVista, 1f + MargenVista, j / (MuestrasVista - 1f));
+                        var suelo = c.PuntoEnSuelo(new Vector2(x * cam.pixelWidth, y * cam.pixelHeight));
+                        if (!suelo.HasValue) continue;
+                        var t = TeselaEn(suelo.Value);
+                        if (PlanTeselas.Distancia(t, centro) <= RadioCarga && !cargadas.ContainsKey(t)) return false;
+                    }
+                return true;
+            }
+        }
+
+        Vector2Int TeselaEn(Vector3 suelo)
+        {
+            var geo = Geo.AGeo(suelo);
+            return Geo.Tesela(geo.lat, geo.lon, zoom);
+        }
+
+        /// <summary>La vista se acerca desde tan lejos (veces su distancia) en esos segundos.</summary>
+        public void AcercarDesde(float factor, float segundos) { var c = Camara(); if (c != null) c.AcercarDesde(factor, segundos); }
 
         void Liberar(Vector2Int t)
         {

@@ -34,6 +34,9 @@ namespace PriceMap.Arranque
         {
             Application.targetFrameRate = FotogramasDelante;
 
+            // Pantalla de inicio (spec pantalla-de-inicio): la pone Android encima de Unity; sus 4 s cuentan desde aquí
+            var inicio = CapturaPruebas.SePide() ? null : new ServicioInicio(new PantallaInicioAndroid(), () => Time.realtimeSinceStartupAsDouble);
+
             if (mapa == null) mapa = FindFirstObjectByType<MapaVectorial>();
             if (pantallaMapa == null) pantallaMapa = FindFirstObjectByType<PantallaMapa>();
 
@@ -80,8 +83,8 @@ namespace PriceMap.Arranque
             voz = new ServicioVoz(navegacion, CrearVoz(), preferencias, textoLlegada: destino => Textos.T(ClavesTexto.LlegadaA, destino));
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
-                    navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz, calles: calles))
-            { enabled = false; return; }
+                    navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz, calles: calles, inicio: inicio))
+            { inicio?.Irse(null); enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
@@ -200,12 +203,13 @@ namespace PriceMap.Arranque
         /// <param name="pantallaSistema">Pantalla encendida mientras se navega (historia 2.7, parte 2b); sin él, se apaga sola.</param>
         /// <param name="voz">Indicaciones por voz (historia 2.8); sin él, no hay botón de voz.</param>
         /// <param name="calles">Calles guardadas del buscador (spec buscar-calles-guardadas); sin él, no se buscan.</param>
+        /// <param name="inicio">Pantalla de inicio (spec pantalla-de-inicio); sin él, no hay.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
             ServicioNavegacion navegacion = null, IPantallaSistema pantallaSistema = null, ServicioVoz voz = null,
-            BuscadorCalles calles = null)
+            BuscadorCalles calles = null, ServicioInicio inicio = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -227,7 +231,7 @@ namespace PriceMap.Arranque
             // La pantalla no se apaga mientras se navega (historia 2.7, parte 2b; FR20)
             if (navegacion != null && pantallaSistema != null) _ = new PantallaEncendida(navegacion, pantallaSistema);
             pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca, geocodificador,
-                resolutorEnlaces, rutas, navegacion, voz, calles);
+                resolutorEnlaces, rutas, navegacion, voz, calles, inicio);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

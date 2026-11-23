@@ -84,8 +84,15 @@ namespace PriceMap.Vectorial
             // izquierdo) cuenta solo pasado el umbral del toque: un toque no suelta
             if (EsGesto(antes, Estado(), arrastreLargo, teclaMovio)) Gesto();
             teclaMovio = false;
-            AvanzarSeguimiento(Time.unscaledDeltaTime);
+            Avanzar(Time.unscaledDeltaTime);
             Aplicar();
+        }
+
+        /// <summary>Lo que se mueve solo con el tiempo: seguir al usuario y acercarse al abrir. Lo llama Update; las pruebas, directamente.</summary>
+        internal void Avanzar(float segundos)
+        {
+            AvanzarSeguimiento(segundos);
+            AvanzarAcercamiento(segundos);
         }
 
         (Vector3 pivote, float distancia, float inclinacion, float giro) Estado() => (pivote, distancia, inclinacion, giro);
@@ -136,6 +143,7 @@ namespace PriceMap.Vectorial
             Vector2 enPantalla, bool animado)
         {
             if (cam == null) cam = GetComponent<Camera>(); // en EditMode no se ejecuta Awake
+            TerminarAcercamiento();
             var antes = Estado();
             // El objetivo: la cámara ya en su giro, inclinación y distancia, con la coordenada en el punto pedido
             giro = giroObjetivo;
@@ -186,11 +194,52 @@ namespace PriceMap.Vectorial
         void Gesto()
         {
             siguiendo = false;
+            distancia *= factorAcercar; // se queda donde está, sin salto
+            TerminarAcercamiento();
             GestoUsuario?.Invoke();
         }
 
         /// <summary>Solo para las pruebas y la captura: un gesto del usuario, como si moviera el mapa.</summary>
         public void SimularGesto() => Gesto();
+
+        // ───────────────────────── Acercarse al abrir (spec pantalla-de-inicio) ─────────────────────────
+
+        float factorAcercar = 1f; // veces la distancia con la que se dibuja; 1 = sin acercamiento
+        float factorInicial = 1f, segundosAcercar, llevaAcercando;
+
+        /// <summary>Para las pruebas: veces la distancia con la que se dibuja ahora (1 = la suya).</summary>
+        internal float FactorAcercar => factorAcercar;
+
+        /// <summary>
+        /// Se dibuja desde tan lejos (veces la distancia) y se acerca hasta la suya en esos segundos, frenando. La
+        /// distancia no cambia: solo desde dónde se ve. Lo acaban un gesto, los botones de zoom, Seguir, Encuadrar y
+        /// CentrarEn con un punto de la pantalla; CentrarEn sin él (una posición que llega tarde) y OrientarNorte, no.
+        /// </summary>
+        public void AcercarDesde(float factor, float segundos)
+        {
+            if (!(factor > 0f) || !(segundos > 0f)) return;
+            factorInicial = factorAcercar = factor;
+            segundosAcercar = segundos;
+            llevaAcercando = 0f;
+            Aplicar();
+        }
+
+        /// <summary>Lo que se acerca en ese tiempo. Lo llama Update; las pruebas, directamente.</summary>
+        internal void AvanzarAcercamiento(float segundos)
+        {
+            if (factorAcercar == 1f || segundos <= 0f) return;
+            llevaAcercando += segundos;
+            float queda = 1f - Mathf.Clamp01(llevaAcercando / segundosAcercar);
+            factorAcercar = queda > 0f ? 1f + (factorInicial - 1f) * queda * queda * queda : 1f;
+            Aplicar();
+        }
+
+        void TerminarAcercamiento()
+        {
+            if (factorAcercar == 1f) return;
+            factorAcercar = 1f;
+            Aplicar();
+        }
 
         // El dedo o el botón izquierdo bajan: empieza a medirse si pasan del umbral del toque
         void EmpezarArrastre(Vector2 pantalla)
@@ -267,7 +316,7 @@ namespace PriceMap.Vectorial
             distancia = Mathf.Clamp(distancia, distanciaMin, distanciaMax);
             inclinacion = Mathf.Clamp(inclinacion, inclinacionMin, inclinacionMax);
             var rot = Quaternion.Euler(inclinacion, giro, 0f);
-            transform.SetPositionAndRotation(pivote - rot * Vector3.forward * distancia, rot);
+            transform.SetPositionAndRotation(pivote - rot * Vector3.forward * (distancia * factorAcercar), rot);
             if (cam != null) { cam.nearClipPlane = Mathf.Max(0.5f, distancia * 0.01f); cam.farClipPlane = distancia * 20f; }
         }
 
@@ -351,10 +400,10 @@ namespace PriceMap.Vectorial
         }
 
         /// <summary>Acerca un paso (botón de zoom).</summary>
-        public void Acercar() { distancia *= PasoZoom; Aplicar(); }
+        public void Acercar() { TerminarAcercamiento(); distancia *= PasoZoom; Aplicar(); }
 
         /// <summary>Aleja un paso (botón de zoom).</summary>
-        public void Alejar() { distancia /= PasoZoom; Aplicar(); }
+        public void Alejar() { TerminarAcercamiento(); distancia /= PasoZoom; Aplicar(); }
 
         const float PasoZoom = 0.6f;
 
@@ -369,6 +418,7 @@ namespace PriceMap.Vectorial
         /// </summary>
         public void CentrarEn(double lat, double lon, Vector2 objetivo)
         {
+            TerminarAcercamiento();
             CentrarEn(lat, lon);
             if (cam == null) cam = GetComponent<Camera>(); // en EditMode no se ejecuta Awake
             if (cam == null) return;
@@ -402,6 +452,7 @@ namespace PriceMap.Vectorial
             if (puntos == null || puntos.Count == 0 || libre.width <= 0f || libre.height <= 0f) return;
             if (cam == null) cam = GetComponent<Camera>(); // en EditMode no se ejecuta Awake
             if (cam == null) return;
+            TerminarAcercamiento();
             Vector3 min = puntos[0], max = puntos[0];
             foreach (var p in puntos) { min = Vector3.Min(min, p); max = Vector3.Max(max, p); }
             pivote = new Vector3((min.x + max.x) / 2f, 0f, (min.z + max.z) / 2f);

@@ -155,5 +155,15 @@ namespace PriceMap.Dominio
         /// procesan de golpe y solo se da por dicho lo que ya no toca.
         /// </summary>
         public const double VozSilencioAlVolverSegundos = 1.0;
+
+        // Pantalla de inicio (spec pantalla-de-inicio; decisiones del 23/11/2026)
+        /// <summary>Segundos que tarda en caer el pin: la pantalla de inicio no se va antes.</summary>
+        public const double InicioPinSegundos = 1.0;
+        /// <summary>Segundos, desde que Unity está listo, que se espera como mucho a la posición y al mapa.</summary>
+        public const double InicioMaximoSegundos = 4.0;
+        /// <summary>Al irse, el mapa se acerca desde esta distancia de cámara (veces la suya).</summary>
+        public const float InicioAcercarDesde = 1.22f;
+        /// <summary>Segundos que tarda el mapa en acercarse, lo mismo que la pantalla en irse.</summary>
+        public const float InicioAcercarSegundos = 0.8f;
     }
 }

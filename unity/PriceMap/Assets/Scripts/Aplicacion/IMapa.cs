@@ -119,5 +119,18 @@ namespace PriceMap.Aplicacion
         /// no cuenta). Llega en cada fotograma del gesto; la cámara ya ha dejado de seguir.
         /// </summary>
         event Action GestoUsuario { add { } remove { } }
+
+        /// <summary>
+        /// Si está cargado todo lo que se ve del mapa ahora mismo (spec pantalla-de-inicio). Por defecto (mapas falsos de
+        /// las pruebas), sí.
+        /// </summary>
+        bool VistaCargada => true;
+
+        /// <summary>
+        /// La vista se aleja de golpe esas veces su distancia y vuelve a ella, acercándose, en esos segundos (spec
+        /// pantalla-de-inicio). DistanciaCamara no cambia. Lo acaban un gesto, los botones de zoom, Seguir, Encuadrar y centrar en
+        /// un punto de la pantalla; Centrar sin punto (una posición que llega tarde) y OrientarNorte, no. Por defecto, nada.
+        /// </summary>
+        void AcercarDesde(float factor, float segundos) { }
     }
 }

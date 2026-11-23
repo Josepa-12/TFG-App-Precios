@@ -101,6 +101,9 @@ namespace PriceMap.UI
         ReglaRumbo rumboMarcha;                // rumbo de la marcha sacado de las posiciones
         bool animacionesQuitadas;              // "quitar animaciones" del sistema (leído al arrancar y al volver delante)
         float giroSeguido;                     // último giro pedido a la cámara al seguir (la brújula a pie se compara con él)
+        // Pantalla de inicio (spec pantalla-de-inicio)
+        ServicioInicio inicio;                 // null = sin pantalla de inicio (PC, editor, captura, pruebas)
+        Func<bool> vistaCargada;               // se pregunta al mapa en cada fotograma: una sola vez creada
         // Indicaciones por voz (historia 2.8)
         ServicioVoz voz;                       // null = sin botón de voz
         BotonRedondo botonVoz;                 // en la columna, encima de "Volver a centrar"; solo se ve navegando
@@ -120,17 +123,18 @@ namespace PriceMap.UI
         /// <param name="navegacion">Seguir la ruta tras Ir (historia 2.7); sin él, la ruta se dibuja pero no se sigue.</param>
         /// <param name="voz">Indicaciones por voz (historia 2.8); sin él (o sin navegación), no hay botón de voz.</param>
         /// <param name="calles">Calles guardadas (spec buscar-calles-guardadas); sin él, el buscador no las busca.</param>
+        /// <param name="inicio">Pantalla de inicio que tapa la app (spec pantalla-de-inicio); sin él, no hay.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
             BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
             IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null, ServicioNavegacion navegacion = null,
-            ServicioVoz voz = null, BuscadorCalles calles = null)
+            ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador, resolutorEnlaces, rutas, navegacion, voz, calles);
+                geocodificador, resolutorEnlaces, rutas, navegacion, voz, calles, inicio);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
@@ -138,7 +142,7 @@ namespace PriceMap.UI
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
-            ServicioNavegacion navegacion = null, ServicioVoz voz = null, BuscadorCalles calles = null)
+            ServicioNavegacion navegacion = null, ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null)
         {
             this.mapa = mapa;
             this.navegacion = rutas != null ? navegacion : null; // sin rutas no hay Ir
@@ -159,6 +163,12 @@ namespace PriceMap.UI
             rumboMarcha = new ReglaRumbo(() => RelojCamara());
             this.mapa.Centrar(ubicacion?.UltimaConocida ?? VistaInicial); // ya donde está; CentrarAlAbrir lo afina con el GPS
             this.mapa.GestoUsuario += AlGestoUsuario; // suelta la cámara que sigue (2.7b) y anula el centrado al abrir
+            if (inicio != null && inicio.ALaVista)
+            {
+                this.inicio = inicio;
+                vistaCargada = () => this.mapa.VistaCargada;
+                inicio.Terminada += AlTerminarInicio;
+            }
 
             raiz = raizDocumento?.Q("raiz");
             if (raiz == null) return; // sin interfaz (p. ej. en pruebas): el mapa funciona igual
@@ -304,8 +314,52 @@ namespace PriceMap.UI
             AlCambiarLector(AccesibilidadPantalla.LectorActivo);
             // El tema inicial llega con ServicioTema.Iniciar (lo llama el Arranque justo después)
 
-            // Primera apertura sin permiso: la explicación sale antes de pedirlo, una sola vez
-            if (this.ubicacion != null && this.ubicacion.DebeExplicarAlAbrir) AbrirExplicacion();
+            // Primera apertura sin permiso: la explicación sale antes de pedirlo, una sola vez (con la pantalla de inicio,
+            // al irse ella: AlTerminarInicio)
+            if (!InicioALaVista) ExplicarAlAbrir();
+        }
+
+        void ExplicarAlAbrir()
+        {
+            if (ubicacion != null && ubicacion.DebeExplicarAlAbrir) AbrirExplicacion();
+        }
+
+        // ───────────────────────── Pantalla de inicio (spec pantalla-de-inicio) ─────────────────────────
+
+        /// <summary>La pantalla de inicio tapa la app (también mientras se va).</summary>
+        public bool InicioALaVista => inicio != null && inicio.ALaVista;
+
+        // La explicación del permiso saldrá cuando se vaya la pantalla de inicio
+        bool ExplicacionPorSalir => InicioALaVista && explicacion != null && ubicacion != null && ubicacion.DebeExplicarAlAbrir;
+
+        // Se espera a la posición si puede llegar y nada compartido ha llevado el mapa a otro sitio (o va a hacerlo)
+        bool InicioEsperaPosicion =>
+            ubicacion != null && (ubicacion.Estado == EstadoUbicacion.Buscando || ubicacion.Estado == EstadoUbicacion.Activa)
+            && !FichaAbierta && abrirSolo == null && compartidoPendiente == null;
+
+        /// <summary>
+        /// Cada fotograma, ya centrado el mapa (CentrarAlAbrir): si toca, la pantalla de inicio se va, con el pin hacia el
+        /// punto del usuario (o el centro si no se le esperaba o no ha llegado), y el mapa se acerca por detrás.
+        /// </summary>
+        void ComprobarInicio()
+        {
+            if (!InicioALaVista) return;
+            bool espera = InicioEsperaPosicion;
+            var posicion = ubicacion?.Posicion;
+            if (!inicio.Comprobar(espera, posicion.HasValue, vistaCargada)) return;
+            // El destino, con la cámara en su sitio: AcercarDesde la aleja
+            var destino = espera && posicion.HasValue ? mapa.Proyectar(posicion.Value) : (PuntoPantalla?)null;
+            if (!animacionesQuitadas) mapa.AcercarDesde(ParametrosNegocio.InicioAcercarDesde, ParametrosNegocio.InicioAcercarSegundos);
+            inicio.Irse(destino);
+        }
+
+        // La pantalla de inicio se ha ido: lo que esperaba a que se viera la app
+        void AlTerminarInicio()
+        {
+            inicio.Terminada -= AlTerminarInicio;
+            if (raiz == null) return;
+            ExplicarAlAbrir();
+            if (!ExplicacionAbierta) accesibilidad.RecuperarFoco(); // lo pedido con Unity tapado no llegó a TalkBack
         }
 
         /// <summary>
@@ -794,7 +848,7 @@ namespace PriceMap.UI
         /// </summary>
         public bool AplicarCompartidoPendiente()
         {
-            if (compartidoPendiente == null || buscador == null || ModalUbicacionAbierta) return false;
+            if (compartidoPendiente == null || buscador == null || ModalUbicacionAbierta || ExplicacionPorSalir) return false;
             string texto = compartidoPendiente;
             compartidoPendiente = null;
             CerrarFicha(); // vuelve la cápsula
@@ -3049,9 +3103,12 @@ namespace PriceMap.UI
             return true;
         }
 
+        /// <summary>La tecla atrás: con la pantalla de inicio delante no se toca nada.</summary>
+        internal void TeclaAtras() { if (!InicioALaVista) Atras(); }
+
         void Update()
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) Atras();
+            if (Input.GetKeyDown(KeyCode.Escape)) TeclaAtras();
             if (compartidoPendiente != null) AplicarCompartidoPendiente(); // al cerrarse la ventana de ubicación
         }
 
@@ -3068,6 +3125,7 @@ namespace PriceMap.UI
             if (voz != null) voz.ModoCambiado -= AlCambiarModoVoz;
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
             if (mapa != null) mapa.GestoUsuario -= AlGestoUsuario;
+            if (inicio != null) inicio.Terminada -= AlTerminarInicio;
             if (ficha != null && mapa != null)
             {
                 mapa.Toque -= AlTocarMapa;
@@ -3336,6 +3394,7 @@ namespace PriceMap.UI
         internal void ActualizarCapas(float escala)
         {
             CentrarAlAbrir();
+            ComprobarInicio();
             // Navegando (historia 2.7, parte 2c): ¿más de 10 s sin lecturas del GPS? La pastilla sigue a la señal y a la ficha.
             // Ya en el destino: ¿ha pasado el minuto? (historia 2.9)
             if (Navegando) navegacion.Comprobar();
