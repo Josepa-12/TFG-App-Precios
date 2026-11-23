@@ -48,7 +48,8 @@
     --color-posicion: #2F5BEA;
     --color-posicion-borde: #FFFFFF;
     --color-posicion-cono: rgba(47, 91, 234, 0.28);
-    /* Flecha de la navegación en coche (historia 2.7, parte 2c): mismo azul con el borde blanco; en oscuro, más clara */
+    /* Flecha de la navegación en coche (historia 2.7, parte 2c): mismo azul, sin borde, sobre un disco
+       blanco (--color-posicion-borde); en oscuro, más clara */
     --color-flecha: #2F5BEA;
     /* Chincheta del punto libre (historia 2.5, maqueta del 19/11/2026): azul marino (--color-text del claro) con
        borde y centro blancos; en oscuro, blanca con borde fino y centro azul marino. Sombra pequeña en el suelo */
@@ -139,7 +140,8 @@
     --radio-pill: 24px;
     --radio-boton-redondo: 24px;   /* 48 / 2 */
     --radio-insignia: 9px;         /* 18 / 2 */
-    --radio-posicion-punto: 9px;   /* 18 / 2 */
+    --radio-posicion-punto: 12px;  /* 24 / 2 */
+    --radio-posicion-disco: 24px;  /* 48 / 2 */
     --radio-poi-icono: 12px;       /* 24 / 2 */
     --radio-frescura-punto: 4.5px; /* 9 / 2 */
     --radio-toast: 12px;     /* toast (DESIGN.md) */
@@ -159,9 +161,13 @@
     --poi-icono: 24px;
     --poi-glifo: 13px;
     --poi-nombre-ancho: 96px; /* 8 em de 12 sp, como text-max-width del prototipo */
-    --posicion-punto: 18px;
-    --posicion-cono: 80px;
-    --posicion-flecha: 26px;
+    /* Cursor de la posición más grande (maqueta B del 22/11/2026): punto de 24 con borde de 4, cono de 100 y, en
+       coche, flecha de 30 sobre un disco blanco de 48 con sombra suave */
+    --posicion-punto: 24px;
+    --posicion-punto-borde: 4px;
+    --posicion-cono: 100px;
+    --posicion-flecha: 30px;
+    --posicion-disco: 48px;
     --chincheta-ancho: 34px;
     --chincheta-alto: 44px;
     --gotita-ancho: 12px;  /* gotita delante de "Punto en el mapa" */

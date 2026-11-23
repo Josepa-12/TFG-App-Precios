@@ -343,6 +343,70 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(m.pantalla.MarcadorPosicion.Visible);
         }
 
+        /// <summary>Cursor más grande: a menos de medio cono (50 dp) del borde aún se coloca; más allá, no.</summary>
+        [Test]
+        public void ElCursorSeColocaHastaMedioConoFueraDelBorde()
+        {
+            var tokens = System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "UI/Estilos/Tokens.uss"));
+            float cono = float.Parse(System.Text.RegularExpressions.Regex.Match(tokens, @"--posicion-cono:\s*(?<v>[\d.]+)px").Groups["v"].Value,
+                System.Globalization.CultureInfo.InvariantCulture);
+            Assert.AreEqual(cono / 2f, MarcadorPosicion.MargenDp, "La mitad del cono (--posicion-cono).");
+            var mapa = new MapaFalso();
+            var marcador = new MarcadorPosicion();
+            void Poner(float x, float y)
+            {
+                mapa.proyeccion = new PuntoPantalla(x, y, 300f);
+                marcador.Actualizar(mapa, Usuario, 90f, 1f, 400f, 800f);
+            }
+            Poner(-49f, 400f);
+            Assert.IsTrue(marcador.Visible, "A 49 dp por la izquierda.");
+            Assert.AreEqual(new Vector2(-49f, 400f), marcador.Posicion, "Centrado en la coordenada.");
+            Poner(400f + 49f, 800f + 49f);
+            Assert.IsTrue(marcador.Visible, "A 49 dp por abajo a la derecha.");
+            Poner(-50f, -50f);
+            Assert.IsTrue(marcador.Visible, "Justo a 50 dp por arriba a la izquierda.");
+            Poner(400f + 50f, 800f + 50f);
+            Assert.IsTrue(marcador.Visible, "Justo a 50 dp por abajo a la derecha.");
+            Poner(-51f, 400f);
+            Assert.IsFalse(marcador.Visible);
+            Poner(200f, -51f);
+            Assert.IsFalse(marcador.Visible);
+            Poner(400f + 51f, 400f);
+            Assert.IsFalse(marcador.Visible, "Pasado por la derecha.");
+            Poner(200f, 800f + 51f);
+            Assert.IsFalse(marcador.Visible, "Pasado por abajo.");
+        }
+
+        /// <summary>
+        /// Tamaños de la maqueta B (22/11/2026): punto de 24 dp con borde de 4, cono de 100, flecha de 30 sobre un disco
+        /// de 48 con sombra suave. Todo centrado en la coordenada (translate −50 %).
+        /// </summary>
+        [Test]
+        public void ElCursorTieneLosTamanosDeLaMaqueta()
+        {
+            var tokens = System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "UI/Estilos/Tokens.uss"));
+            string Token(string nombre) =>
+                System.Text.RegularExpressions.Regex.Match(tokens, System.Text.RegularExpressions.Regex.Escape(nombre) + @":\s*(?<v>[^;]+);").Groups["v"].Value.Trim();
+            Assert.AreEqual("24px", Token("--posicion-punto"));
+            Assert.AreEqual("4px", Token("--posicion-punto-borde"));
+            Assert.AreEqual("100px", Token("--posicion-cono"));
+            Assert.AreEqual("30px", Token("--posicion-flecha"));
+            Assert.AreEqual("48px", Token("--posicion-disco"));
+
+            var uss = System.IO.File.ReadAllText(System.IO.Path.Combine(Application.dataPath, "UI/PantallaMapa.uss"));
+            string Regla(string clase) =>
+                System.Text.RegularExpressions.Regex.Match(uss, System.Text.RegularExpressions.Regex.Escape(clase) + @"\s*\{(?<c>[^}]*)\}").Groups["c"].Value;
+            foreach (var clase in new[] { ".marcador-posicion__cono", ".marcador-posicion__punto", ".marcador-posicion__disco", ".marcador-posicion__flecha" })
+                StringAssert.Contains("translate: -50% -50%", Regla(clase), $"{clase} centrado en la coordenada.");
+            StringAssert.Contains("border-width: var(--posicion-punto-borde)", Regla(".marcador-posicion__punto"));
+            StringAssert.Contains("background-color: var(--color-posicion-borde)", Regla(".marcador-posicion__disco"), "Disco blanco.");
+
+            var marcador = new MarcadorPosicion();
+            Assert.IsTrue(SombraSuave.Tiene(marcador.Disco), "El disco lleva la sombra suave.");
+            Assert.Less(marcador.IndexOf(marcador.Disco), marcador.IndexOf(marcador.Flecha), "La flecha, encima del disco.");
+            Assert.AreEqual(DisplayStyle.None, marcador.Disco.style.display.value, "Sin flecha, sin disco.");
+        }
+
         // ───────────────────────── Botón de ubicación ─────────────────────────
 
         [Test]

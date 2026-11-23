@@ -13,20 +13,24 @@ namespace PriceMap.UI
     ///
     /// Historia 2.7, parte 2c: navegando en coche es una flecha (sin cono) con el rumbo de la marcha, girada respecto
     /// al norte (rumbo − giro del mapa: con la cámara siguiendo, hacia arriba); sin señal del GPS, todo al 40 %.
+    ///
+    /// Cursor más grande (maqueta B del 22/11/2026): punto de 24 dp con borde de 4 y cono de 100; la flecha (30 dp,
+    /// sin borde) va sobre un disco blanco de 48 dp con sombra suave que no gira.
     /// </summary>
     public class MarcadorPosicion : VisualElement
     {
-        /// <summary>Margen fuera de la pantalla (dp) en el que aún se coloca: lo que mide el cono.</summary>
-        public const float MargenDp = 40f;
+        /// <summary>Margen fuera de la pantalla (dp) en el que aún se coloca: lo que mide el cono (100 dp de lado,
+        /// --posicion-cono) desde su centro.</summary>
+        public const float MargenDp = 50f;
         /// <summary>Apertura total del cono (grados).</summary>
         const float AperturaCono = 60f;
         /// <summary>Opacidad de la posición sin señal del GPS (se queda en su último sitio).</summary>
         public const float OpacidadSinSenal = 0.4f;
-        /// <summary>Grosor del borde blanco de la flecha (dp).</summary>
-        const float BordeFlecha = 2.5f;
 
         public VisualElement Punto { get; }
         public VisualElement Cono { get; }
+        /// <summary>Disco blanco con sombra suave bajo la flecha (no gira); se ve y se oculta con ella.</summary>
+        public VisualElement Disco { get; }
         /// <summary>Flecha de la navegación en coche (dibujada hacia arriba; la gira style.rotate).</summary>
         public VisualElement Flecha { get; }
 
@@ -65,6 +69,12 @@ namespace PriceMap.UI
             Punto = new VisualElement { name = "marcador-posicion-punto", pickingMode = PickingMode.Ignore };
             Punto.AddToClassList("marcador-posicion__punto");
             Add(Punto);
+
+            Disco = new VisualElement { name = "marcador-posicion-disco", pickingMode = PickingMode.Ignore };
+            Disco.AddToClassList("marcador-posicion__disco");
+            SombraSuave.Poner(Disco);
+            Disco.style.display = DisplayStyle.None;
+            Add(Disco);
 
             Flecha = new VisualElement { name = "marcador-posicion-flecha", pickingMode = PickingMode.Ignore };
             Flecha.AddToClassList("marcador-posicion__flecha");
@@ -132,6 +142,7 @@ namespace PriceMap.UI
             {
                 FlechaVisible = conFlecha;
                 Flecha.style.display = conFlecha ? DisplayStyle.Flex : DisplayStyle.None;
+                Disco.style.display = conFlecha ? DisplayStyle.Flex : DisplayStyle.None;
                 Punto.style.display = conFlecha ? DisplayStyle.None : DisplayStyle.Flex;
             }
 
@@ -177,7 +188,7 @@ namespace PriceMap.UI
         }
 
         // Flecha de navegación hacia arriba (punta arriba, muesca abajo) que llena el elemento: relleno con su color
-        // (--color-flecha) y borde con el del marcador (--color-posicion-borde)
+        // (--color-flecha), sin borde (el disco blanco de debajo la separa del mapa)
         void DibujarFlecha(MeshGenerationContext mgc)
         {
             var r = Flecha.contentRect;
@@ -185,9 +196,6 @@ namespace PriceMap.UI
             Vector2 P(float x, float y) => new Vector2(r.x + r.width * x, r.y + r.height * y);
             var p = mgc.painter2D;
             p.fillColor = Flecha.resolvedStyle.color;
-            p.strokeColor = resolvedStyle.color;
-            p.lineWidth = BordeFlecha;
-            p.lineJoin = LineJoin.Round;
             p.BeginPath();
             p.MoveTo(P(0.5f, 0.08f));
             p.LineTo(P(0.88f, 0.9f));
@@ -195,7 +203,6 @@ namespace PriceMap.UI
             p.LineTo(P(0.12f, 0.9f));
             p.ClosePath();
             p.Fill();
-            p.Stroke();
         }
     }
 }

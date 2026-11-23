@@ -355,8 +355,8 @@
 }
 
 /* Posición del usuario (prototipo: styles.css · .me). .marcador-posicion mide 0×0 y está justo en la
-   coordenada (MarcadorPosicion lo mueve con translate); el cono y el círculo van centrados en ella.
-   Nada captura toques. */
+   coordenada (MarcadorPosicion lo mueve con translate); el cono, el círculo, el disco y la flecha (sin borde,
+   sobre el disco) van centrados en ella. Nada captura toques. */
 .capa-posicion {
     position: absolute;
     left: 0;
@@ -371,7 +371,6 @@
     top: 0;
     width: 0;
     height: 0;
-    color: var(--color-posicion-borde); /* borde de la flecha */
 }
 
 /* Cono translúcido (sector dibujado con Painter2D hacia arriba; lo gira style.rotate alrededor de su centro) */
@@ -393,13 +392,26 @@
     height: var(--posicion-punto);
     translate: -50% -50%;
     border-radius: var(--radio-posicion-punto);
-    border-width: 3px;
+    border-width: var(--posicion-punto-borde);
     border-color: var(--color-posicion-borde);
     background-color: var(--color-posicion);
 }
 
+/* Disco blanco bajo la flecha en coche (maqueta B del 22/11/2026, como Apple Maps): no gira; la sombra suave
+   (SombraSuave, 4 dp hacia abajo) lo separa del mapa claro */
+.marcador-posicion__disco {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--posicion-disco);
+    height: var(--posicion-disco);
+    translate: -50% -50%;
+    border-radius: var(--radio-posicion-disco);
+    background-color: var(--color-posicion-borde);
+}
+
 /* Flecha de la navegación en coche (historia 2.7, parte 2c; dibujada con Painter2D hacia arriba, la gira style.rotate
-   alrededor de su centro): relleno --color-flecha y el borde, el color del marcador */
+   alrededor de su centro): relleno --color-flecha, sin borde, encima del disco */
 .marcador-posicion__flecha {
     position: absolute;
     left: 0;

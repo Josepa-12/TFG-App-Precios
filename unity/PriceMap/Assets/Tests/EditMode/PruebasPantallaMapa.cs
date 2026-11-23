@@ -203,6 +203,7 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(Px("--boton-redondo") / 2f, Px("--radio-boton-redondo"));
             Assert.AreEqual(Px("--marcador-insignia") / 2f, Px("--radio-insignia"));
             Assert.AreEqual(Px("--posicion-punto") / 2f, Px("--radio-posicion-punto"));
+            Assert.AreEqual(Px("--posicion-disco") / 2f, Px("--radio-posicion-disco"));
             Assert.AreEqual(Px("--poi-icono") / 2f, Px("--radio-poi-icono"));
             Assert.AreEqual(Px("--frescura-punto") / 2f, Px("--radio-frescura-punto"));
             StringAssert.DoesNotContain("999px", tokens);

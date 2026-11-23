@@ -563,15 +563,27 @@ namespace PriceMap.Tests.EditMode
             Assert.IsFalse(Marcador.ConoVisible, "Sin cono.");
             Assert.AreEqual(DisplayStyle.None, Marcador.Punto.style.display.value, "Sin círculo.");
             Assert.AreEqual(DisplayStyle.Flex, Marcador.Flecha.style.display.value);
+            Assert.AreEqual(DisplayStyle.Flex, Marcador.Disco.style.display.value, "Sobre el disco blanco.");
             Assert.AreEqual(0f, Marcador.AnguloFlecha, 0.5f, "Sin rumbo de la marcha aún, el de la ruta (al norte).");
 
             Ir(M(0, 50), 10); // fuera de ruta, hacia el este a 5 m/s: cuenta la posición real
             Ir(M(0, 55));
             Fotograma();
             Assert.AreEqual(90f, Marcador.AnguloFlecha, 0.5f, "Hacia el este con el mapa al norte.");
+            Assert.AreEqual(90f, Marcador.Flecha.style.rotate.value.angle.ToDegrees(), 0.5f, "La flecha gira.");
+            Assert.AreEqual(StyleKeyword.Null, Marcador.Disco.style.rotate.keyword, "El disco no gira.");
+            Assert.AreEqual(0f, Marcador.Disco.resolvedStyle.rotate.angle.ToDegrees(), 1e-4f, "El disco sigue a 0°.");
             mapa.giro = 90f; // la cámara que sigue pone el rumbo arriba
             Fotograma();
             Assert.AreEqual(0f, Mathf.Abs(Mathf.DeltaAngle(Marcador.AnguloFlecha, 0f)), 0.5f, "Hacia arriba.");
+
+            pantalla.QuitarRuta(); // sin ruta, vuelve el círculo y se va el disco
+            Fotograma();
+            Assert.IsTrue(Marcador.Visible);
+            Assert.IsFalse(Marcador.FlechaVisible);
+            Assert.AreEqual(DisplayStyle.None, Marcador.Disco.style.display.value, "Sin flecha, sin disco.");
+            Assert.AreEqual(DisplayStyle.None, Marcador.Flecha.style.display.value);
+            Assert.AreEqual(DisplayStyle.Flex, Marcador.Punto.style.display.value, "Vuelve el círculo.");
         }
 
         [Test]
