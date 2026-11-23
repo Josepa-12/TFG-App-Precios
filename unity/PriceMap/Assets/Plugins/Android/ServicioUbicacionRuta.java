@@ -116,13 +116,17 @@ public class ServicioUbicacionRuta extends Service implements LocationListener {
         long ahora = SystemClock.elapsedRealtime();
         if (LocationManager.GPS_PROVIDER.equals(l.getProvider())) ultimoGpsMs = ahora;
         else if (ultimoGpsMs >= 0 && ahora - ultimoGpsMs < GPS_RECIENTE_MS) return; // la red es menos precisa: no salta el punto
-        String linea = String.format(Locale.ROOT, "%.7f;%.7f;%s;%s;%s;%d",
+        PuenteUbicacionRuta.anadir(linea(l));
+    }
+
+    /** La ubicación como texto: "lat;lon;rumbo;velocidad;precision;horaMs" (LecturaRuta en C#). */
+    static String linea(Location l) {
+        return String.format(Locale.ROOT, "%.7f;%.7f;%s;%s;%s;%d",
                 l.getLatitude(), l.getLongitude(),
                 l.hasBearing() ? String.format(Locale.ROOT, "%.1f", l.getBearing()) : "",
                 l.hasSpeed() ? String.format(Locale.ROOT, "%.2f", l.getSpeed()) : "",
                 l.hasAccuracy() ? String.format(Locale.ROOT, "%.1f", l.getAccuracy()) : "",
                 l.getTime());
-        PuenteUbicacionRuta.anadir(linea);
     }
 
     // En Android 8 y 9 estos métodos no tienen implementación por defecto

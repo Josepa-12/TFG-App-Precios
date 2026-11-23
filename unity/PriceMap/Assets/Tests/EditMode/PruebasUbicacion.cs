@@ -32,6 +32,7 @@ namespace PriceMap.Tests.EditMode
         {
             public EstadoUbicacion Estado { get; set; } = EstadoUbicacion.SinPermiso;
             public Coordenada? Posicion { get; set; }
+            public Coordenada? UltimaConocida { get; set; }
             public float? Rumbo { get; set; }
             public event Action Cambiado;
             public int permisos, inicios, detenciones, ajustes;
@@ -552,6 +553,47 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void AlAbrirLaVistaEmpiezaEnLaUltimaUbicacionDelSistemaYElGpsLaAfina()
+        {
+            var gps = new UbicacionFalsa { UltimaConocida = OtroSitio };
+            gps.Poner(EstadoUbicacion.Buscando);
+            var m = Pantalla(gps);
+            CollectionAssert.AreEqual(new[] { OtroSitio }, m.mapa.centrados, "Desde el principio, sin pasar por la vista inicial.");
+            m.pantalla.ActualizarCapas(Escala);
+            Assert.AreEqual(1, m.mapa.centrados.Count);
+            Assert.IsNull(m.servicio.Posicion, "No es una lectura: el cursor no sale todavía.");
+            gps.Poner(EstadoUbicacion.Activa, Usuario);
+            m.pantalla.ActualizarCapas(Escala);
+            CollectionAssert.AreEqual(new[] { OtroSitio, Usuario }, m.mapa.centrados);
+        }
+
+        [TestCase(true, true, true)]
+        [TestCase(false, true, false)]
+        [TestCase(true, false, false)]
+        public void LaUltimaUbicacionDelSistemaSoloConPermisoYEncendida(bool permiso, bool encendida, bool hay)
+        {
+            var gps = new UbicacionGps(new FuenteFalsa { TienePermiso = permiso, UbicacionEncendida = encendida, UltimaConocida = OtroSitio });
+            Assert.AreEqual(hay ? OtroSitio : (Coordenada?)null, gps.UltimaConocida);
+            Assert.IsNull(gps.Posicion);
+        }
+
+        [Test]
+        public void ElPluginDaLaUltimaUbicacionSinEncenderElGps()
+        {
+            string java = System.IO.File.ReadAllText("Assets/Plugins/Android/PuenteUbicacionRuta.java");
+            int i = java.IndexOf("public static String ultimaConocida()", StringComparison.Ordinal);
+            Assert.Greater(i, 0);
+            string metodo = java.Substring(i, java.IndexOf("static String texto()", StringComparison.Ordinal) - i);
+            StringAssert.Contains("gestor.getProviders(true)", metodo);
+            StringAssert.Contains("getLastKnownLocation(proveedor)", metodo);
+            StringAssert.Contains("catch (SecurityException", metodo, "Con solo la aproximada no se puede leer el GPS.");
+            StringAssert.Contains("ServicioUbicacionRuta.linea(mejor)", metodo, "El formato que lee LecturaRuta.");
+            StringAssert.DoesNotContain("requestLocationUpdates", metodo);
+            string fuente = System.IO.File.ReadAllText("Assets/Scripts/Adaptadores/Gps/FuenteUbicacionUnity.cs");
+            StringAssert.Contains("CallStatic<string>(\"ultimaConocida\")", fuente);
+        }
+
+        [Test]
         public void AlAbrirSinPermisoYAlConcederloSeCentra()
         {
             var gps = new UbicacionFalsa();
@@ -1010,6 +1052,7 @@ namespace PriceMap.Tests.EditMode
             public bool UbicacionEncendida { get; set; } = true;
             public LocationServiceStatus EstadoServicio { get; set; } = LocationServiceStatus.Stopped;
             public (Coordenada posicion, double marca) UltimaLectura { get; set; }
+            public Coordenada? UltimaConocida { get; set; }
             public float? Rumbo { get; set; }
             public Action<bool> respuesta;
             public int peticiones, encendidos, apagados;

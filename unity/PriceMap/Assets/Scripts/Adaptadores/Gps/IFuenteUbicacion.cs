@@ -23,6 +23,9 @@ namespace PriceMap.Adaptadores.Gps
         /// <summary>Última lectura del GPS y su marca de tiempo (0 si aún no hay ninguna).</summary>
         (Coordenada posicion, double marca) UltimaLectura { get; }
 
+        /// <summary>Última ubicación que recuerda el sistema (la más reciente de sus proveedores); null si no hay.</summary>
+        Coordenada? UltimaConocida => null;
+
         /// <summary>Rumbo de la brújula respecto al norte real, sin normalizar; null sin brújula o sin lecturas.</summary>
         float? Rumbo { get; }
 

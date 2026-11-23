@@ -161,3 +161,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-ir-a-una-direccion-buscada.md`
   summary: Un resultado de dirección de Photon que es un lugar de la app (mismo nombre y sitio) abre una ficha de punto libre sin precios.
   evidence: Revisión (edge case). `ServicioBusqueda` quita los puntos repetidos con `ReglaPuntosInteres.EsRepetido`, pero las direcciones de Photon no se comparan; el lugar sale encima en la lista.
+- source_spec: `_bmad-output/implementation-artifacts/spec-abrir-en-la-ultima-ubicacion-conocida.md`
+  summary: Probar en el móvil que la app se abre ya en la última ubicación del sistema (precisa y solo aproximada).
+  evidence: En EditMode solo se lee el código Java; nada ejecuta `getLastKnownLocation`.
+- source_spec: none
+  summary: Buscar también en las calles de las teselas guardadas lo que Photon no encuentra («calle fariñas»).
+  evidence: Pedido por el usuario el 23/11/2026 como cambio aparte, tras comprobar que Photon no da esa calle de Sanlúcar.

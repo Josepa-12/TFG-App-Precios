@@ -1,7 +1,11 @@
 package com.pricemap.ruta;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
+import android.location.Location;
+import android.location.LocationManager;
+import android.util.Log;
 
 import com.unity3d.player.UnityPlayer;
 
@@ -79,6 +83,33 @@ public final class PuenteUbicacionRuta {
             }
             cola.clear();
             return sb.toString();
+        }
+    }
+
+    /**
+     * Última ubicación que recuerda el sistema (la más reciente de sus proveedores), en el formato de vaciarCola; cadena
+     * vacía sin permiso o si no recuerda ninguna. No enciende el GPS ni guarda nada.
+     */
+    public static String ultimaConocida() {
+        Activity actividad = UnityPlayer.currentActivity;
+        if (actividad == null) return "";
+        try {
+            LocationManager gestor = (LocationManager) actividad.getSystemService(Context.LOCATION_SERVICE);
+            if (gestor == null) return "";
+            Location mejor = null;
+            for (String proveedor : gestor.getProviders(true)) {
+                Location l;
+                try {
+                    l = gestor.getLastKnownLocation(proveedor);
+                } catch (SecurityException sinPrecisa) {
+                    continue; // con solo la ubicación aproximada, el GPS no se puede leer: queda la red
+                }
+                if (l != null && (mejor == null || l.getTime() > mejor.getTime())) mejor = l;
+            }
+            return mejor != null ? ServicioUbicacionRuta.linea(mejor) : "";
+        } catch (RuntimeException e) {
+            Log.w("PriceMap", "PriceMap: sin última ubicación del sistema.", e);
+            return "";
         }
     }
 

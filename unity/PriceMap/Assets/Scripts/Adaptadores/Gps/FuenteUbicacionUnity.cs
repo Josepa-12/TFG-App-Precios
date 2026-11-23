@@ -47,6 +47,28 @@ namespace PriceMap.Adaptadores.Gps
             }
         }
 
+        public Coordenada? UltimaConocida
+        {
+            get
+            {
+#if UNITY_ANDROID && !UNITY_EDITOR
+                try
+                {
+                    using var puente = new AndroidJavaClass("com.pricemap.ruta.PuenteUbicacionRuta");
+                    var lecturas = LecturaRuta.Leer(puente.CallStatic<string>("ultimaConocida"));
+                    return lecturas.Count > 0 ? lecturas[0].Posicion : (Coordenada?)null;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning("PriceMap: sin última ubicación del sistema: " + e.Message);
+                    return null;
+                }
+#else
+                return null;
+#endif
+            }
+        }
+
         // Sin brújula (o sin lecturas aún) el timestamp sigue en 0
         public float? Rumbo => Input.compass.enabled && Input.compass.timestamp > 0 ? Input.compass.trueHeading : (float?)null;
 

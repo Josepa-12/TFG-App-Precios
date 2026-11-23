@@ -142,7 +142,7 @@ namespace PriceMap.UI
             this.animacionesQuitadas = accesibilidadSistema != null && accesibilidadSistema.AnimacionesQuitadas;
             seguimiento = new SeguimientoCamara(() => RelojCamara());
             rumboMarcha = new ReglaRumbo(() => RelojCamara());
-            this.mapa.Centrar(VistaInicial);
+            this.mapa.Centrar(ubicacion?.UltimaConocida ?? VistaInicial); // ya donde está; CentrarAlAbrir lo afina con el GPS
             this.mapa.GestoUsuario += AlGestoUsuario; // suelta la cámara que sigue (2.7b) y anula el centrado al abrir
 
             raiz = raizDocumento?.Q("raiz");
@@ -2857,7 +2857,7 @@ namespace PriceMap.UI
             }
             // La posición del usuario: círculo en su coordenada y cono hacia el rumbo (rumbo − giro del mapa)
             // Navegando en coche y en la ruta, el punto va sobre la línea (historia 2.7, parte 2b; PosicionMostrada)
-            // Navegando en coche, una flecha con el rumbo de la marcha (o el de la ruta); sin señal, atenuada (parte 2c)
+            // Navegando en coche, una flecha con el rumbo de la marcha (o el de la ruta); sin señal, su disco atenuado (parte 2c)
             if (marcadorPosicion != null && escala > 0f)
             {
                 bool flecha = Navegando && navegacion.Modo == ModoViaje.Coche;

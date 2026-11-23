@@ -29,6 +29,9 @@ namespace PriceMap.Aplicacion
         /// <summary>Posición del usuario; solo en Activa (si no, null).</summary>
         public Coordenada? Posicion => ubicacion.Estado == EstadoUbicacion.Activa ? ubicacion.Posicion : null;
 
+        /// <summary>Última ubicación que recuerda el sistema (IUbicacion.UltimaConocida), para la vista inicial.</summary>
+        public Coordenada? UltimaConocida => ubicacion.UltimaConocida;
+
         /// <summary>Rumbo respecto al norte real; null sin brújula o sin posición.</summary>
         public float? Rumbo => Posicion.HasValue ? ubicacion.Rumbo : null;
 

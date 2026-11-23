@@ -14,6 +14,12 @@ namespace PriceMap.Aplicacion
         /// <summary>Última posición conocida; null si aún no hay ninguna.</summary>
         Coordenada? Posicion { get; }
 
+        /// <summary>
+        /// Última ubicación que recuerda el sistema, aunque sea antigua, para abrir el mapa ya en ella; null sin permiso, con
+        /// la ubicación apagada o si no recuerda ninguna (por defecto). No es una lectura: no cambia Estado ni Posicion.
+        /// </summary>
+        Coordenada? UltimaConocida => null;
+
         /// <summary>Rumbo del móvil en grados respecto al norte real (0 = norte, 90 = este); null sin brújula.</summary>
         float? Rumbo { get; }
 

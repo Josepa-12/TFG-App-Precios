@@ -55,6 +55,7 @@ namespace PriceMap.Adaptadores.Gps
         public EstadoUbicacion Estado => estado;
         public Coordenada? Posicion => posicion;
         public float? Rumbo => rumbo;
+        public Coordenada? UltimaConocida => fuente.TienePermiso && fuente.UbicacionEncendida ? fuente.UltimaConocida : null;
         public event Action Cambiado;
         public int Lecturas => lecturas;
 
