@@ -153,13 +153,6 @@ namespace PriceMap.Tests.EditMode
             return new Montaje { pantalla = pantalla, arbol = arbol, mapa = mapa, gps = gps, servicio = servicio, prefs = prefs };
         }
 
-        static PreferenciasFalsas YaExplicado()
-        {
-            var p = new PreferenciasFalsas();
-            p.Guardar(ServicioUbicacion.ClaveExplicacion, "1");
-            return p;
-        }
-
         static void Actualizar(Montaje m) =>
             m.pantalla.MarcadorPosicion.Actualizar(m.mapa, m.servicio.Posicion, m.servicio.Rumbo, Escala, AnchoPx, AltoPx);
 
@@ -171,12 +164,13 @@ namespace PriceMap.Tests.EditMode
         // ───────────────────────── Explicación del permiso ─────────────────────────
 
         [Test]
-        public void PrimeraAperturaSaleLaExplicacionYQuedaGuardadoQueSalio()
+        public void AlAbrirNoSaleLaExplicacionYElBotonLaSaca()
         {
             var m = Pantalla(new UbicacionFalsa());
+            Assert.IsFalse(m.pantalla.ExplicacionAbierta, "Desde la 3.1, el primer arranque es de la bienvenida.");
+            m.pantalla.TocarUbicacion();
             Assert.IsTrue(m.pantalla.ExplicacionAbierta);
             Assert.AreEqual(DisplayStyle.Flex, m.pantalla.Explicacion.style.display.value);
-            Assert.IsNotNull(m.prefs.Leer(ServicioUbicacion.ClaveExplicacion), "Queda guardado que la explicación salió.");
             Assert.AreEqual(TextoEs(ClavesTexto.UbicacionExplicacion), m.pantalla.Explicacion.Texto.text);
             Assert.AreEqual("Permitir", m.pantalla.Explicacion.Permitir.text);
             Assert.AreEqual("Ahora no", m.pantalla.Explicacion.AhoraNo.text);
@@ -187,6 +181,7 @@ namespace PriceMap.Tests.EditMode
         public void ConLaExplicacionAbiertaTalkBackEsModalYElMapaNoSeMueve()
         {
             var m = Pantalla(new UbicacionFalsa());
+            m.pantalla.TocarUbicacion();
             Assert.IsTrue(m.pantalla.Accesibilidad.Modal);
             CollectionAssert.AreEqual(RecorridoExplicacion(), m.pantalla.Accesibilidad.Recorrido());
             Assert.AreSame(m.pantalla.Explicacion.Texto, m.pantalla.Accesibilidad.Enfocado, "El foco va al texto de la explicación.");
@@ -198,7 +193,8 @@ namespace PriceMap.Tests.EditMode
         public void ConElLectorElTextoDeLaExplicacionEsTextoYSusBotonesSonBotones()
         {
             AccesibilidadPantalla.LectorForzado = () => true;
-            var m = Pantalla(new UbicacionFalsa()); // sin preferencia guardada: la explicación sale al abrir
+            var m = Pantalla(new UbicacionFalsa());
+            m.pantalla.TocarUbicacion();
             Assert.IsTrue(m.pantalla.ExplicacionAbierta);
             var jerarquia = AssistiveSupport.activeHierarchy;
             if (jerarquia == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
@@ -214,7 +210,7 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void SiguientesAperturasNoSaleLaExplicacion()
         {
-            var m = Pantalla(new UbicacionFalsa(), YaExplicado());
+            var m = Pantalla(new UbicacionFalsa());
             Assert.IsFalse(m.pantalla.ExplicacionAbierta);
             Assert.AreEqual(DisplayStyle.None, m.pantalla.Explicacion.style.display.value);
             Assert.IsFalse(m.pantalla.Accesibilidad.Modal);
@@ -224,6 +220,7 @@ namespace PriceMap.Tests.EditMode
         public void AhoraNoYTocarElBotonVuelveASalirLaExplicacion()
         {
             var m = Pantalla(new UbicacionFalsa());
+            m.pantalla.TocarUbicacion();
             m.pantalla.AhoraNoUbicacion();
             Assert.IsFalse(m.pantalla.ExplicacionAbierta);
             Assert.IsFalse(m.pantalla.Accesibilidad.Modal);
@@ -239,6 +236,7 @@ namespace PriceMap.Tests.EditMode
         public void PermitirCierraLaExplicacionYLanzaElPermisoDeAndroid()
         {
             var m = Pantalla(new UbicacionFalsa());
+            m.pantalla.TocarUbicacion();
             m.pantalla.PermitirUbicacion();
             Assert.IsFalse(m.pantalla.ExplicacionAbierta);
             Assert.AreEqual(1, m.gps.permisos);
@@ -248,6 +246,7 @@ namespace PriceMap.Tests.EditMode
         public void AtrasConLaExplicacionAbiertaEsAhoraNo()
         {
             var m = Pantalla(new UbicacionFalsa());
+            m.pantalla.TocarUbicacion();
             Assert.IsTrue(m.pantalla.Atras());
             Assert.IsFalse(m.pantalla.ExplicacionAbierta);
             Assert.AreEqual(0, m.gps.permisos);
@@ -279,7 +278,7 @@ namespace PriceMap.Tests.EditMode
         {
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Activa, Usuario, 90f);
-            var m = Pantalla(gps, YaExplicado());
+            var m = Pantalla(gps);
             // ActualizarCapas usa Screen.width/height: el punto cae en el centro de la pantalla del editor
             m.mapa.proyeccion = new PuntoPantalla(Screen.width / 2f, Screen.height / 2f, 300f);
             m.mapa.giro = 40f;
@@ -415,7 +414,7 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void ElBotonVaEnLaColumnaDebajoDelDeTemaConSuTextoParaTalkBack()
         {
-            var m = Pantalla(new UbicacionFalsa(), YaExplicado());
+            var m = Pantalla(new UbicacionFalsa());
             var boton = m.pantalla.BotonUbicacion;
             Assert.IsNotNull(boton);
             Assert.AreEqual(Icono.Navegar, boton.Icono, "La flecha de navegación del prototipo, no la diana.");
@@ -460,7 +459,7 @@ namespace PriceMap.Tests.EditMode
             {
                 var gps = new UbicacionFalsa();
                 gps.Poner(estado, estado == EstadoUbicacion.Activa ? Usuario : (Coordenada?)null);
-                m = Pantalla(gps, YaExplicado());
+                m = Pantalla(gps);
             }
             m.pantalla.ActualizarCapas(Escala);
             var etiqueta = TextoEs(clave);
@@ -768,7 +767,7 @@ namespace PriceMap.Tests.EditMode
         {
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Activa, Usuario, 90f);
-            var m = Pantalla(gps, YaExplicado());
+            var m = Pantalla(gps);
             m.mapa.giro = giro;
             m.mapa.proyecciones[Lejos] = new PuntoPantalla(900f, 900f, 300f);
             m.mapa.proyecciones[Arrastrado] = new PuntoPantalla(600f, 900f, 300f); // 100 px = 50 dp
@@ -897,7 +896,7 @@ namespace PriceMap.Tests.EditMode
         {
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Buscando);
-            var m = Pantalla(gps, YaExplicado());
+            var m = Pantalla(gps);
             Assert.AreEqual("Buscando tu posición", EtiquetaBoton(m));
             CollectionAssert.Contains(m.pantalla.Accesibilidad.Recorrido(), "Buscando tu posición");
             m.pantalla.TocarUbicacion();
@@ -914,7 +913,7 @@ namespace PriceMap.Tests.EditMode
             AccesibilidadPantalla.LectorForzado = () => true;
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Buscando);
-            var m = Pantalla(gps, YaExplicado());
+            var m = Pantalla(gps);
             m.pantalla.ActualizarCapas(Escala);
             if (AssistiveSupport.activeHierarchy == null) Assert.Ignore("En este editor no se puede activar una jerarquía de accesibilidad.");
             CollectionAssert.Contains(AssistiveSupport.activeHierarchy.rootNodes.Select(n => n.label).ToList(), "Buscando tu posición");
@@ -1558,7 +1557,7 @@ namespace PriceMap.Tests.EditMode
             AccesibilidadPantalla.LectorForzado = () => true;
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Apagada, null);
-            var m = Pantalla(gps, YaExplicado());
+            var m = Pantalla(gps);
             var hoja = m.pantalla.Buscador;
             hoja.Medir(800f);
             hoja.Poner(0.5f);
@@ -1583,7 +1582,7 @@ namespace PriceMap.Tests.EditMode
         {
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Activa, Usuario);
-            var m = Pantalla(gps, YaExplicado());
+            var m = Pantalla(gps);
             m.pantalla.ActualizarCapas(Escala);
             Assert.IsFalse(m.pantalla.AvisoAbierto);
 
@@ -1618,7 +1617,7 @@ namespace PriceMap.Tests.EditMode
         {
             var gps = new UbicacionFalsa();
             gps.Poner(EstadoUbicacion.Apagada, null);
-            var m = Pantalla(gps, YaExplicado());
+            var m = Pantalla(gps);
             m.pantalla.ActualizarCapas(Escala);
             m.pantalla.TocarUbicacion(); // aviso de ubicación apagada
             Assert.IsTrue(m.pantalla.AvisoAbierto);

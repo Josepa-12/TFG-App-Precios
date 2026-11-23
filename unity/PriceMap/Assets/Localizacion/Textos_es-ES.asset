@@ -192,8 +192,8 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 365829647491072
-    m_Localized: "PriceMap usa tu ubicaci\xF3n solo mientras tienes la app abierta,
-      para mostrarte d\xF3nde est\xE1s en el mapa. No la guarda ni la comparte."
+    m_Localized: "PriceMap usa tu ubicaci\xF3n con la app abierta y durante una ruta,
+      para verte en el mapa y guiarte. No guarda por d\xF3nde vas."
     m_Metadata:
       m_Items: []
   - m_Id: 365829647491073
@@ -859,6 +859,146 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 2259729094008834
     m_Localized: "Has llegado a {0}. La ruta se cerrar\xE1 en un minuto."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802958069760
+    m_Localized: "Precios reales de Sanl\xFAcar, en el mapa"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429888
+    m_Localized: "Mira cu\xE1nto cuesta antes de ir: fisios, restaurantes, pistas\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429889
+    m_Localized: Los negocios publican su precio y los clientes lo confirman.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429890
+    m_Localized: Te lleva hasta la puerta, en coche o a pie.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429891
+    m_Localized: Siguiente
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429892
+    m_Localized: Tu privacidad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429893
+    m_Localized: "Usamos tu ubicaci\xF3n con la app abierta y durante una ruta, tambi\xE9n
+      con la pantalla apagada. Al acabar la ruta, se para."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429894
+    m_Localized: "Para buscar y calcular rutas se env\xEDan el texto y los puntos
+      a servicios de mapas. No guardamos por d\xF3nde vas."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429895
+    m_Localized: "Los precios que aportes ser\xE1n an\xF3nimos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429896
+    m_Localized: La cuenta es opcional.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429897
+    m_Localized: Leer el aviso completo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429898
+    m_Localized: "T\xFA decides"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429899
+    m_Localized: "Ubicaci\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429900
+    m_Localized: Para verte en el mapa y guiarte.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429901
+    m_Localized: Notificaciones
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429902
+    m_Localized: Para que la ruta siga con la pantalla apagada.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429903
+    m_Localized: Permitido
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429904
+    m_Localized: "Puedes activarlo despu\xE9s en Ajustes."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429905
+    m_Localized: "Puedes cambiarlo despu\xE9s en los Ajustes del m\xF3vil."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429906
+    m_Localized: Empezar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429907
+    m_Localized: "Atr\xE1s"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429908
+    m_Localized: Paso {0} de {1}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429909
+    m_Localized: '{0}, {1}'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429910
+    m_Localized: Aviso de privacidad
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429911
+    m_Localized: "Qu\xE9 datos usa PriceMap"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429912
+    m_Localized: "Tu ubicaci\xF3n, para verte en el mapa y guiarte. Solo con la app
+      abierta y mientras dura una ruta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429913
+    m_Localized: "Qu\xE9 sale del m\xF3vil"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429914
+    m_Localized: "El texto que buscas y los puntos que marcas en el mapa van a Photon;
+      los de una ruta, con tu posici\xF3n exacta, a Valhalla u OSRM. El mapa se descarga
+      de OpenFreeMap. Al buscar, tu posici\xF3n va redondeada a unos 100 m. Si pegas
+      un enlace corto de Google Maps, se consulta a Google."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429915
+    m_Localized: "Qu\xE9 se guarda"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429916
+    m_Localized: "En el m\xF3vil: tus ajustes y el mapa ya visto. Ni b\xFAsquedas
+      ni recorridos."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429917
+    m_Localized: "Qui\xE9n es el responsable"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429918
+    m_Localized: Jose Antonio Segovia Sarmiento, autor de este Trabajo de Fin de
+      Grado.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429919
+    m_Localized: jcoete37@gmail.com
     m_Metadata:
       m_Items: []
   references:

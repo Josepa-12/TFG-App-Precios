@@ -12,7 +12,8 @@ namespace PriceMap.EditorTools
     /// (Assets/Plugins/Android/ActividadPrincipal.java): navegando no pausa Unity en segundo plano. Se queda con sus
     /// filtros (los de compartir los añade después CompartirAndroid) y se le quita lo que solo usa GameActivity
     /// (<c>android.app.lib_name</c>). La app usa la entrada Activity (ConfigurarAndroid). Con aceleración gráfica (Unity la
-    /// quita): la pantalla de inicio se anima encima de Unity.
+    /// quita): la pantalla de inicio se anima encima de Unity. Sin copia de seguridad de Android (historia 3.1): los datos se
+    /// quedan en el móvil y, al reinstalar, la bienvenida vuelve a salir.
     /// </summary>
     public class ActividadAndroid : IPostGenerateGradleAndroidProject
     {
@@ -32,11 +33,18 @@ namespace PriceMap.EditorTools
             var nombres = new XmlNamespaceManager(xml.NameTable);
             nombres.AddNamespace("android", EspacioAndroid);
 
+            (xml.DocumentElement.SelectSingleNode("application") as XmlElement)?.SetAttribute("allowBackup", EspacioAndroid, "false");
+
             var actividad = xml.DocumentElement.SelectNodes("application/activity", nombres).Cast<XmlElement>()
                 .FirstOrDefault(a => a.SelectSingleNode(
                     "intent-filter[action/@android:name='android.intent.action.MAIN' and category/@android:name='android.intent.category.LAUNCHER']",
                     nombres) != null);
-            if (actividad == null) { Debug.LogWarning("PriceMap: no hay actividad lanzadora en " + manifiesto + "; se queda la de Unity."); return; }
+            if (actividad == null)
+            {
+                Debug.LogWarning("PriceMap: no hay actividad lanzadora en " + manifiesto + "; se queda la de Unity.");
+                xml.Save(manifiesto);
+                return;
+            }
 
             actividad.SetAttribute("name", EspacioAndroid, Actividad);
             actividad.SetAttribute("hardwareAccelerated", EspacioAndroid, "true");

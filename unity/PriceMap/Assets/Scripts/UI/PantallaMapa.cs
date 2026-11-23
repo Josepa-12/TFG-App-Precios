@@ -104,6 +104,10 @@ namespace PriceMap.UI
         // Pantalla de inicio (spec pantalla-de-inicio)
         ServicioInicio inicio;                 // null = sin pantalla de inicio (PC, editor, captura, pruebas)
         Func<bool> vistaCargada;               // se pregunta al mapa en cada fotograma: una sola vez creada
+        // Bienvenida del primer arranque (historia 3.1)
+        ServicioBienvenida bienvenida;         // null = no sale (ya vista, o sin interfaz)
+        PantallaBienvenida vistaBienvenida;    // a la vista, encima de todo; null al acabar
+        int paginaBienvenida;                  // la última que se enseñó (al cerrar el aviso, el foco vuelve a su enlace)
         // Indicaciones por voz (historia 2.8)
         ServicioVoz voz;                       // null = sin botón de voz
         BotonRedondo botonVoz;                 // en la columna, encima de "Volver a centrar"; solo se ve navegando
@@ -124,17 +128,18 @@ namespace PriceMap.UI
         /// <param name="voz">Indicaciones por voz (historia 2.8); sin él (o sin navegación), no hay botón de voz.</param>
         /// <param name="calles">Calles guardadas (spec buscar-calles-guardadas); sin él, el buscador no las busca.</param>
         /// <param name="inicio">Pantalla de inicio que tapa la app (spec pantalla-de-inicio); sin él, no hay.</param>
+        /// <param name="bienvenida">Bienvenida del primer arranque (historia 3.1); sin él, o ya vista, no sale.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
             BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
             IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null, ServicioNavegacion navegacion = null,
-            ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null)
+            ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null, ServicioBienvenida bienvenida = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador, resolutorEnlaces, rutas, navegacion, voz, calles, inicio);
+                geocodificador, resolutorEnlaces, rutas, navegacion, voz, calles, inicio, bienvenida);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
@@ -142,7 +147,8 @@ namespace PriceMap.UI
             ServicioFiltro filtro = null, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
-            ServicioNavegacion navegacion = null, ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null)
+            ServicioNavegacion navegacion = null, ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null,
+            ServicioBienvenida bienvenida = null)
         {
             this.mapa = mapa;
             this.navegacion = rutas != null ? navegacion : null; // sin rutas no hay Ir
@@ -314,23 +320,107 @@ namespace PriceMap.UI
             AlCambiarLector(AccesibilidadPantalla.LectorActivo);
             // El tema inicial llega con ServicioTema.Iniciar (lo llama el Arranque justo después)
 
-            // Primera apertura sin permiso: la explicación sale antes de pedirlo, una sola vez (con la pantalla de inicio,
-            // al irse ella: AlTerminarInicio)
-            if (!InicioALaVista) ExplicarAlAbrir();
+            // Primer arranque: la bienvenida, ya puesta debajo de la pantalla de inicio
+            if (bienvenida != null && bienvenida.Pendiente) AbrirBienvenida(bienvenida);
         }
 
-        void ExplicarAlAbrir()
+        // ───────────────────────── Bienvenida (historia 3.1) ─────────────────────────
+
+        /// <summary>La bienvenida está a la vista (también debajo de la pantalla de inicio).</summary>
+        public bool BienvenidaAbierta => vistaBienvenida != null;
+
+        /// <summary>
+        /// Pone la bienvenida encima de todo, modal. La usan Inicializar, si está pendiente, y la captura de pruebas.
+        /// </summary>
+        public void AbrirBienvenida(ServicioBienvenida servicio)
         {
-            if (ubicacion != null && ubicacion.DebeExplicarAlAbrir) AbrirExplicacion();
+            if (raiz == null || servicio == null || !servicio.Pendiente || BienvenidaAbierta) return;
+            if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            CerrarFicha();
+            PlegarBuscadorPorOtraVentana();
+            bienvenida = servicio;
+            vistaBienvenida = new PantallaBienvenida(servicio);
+            (raiz.Q("hueco-bienvenida") ?? raiz).Add(vistaBienvenida);
+            paginaBienvenida = vistaBienvenida.Pagina;
+            foreach (var c in vistaBienvenida.Controles)
+            {
+                var control = c;
+                var vista = vistaBienvenida;
+                Func<bool> visible = () => vista == vistaBienvenida && control.Visible();
+                Action alEnfocar = () => vista.DesplazarHasta(control.Elemento);
+                if (control.Accion == null)
+                    accesibilidad.Texto(control.Elemento, control.Etiqueta, visible, enModal: true, grupo: vista, alEnfocar: alEnfocar);
+                else
+                    accesibilidad.Boton(control.Elemento, control.Etiqueta, control.Accion, visible: visible, enModal: true, grupo: vista,
+                        alEnfocar: alEnfocar);
+            }
+            servicio.PasoCambiado += AlCambiarPaso;
+            servicio.ConsentimientoCambiado += AlCambiarConsentimiento;
+            servicio.Terminada += AlTerminarBienvenida;
+            AjustarBienvenida();
+            ModalNuevo();
+            accesibilidad.PedirFoco(vistaBienvenida.Titulo);
+        }
+
+        // Escala de la fuente y márgenes de la zona segura. Antes de la primera disposición, los pone AjustarDisposicion
+        void AjustarBienvenida()
+        {
+            if (vistaBienvenida == null) return;
+            vistaBienvenida.PonerEscala(EscalaFuente.Sistema);
+            float escala = EscalaDp;
+            if (escala <= 0f) return;
+            var segura = Screen.safeArea;
+            vistaBienvenida.PonerZonaSegura(segura.xMin * escala, (Screen.height - segura.yMax) * escala,
+                (Screen.width - segura.xMax) * escala, segura.yMin * escala);
+        }
+
+        // Otra página: se enseña y el foco va a su título (al cerrar el aviso, al enlace que lo abrió)
+        void AlCambiarPaso()
+        {
+            bool delAviso = paginaBienvenida == PantallaBienvenida.PaginaAviso;
+            vistaBienvenida.Actualizar();
+            paginaBienvenida = vistaBienvenida.Pagina;
+            accesibilidad.Reconstruir();
+            accesibilidad.PedirFoco(delAviso ? (VisualElement)vistaBienvenida.LeerAviso : vistaBienvenida.Titulo);
+        }
+
+        // Una tarjeta ha cambiado: si el foco estaba en ella (en un botón que ya puede no estar), va a su respuesta
+        void AlCambiarConsentimiento()
+        {
+            var foco = accesibilidad.UltimoFoco;
+            var tarjeta = vistaBienvenida.TarjetaDe(foco);
+            vistaBienvenida.Actualizar();
+            accesibilidad.Reconstruir();
+            if (tarjeta != null) accesibilidad.PedirFoco(tarjeta.Respuesta);
+            else accesibilidad.RecuperarFoco();
+        }
+
+        // «Empezar»: se quita, vuelve el mapa y el foco va al botón de ubicación
+        void AlTerminarBienvenida()
+        {
+            var vista = vistaBienvenida;
+            OlvidarBienvenida();
+            vistaBienvenida = null;
+            EscalaFuente.Olvidar(vista);
+            vista.RemoveFromHierarchy();
+            accesibilidad.QuitarControles(vista);
+            accesibilidad.Modal = false; // reconstruye: vuelven los botones y los marcadores
+            accesibilidad.PedirFoco(botonUbicacion);
+        }
+
+        void OlvidarBienvenida()
+        {
+            if (bienvenida == null) return;
+            bienvenida.PasoCambiado -= AlCambiarPaso;
+            bienvenida.ConsentimientoCambiado -= AlCambiarConsentimiento;
+            bienvenida.Terminada -= AlTerminarBienvenida;
+            bienvenida = null;
         }
 
         // ───────────────────────── Pantalla de inicio (spec pantalla-de-inicio) ─────────────────────────
 
         /// <summary>La pantalla de inicio tapa la app (también mientras se va).</summary>
         public bool InicioALaVista => inicio != null && inicio.ALaVista;
-
-        // La explicación del permiso saldrá cuando se vaya la pantalla de inicio
-        bool ExplicacionPorSalir => InicioALaVista && explicacion != null && ubicacion != null && ubicacion.DebeExplicarAlAbrir;
 
         // Se espera a la posición si puede llegar y nada compartido ha llevado el mapa a otro sitio (o va a hacerlo)
         bool InicioEsperaPosicion =>
@@ -339,11 +429,17 @@ namespace PriceMap.UI
 
         /// <summary>
         /// Cada fotograma, ya centrado el mapa (CentrarAlAbrir): si toca, la pantalla de inicio se va, con el pin hacia el
-        /// punto del usuario (o el centro si no se le esperaba o no ha llegado), y el mapa se acerca por detrás.
+        /// punto del usuario (o el centro si no se le esperaba o no ha llegado), y el mapa se acerca por detrás. Con la
+        /// bienvenida debajo (historia 3.1) no se espera ni a la posición ni al mapa, y el mapa no se acerca.
         /// </summary>
         void ComprobarInicio()
         {
             if (!InicioALaVista) return;
+            if (BienvenidaAbierta)
+            {
+                if (inicio.Comprobar(esperaPosicion: false, centrada: false, () => true)) inicio.Irse(null);
+                return;
+            }
             bool espera = InicioEsperaPosicion;
             var posicion = ubicacion?.Posicion;
             if (!inicio.Comprobar(espera, posicion.HasValue, vistaCargada)) return;
@@ -353,13 +449,11 @@ namespace PriceMap.UI
             inicio.Irse(destino);
         }
 
-        // La pantalla de inicio se ha ido: lo que esperaba a que se viera la app
+        // La pantalla de inicio se ha ido
         void AlTerminarInicio()
         {
             inicio.Terminada -= AlTerminarInicio;
-            if (raiz == null) return;
-            ExplicarAlAbrir();
-            if (!ExplicacionAbierta) accesibilidad.RecuperarFoco(); // lo pedido con Unity tapado no llegó a TalkBack
+            if (raiz != null) accesibilidad.RecuperarFoco(); // lo pedido con Unity tapado no llegó a TalkBack
         }
 
         /// <summary>
@@ -408,8 +502,8 @@ namespace PriceMap.UI
         /// <summary>True con el aviso de ubicación desactivada a la vista.</summary>
         public bool AvisoAbierto => aviso != null && aviso.Abierta;
 
-        /// <summary>True con alguna ventana modal de la ubicación (explicación o aviso) a la vista.</summary>
-        public bool ModalUbicacionAbierta => ExplicacionAbierta || AvisoAbierto;
+        /// <summary>True con alguna ventana modal de la ubicación (explicación o aviso) o la bienvenida a la vista.</summary>
+        public bool ModalUbicacionAbierta => ExplicacionAbierta || AvisoAbierto || BienvenidaAbierta;
 
         /// <summary>
         /// Lo que hace el botón de ubicación (ServicioUbicacion.AlTocarBoton): sin permiso vuelve a salir la
@@ -534,7 +628,7 @@ namespace PriceMap.UI
             else if (botonUbicacion != null) accesibilidad.PedirFoco(botonUbicacion);
         }
 
-        /// <summary>Muestra la explicación (modal) y guarda que ya salió.</summary>
+        /// <summary>Muestra la explicación (modal).</summary>
         void AbrirExplicacion()
         {
             if (explicacion == null || explicacion.Abierta) return;
@@ -542,7 +636,6 @@ namespace PriceMap.UI
             CerrarFicha(); // la ventana no queda encima de la ficha ni la ficha debajo al cerrarla (recorrido modal)
             PlegarBuscadorPorOtraVentana();
             explicacion.Mostrar(true);
-            ubicacion.MarcarExplicacionMostrada();
             ModalNuevo(); // reconstruye: solo el texto y los dos botones
             accesibilidad.PedirFoco(explicacion.Texto);
         }
@@ -821,7 +914,7 @@ namespace PriceMap.UI
 
         // ───────────────────────── Compartido con PriceMap (historia 2.5, parte 3) ─────────────────────────
 
-        string compartidoPendiente; // texto para el campo que espera a que se cierre la explicación o el aviso de ubicación
+        string compartidoPendiente; // texto para el campo que espera a que se cierre la ventana de ubicación o la bienvenida
         string abrirSolo;           // texto compartido cuya ficha de punto se abre sola al reconocerse (null: ninguno)
 
         /// <summary>Hay algo compartido esperando a que se cierre la ventana de ubicación.</summary>
@@ -832,7 +925,7 @@ namespace PriceMap.UI
         /// volver delante). Va al campo del buscador como si se hubiera pegado (parte 2): solo el enlace si lo lleva o el
         /// texto en una línea de 200 caracteres como mucho. Se cierra la ficha y se abre la hoja; si es una ubicación
         /// reconocida, su ficha de punto libre se abre sola (al momento o al resolverse el enlace corto). Con la
-        /// explicación o el aviso de ubicación a la vista, espera a que se cierren. Vacío: nada. Nada se guarda.
+        /// explicación o el aviso de ubicación o la bienvenida a la vista, espera a que se cierren. Vacío: nada. Nada se guarda.
         /// </summary>
         public void RecibirCompartido(string texto)
         {
@@ -848,7 +941,7 @@ namespace PriceMap.UI
         /// </summary>
         public bool AplicarCompartidoPendiente()
         {
-            if (compartidoPendiente == null || buscador == null || ModalUbicacionAbierta || ExplicacionPorSalir) return false;
+            if (compartidoPendiente == null || buscador == null || ModalUbicacionAbierta) return false;
             string texto = compartidoPendiente;
             compartidoPendiente = null;
             CerrarFicha(); // vuelve la cápsula
@@ -1293,6 +1386,7 @@ namespace PriceMap.UI
         {
             // También la cámara que sigue al navegar (historia 2.7, parte 2b): sin transición al iniciar ni al seguir
             animacionesQuitadas = accesibilidadSistema != null && accesibilidadSistema.AnimacionesQuitadas;
+            bienvenida?.Refrescar(); // al volver de los Ajustes del móvil, los permisos pueden haber cambiado
             if (buscador == null) return;
             buscador.SinTransicion = animacionesQuitadas;
         }
@@ -3081,7 +3175,7 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Botón atrás de Android (KeyCode.Escape): con la explicación de la ubicación abierta es "Ahora no"; con la
+        /// Botón atrás de Android (KeyCode.Escape): con la bienvenida vuelve al paso anterior (en el primero, nada) y con la explicación de la ubicación abierta es "Ahora no"; con la
         /// hoja del buscador desplegada la pliega; con «Cómo llegar» abierta, vuelve la ficha; con la ficha del lugar abierta la cierra; con la hoja de la ruta
         /// desplegada la pliega; con el menú abierto lo cierra sin cambiar el filtro. Con una ruta iniciada y nada
         /// encima (también al llegar) no hace nada: la ruta solo se termina con «Finalizar ruta» (historia 2.9). Si no,
@@ -3089,6 +3183,7 @@ namespace PriceMap.UI
         /// </summary>
         public bool Atras()
         {
+            if (BienvenidaAbierta) { bienvenida.Atras(); return true; }
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (AvisoAbierto) { CerrarAviso(); return true; }
             if (FilaVozAbierta) { CerrarFilaVoz(); return true; } // historia 2.8
@@ -3126,6 +3221,7 @@ namespace PriceMap.UI
             if (capaPuntos != null && mapa != null) mapa.PuntosInteresCambiados -= AlCambiarPuntos;
             if (mapa != null) mapa.GestoUsuario -= AlGestoUsuario;
             if (inicio != null) inicio.Terminada -= AlTerminarInicio;
+            OlvidarBienvenida();
             if (ficha != null && mapa != null)
             {
                 mapa.Toque -= AlTocarMapa;
@@ -3209,6 +3305,8 @@ namespace PriceMap.UI
         public MarcadorPosicion MarcadorPosicion => marcadorPosicion;
         public ExplicacionUbicacion Explicacion => explicacion;
         public AvisoUbicacion Aviso => aviso;
+        /// <summary>Bienvenida del primer arranque (historia 3.1); null si no está a la vista.</summary>
+        public PantallaBienvenida Bienvenida => vistaBienvenida;
         /// <summary>Ficha del lugar; null sin interfaz.</summary>
         public FichaLugar Ficha => ficha;
         /// <summary>Cápsula y hoja del buscador; null sin interfaz.</summary>
@@ -3283,6 +3381,7 @@ namespace PriceMap.UI
         void AlCambiarEscalaFuente(float escala)
         {
             if (raiz != null) EscalaFuente.Aplicar(raiz, escala);
+            vistaBienvenida?.PonerEscala(escala);
             capaPuntos?.OlvidarMedidas(); // los nombres cambian de tamaño: las cajas de los solapes también
         }
 
@@ -3302,6 +3401,7 @@ namespace PriceMap.UI
                 tarjetaRuta?.Repintar();
                 tarjetaLlegada?.Repintar();
                 hojaComoLlegar?.Repintar();
+                vistaBienvenida?.Repintar();
             });
         }
 
@@ -3309,6 +3409,7 @@ namespace PriceMap.UI
         void AjustarDisposicion()
         {
             EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema);
+            AjustarBienvenida();
 
             var segura = Screen.safeArea;
             float ancho = raiz.layout.width;
@@ -3451,7 +3552,7 @@ namespace PriceMap.UI
                     if (AvisoAbierto && aviso.SinNotificaciones) CerrarAviso();
                 }
                 // Espera a que se cierre otra ventana (no tapa el aviso de ubicación)
-                else if (!avisoNotificacionesVisto && !ExplicacionAbierta && !AvisoAbierto)
+                else if (!avisoNotificacionesVisto && !ModalUbicacionAbierta)
                 {
                     avisoNotificacionesVisto = true;
                     AbrirAvisoNotificaciones();

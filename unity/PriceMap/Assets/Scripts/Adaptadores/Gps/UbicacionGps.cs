@@ -37,6 +37,10 @@ namespace PriceMap.Adaptadores.Gps
         // Respuesta del permiso: puede llegar desde el hilo de Java; se aplica en Actualizar
         int respuestaPendiente; // 0 nada, 1 concedido, 2 denegado (se lee y se pone a 0 con Interlocked)
 
+        // Si Android aún puede preguntar por la ubicación (historia 3.1)
+        readonly PreguntaPermiso pregunta = new PreguntaPermiso();
+        bool pidiendo, explicaba;
+
         // Ruta (historia 2.1)
         bool rutaActiva;          // entre IniciarRuta y TerminarRuta
         bool servicioActivo;      // el servicio de ruta está arrancado
@@ -68,9 +72,13 @@ namespace PriceMap.Adaptadores.Gps
         public bool RutaActiva => rutaActiva;
         public bool RutaSoloPrimerPlano => soloPrimerPlano;
 
+        public bool PuedePedirPermiso => pregunta.PuedePedir;
+
         public void PedirPermiso()
         {
             if (fuente.TienePermiso) { AlConceder(); return; }
+            explicaba = fuente.ExplicaPermiso;
+            pidiendo = true;
             fuente.PedirPermiso(concedido =>
             {
                 if (concedido) Interlocked.Exchange(ref respuestaPendiente, 1);
@@ -191,12 +199,21 @@ namespace PriceMap.Adaptadores.Gps
 
         public void AbrirAjustes() => fuente.AbrirAjustes(estado == EstadoUbicacion.Apagada ? AjustesUbicacion : AjustesApp);
 
-        void AlConceder() => ArrancarConPermiso();
+        void AlConceder()
+        {
+            pidiendo = false;
+            ArrancarConPermiso();
+        }
 
         void AlDenegar()
         {
             Apagar();
+            // Una vez por petición: la respuesta puede llegar repetida (precisa y aproximada)
+            if (pidiendo) pregunta.Denegar(explicaba, fuente.ExplicaPermiso);
+            pidiendo = false;
+            bool yaDenegado = estado == EstadoUbicacion.Denegado;
             Cambiar(EstadoUbicacion.Denegado, null, null);
+            if (yaDenegado) Cambiado?.Invoke(); // PuedePedirPermiso ha podido cambiar
         }
 
         /// <summary>

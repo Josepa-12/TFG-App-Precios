@@ -117,6 +117,8 @@ namespace PriceMap.Tests.EditMode
                 var nombres = new XmlNamespaceManager(xml.NameTable);
                 nombres.AddNamespace("android", Android);
 
+                Assert.AreEqual("false", ((XmlElement)xml.SelectSingleNode("/manifest/application")).GetAttribute("allowBackup", Android),
+                    "Sin copia de seguridad: al reinstalar, la bienvenida vuelve a salir (historia 3.1).");
                 var lanzadora = (XmlElement)xml.SelectSingleNode(
                     "/manifest/application/activity[intent-filter/action/@android:name='android.intent.action.MAIN']", nombres);
                 Assert.AreEqual(ActividadAndroid.Actividad, lanzadora.GetAttribute("name", Android));

@@ -186,3 +186,11 @@
 - source_spec: `spec-pantalla-de-inicio.md`
   summary: Probar en el móvil la parte nativa de la pantalla de inicio (en el repositorio no hay pruebas instrumentadas de Android).
   evidence: Las pruebas solo leen el Java. Comprobar que sale, `irse` la quita y después se puede tocar el mapa; que se va sola a los 15 s; tema guardado oscuro con el sistema claro (y en Android 8–11 el arranque con el del sistema); sin fotograma negro; pin hasta el punto azul; sin animaciones; TalkBack; y que `hardwareAccelerated` no afecta al mapa ni al teclado.
+
+- source_spec: `spec-3-1-bienvenida-privacidad-y-consentimientos.md`
+  summary: Poder volver a leer el aviso de privacidad desde Ajustes · Privacidad (3.5) y completarlo con lo que pide el RGPD.
+  evidence: Tras «Empezar» la bienvenida no vuelve a salir y nada más abre el aviso. Le faltan derechos (acceso, borrado, reclamar a la AEPD), base legal, plazos y fecha; el contenido lo decide el usuario.
+
+- source_spec: `spec-3-1-bienvenida-privacidad-y-consentimientos.md`
+  summary: Probar la bienvenida en un móvil (instalación limpia en Android 13+ y anterior, y actualización).
+  evidence: Diálogos reales de permisos, denegar dos veces, cerrar el diálogo sin responder, TalkBack, fundido de la pantalla de inicio y copiar el correo (Unity no tiene menú de copiar en Android).

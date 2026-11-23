@@ -29,6 +29,9 @@ namespace PriceMap.Adaptadores.Gps
         /// <summary>Rumbo de la brújula respecto al norte real, sin normalizar; null sin brújula o sin lecturas.</summary>
         float? Rumbo { get; }
 
+        /// <summary>Android aconseja explicar el permiso (shouldShowRequestPermissionRationale); fuera de Android, false.</summary>
+        bool ExplicaPermiso => false;
+
         /// <summary>
         /// Lanza la petición de permiso del sistema. La respuesta (true concedido, false denegado) puede llegar
         /// desde otro hilo, y más de una vez (precisa y aproximada).

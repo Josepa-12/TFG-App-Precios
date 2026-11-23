@@ -72,6 +72,18 @@ namespace PriceMap.Adaptadores.Gps
         // Sin brújula (o sin lecturas aún) el timestamp sigue en 0
         public float? Rumbo => Input.compass.enabled && Input.compass.timestamp > 0 ? Input.compass.trueHeading : (float?)null;
 
+        public bool ExplicaPermiso
+        {
+            get
+            {
+#if UNITY_ANDROID && !UNITY_EDITOR
+                return Permission.ShouldShowRequestPermissionRationale(Permission.FineLocation);
+#else
+                return false;
+#endif
+            }
+        }
+
         public void PedirPermiso(Action<bool> respuesta)
         {
 #if UNITY_ANDROID && !UNITY_EDITOR

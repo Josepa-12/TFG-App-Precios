@@ -754,11 +754,7 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void ConLaFichaAbiertaLaExplicacionDeUbicacionLaCierra()
         {
-            Crear(Ahora, prefs =>
-            {
-                prefs.Guardar(ServicioUbicacion.ClaveExplicacion, "1"); // ya salió al abrir: no sale sola
-                return new ServicioUbicacion(new UbicacionFalsa { Estado = EstadoUbicacion.SinPermiso }, prefs);
-            });
+            Crear(Ahora, prefs => new ServicioUbicacion(new UbicacionFalsa { Estado = EstadoUbicacion.SinPermiso }, prefs));
             ConLector();
             pantalla.AbrirFicha(LugarId("clinica-areas"));
             pantalla.TocarUbicacion(); // sin permiso: vuelve a salir la explicación

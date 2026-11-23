@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 11-17-2026 10:00
-last_updated: 11-22-2026 19:00
+last_updated: 11-24-2026 01:00
 project: TFG-App-Precios
 project_key: NOKEY
 tracking_system: file-system
@@ -58,8 +58,8 @@ development_status:
   2-9-llegar-y-terminar-la-ruta: review
   epic-2-retrospective: optional
 
-  epic-3: backlog
-  3-1-bienvenida-privacidad-y-consentimientos: ready-for-dev
+  epic-3: in-progress
+  3-1-bienvenida-privacidad-y-consentimientos: review
   3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexión: ready-for-dev
   3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta: ready-for-dev
   3-4-elegir-cuenta-de-cliente-o-de-negocio: ready-for-dev

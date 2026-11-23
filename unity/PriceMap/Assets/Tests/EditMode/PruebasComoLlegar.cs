@@ -224,7 +224,6 @@ namespace PriceMap.Tests.EditMode
         {
             gps = new UbicacionFalsa { Posicion = Origen };
             var prefs = new PreferenciasFalsas();
-            prefs.Guardar(ServicioUbicacion.ClaveExplicacion, "1");
             var ubicacion = new ServicioUbicacion(gps, prefs);
             rutas = new ServicioRutas(servicio, null, Nunca, () => reloj);
             nav = new ServicioNavegacion(ubicacion, rutas, Nunca, () => reloj);

@@ -301,6 +301,7 @@ namespace PriceMap.Arranque
             yield return NavegacionFlecha();
             yield return NavegacionVoz();
             yield return Llegada();
+            yield return Bienvenida();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -2370,6 +2371,145 @@ namespace PriceMap.Arranque
             SolapesConMarcadores(capa);
             yield return Capturar("marcadores");
             yield return new WaitForSeconds(1f);
+        }
+
+        /// <summary>Preferencias en memoria para la bienvenida de la captura: las de verdad no se tocan.</summary>
+        class PreferenciasCaptura : IPreferencias
+        {
+            readonly Dictionary<string, string> datos = new Dictionary<string, string>();
+            public string Leer(string clave) => datos.TryGetValue(clave, out var v) ? v : null;
+            public void Guardar(string clave, string valor) => datos[clave] = valor;
+            public void Borrar(string clave) => datos.Remove(clave);
+        }
+
+        /// <summary>Notificaciones aún sin permiso, como en un Android 13 recién instalado.</summary>
+        class NotificacionesCaptura : INotificaciones
+        {
+            public EstadoNotificaciones Estado => EstadoNotificaciones.SinPermiso;
+            public event Action Cambiado { add { } remove { } }
+            public void PedirPermiso() { }
+        }
+
+        /// <summary>
+        /// Historia 3.1, capturas "bienvenida-1" a "-3" y "bienvenida-aviso" (y "-oscuro"), con la ubicación permitida y las
+        /// notificaciones sin contestar, y con el texto al 200 % "bienvenida-200" (paso 3) y "bienvenida-200-1", "-2" y
+        /// "-aviso". En cada una, que ningún texto se corta ni se sale y que los botones llegan a 48 dp; al 200 %, también con
+        /// 360 dp de ancho. Al acabar, «Empezar» la quita y la guarda (en memoria).
+        /// </summary>
+        IEnumerator Bienvenida()
+        {
+            if (pantalla == null) yield break;
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var prefs = new PreferenciasCaptura();
+            ServicioBienvenida Nuevo() => new ServicioBienvenida(prefs, new ServicioUbicacion(new UbicacionCaptura(), prefs), new NotificacionesCaptura());
+            var servicio = Nuevo();
+            try
+            {
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                pantalla.AbrirBienvenida(servicio);
+                yield return new WaitForSeconds(1.5f);
+                if (!pantalla.BienvenidaAbierta) { Debug.LogError("PriceMap: la bienvenida no sale."); yield break; }
+                if (!pantalla.TapaPunto(new Vector2(Screen.width / 2f, Screen.height / 2f))) Debug.LogError("PriceMap: con la bienvenida se puede mover el mapa.");
+                foreach (var sufijo in new[] { "", "-oscuro" })
+                {
+                    if (sufijo != "") { tema.Alternar(); yield return new WaitForSeconds(1f); }
+                    for (int pagina = 0; pagina <= PantallaBienvenida.PaginaAviso; pagina++)
+                    {
+                        IrAPagina(servicio, pagina);
+                        yield return new WaitForSeconds(0.5f);
+                        yield return new WaitForEndOfFrame();
+                        ComprobarBienvenida($"página {pagina + 1}{sufijo}", cabeEntera: true);
+                        yield return Capturar((pagina == PantallaBienvenida.PaginaAviso ? "bienvenida-aviso" : "bienvenida-" + (pagina + 1)) + sufijo);
+                        yield return new WaitForSeconds(0.5f);
+                    }
+                }
+                tema.Alternar();
+                // Con el texto del sistema al 200 %, se abre otra vez, como la app
+                servicio.Terminar();
+                prefs.Borrar(ServicioBienvenida.ClaveVista);
+                EscalaFuente.Forzada = () => 2f;
+                servicio = Nuevo();
+                pantalla.AbrirBienvenida(servicio);
+                foreach (float ancho in new[] { AnchoMovilDp, 360f })
+                {
+                    CambiarAnchoPanel(ancho);
+                    for (int pagina = 0; pagina <= PantallaBienvenida.PaginaAviso; pagina++)
+                    {
+                        IrAPagina(servicio, pagina);
+                        yield return new WaitForSeconds(0.7f);
+                        yield return new WaitForEndOfFrame();
+                        ComprobarBienvenida($"página {pagina + 1} al 200 % con {ancho:F0} dp", cabeEntera: false);
+                        if (ancho == AnchoMovilDp)
+                            yield return Capturar("bienvenida-200" + (pagina == PantallaBienvenida.PaginaAviso ? "-aviso" : pagina == 2 ? "" : "-" + (pagina + 1)));
+                        yield return new WaitForSeconds(0.5f);
+                    }
+                }
+                IrAPagina(servicio, 2);
+                servicio.AhoraNoNotificaciones();
+                yield return new WaitForSeconds(0.5f);
+                yield return new WaitForEndOfFrame();
+                ComprobarBienvenida("«Ahora no» al 200 % con 360 dp", cabeEntera: false);
+                pantalla.Bienvenida.PulsarPrincipal();
+                yield return null;
+                if (pantalla.BienvenidaAbierta || servicio.Pendiente || prefs.Leer(ServicioBienvenida.ClaveVista) != "1")
+                    Debug.LogError("PriceMap: «Empezar» no termina la bienvenida.");
+            }
+            finally
+            {
+                if (pantalla.BienvenidaAbierta) servicio.Terminar();
+                RestaurarAnchoYFuente();
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        /// <summary>Lleva la bienvenida a esa página (paso o aviso) con las órdenes del servicio, sin pulsar sus botones.</summary>
+        static void IrAPagina(ServicioBienvenida servicio, int pagina)
+        {
+            int paso = pagina == PantallaBienvenida.PaginaAviso ? ServicioBienvenida.PasoPrivacidad : pagina;
+            if (servicio.AvisoAbierto) servicio.Atras();
+            while (servicio.Paso > paso) servicio.Atras();
+            while (servicio.Paso < paso) servicio.Siguiente();
+            if (pagina == PantallaBienvenida.PaginaAviso) servicio.AbrirAviso();
+        }
+
+        /// <summary>
+        /// Ningún texto de la página a la vista necesita más alto o más ancho (su palabra más larga) del que tiene, los botones
+        /// miden 48 dp o más, todo cae dentro del ancho y, con el texto normal, la página cabe sin desplazarla.
+        /// </summary>
+        void ComprobarBienvenida(string caso, bool cabeEntera)
+        {
+            var vista = pantalla.Bienvenida;
+            var pagina = vista.Paginas[vista.Pagina];
+            float ancho = vista.layout.width, contenido = pagina.contentContainer.layout.height, visto = pagina.contentViewport.layout.height;
+            int textos = 0, malos = 0;
+            string ejemplo = "-";
+            void Mal(string que) { malos++; if (ejemplo == "-") ejemplo = que; }
+            vista.Query<TextElement>().ForEach(t =>
+            {
+                var b = t.worldBound;
+                if (string.IsNullOrEmpty(t.text) || float.IsNaN(b.width) || b.width <= 0f) return;
+                for (VisualElement e = t; e != null && e != vista; e = e.parent) if (e.resolvedStyle.display == DisplayStyle.None) return;
+                textos++;
+                var caja = t.contentRect;
+                var necesita = t.MeasureTextSize(t.text, caja.width + 1f, VisualElement.MeasureMode.Exactly, 0f, VisualElement.MeasureMode.Undefined);
+                if (necesita.y > caja.height + 1f) Mal($"\"{t.text}\" necesita {necesita.y:F1} dp de alto y tiene {caja.height:F1}");
+                foreach (var palabra in t.text.Replace("<u>", "").Replace("</u>", "").Split(' '))
+                {
+                    float w = t.MeasureTextSize(palabra, 0f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).x;
+                    if (w > caja.width + 1f) Mal($"\"{palabra}\" necesita {w:F1} dp de ancho y tiene {caja.width:F1}");
+                }
+                if (b.xMin < vista.worldBound.xMin - 0.5f || b.xMax > vista.worldBound.xMax + 0.5f) Mal($"\"{t.text}\" se sale ({b})");
+                if (t is Button && b.height < 47.5f) Mal($"el botón \"{t.text}\" mide {b}");
+            });
+            var pie = vista.Principal.parent.worldBound;
+            if (pie.yMax > vista.worldBound.yMax + 0.5f || visto < 100f) Mal($"el pie {pie} no deja sitio a la página ({visto:F0} dp)");
+            if (cabeEntera && contenido > visto + 0.5f) Mal($"la página mide {contenido:F0} dp y se ven {visto:F0}");
+            Debug.Log($"PriceMap: bienvenida ({caso}): {ancho:F0} dp; {textos} textos; contenido {contenido:F0} en {visto:F0} dp; mal {malos} ({ejemplo}); " +
+                      $"TalkBack: {string.Join(" | ", pantalla.Accesibilidad.Recorrido())}");
+            if (textos == 0 || malos > 0) Debug.LogError($"PriceMap: la bienvenida ({caso}) tiene {malos} fallos: {ejemplo}");
         }
 
         /// <summary>Escribe en el registro dónde está cada elemento de la interfaz, con su texto y su fuente.</summary>

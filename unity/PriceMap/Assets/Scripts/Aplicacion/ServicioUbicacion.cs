@@ -5,14 +5,10 @@ namespace PriceMap.Aplicacion
 {
     /// <summary>
     /// Posición del usuario en el mapa (FR-5): la UI observa estado, posición y rumbo y le envía comandos
-    /// (permitir, tocar el botón). Recuerda si la explicación del permiso ya salió y apaga el GPS y la
-    /// brújula con la app en segundo plano (NFR-3).
+    /// (permitir, tocar el botón). Apaga el GPS y la brújula con la app en segundo plano (NFR-3).
     /// </summary>
     public class ServicioUbicacion
     {
-        /// <summary>Preferencia que guarda que la explicación del permiso ya salió una vez.</summary>
-        public const string ClaveExplicacion = "ubicacion-explicacion-mostrada";
-
         readonly IUbicacion ubicacion;
         readonly IPreferencias preferencias;
         bool iniciada;
@@ -44,11 +40,8 @@ namespace PriceMap.Aplicacion
         /// <summary>True con la app en segundo plano (ubicación y brújula apagadas).</summary>
         public bool Pausada { get; private set; }
 
-        /// <summary>Si la explicación tiene que salir al abrir la app: sin permiso y sin haber salido antes.</summary>
-        public bool DebeExplicarAlAbrir => Estado == EstadoUbicacion.SinPermiso && preferencias.Leer(ClaveExplicacion) == null;
-
-        /// <summary>Guarda que la explicación ya salió: no vuelve a salir al abrir la app.</summary>
-        public void MarcarExplicacionMostrada() => preferencias.Guardar(ClaveExplicacion, "1");
+        /// <summary>Android aún puede preguntar por el permiso (IUbicacion.PuedePedirPermiso).</summary>
+        public bool PuedePedirPermiso => ubicacion.PuedePedirPermiso;
 
         /// <summary>Al abrir la app: enciende ubicación y brújula si ya hay permiso.</summary>
         public void Iniciar()

@@ -63,6 +63,47 @@ namespace PriceMap.UI
         public const string PoiPublico = "poi.categoria.publico";
         public const string PoiCulto = "poi.categoria.culto";
 
+        /// <summary>Bienvenida del primer arranque (historia 3.1; docs/diseno/bienvenida/textos.md). Paso 1.</summary>
+        public const string BienvenidaTituloPrecios = "bienvenida.paso1.titulo";
+        public const string BienvenidaMira = "bienvenida.paso1.mira";
+        public const string BienvenidaNegocios = "bienvenida.paso1.negocios";
+        public const string BienvenidaGuia = "bienvenida.paso1.guia";
+        public const string BienvenidaSiguiente = "bienvenida.siguiente";
+        /// <summary>Paso 2: la privacidad.</summary>
+        public const string BienvenidaTituloPrivacidad = "bienvenida.paso2.titulo";
+        public const string BienvenidaPrivacidadUbicacion = "bienvenida.paso2.ubicacion";
+        public const string BienvenidaPrivacidadEnvios = "bienvenida.paso2.envios";
+        public const string BienvenidaPrivacidadAportes = "bienvenida.paso2.aportes";
+        public const string BienvenidaPrivacidadCuenta = "bienvenida.paso2.cuenta";
+        public const string BienvenidaLeerAviso = "bienvenida.leeraviso";
+        /// <summary>Paso 3: los permisos («Permitir» y «Ahora no» son los de la ubicación).</summary>
+        public const string BienvenidaTituloPermisos = "bienvenida.paso3.titulo";
+        public const string BienvenidaUbicacion = "bienvenida.paso3.ubicacion";
+        public const string BienvenidaUbicacionPara = "bienvenida.paso3.ubicacion.para";
+        public const string BienvenidaNotificaciones = "bienvenida.paso3.notificaciones";
+        public const string BienvenidaNotificacionesPara = "bienvenida.paso3.notificaciones.para";
+        public const string BienvenidaPermitido = "bienvenida.permitido";
+        /// <summary>En la tarjeta, tras «Ahora no» o denegarlo.</summary>
+        public const string BienvenidaDespues = "bienvenida.despues";
+        /// <summary>Pie de las tarjetas.</summary>
+        public const string BienvenidaCambiar = "bienvenida.cambiar";
+        public const string BienvenidaEmpezar = "bienvenida.empezar";
+        /// <summary>TalkBack: «‹», los puntos de progreso ({0} paso, {1} pasos) y lo de una tarjeta ({0} y {1}: "Permitir, Ubicación").</summary>
+        public const string BienvenidaAtras = "bienvenida.atras";
+        public const string BienvenidaPasoDe = "bienvenida.pasode";
+        public const string BienvenidaAnuncioPermiso = "bienvenida.anuncio.permiso";
+        /// <summary>Aviso de privacidad completo, dentro de la app (historia 3.1).</summary>
+        public const string AvisoTitulo = "aviso.titulo";
+        public const string AvisoDatosTitulo = "aviso.datos.titulo";
+        public const string AvisoDatos = "aviso.datos";
+        public const string AvisoSaleTitulo = "aviso.sale.titulo";
+        public const string AvisoSale = "aviso.sale";
+        public const string AvisoGuardaTitulo = "aviso.guarda.titulo";
+        public const string AvisoGuarda = "aviso.guarda";
+        public const string AvisoResponsableTitulo = "aviso.responsable.titulo";
+        public const string AvisoResponsable = "aviso.responsable";
+        public const string AvisoCorreo = "aviso.correo";
+
         /// <summary>Botón de ubicación para TalkBack (con posición).</summary>
         public const string UbicacionCentrar = "ubicacion.centrar";
         /// <summary>Explicación antes de pedir el permiso de ubicación.</summary>
@@ -392,6 +433,13 @@ namespace PriceMap.UI
         public static readonly string[] Todas =
         {
             LlegadaTitulo, LlegadaA, LlegadaCierre, LlegadaAnuncio,
+            BienvenidaTituloPrecios, BienvenidaMira, BienvenidaNegocios, BienvenidaGuia, BienvenidaSiguiente,
+            BienvenidaTituloPrivacidad, BienvenidaPrivacidadUbicacion, BienvenidaPrivacidadEnvios,
+            BienvenidaPrivacidadAportes, BienvenidaPrivacidadCuenta, BienvenidaLeerAviso, BienvenidaTituloPermisos,
+            BienvenidaUbicacion, BienvenidaUbicacionPara, BienvenidaNotificaciones, BienvenidaNotificacionesPara,
+            BienvenidaPermitido, BienvenidaDespues, BienvenidaCambiar, BienvenidaEmpezar, BienvenidaAtras, BienvenidaPasoDe,
+            BienvenidaAnuncioPermiso, AvisoTitulo, AvisoDatosTitulo, AvisoDatos, AvisoSaleTitulo, AvisoSale,
+            AvisoGuardaTitulo, AvisoGuarda, AvisoResponsableTitulo, AvisoResponsable, AvisoCorreo,
             ComoLlegarTitulo, ComoLlegarA, ComoLlegarCerrar, ComoLlegarCalculando, ComoLlegarDetalle, ComoLlegarMasRapida,
             ComoLlegarIniciar, ComoLlegarAnuncio, ComoLlegarAnuncioMinuto, ComoLlegarAnuncioAprox, ComoLlegarAnuncioAproxMinuto,
             ComoLlegarAnuncioRapida, ComoLlegarElegida,

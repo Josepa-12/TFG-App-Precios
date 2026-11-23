@@ -53,5 +53,7 @@
         <ui:VisualElement name="hueco-buscador" class="hueco-buscador" picking-mode="Ignore" />
         <!-- Explicación del permiso de ubicación (ExplicacionUbicacion): ventana modal por encima de todo -->
         <ui:VisualElement name="hueco-explicacion" class="hueco-explicacion" picking-mode="Ignore" />
+        <!-- Bienvenida del primer arranque (PantallaBienvenida, historia 3.1): opaca y encima de todo; vacío después -->
+        <ui:VisualElement name="hueco-bienvenida" class="hueco-explicacion" picking-mode="Ignore" />
     </ui:VisualElement>
 </ui:UXML>

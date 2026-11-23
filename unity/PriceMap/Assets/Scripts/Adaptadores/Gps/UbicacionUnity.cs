@@ -35,6 +35,7 @@ namespace PriceMap.Adaptadores.Gps
         public float? Rumbo => Gps.Rumbo;
         public Coordenada? UltimaConocida => Gps.UltimaConocida;
         public int Lecturas => Gps.Lecturas;
+        public bool PuedePedirPermiso => Gps.PuedePedirPermiso;
 
         public event Action Cambiado
         {

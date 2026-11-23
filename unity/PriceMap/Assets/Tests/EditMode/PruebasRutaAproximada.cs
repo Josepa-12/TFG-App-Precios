@@ -554,7 +554,6 @@ namespace PriceMap.Tests.EditMode
             pantalla = objeto.AddComponent<PantallaMapa>();
             var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
             var prefs = new PreferenciasFalsas();
-            prefs.Guardar(ServicioUbicacion.ClaveExplicacion, "1");
             var tema = new ServicioTema(prefs, new SistemaClaro());
             var filtro = new ServicioFiltro(prefs);
             mapa = new MapaFalso();

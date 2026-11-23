@@ -49,7 +49,7 @@ namespace PriceMap.Tests.EditMode
             return (Mathf.Max(la, lb) + 0.05f) / (Mathf.Min(la, lb) + 0.05f);
         }
 
-        static Dictionary<string, Color> Tema(bool oscuro)
+        internal static Dictionary<string, Color> Tema(bool oscuro)
         {
             var claro = Colores(".pm-raiz");
             if (!oscuro) return claro;

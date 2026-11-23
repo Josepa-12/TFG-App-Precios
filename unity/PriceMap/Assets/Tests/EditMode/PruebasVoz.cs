@@ -734,7 +734,6 @@ namespace PriceMap.Tests.EditMode
             objeto = new GameObject("Pantalla de prueba");
             pantalla = objeto.AddComponent<PantallaMapa>();
             var arbol = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/PantallaMapa.uxml").Instantiate();
-            prefs.Guardar(ServicioUbicacion.ClaveExplicacion, "1");
             var tema = new ServicioTema(prefs, new SistemaClaro());
             var filtro = new ServicioFiltro(prefs);
             mapa = new MapaFalso();

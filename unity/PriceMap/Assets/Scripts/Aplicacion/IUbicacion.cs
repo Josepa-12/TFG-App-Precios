@@ -36,6 +36,12 @@ namespace PriceMap.Aplicacion
         /// <summary>Lanza la petición de permiso del sistema (Android). Si ya está concedido, empieza a buscar.</summary>
         void PedirPermiso();
 
+        /// <summary>
+        /// Android aún puede preguntar por el permiso; false tras denegarlo de forma definitiva (solo quedan los Ajustes del
+        /// móvil). Si cambia, avisa por Cambiado.
+        /// </summary>
+        bool PuedePedirPermiso => true;
+
         /// <summary>Enciende ubicación y brújula si hay permiso (al abrir la app y al volver a ella).</summary>
         void Iniciar();
 

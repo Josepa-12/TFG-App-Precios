@@ -285,7 +285,7 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void SinPermiso_LaExplicacionSaleAlIrseYNoDebajo()
+        public void SinPermiso_NoSaleNingunaVentanaNiDebajoNiAlIrse()
         {
             gps.Estado = EstadoUbicacion.SinPermiso;
             mapa.VistaCargada = true;
@@ -294,18 +294,18 @@ namespace PriceMap.Tests.EditMode
             Fotograma(1.5);
             Fotograma(0.5);
             Assert.AreEqual(1, nativa.Idas.Count);
-            Assert.IsFalse(pantalla.ExplicacionAbierta, "Aún se está yendo.");
             nativa.Segundos = null;
             Fotograma();
-            Assert.IsTrue(pantalla.ExplicacionAbierta);
+            Assert.IsFalse(pantalla.ExplicacionAbierta, "Desde la 3.1, el permiso se pide en la bienvenida.");
+            Assert.IsFalse(pantalla.Accesibilidad.Modal);
         }
 
         [Test]
-        public void SinPantallaDeInicio_LaExplicacionSaleAlMomentoComoAntes()
+        public void SinPantallaDeInicio_LaAppSaleAlMomento()
         {
             gps.Estado = EstadoUbicacion.SinPermiso;
             Crear(conInicio: false);
-            Assert.IsTrue(pantalla.ExplicacionAbierta);
+            Assert.IsFalse(pantalla.ExplicacionAbierta);
             Assert.IsFalse(pantalla.InicioALaVista);
             Fotograma(5);
             Assert.IsEmpty(mapa.Acercamientos);
@@ -319,7 +319,6 @@ namespace PriceMap.Tests.EditMode
             mapa.VistaCargada = true;
             var inicio = Crear();
             Assert.IsFalse(inicio.ALaVista);
-            Assert.IsTrue(pantalla.ExplicacionAbierta, "Como antes.");
             Fotograma(5);
             Assert.IsEmpty(nativa.Idas);
             Assert.IsEmpty(mapa.Acercamientos);
@@ -355,21 +354,18 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void CompartidoSinPermiso_PrimeroLaExplicacionYDespuesLaFicha()
+        public void CompartidoSinPermiso_AbreSuFichaDebajo()
         {
             gps.Estado = EstadoUbicacion.SinPermiso;
             mapa.VistaCargada = true;
             Crear();
             pantalla.RecibirCompartido("geo:36.77,-6.35");
-            Assert.IsFalse(pantalla.FichaAbierta, "Espera a la explicación, que saldrá al irse la pantalla.");
+            Assert.AreEqual(new Coordenada(36.77, -6.35), pantalla.PuntoAbierto, "No hay ninguna ventana que esperar.");
             Fotograma(1.5);
             Assert.AreEqual(1, nativa.Idas.Count);
             nativa.Segundos = null;
             Fotograma();
-            Assert.IsTrue(pantalla.ExplicacionAbierta);
-            Assert.IsTrue(pantalla.CompartidoPendiente);
-            pantalla.AhoraNoUbicacion();
-            pantalla.AplicarCompartidoPendiente(); // lo hace Update
+            Assert.IsFalse(pantalla.ExplicacionAbierta);
             Assert.AreEqual(new Coordenada(36.77, -6.35), pantalla.PuntoAbierto);
         }
 
@@ -410,7 +406,7 @@ namespace PriceMap.Tests.EditMode
             Fotograma(1);
             Assert.IsEmpty(nativa.Idas);
             Assert.AreEqual(1, terminada, "Una sola vez.");
-            Assert.IsTrue(pantalla.ExplicacionAbierta);
+            Assert.IsFalse(pantalla.ExplicacionAbierta);
         }
 
         [Test]

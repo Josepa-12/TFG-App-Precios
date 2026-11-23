@@ -205,6 +205,17 @@
     --llegada-boton-alto: 52px;
     --radio-llegada-boton: 26px;   /* 52 / 2 */
     --maniobra-icono-siguiente: 20px;
+    /* Bienvenida (historia 3.1; maqueta A del 23/11/2026): logo, cuadro del icono, puntos de progreso y botón principal */
+    --bienvenida-pin-ancho: 108px;
+    --bienvenida-pin-alto: 132px;
+    --bienvenida-nombre-ancho: 208px;
+    --bienvenida-nombre-alto: 50px;
+    --bienvenida-icono: 44px;
+    --bienvenida-glifo: 24px;
+    --bienvenida-punto: 9px;
+    --bienvenida-punto-actual: 25px;
+    --radio-bienvenida-punto: 4.5px; /* 9 / 2 */
+    --bienvenida-boton-alto: 52px;
     --asa-ancho: 36px;
     --asa-alto: 4px;
 

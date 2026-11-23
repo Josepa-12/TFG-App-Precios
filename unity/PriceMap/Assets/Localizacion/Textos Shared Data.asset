@@ -851,6 +851,138 @@ MonoBehaviour:
     m_Key: llegada.anuncio
     m_Metadata:
       m_Items: []
+  - m_Id: 2353802958069760
+    m_Key: bienvenida.paso1.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429888
+    m_Key: bienvenida.paso1.mira
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429889
+    m_Key: bienvenida.paso1.negocios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429890
+    m_Key: bienvenida.paso1.guia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429891
+    m_Key: bienvenida.siguiente
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429892
+    m_Key: bienvenida.paso2.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429893
+    m_Key: bienvenida.paso2.ubicacion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429894
+    m_Key: bienvenida.paso2.envios
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429895
+    m_Key: bienvenida.paso2.aportes
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429896
+    m_Key: bienvenida.paso2.cuenta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429897
+    m_Key: bienvenida.leeraviso
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429898
+    m_Key: bienvenida.paso3.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429899
+    m_Key: bienvenida.paso3.ubicacion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429900
+    m_Key: bienvenida.paso3.ubicacion.para
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429901
+    m_Key: bienvenida.paso3.notificaciones
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429902
+    m_Key: bienvenida.paso3.notificaciones.para
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429903
+    m_Key: bienvenida.permitido
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429904
+    m_Key: bienvenida.despues
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429905
+    m_Key: bienvenida.cambiar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429906
+    m_Key: bienvenida.empezar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429907
+    m_Key: bienvenida.atras
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429908
+    m_Key: bienvenida.pasode
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429909
+    m_Key: bienvenida.anuncio.permiso
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429910
+    m_Key: aviso.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429911
+    m_Key: aviso.datos.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429912
+    m_Key: aviso.datos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429913
+    m_Key: aviso.sale.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429914
+    m_Key: aviso.sale
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429915
+    m_Key: aviso.guarda.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429916
+    m_Key: aviso.guarda
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429917
+    m_Key: aviso.responsable.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429918
+    m_Key: aviso.responsable
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2353802987429919
+    m_Key: aviso.correo
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

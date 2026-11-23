@@ -2269,3 +2269,325 @@
     background-color: var(--color-accent);
     color: var(--color-accent-ink);
 }
+
+/* ───────── Bienvenida del primer arranque (historia 3.1; maqueta A del 23/11/2026) ─────────
+   Opaca y encima de todo: cabecera con «‹», la página (que se desplaza si no cabe) y el pie con el progreso y el botón. */
+.bienvenida {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: column;
+    background-color: var(--color-bg);
+}
+
+.bienvenida__cabecera {
+    flex-direction: row;
+    flex-shrink: 0;
+    min-height: var(--zona-tactil-min);
+    padding: var(--espacio-1) var(--espacio-2) 0 var(--espacio-2);
+}
+
+.bienvenida__atras {
+    width: var(--zona-tactil-min);
+    height: var(--zona-tactil-min);
+    align-items: center;
+    justify-content: center;
+    border-width: 2px;
+    border-color: rgba(0, 0, 0, 0);
+    border-radius: var(--radio-pill);
+    color: var(--color-text);
+}
+
+.bienvenida__atras:active {
+    background-color: var(--color-surface-2);
+}
+
+.bienvenida__atras:focus {
+    border-color: var(--color-focus);
+}
+
+.bienvenida__glifo {
+    width: var(--bienvenida-glifo);
+    height: var(--bienvenida-glifo);
+    flex-shrink: 0;
+}
+
+/* Como en la ficha: ni el contenedor ni sus hijos encogen */
+.bienvenida__pagina {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+}
+
+.bienvenida__pagina .unity-scroll-view__content-and-vertical-scroll-container {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.bienvenida__pagina .unity-scroll-view__content-viewport {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.bienvenida__pagina .unity-scroll-view__content-container {
+    flex-shrink: 0;
+    padding: var(--espacio-2) var(--espacio-5) var(--espacio-4) var(--espacio-5);
+}
+
+.bienvenida__logo {
+    flex-shrink: 0;
+    align-items: center;
+    margin-bottom: var(--espacio-5);
+}
+
+.bienvenida__pin {
+    width: var(--bienvenida-pin-ancho);
+    height: var(--bienvenida-pin-alto);
+    background-image: url("Imagenes/pin.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.bienvenida__nombre {
+    width: var(--bienvenida-nombre-ancho);
+    height: var(--bienvenida-nombre-alto);
+    margin-top: var(--espacio-2);
+    background-image: url("Imagenes/nombre-claro.png");
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.pm-raiz.tema-oscuro .bienvenida__nombre {
+    background-image: url("Imagenes/nombre-oscuro.png");
+}
+
+.bienvenida__titulo,
+.bienvenida__fila-texto,
+.bienvenida__tarjeta-titulo,
+.bienvenida__tarjeta-para,
+.bienvenida__permitido-texto,
+.bienvenida__despues,
+.bienvenida__cambiar,
+.bienvenida__apartado,
+.bienvenida__parrafo {
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    white-space: normal;
+    color: var(--color-text);
+}
+
+.bienvenida__titulo {
+    margin-bottom: var(--espacio-5);
+}
+
+.bienvenida__titulo--centrado {
+    margin-bottom: var(--espacio-6);
+    -unity-text-align: upper-center;
+}
+
+.bienvenida__fila {
+    flex-direction: row;
+    flex-shrink: 0;
+    align-items: center;
+    margin-bottom: var(--espacio-4);
+}
+
+.bienvenida__fila--tarjeta {
+    margin-bottom: 0;
+}
+
+.bienvenida__icono {
+    width: var(--bienvenida-icono);
+    height: var(--bienvenida-icono);
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    margin-right: var(--espacio-4);
+    border-radius: var(--radio-md);
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent-text);
+}
+
+.bienvenida__fila-texto,
+.bienvenida__tarjeta-textos {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.bienvenida__tarjeta {
+    flex-shrink: 0;
+    margin-bottom: var(--espacio-4);
+    padding: var(--espacio-4);
+    border-width: 1px;
+    border-radius: var(--radio-lg);
+    border-color: var(--color-border);
+    background-color: var(--color-surface);
+}
+
+.bienvenida__permitido {
+    flex-direction: row;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: var(--zona-tactil-min);
+    margin-top: var(--espacio-2);
+    color: var(--color-success);
+}
+
+.bienvenida__permitido-texto {
+    flex-shrink: 1;
+    margin-left: var(--espacio-2);
+    color: var(--color-success);
+}
+
+.bienvenida__despues {
+    margin-top: var(--espacio-3);
+    color: var(--color-muted);
+}
+
+.bienvenida__cambiar {
+    color: var(--color-muted);
+}
+
+.bienvenida__botones {
+    flex-direction: row;
+    flex-shrink: 0;
+    margin-top: var(--espacio-3);
+}
+
+.explicacion-ubicacion__boton.bienvenida__boton {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    margin: 0;
+}
+
+.explicacion-ubicacion__boton.bienvenida__boton--primero {
+    margin-right: var(--espacio-3);
+}
+
+.bienvenida__hueco-evaluacion {
+    flex-shrink: 0;
+}
+
+.bienvenida__apartado {
+    margin-bottom: var(--espacio-1);
+}
+
+.bienvenida__parrafo {
+    margin-bottom: var(--espacio-4);
+    color: var(--color-muted);
+}
+
+/* El correo, justo debajo del responsable */
+.bienvenida__responsable {
+    margin-bottom: var(--espacio-1);
+}
+
+.bienvenida__pie {
+    flex-shrink: 0;
+    padding: var(--espacio-2) var(--espacio-5) var(--espacio-5) var(--espacio-5);
+}
+
+.bienvenida__enlace,
+.bienvenida__enlace:hover,
+.bienvenida__enlace:active {
+    align-self: center;
+    flex-shrink: 0;
+    min-height: var(--zona-tactil-min);
+    max-width: 100%;
+    margin: 0;
+    padding: var(--espacio-1) var(--espacio-3);
+    border-width: 2px;
+    border-radius: var(--radio-md);
+    border-color: rgba(0, 0, 0, 0);
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--color-accent-text);
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.bienvenida__enlace:active {
+    background-color: var(--color-surface-2);
+}
+
+.bienvenida__enlace:focus {
+    border-color: var(--color-focus);
+}
+
+.bienvenida__puntos {
+    flex-direction: row;
+    flex-shrink: 0;
+    justify-content: center;
+    margin: var(--espacio-2) 0 var(--espacio-4) 0;
+}
+
+.bienvenida__punto {
+    width: var(--bienvenida-punto);
+    height: var(--bienvenida-punto);
+    margin: 0 var(--espacio-1);
+    border-radius: var(--radio-bienvenida-punto);
+    background-color: var(--color-control-edge);
+}
+
+.bienvenida__punto--actual {
+    width: var(--bienvenida-punto-actual);
+    background-color: var(--color-accent);
+}
+
+.explicacion-ubicacion__boton.bienvenida__principal {
+    flex-shrink: 0;
+    min-height: var(--bienvenida-boton-alto);
+    margin: 0;
+}
+
+/* Texto del sistema grande: el icono encima del texto, los botones uno debajo de otro y menos margen a los lados */
+.bienvenida--grande .unity-scroll-view__content-container {
+    padding-left: var(--espacio-4);
+    padding-right: var(--espacio-4);
+}
+
+.bienvenida--grande .bienvenida__pie {
+    padding: var(--espacio-1) var(--espacio-4) var(--espacio-3) var(--espacio-4);
+}
+
+.bienvenida--grande .bienvenida__puntos {
+    margin: var(--espacio-1) 0 var(--espacio-2) 0;
+}
+
+.bienvenida--grande .bienvenida__fila {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.bienvenida--grande .bienvenida__icono {
+    margin-bottom: var(--espacio-2);
+}
+
+.bienvenida--grande .bienvenida__fila-texto,
+.bienvenida--grande .bienvenida__tarjeta-textos {
+    flex-grow: 0;
+    flex-shrink: 0;
+    max-width: 100%;
+}
+
+.bienvenida--grande .bienvenida__botones {
+    flex-direction: column;
+}
+
+.bienvenida--grande .explicacion-ubicacion__boton.bienvenida__boton {
+    flex-grow: 0;
+    flex-shrink: 0;
+    flex-basis: auto;
+}
+
+.bienvenida--grande .explicacion-ubicacion__boton.bienvenida__boton--primero {
+    margin-right: 0;
+    margin-bottom: var(--espacio-2);
+}

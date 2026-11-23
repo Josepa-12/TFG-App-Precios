@@ -293,7 +293,7 @@ namespace PriceMap.Tests.EditMode
             Textos.Forzados = T;
         }
 
-        /// <param name="explicacion">Primer arranque sin permiso: la explicación de ubicación sale al abrir.</param>
+        /// <param name="explicacion">Sin permiso, con la explicación de ubicación abierta (botón de ubicación).</param>
         void Crear(bool explicacion = false)
         {
             objeto = new GameObject("Pantalla de prueba");
@@ -314,6 +314,7 @@ namespace PriceMap.Tests.EditMode
                 geocodificador: geo, resolutorEnlaces: resolutor);
             tema.Iniciar();
             filtro.Iniciar();
+            if (explicacion) pantalla.TocarUbicacion();
             hoja = pantalla.Buscador;
             hoja.Medir(800f);
         }
@@ -490,7 +491,7 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void PrimerArranque_EsperaAQueSeCierreLaExplicacion()
+        public void ConLaExplicacionAbierta_EsperaAQueSeCierre()
         {
             Crear(explicacion: true);
             Assert.IsTrue(pantalla.ExplicacionAbierta);
@@ -511,7 +512,7 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
-        public void PrimerArranque_TextoCualquieraAbreLaHojaAlCerrarLaExplicacion()
+        public void ConLaExplicacionAbierta_TextoCualquieraAbreLaHojaAlCerrarla()
         {
             Crear(explicacion: true);
             pantalla.RecibirCompartido("Bar Pepe");

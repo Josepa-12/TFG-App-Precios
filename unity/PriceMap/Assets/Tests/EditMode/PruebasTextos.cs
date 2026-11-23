@@ -27,6 +27,20 @@ namespace PriceMap.Tests.EditMode
         }
 
         [Test]
+        public void LaTablaTieneLosTextosDelGenerador()
+        {
+            var tabla = (StringTable)LocalizationEditorSettings.GetStringTableCollection(ClavesTexto.Tabla).GetTable(new LocaleIdentifier("es-ES"));
+            int entradas = 0;
+            foreach (var entrada in tabla.Values)
+            {
+                entradas++;
+                Assert.IsTrue(PrepararInterfaz.TextosEs.TryGetValue(entrada.Key, out var texto), $"PrepararInterfaz no define {entrada.Key}.");
+                Assert.AreEqual(texto, entrada.Value, $"{entrada.Key}: falta pasar PriceMap ▸ Preparar interfaz.");
+            }
+            Assert.AreEqual(PrepararInterfaz.TextosEs.Count, entradas);
+        }
+
+        [Test]
         public void ElGeneradorCubreTodasLasClaves()
         {
             foreach (var clave in ClavesTexto.Todas)

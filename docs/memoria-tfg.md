@@ -4,7 +4,7 @@
 >
 > **Estado de cada apartado:** **[Redactado]** contenido estable · **[Parcial]** falta información · **[Pendiente]** aún no se ha llegado ahí.
 >
-> **Última actualización:** 23/11/2026
+> **Última actualización:** 24/11/2026
 
 ---
 
@@ -954,6 +954,16 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
       - `MapaVectorial.VistaCargada` mira si están construidas las teselas que se ven y `CamaraMapa.AcercarDesde` acerca el mapa sin cambiar su distancia.
     - **Comprobación:** tras la revisión de código (18 arreglos, 9 de ellos pruebas que faltaban) pasan 1488 pruebas y el APK se genera con las imágenes y los colores dentro. La parte Java solo se comprueba leyendo el código.
     - **Pendiente:** en el móvil, que no haya fotograma negro, que la animación sea fluida, el pin hasta el punto azul, oscuro, sin animaciones y TalkBack. En Android 8–11 el color del arranque sigue al sistema y no al tema guardado.
+  - *Historia 3.1: bienvenida, privacidad y consentimientos (24/11/2026).* **[Parcial]**
+    - **Motivo:** la app solo explicaba la ubicación (y con una frase que ya no era verdad) y pedía el permiso al abrir; faltaban el aviso de privacidad y el consentimiento explícito (FR41).
+    - **Decisiones del autor:** tres pasos (qué es, privacidad, permisos) a pantalla completa y solo la primera vez, con el logo de la pantalla de inicio; aviso completo dentro de la app con el responsable; «Empezar» siempre activo y lo no contestado cuenta como «Ahora no».
+    - **Solución:**
+      - `ServicioBienvenida` (Aplicación, pura): pasos, aviso y consentimientos; guarda `bienvenida.vista` lo último, así que cerrarla a mitad la repite. Puerto `INotificaciones` (`NotificacionesAndroid`: pide `POST_NOTIFICATIONS` desde Android 13).
+      - `PantallaBienvenida` va puesta debajo de la pantalla de inicio, que esa vez no espera ni a la posición ni al mapa. Mientras está, nada más responde y lo compartido con la app espera. La explicación de la 1.7 queda solo en el botón de ubicación.
+      - Los textos se corrigieron para decir qué sale del móvil: búsquedas y puntos marcados (Photon), rutas con la posición exacta (Valhalla u OSRM), el mapa (OpenFreeMap) y los enlaces cortos (Google).
+      - La copia de seguridad de Android se desactiva (`allowBackup=false`): si no, al reinstalar se daría por visto el aviso.
+    - **Comprobación:** tras la revisión de código (13 arreglos) pasan 1540 pruebas, el APK se genera y las capturas de PC muestran los tres pasos y el aviso en claro, oscuro y al 200 % sin cortes.
+    - **Pendiente:** en el móvil, instalación limpia en Android 13+ y anterior; volver a leer el aviso desde Ajustes (3.5) y completarlo con los derechos del RGPD.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -1131,3 +1141,5 @@ Ideas de trabajo futuro ya identificadas:
 | 23/11/2026 | Pantalla de inicio (decisiones del usuario): fuera el logo de Unity; animación A (el pin cae, rebota y flota; al acabar se encoge hasta la posición del usuario y el mapa se acerca), también en oscuro; se queda hasta tener la posición y el mapa de la vista, como mucho 4 s y nunca menos de 1 s; sin permiso, apagada o con algo compartido no espera a la posición | Al abrir se veía el logo de Unity, un momento en negro y el mapa sin centrar ni cargar |
 | 23/11/2026 | Pantalla de inicio implementada (1477 pruebas en verde, APK bien; falta la prueba en el móvil): es una vista nativa de Android encima de Unity desde `onCreate`, porque el motor tarda 2–3 s y no puede animar; el arranque del sistema y el fondo de la ventana van del mismo color y sin icono. C# solo decide cuándo se va (`ServicioInicio`) y hacia dónde | La actividad pasa a dibujarse con aceleración gráfica (Unity la quitaba) para que la animación sea fluida. En Android 8–11 el color del arranque sigue al sistema, no al tema guardado: no hay forma de cambiarlo antes de abrir |
 | 23/11/2026 | Pantalla de inicio (revisión de código): 18 arreglos (9 de ellos pruebas que faltaban), 1488 pruebas en verde, APK y captura de PC bien | Entre ellos: TalkBack podía perder el foco al irse la pantalla, el destino del pin se calculaba con el mapa ya alejado y, si Unity cambia sus recursos, ahora la compilación falla en vez de volver el gris de Unity sin avisar |
+| 24/11/2026 | Historia 3.1 (decisiones del usuario): bienvenida de tres pasos (maqueta A), aviso completo dentro de la app con nombre y correo del responsable, «Empezar» siempre activo | Consentimiento explícito sin obligar a contestar: no se pide ningún permiso que no se acepte |
+| 24/11/2026 | Historia 3.1 implementada y revisada (13 arreglos, 1540 pruebas en verde, APK y capturas bien) | La revisión encontró que con toques rápidos se podía pasar la bienvenida sin leerla, que el aviso no decía que los puntos marcados en el mapa se envían a Photon y que la copia de seguridad de Android podía dar el aviso por visto al reinstalar |
