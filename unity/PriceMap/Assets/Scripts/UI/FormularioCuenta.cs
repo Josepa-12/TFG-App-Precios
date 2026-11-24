@@ -239,7 +239,7 @@ namespace PriceMap.UI
             }
             Contrasena.SetValueWithoutNotify("");
             PonerVer(false);
-            PasarToques(false);
+            TecladoAndroid.PasarToques(false);
             PonerTeclado(false);
         }
 
@@ -348,7 +348,7 @@ namespace PriceMap.UI
             enfocado = campo;
             tecladoAbierto = null;
             campo.parent.AddToClassList(ClaseFoco);
-            PasarToques(true);
+            TecladoAndroid.PasarToques(true);
             PonerTeclado(true);
             if (panel != null) schedule.Execute(() => { if (enfocado == campo) tecladoAbierto = campo.touchScreenKeyboard; });
         }
@@ -361,7 +361,7 @@ namespace PriceMap.UI
             bool intro = aNadie && !dedoAbajo && tecladoAbierto != null && tecladoAbierto.status == TouchScreenKeyboard.Status.Done;
             enfocado = null;
             tecladoAbierto = null;
-            PasarToques(false);
+            TecladoAndroid.PasarToques(false);
             if (panel == null) { PonerTeclado(false); return; }
             if (intro)
             {
@@ -421,13 +421,5 @@ namespace PriceMap.UI
         /// <summary>Lo que se desplaza para ver el botón en ese alto sin que se vaya por arriba el campo.</summary>
         public static float Desplazamiento(float arribaCampo, float abajoBoton, float visto) =>
             Mathf.Max(0f, Mathf.Min(arribaCampo, abajoBoton - visto));
-
-        // Android, por defecto, se queda el primer toque fuera del teclado (solo lo cierra): aquí pasa al botón
-        static void PasarToques(bool pasar)
-        {
-#if UNITY_ANDROID && !UNITY_EDITOR
-            TouchScreenKeyboard.Android.consumesOutsideTouches = !pasar;
-#endif
-        }
     }
 }

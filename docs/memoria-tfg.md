@@ -989,6 +989,12 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Solución:** un filtro puro del dominio (`FiltroBrujula`) quita primero el temblor del sensor con un suavizado exponencial corto (0,15 s) y deja el rumbo quieto hasta que el móvil gira 10°; entonces gira suave por el lado corto, en alrededor de medio segundo, y vuelve a quedarse quieto. A cambio, el cono puede apuntar hasta 10° desviado. La cámara al navegar a pie usa el mismo rumbo.
     - **Comprobación:** tras la revisión de código pasan 1802 pruebas, entre ellas el balanceo de la mano al andar, el paso por el norte y distintos fotogramas por segundo.
     - **Pendiente:** probarlo en el móvil.
+  - *La hoja del buscador en el móvil (24/11/2026).* **[Parcial]**
+    - **Motivo:** en la primera prueba en el móvil la hoja iba lenta, no se podía arrastrar dos veces seguidas y, al tocar para escribir, no se abría hasta cerrar el teclado.
+    - **Causas:** el alto de la cápsula seguía al redondeo a píxel de la línea y la disposición entraba en bucle (diez pasadas por fotograma); con el dedo capturado, Unity 6.3 no pasa los eventos por la raíz del panel, donde la hoja escuchaba; y el teclado de Android quitaba el foco a la app, que dejaba de dibujar y apagaba el GPS.
+    - **Solución:** un cambio de un píxel no mueve la hoja; el gesto se escucha en toda la cadena de elementos (`EscuchaGesto`, también en la hoja de la ruta); el campo se enfoca al soltar un toque, no al bajar el dedo, y con el teclado abierto la app sigue en marcha (`TecladoAndroid`).
+    - **Comprobación:** pruebas nuevas en un panel del tamaño del móvil con los eventos repartidos por Unity; con el código anterior fallan todas. Pasan 1817 pruebas. Lección: llamar directamente a las funciones del gesto no prueba el gesto.
+    - **Pendiente:** probarlo en el móvil.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -1174,3 +1180,4 @@ Ideas de trabajo futuro ya identificadas:
 | 24/11/2026 | Historia 3.3 parte 1 implementada y revisada (10 arreglos, 1687 pruebas en verde, APK y captura bien) | La revisión encontró carreras al cancelar mientras Firebase contesta, que las pruebas no veían porque el Firebase falso no avisaba antes de acabar |
 | 24/11/2026 | Historia 3.3 parte 2 implementada y revisada (14 arreglos, 1787 pruebas en verde, APK y captura bien); FR-37 matizado: la contraseña la guarda Firebase, nunca la app | La revisión encontró que el hueco del teclado podía quedarse puesto, que cancelar «He olvidado la contraseña» podía cerrar una sesión y que se podían cambiar crear y entrar sin que fallara ninguna prueba |
 | 24/11/2026 | El cono de la brújula no se mueve hasta que el móvil gira unos 10° (entre 5°, 10° y 20°) y entonces gira suave | Decisión del usuario: se movía demasiado; 10° es poco más que el balanceo de la mano al andar |
+| 24/11/2026 | La hoja del buscador y la de la ruta escuchan el gesto en toda la cadena de elementos; el campo se enfoca al soltar un toque; con el teclado abierto los toques de fuera llegan a la app | Prueba del usuario en el móvil: hoja lenta, arrastre que fallaba una de cada dos veces y hoja que se abría al cerrar el teclado |

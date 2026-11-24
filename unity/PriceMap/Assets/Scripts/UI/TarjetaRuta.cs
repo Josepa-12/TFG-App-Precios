@@ -128,6 +128,7 @@ namespace PriceMap.UI
             TextoFinalizar.AddToClassList("t-heading");
             Finalizar.Add(TextoFinalizar);
 
+            gesto = new EscuchaGesto(AlMover, AlSoltar, AlCancelar);
             RegisterCallback<PointerDownEvent>(AlBajar, TrickleDown.TrickleDown);
 
             MostrarCalculando();
@@ -199,7 +200,7 @@ namespace PriceMap.UI
         int puntero = -1;
         Vector2 inicio;
         bool arrastrando;
-        VisualElement raizGesto; // raíz del panel que escucha el gesto en curso
+        readonly EscuchaGesto gesto;
         VisualElement objetivoInicial;
         bool empezoEnDesplegable; // la pulsación empezó en lo desplegado: soltarla sin arrastrar nunca pliega ni despliega
 
@@ -212,13 +213,9 @@ namespace PriceMap.UI
             arrastrando = false;
             objetivoInicial = e.target as VisualElement;
             empezoEnDesplegable = Desplegada && (Dentro(objetivoInicial, Desplegable) || !EncimaDelDesplegable(inicio));
-            raizGesto = panel?.visualTree;
-            if (raizGesto == null) { puntero = -1; return; }
+            if (!gesto.Empezar(this, objetivoInicial)) { puntero = -1; return; }
             Cabecera.EnableInClassList(ClaseCabeceraPulsada, !empezoEnDesplegable);
             Finalizar.EnableInClassList(ClaseFinalizarPulsado, Desplegada && Dentro(objetivoInicial, Finalizar));
-            raizGesto.RegisterCallback<PointerMoveEvent>(AlMover, TrickleDown.TrickleDown);
-            raizGesto.RegisterCallback<PointerUpEvent>(AlSoltar, TrickleDown.TrickleDown);
-            raizGesto.RegisterCallback<PointerCancelEvent>(AlCancelar, TrickleDown.TrickleDown);
         }
 
         void AlMover(PointerMoveEvent e)
@@ -274,11 +271,7 @@ namespace PriceMap.UI
             empezoEnDesplegable = false;
             Cabecera.RemoveFromClassList(ClaseCabeceraPulsada);
             Finalizar.RemoveFromClassList(ClaseFinalizarPulsado);
-            if (raizGesto == null) return;
-            raizGesto.UnregisterCallback<PointerMoveEvent>(AlMover, TrickleDown.TrickleDown);
-            raizGesto.UnregisterCallback<PointerUpEvent>(AlSoltar, TrickleDown.TrickleDown);
-            raizGesto.UnregisterCallback<PointerCancelEvent>(AlCancelar, TrickleDown.TrickleDown);
-            raizGesto = null;
+            gesto.Terminar();
         }
 
         // El punto (panel) cae en el botón; sin medida, se da por bueno

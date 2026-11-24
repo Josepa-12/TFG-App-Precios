@@ -242,3 +242,9 @@
 - source_spec: `spec-3-3b-entrar-con-correo.md`
   summary: La 8.1 pide `email_verified` y las cuentas de correo y contraseña no se verifican.
   evidence: `spec-8-1` cuenta con el enlace de correo, que se descartó; habrá que enviar la verificación allí o antes.
+- source_spec: `_bmad-output/implementation-artifacts/spec-hoja-del-buscador-en-el-movil.md`
+  summary: Ver en el móvil si cerrar el teclado con atrás borra lo escrito en el buscador y qué pasa al tocar el campo ya enfocado; si se borra, conservarlo.
+  evidence: `TouchScreenTextEditor` llama a `RestoreValueAndText` con el teclado `Canceled` (revisión del 24/11); medium sin verificar.
+- source_spec: `_bmad-output/implementation-artifacts/spec-hoja-del-buscador-en-el-movil.md`
+  summary: La lista del buscador no deja sitio al teclado: los resultados de abajo quedan tapados hasta cerrarlo.
+  evidence: Ya era así; con la app dibujando durante el teclado ahora se nota. `FormularioCuenta.PonerTeclado` es el modelo.

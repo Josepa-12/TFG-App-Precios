@@ -205,6 +205,9 @@ namespace PriceMap.UI
             Campo.textEdition.placeholder = this.textos(ClavesTexto.BuscadorCampo);
             CajaCampo.Add(Campo);
             Campo.RegisterValueChangedCallback(_ => AlCambiarTexto());
+            // Antes de que el campo saque el teclado: sin esto la app pierde el foco, deja de dibujar y apaga el GPS
+            Campo.RegisterCallback<FocusInEvent>(_ => TecladoAndroid.PasarToques(true), TrickleDown.TrickleDown);
+            Campo.RegisterCallback<FocusOutEvent>(_ => TecladoAndroid.PasarToques(false), TrickleDown.TrickleDown);
 
             // La X que vacía el campo (historia 2.3): solo con texto
             Borrar = new VisualElement { name = "buscador-borrar", pickingMode = PickingMode.Position };
@@ -319,11 +322,12 @@ namespace PriceMap.UI
             MostrarResultados(null);
 
             // Gestos: el dedo baja en la hoja (fase de bajada, antes que el campo y la lista). Mover, soltar y cancelar
-            // se escuchan en la raíz del panel mientras dura el gesto: el dedo puede salir de la cápsula (56 dp) antes
-            // de los 6 dp del arrastre y aun así la hoja lo sigue y se entera de que se suelta
+            // se escuchan también fuera de ella mientras dura el gesto (EscuchaGesto): el dedo puede salir de la cápsula
+            // (56 dp) antes de los 6 dp del arrastre y aun así la hoja lo sigue y se entera de que se suelta
+            gesto = new EscuchaGesto(AlMover, AlSoltar, AlCancelar);
             RegisterCallback<PointerDownEvent>(AlBajar, TrickleDown.TrickleDown);
             // Con la fuente grande la línea crece: la cápsula plegada la sigue
-            Linea.RegisterCallback<GeometryChangedEvent>(_ => Recalcular());
+            Linea.RegisterCallback<GeometryChangedEvent>(_ => MedirLinea());
 
             Aplicar();
         }
@@ -352,9 +356,22 @@ namespace PriceMap.UI
         {
             get
             {
-                float linea = Linea.layout.height;
+                float linea = float.IsNaN(altoLinea) ? Linea.layout.height : altoLinea;
                 return float.IsNaN(linea) ? AltoCapsulaMin : Mathf.Max(AltoCapsulaMin, linea + 2f * Relleno);
             }
+        }
+
+        // La línea se redondea a píxeles según dónde esté la hoja (45,8 o 46,2 dp a 2,75): un cambio de un píxel no es que
+        // la fuente crezca, y seguirlo movería la hoja, que volvería a cambiarlo, sin que la disposición acabara nunca
+        float altoLinea = float.NaN;
+
+        void MedirLinea()
+        {
+            float alto = Linea.layout.height;
+            float pixel = Linea.scaledPixelsPerPoint > 0f ? 1f / Linea.scaledPixelsPerPoint : 1f;
+            if (!float.IsNaN(altoLinea) && Mathf.Abs(alto - altoLinea) < 1.5f * pixel) return;
+            altoLinea = alto;
+            Recalcular();
         }
 
         /// <summary>Lo que ocupa abajo la cápsula plegada con su margen y la zona segura (dp).</summary>
@@ -653,7 +670,6 @@ namespace PriceMap.UI
         void EnfocarCampo()
         {
             TecladoPedido = true;
-            // En el móvil, si el toque fue en el campo, el teclado lo saca el propio TextField al soltar
             if (Campo.panel != null) Campo.Focus();
         }
 
@@ -703,25 +719,28 @@ namespace PriceMap.UI
         void AlBajar(PointerDownEvent e)
         {
             if (!Visible) return;
-            if (fisica.Pulsado && e.pointerId == puntero) return;
-            if (e.pointerType == UnityEngine.UIElements.PointerType.mouse && e.button != 0) return;
+            bool raton = e.pointerType == UnityEngine.UIElements.PointerType.mouse;
+            if (raton && e.button != 0) return;
             var objetivo = e.target as VisualElement;
             // El avatar y la X (que se ve también en la cápsula plegada) no despliegan ni arrastran
             if (Dentro(objetivo, Avatar) || Dentro(objetivo, Borrar)) return;
-            // Un gesto anterior que no llegó a soltarse (p. ej. otro dedo) no bloquea la hoja: empieza uno nuevo
+            // Un gesto anterior que no llegó a soltarse (otro dedo o el mismo) no bloquea la hoja: empieza uno nuevo
             if (fisica.Pulsado) { SoltarPuntero(); fisica.Cancelar(); Aplicar(); }
             puntero = e.pointerId;
-            raizGesto = panel?.visualTree;
-            if (raizGesto != null)
+            gesto.Empezar(this, objetivo);
+            // Con el dedo el campo se enfocaría (y saldría el teclado) ya al bajarlo, también al empezar un arrastre: lo
+            // enfoca Soltar si es un toque. Enfocado ya, el toque es del campo (mover el cursor)
+            if (!raton && Dentro(objetivo, Campo) && !CampoEnfocado)
             {
-                raizGesto.RegisterCallback<PointerMoveEvent>(AlMover, TrickleDown.TrickleDown);
-                raizGesto.RegisterCallback<PointerUpEvent>(AlSoltar, TrickleDown.TrickleDown);
-                raizGesto.RegisterCallback<PointerCancelEvent>(AlCancelar, TrickleDown.TrickleDown);
+                panel?.focusController.IgnoreEvent(e);
+                e.StopPropagation();
             }
             Bajar(e.position, e.timestamp, Dentro(objetivo, Panel));
         }
 
-        VisualElement raizGesto; // raíz del panel que escucha el gesto en curso
+        bool CampoEnfocado => Dentro(panel?.focusController.focusedElement as VisualElement, Campo);
+
+        readonly EscuchaGesto gesto;
 
         void AlMover(PointerMoveEvent e)
         {
@@ -756,13 +775,7 @@ namespace PriceMap.UI
         {
             if (puntero >= 0 && this.HasPointerCapture(puntero)) this.ReleasePointer(puntero);
             puntero = -1;
-            if (raizGesto != null)
-            {
-                raizGesto.UnregisterCallback<PointerMoveEvent>(AlMover, TrickleDown.TrickleDown);
-                raizGesto.UnregisterCallback<PointerUpEvent>(AlSoltar, TrickleDown.TrickleDown);
-                raizGesto.UnregisterCallback<PointerCancelEvent>(AlCancelar, TrickleDown.TrickleDown);
-                raizGesto = null;
-            }
+            gesto.Terminar();
         }
 
         static bool Dentro(VisualElement e, VisualElement contenedor)
