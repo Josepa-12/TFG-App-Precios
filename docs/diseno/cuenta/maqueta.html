@@ -1,0 +1,138 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Maqueta de la cuenta de PriceMap</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;800&family=Roboto:wght@500&family=Varela+Round&display=swap">
+<style>
+/* Fila de móviles de 320 px por paso; los colores de dentro son los de Tokens.uss */
+:root{--pag:#e4e9f6;--tinta:#13235B;--gris:#4B5878;--linea:#c3cde6;--f:"Nunito Sans",system-ui,sans-serif;--t:"Varela Round","Nunito Sans",sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pag:#090c16;--tinta:#E6ECFA;--gris:#9AA6C4;--linea:#2A3A63;color-scheme:dark}}
+:root[data-theme="dark"]{--pag:#090c16;--tinta:#E6ECFA;--gris:#9AA6C4;--linea:#2A3A63;color-scheme:dark}
+body{background:var(--pag);color:var(--tinta);font-family:var(--f);font-size:16px;line-height:1.5}
+.todo{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 56px;display:grid;gap:40px}
+h1,h2{font-family:var(--t);font-weight:400;margin:0;text-wrap:balance;line-height:1.2}
+h1{font-size:30px}h2{font-size:21px}
+p{margin:0;max-width:65ch;color:var(--gris)}
+section{display:grid;gap:14px;min-width:0}
+.fila{display:flex;flex-wrap:wrap;gap:24px}
+figure{margin:0;display:grid;gap:8px;width:320px;max-width:100%}
+figcaption{font-size:14px;color:var(--gris)}
+/* móvil */
+.m{--bg:#F3F5FB;--sup:#FFFFFF;--bor:#D3DCF2;--tx:#13235B;--mu:#4B5878;--ac:#2F5BEA;--aci:#fff;--soft:#D3DCF2;--pel:#D6334A;--borde:#6E7A99;
+ position:relative;width:100%;aspect-ratio:320/700;border-radius:30px;overflow:hidden;background:var(--bg);color:var(--tx);border:1px solid var(--linea);display:flex;flex-direction:column;font-size:15px;line-height:1.4}
+.m.o{--bg:#0F1424;--sup:#1A2238;--bor:#2A3A63;--tx:#E6ECFA;--mu:#9AA6C4;--ac:#4C7DFF;--aci:#0B1020;--soft:#2A3A63;--pel:#FF6B81;--borde:#7F8BAA}
+.m p,.m span{color:inherit}
+.mapa{position:absolute;inset:0;background-size:cover;background-position:center bottom}
+.velo{position:absolute;inset:0;background:rgba(15,20,36,.45)}
+.pant{padding:34px 20px 20px;display:flex;flex-direction:column;gap:16px;flex:1;min-height:0}
+.logo{display:grid;justify-items:center;gap:8px}
+.logo img:first-child{height:88px}.logo img:last-child{height:32px}
+.tit{font-family:var(--t);font-size:22px;line-height:1.25;text-align:center}
+.sub{text-align:center;color:var(--mu)!important}
+.hueco{flex:1}
+.b{border-radius:999px;min-height:48px;display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--t);font-size:16px;padding:0 16px;text-align:center}
+.b.p{background:var(--ac);color:var(--aci)}
+.b.s{border:1.5px solid var(--borde)}
+.b.t{color:var(--ac)}.o .b.t{color:#8FB0FF}
+/* Botón oficial de Google, versión clara, igual en los dos temas */
+.b.goo{background:#FFFFFF;color:#1F1F1F;border:1px solid #747775;font-family:Roboto,"Nunito Sans",sans-serif;font-weight:500}
+.b.goo .g{width:20px;height:20px}.b.goo svg{width:20px;height:20px}
+.bs{display:grid;gap:10px}
+.g{width:22px;height:22px;background:#fff;border-radius:50%;display:grid;place-items:center;flex:none}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:var(--sup);border-radius:24px 24px 0 0;padding:10px 20px 20px;display:grid;gap:14px}
+.asa{width:36px;height:5px;border-radius:9px;background:var(--bor);justify-self:center}
+.hoja .tit{text-align:left;font-size:20px}.hoja .sub{text-align:left}
+.cab{display:flex;align-items:center;gap:10px}
+.cab svg{flex:none}
+.cab span{font-family:var(--t);font-size:20px}
+.campo{display:grid;gap:5px}
+.campo label{font-weight:600;font-size:14px}
+.in{border:1.5px solid var(--borde);border-radius:14px;min-height:48px;background:var(--sup);display:flex;align-items:center;justify-content:space-between;padding:0 14px;gap:8px}
+.in i{font-style:normal;color:var(--mu);font-size:14px}
+.in.mal{border-color:var(--pel);border-width:2px}
+.err{color:var(--pel)!important;font-size:14px;font-weight:600}
+.ayuda{color:var(--mu)!important;font-size:13.5px}
+.aviso{background:var(--soft);border-radius:14px;padding:12px 14px}
+.nota{border-top:1px solid var(--linea);padding-top:14px}
+.ava{display:flex;gap:28px;flex-wrap:wrap}
+.ava>div{display:grid;gap:8px;justify-items:center;font-size:14px;color:var(--gris)}
+.av{width:60px;height:60px;border-radius:50%;background:#D3DCF2;color:#13235B;display:grid;place-items:center;font-family:var(--t);font-size:26px}
+.av.l{background:#2F5BEA;color:#fff}
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="g" viewBox="0 0 48 48" preserveAspectRatio="xMidYMid meet"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.2C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M47 24.6c0-1.6-.2-3.1-.4-4.6H24v9h12.9c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 7.2-10.3 7.2-17.6z"/><path fill="#FBBC05" d="M10.5 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.9-6.2C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-4.9 2.3-8.2 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.5 42.6 14.6 48 24 48z"/></symbol>
+<symbol id="atras" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</defs></svg>
+<main class="todo">
+<header style="display:grid;gap:10px">
+<h1>Entrar en PriceMap</h1>
+<p>Maqueta de la historia 3.3. La cuenta nunca es obligatoria: «Ahora no» está en todas las pantallas de entrada, y atrás hace lo mismo.</p>
+</header>
+
+<section>
+<h2>Justo después de la bienvenida, una sola vez</h2>
+<p>Al pulsar «Empezar» se pasa a esta pantalla en vez de ir directo al mapa. Si la cierras, no vuelve a salir: para entrar queda el círculo del buscador.</p>
+<div class="fila">
+<figure><div class="m"><div class="pant">
+<div class="logo"><img src="../inicio/pin.png" alt=""><img src="../inicio/nombre-claro.png" alt="PriceMap"></div>
+<div class="tit">Crea tu cuenta</div>
+<p class="sub">Para guardar tus favoritos y no perder nada si cambias de móvil.</p>
+<div class="hueco"></div>
+<div class="bs"><div class="b goo"><span class="g"><svg width="14" height="14"><use href="#g"/></svg></span>Continuar con Google</div><div class="b s">Con correo</div><div class="b t">Ahora no</div></div>
+</div></div><figcaption>Claro</figcaption></figure>
+<figure><div class="m o"><div class="pant">
+<div class="logo"><img src="../inicio/pin.png" alt=""><img src="../inicio/nombre-oscuro.png" alt="PriceMap"></div>
+<div class="tit">Crea tu cuenta</div>
+<p class="sub">Para guardar tus favoritos y no perder nada si cambias de móvil.</p>
+<div class="hueco"></div>
+<div class="bs"><div class="b goo"><span class="g"><svg width="14" height="14"><use href="#g"/></svg></span>Continuar con Google</div><div class="b s">Con correo</div><div class="b t">Ahora no</div></div>
+</div></div><figcaption>Oscuro</figcaption></figure>
+</div>
+</section>
+
+<section>
+<h2>Desde el círculo del buscador</h2>
+<p>Los mismos botones, en una hoja sobre el mapa. También será la que se abra al tocar algo que necesite cuenta, como un favorito (3.6); al entrar, sigue con lo que estabas haciendo.</p>
+<div class="fila">
+<figure><div class="m"><div class="mapa" style="background:#d9e2f3"></div><div class="velo"></div><div class="hoja"><div class="asa"></div><div class="tit">Entra en PriceMap</div><p class="sub">Para guardar tus favoritos y no perder nada si cambias de móvil.</p><div class="bs"><div class="b goo"><span class="g"><svg width="14" height="14"><use href="#g"/></svg></span>Continuar con Google</div><div class="b s">Con correo</div><div class="b t">Ahora no</div></div></div></div><figcaption>Claro</figcaption></figure>
+<figure><div class="m o"><div class="mapa" style="background:#1b2540"></div><div class="velo"></div><div class="hoja"><div class="asa"></div><div class="tit">Entra en PriceMap</div><p class="sub">Para guardar tus favoritos y no perder nada si cambias de móvil.</p><div class="bs"><div class="b goo"><span class="g"><svg width="14" height="14"><use href="#g"/></svg></span>Continuar con Google</div><div class="b s">Con correo</div><div class="b t">Ahora no</div></div></div></div><figcaption>Oscuro</figcaption></figure>
+<figure><div class="m"><div class="mapa" style="background:#d9e2f3"></div><div class="velo"></div><div class="hoja"><div class="asa"></div><div class="tit">Entra en PriceMap</div><div class="aviso">Necesitas conexión para entrar.</div><div class="bs"><div class="b p">Reintentar</div><div class="b s">Con correo</div><div class="b t">Ahora no</div></div></div></div><figcaption>Sin conexión, o si Google falla</figcaption></figure>
+</div>
+</section>
+
+<section>
+<h2>Con correo</h2>
+<p>Se empieza por crear la cuenta. La contraseña va a Firebase y PriceMap no la guarda.</p>
+<div class="fila">
+<figure><div class="m"><div class="pant">
+<div class="cab"><svg width="26" height="26"><use href="#atras"/></svg><span>Crear cuenta</span></div>
+<div class="campo"><label>Correo</label><div class="in">ana@example.com</div></div>
+<div class="campo"><label>Contraseña</label><div class="in">••••••••<i>Ver</i></div><p class="ayuda">8 caracteres como mínimo.</p></div>
+<div class="hueco"></div>
+<div class="bs"><div class="b p">Crear cuenta</div><div class="b t">Ya tengo cuenta</div></div>
+</div></div><figcaption>Crear cuenta</figcaption></figure>
+<figure><div class="m"><div class="pant">
+<div class="cab"><svg width="26" height="26"><use href="#atras"/></svg><span>Entrar</span></div>
+<div class="campo"><label>Correo</label><div class="in">ana@example.com</div></div>
+<div class="campo"><label>Contraseña</label><div class="in mal">•••••<i>Ver</i></div><p class="err">El correo o la contraseña no coinciden.</p></div>
+<div class="b t" style="justify-content:flex-start;padding:0">He olvidado la contraseña</div>
+<div class="hueco"></div>
+<div class="bs"><div class="b p">Entrar</div><div class="b t">Crear cuenta</div></div>
+</div></div><figcaption>Entrar, con un error junto al campo</figcaption></figure>
+<figure><div class="m o"><div class="pant">
+<div class="cab"><svg width="26" height="26"><use href="#atras"/></svg><span>Nueva contraseña</span></div>
+<div class="campo"><label>Correo</label><div class="in">ana@example.com</div></div>
+<div class="aviso">Si hay una cuenta con ese correo, te llegará un enlace para poner otra contraseña. Mira también en spam.</div>
+<div class="hueco"></div>
+<div class="bs"><div class="b p">Enviar otro</div><div class="b t">Volver a entrar</div></div>
+</div></div><figcaption>He olvidado la contraseña, en oscuro</figcaption></figure>
+</div>
+</section>
+
+<section>
+<h2>El círculo del buscador</h2>
+<div class="ava">
+<div><div class="av"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1-4 4-5.8 7.5-5.8s6.5 1.8 7.5 5.8" stroke-linecap="round"/></svg></div>Sin sesión</div>
+<div><div class="av l">A</div>Con sesión</div>
+</div>
+<p>Con sesión, al tocarlo sale un aviso breve: «Has entrado como ana@example.com». El perfil y cerrar sesión llegan en la 3.5. Al entrar, el aviso es «Hola, Ana».</p>
+</section>
+</main>

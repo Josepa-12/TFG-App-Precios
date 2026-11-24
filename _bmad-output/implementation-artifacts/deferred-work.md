@@ -218,3 +218,7 @@
 - source_spec: `spec-3-2b-firebase-dentro-de-la-app.md`
   summary: Nombrar Firebase en «Qué sale del móvil» cuando la app empiece a usarlo (3.3).
   evidence: Firebase se inicia antes de la bienvenida; Analytics está apagado y no consta que salga nada (por confirmar con una captura de red), pero el aviso no lo menciona (medium sin verificar).
+
+- source_spec: `spec-3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta.md`
+  summary: Entrar con correo y contraseña (parte 2 de la 3.3; `spec-3-3b-entrar-con-correo.md`).
+  evidence: La spec entera medía unos 1.950 tokens y el usuario eligió partirla; el enlace mágico se descartó por el límite de 5 al día.
