@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using PriceMap.Adaptadores.Firebase;
 using PriceMap.Aplicacion;
 using PriceMap.Dominio;
 using PriceMap.UI;
@@ -46,6 +47,21 @@ namespace PriceMap.Arranque
         public static IUbicacion UbicacionFalsa() => ubicacionCaptura = new UbicacionCaptura();
 
         static UbicacionCaptura ubicacionCaptura;
+
+        static CuentasFalsas cuentasCaptura;
+        static PreferenciasCaptura preferenciasCuenta;
+
+        /// <summary>
+        /// Cuentas falsas con sus preferencias en memoria (historia 3.3). La pantalla completa ya se ha ofrecido: solo sale en
+        /// la captura "cuenta-bienvenida", que lo olvida.
+        /// </summary>
+        public static ServicioCuentas CuentasFalsas()
+        {
+            cuentasCaptura = new CuentasFalsas();
+            preferenciasCuenta = new PreferenciasCaptura();
+            preferenciasCuenta.Guardar(ServicioCuentas.ClaveOfrecida, "1");
+            return new ServicioCuentas(cuentasCaptura, null, preferenciasCuenta, System.Threading.Tasks.Task.Delay);
+        }
 
         /// <summary>
         /// Ubicación para la captura: Activa desde el principio, en la Plaza del Cabildo salvo cuando la captura
@@ -302,6 +318,7 @@ namespace PriceMap.Arranque
             yield return NavegacionVoz();
             yield return Llegada();
             yield return Bienvenida();
+            yield return Cuenta();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -2484,32 +2501,192 @@ namespace PriceMap.Arranque
             var vista = pantalla.Bienvenida;
             var pagina = vista.Paginas[vista.Pagina];
             float ancho = vista.layout.width, contenido = pagina.contentContainer.layout.height, visto = pagina.contentViewport.layout.height;
-            int textos = 0, malos = 0;
+            int malos = 0;
             string ejemplo = "-";
             void Mal(string que) { malos++; if (ejemplo == "-") ejemplo = que; }
-            vista.Query<TextElement>().ForEach(t =>
-            {
-                var b = t.worldBound;
-                if (string.IsNullOrEmpty(t.text) || float.IsNaN(b.width) || b.width <= 0f) return;
-                for (VisualElement e = t; e != null && e != vista; e = e.parent) if (e.resolvedStyle.display == DisplayStyle.None) return;
-                textos++;
-                var caja = t.contentRect;
-                var necesita = t.MeasureTextSize(t.text, caja.width + 1f, VisualElement.MeasureMode.Exactly, 0f, VisualElement.MeasureMode.Undefined);
-                if (necesita.y > caja.height + 1f) Mal($"\"{t.text}\" necesita {necesita.y:F1} dp de alto y tiene {caja.height:F1}");
-                foreach (var palabra in t.text.Replace("<u>", "").Replace("</u>", "").Split(' '))
-                {
-                    float w = t.MeasureTextSize(palabra, 0f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).x;
-                    if (w > caja.width + 1f) Mal($"\"{palabra}\" necesita {w:F1} dp de ancho y tiene {caja.width:F1}");
-                }
-                if (b.xMin < vista.worldBound.xMin - 0.5f || b.xMax > vista.worldBound.xMax + 0.5f) Mal($"\"{t.text}\" se sale ({b})");
-                if (t is Button && b.height < 47.5f) Mal($"el botón \"{t.text}\" mide {b}");
-            });
+            int textos = RevisarTextos(vista, Mal);
             var pie = vista.Principal.parent.worldBound;
             if (pie.yMax > vista.worldBound.yMax + 0.5f || visto < 100f) Mal($"el pie {pie} no deja sitio a la página ({visto:F0} dp)");
             if (cabeEntera && contenido > visto + 0.5f) Mal($"la página mide {contenido:F0} dp y se ven {visto:F0}");
             Debug.Log($"PriceMap: bienvenida ({caso}): {ancho:F0} dp; {textos} textos; contenido {contenido:F0} en {visto:F0} dp; mal {malos} ({ejemplo}); " +
                       $"TalkBack: {string.Join(" | ", pantalla.Accesibilidad.Recorrido())}");
             if (textos == 0 || malos > 0) Debug.LogError($"PriceMap: la bienvenida ({caso}) tiene {malos} fallos: {ejemplo}");
+        }
+
+        /// <summary>
+        /// Ningún texto a la vista necesita más alto o más ancho (su palabra más larga) del que tiene ni se sale por los lados, y
+        /// los botones miden 48 dp o más. Devuelve cuántos textos ha mirado.
+        /// </summary>
+        static int RevisarTextos(VisualElement vista, Action<string> mal)
+        {
+            int textos = 0;
+            vista.Query<TextElement>().ForEach(t =>
+            {
+                var b = t.worldBound;
+                if (float.IsNaN(b.width) || b.width <= 0f) return;
+                for (VisualElement e = t; e != null && e != vista; e = e.parent) if (e.resolvedStyle.display == DisplayStyle.None) return;
+                if (t is Button && b.height < 47.5f) mal($"el botón \"{t.name}\" mide {b}");
+                if (string.IsNullOrEmpty(t.text)) return;
+                textos++;
+                var caja = t.contentRect;
+                var necesita = t.MeasureTextSize(t.text, caja.width + 1f, VisualElement.MeasureMode.Exactly, 0f, VisualElement.MeasureMode.Undefined);
+                if (necesita.y > caja.height + 1f) mal($"\"{t.text}\" necesita {necesita.y:F1} dp de alto y tiene {caja.height:F1}");
+                foreach (var palabra in t.text.Replace("<u>", "").Replace("</u>", "").Split(' '))
+                {
+                    float w = t.MeasureTextSize(palabra, 0f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).x;
+                    if (w > caja.width + 1f) mal($"\"{palabra}\" necesita {w:F1} dp de ancho y tiene {caja.width:F1}");
+                }
+                if (b.xMin < vista.worldBound.xMin - 0.5f || b.xMax > vista.worldBound.xMax + 0.5f) mal($"\"{t.text}\" se sale ({b})");
+            });
+            return textos;
+        }
+
+        /// <summary>
+        /// Historia 3.3, capturas "cuenta", "cuenta-error" y "cuenta-bienvenida" (y "-oscuro"), "cuenta-sesion" (y "-oscuro"
+        /// y "-200": la letra cabe en el avatar y el toast no pisa los controles) y, con el texto al 200 %, "cuenta-200" y
+        /// "cuenta-bienvenida-200". En cada una, que ningún texto se corta ni se sale y que los botones llegan a 48 dp; al 200 %,
+        /// también con 360 dp de ancho.
+        /// </summary>
+        IEnumerator Cuenta()
+        {
+            var cuentas = pantalla != null ? pantalla.Cuentas : null;
+            if (cuentas == null || cuentasCaptura == null) { Debug.LogError("PriceMap: no hay cuentas que capturar."); yield break; }
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var responder = cuentasCaptura.Responder;
+            void Abrir(bool completa)
+            {
+                cuentas.AhoraNo();
+                if (completa) { preferenciasCuenta.Borrar(ServicioCuentas.ClaveOfrecida); cuentas.Ofrecer(); }
+                else pantalla.TocarAvatar();
+            }
+            try
+            {
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                foreach (var sufijo in new[] { "", "-oscuro" })
+                {
+                    if (sufijo != "") { cuentas.AhoraNo(); tema.Alternar(); yield return new WaitForSeconds(1f); }
+                    Abrir(completa: false);
+                    yield return new WaitForSeconds(0.7f);
+                    ComprobarCuenta("hoja" + sufijo, cabeEntera: true);
+                    yield return Capturar("cuenta" + sufijo);
+                    cuentasCaptura.Responder = _ => System.Threading.Tasks.Task.FromResult(Resultado<UsuarioCuenta>.Fallo(ErroresCuenta.SinConexion));
+                    pantalla.Cuenta?.PulsarEntrar();
+                    yield return new WaitForSeconds(0.7f);
+                    if (pantalla.Cuenta == null || !pantalla.Cuenta.AvisoVisible) Debug.LogError("PriceMap: no se ve el error al entrar.");
+                    ComprobarCuenta("error" + sufijo, cabeEntera: true);
+                    yield return Capturar("cuenta-error" + sufijo);
+                    yield return new WaitForSeconds(0.5f);
+                    Abrir(completa: true);
+                    yield return new WaitForSeconds(0.7f);
+                    if (pantalla.Cuenta == null || !pantalla.Cuenta.Completa) Debug.LogError("PriceMap: tras la bienvenida no sale la pantalla de la cuenta.");
+                    ComprobarCuenta("pantalla completa" + sufijo, cabeEntera: true);
+                    yield return Capturar("cuenta-bienvenida" + sufijo);
+                    yield return new WaitForSeconds(0.5f);
+                }
+                cuentas.AhoraNo();
+                if (pantalla.CuentaAbierta) Debug.LogError("PriceMap: «Ahora no» no cierra la cuenta.");
+                tema.Alternar();
+
+                // Entrar: la letra en el avatar y el toast
+                cuentasCaptura.Responder = responder;
+                foreach (var sufijo in new[] { "", "-oscuro", "-200" })
+                {
+                    if (sufijo != "") { tema.Alternar(); yield return new WaitForSeconds(1f); } // oscuro y otra vez claro
+                    if (sufijo == "-200")
+                    {
+                        EscalaFuente.Forzada = () => 2f;
+                        var raiz = pantalla.GetComponent<UIDocument>()?.rootVisualElement;
+                        if (raiz != null) EscalaFuente.Aplicar(raiz, 2f);
+                        yield return new WaitForSeconds(0.5f);
+                    }
+                    Abrir(completa: false);
+                    yield return new WaitForSeconds(0.5f);
+                    pantalla.Cuenta?.PulsarEntrar();
+                    yield return new WaitForSeconds(0.7f);
+                    ComprobarSesion("sesión" + sufijo);
+                    yield return Capturar("cuenta-sesion" + sufijo);
+                    yield return new WaitForSeconds(0.5f);
+                    cuentasCaptura.Poner(null);
+                }
+
+                // Con el texto del sistema al 200 %, en hoja (con su error) y a pantalla completa
+                EscalaFuente.Forzada = () => 2f;
+                foreach (float ancho in new[] { AnchoMovilDp, 360f })
+                {
+                    CambiarAnchoPanel(ancho);
+                    cuentasCaptura.Responder = _ => System.Threading.Tasks.Task.FromResult(Resultado<UsuarioCuenta>.Fallo(ErroresCuenta.NoDisponible));
+                    foreach (bool completa in new[] { false, true })
+                    {
+                        Abrir(completa);
+                        yield return new WaitForSeconds(0.8f);
+                        ComprobarCuenta($"{(completa ? "pantalla completa" : "hoja")} al 200 % con {ancho:F0} dp", cabeEntera: false);
+                        if (ancho == AnchoMovilDp) yield return Capturar(completa ? "cuenta-bienvenida-200" : "cuenta-200");
+                        yield return new WaitForSeconds(0.5f);
+                        pantalla.Cuenta?.PulsarEntrar();
+                        yield return new WaitForSeconds(0.8f);
+                        ComprobarCuenta($"error {(completa ? "a pantalla completa" : "en hoja")} al 200 % con {ancho:F0} dp", cabeEntera: false);
+                    }
+                }
+            }
+            finally
+            {
+                cuentas.AhoraNo();
+                cuentasCaptura.Responder = responder;
+                if (cuentas.Usuario != null) cuentasCaptura.Poner(null);
+                RestaurarAnchoYFuente();
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        /// <summary>
+        /// Recién entrado: se ve el toast, sin pisar ni la columna de controles ni la píldora; la letra cabe en el círculo del
+        /// avatar (la mayúscula, 0,7 del tamaño de letra de alto) y su zona llega a 48 dp.
+        /// </summary>
+        void ComprobarSesion(string caso)
+        {
+            var toast = pantalla.Toast;
+            var buscador = pantalla.Buscador;
+            var letra = buscador.Inicial;
+            if (pantalla.CuentaAbierta || !toast.Visible || letra.text != "A")
+                Debug.LogError($"PriceMap: al entrar ({caso}), cuenta abierta {pantalla.CuentaAbierta}, toast visible {toast.Visible}, letra \"{letra.text}\".");
+            var caja = toast.Texto.worldBound;
+            var columna = pantalla.GetComponent<UIDocument>().rootVisualElement.Q("pila-derecha").worldBound;
+            var pildora = pantalla.Pildora.worldBound;
+            if (caja.Overlaps(columna) || caja.Overlaps(pildora))
+                Debug.LogError($"PriceMap: el toast ({caso}) {caja} pisa la columna {columna} o la píldora {pildora}.");
+            float ancho = letra.MeasureTextSize(letra.text, 0f, VisualElement.MeasureMode.Undefined, 0f, VisualElement.MeasureMode.Undefined).x;
+            float alto = letra.resolvedStyle.fontSize * 0.7f;
+            var circulo = buscador.Avatar.worldBound;
+            float descentrada = (letra.worldBound.center - circulo.center).magnitude;
+            if (Mathf.Sqrt(ancho * ancho + alto * alto) / 2f + descentrada > circulo.width / 2f)
+                Debug.LogError($"PriceMap: la letra del avatar ({caso}) mide {ancho:F1} x {alto:F1} dp, a {descentrada:F1} del centro, y no cabe en {circulo}.");
+            var zona = buscador.ZonaAvatar.worldBound;
+            if (zona.width < 47.5f || zona.height < 47.5f) Debug.LogError($"PriceMap: la zona del avatar ({caso}) no llega a 48 dp: {zona}.");
+            Debug.Log($"PriceMap: cuenta ({caso}): toast \"{toast.Texto.text}\" en {caja}; columna {columna}; píldora {pildora}; " +
+                      $"letra {ancho:F1} x {alto:F1} dp en {circulo}; zona {zona}");
+        }
+
+        /// <summary>Los textos y botones de la cuenta (RevisarTextos), todo dentro de la pantalla y, si toca, sin desplazar.</summary>
+        void ComprobarCuenta(string caso, bool cabeEntera)
+        {
+            var vista = pantalla.Cuenta;
+            if (vista == null) { Debug.LogError($"PriceMap: la cuenta ({caso}) no está abierta."); return; }
+            int malos = 0;
+            string ejemplo = "-";
+            void Mal(string que) { malos++; if (ejemplo == "-") ejemplo = que; }
+            int textos = RevisarTextos(vista, Mal);
+            float contenido = vista.Pagina.contentContainer.layout.height, visto = vista.Pagina.contentViewport.layout.height;
+            var tarjeta = vista.Tarjeta.worldBound;
+            if (tarjeta.yMin < vista.worldBound.yMin - 0.5f || tarjeta.yMax > vista.worldBound.yMax + 0.5f) Mal($"la tarjeta {tarjeta} se sale de {vista.worldBound}");
+            if (vista.AhoraNo.worldBound.yMax > tarjeta.yMax + 0.5f) Mal("«Ahora no» se sale");
+            if (visto < 60f) Mal($"el texto solo tiene {visto:F0} dp");
+            if (cabeEntera && contenido > visto + 0.5f) Mal($"el texto mide {contenido:F0} dp y se ven {visto:F0}");
+            Debug.Log($"PriceMap: cuenta ({caso}): {textos} textos; contenido {contenido:F0} en {visto:F0} dp; tarjeta {tarjeta}; mal {malos} ({ejemplo}); " +
+                      $"TalkBack: {string.Join(" | ", pantalla.Accesibilidad.Recorrido())}");
+            if (textos == 0 || malos > 0) Debug.LogError($"PriceMap: la cuenta ({caso}) tiene {malos} fallos: {ejemplo}");
         }
 
         /// <summary>Escribe en el registro dónde está cada elemento de la interfaz, con su texto y su fuente.</summary>

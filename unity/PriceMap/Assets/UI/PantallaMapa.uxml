@@ -51,8 +51,12 @@
         <!-- Buscador (HojaBuscador, historia 2.2): cápsula abajo que se despliega en hoja, encima de los controles del
              mapa (abierta los tapa); se oculta con la ficha abierta, así que nunca están las dos a la vez -->
         <ui:VisualElement name="hueco-buscador" class="hueco-buscador" picking-mode="Ignore" />
+        <!-- Avisos breves (Toast): encima de las hojas y sin capturar toques, en su zona segura (márgenes de PantallaMapa) -->
+        <ui:VisualElement name="zona-segura-toast" class="zona-segura" picking-mode="Ignore" />
         <!-- Explicación del permiso de ubicación (ExplicacionUbicacion): ventana modal por encima de todo -->
         <ui:VisualElement name="hueco-explicacion" class="hueco-explicacion" picking-mode="Ignore" />
+        <!-- Entrar en la cuenta (HojaCuenta, historia 3.3): hoja con su velo o pantalla completa; vacío cerrada -->
+        <ui:VisualElement name="hueco-cuenta" class="hueco-explicacion" picking-mode="Ignore" />
         <!-- Bienvenida del primer arranque (PantallaBienvenida, historia 3.1): opaca y encima de todo; vacío después -->
         <ui:VisualElement name="hueco-bienvenida" class="hueco-explicacion" picking-mode="Ignore" />
     </ui:VisualElement>

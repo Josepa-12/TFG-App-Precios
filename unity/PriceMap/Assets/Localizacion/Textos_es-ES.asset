@@ -985,7 +985,8 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 2353802987429916
     m_Localized: "En el m\xF3vil: tus ajustes y el mapa ya visto. Ni b\xFAsquedas
-      ni recorridos."
+      ni recorridos. Si creas una cuenta, Google (Firebase) guarda tu nombre, tu
+      correo y tu foto."
     m_Metadata:
       m_Items: []
   - m_Id: 2353802987429917
@@ -999,6 +1000,59 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 2353802987429919
     m_Localized: jcoete37@gmail.com
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020074328064
+    m_Localized: Entra en PriceMap
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688192
+    m_Localized: Crea tu cuenta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688193
+    m_Localized: "Para guardar tus favoritos y no perder nada si cambias de m\xF3vil."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688194
+    m_Localized: Continuar con Google
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688195
+    m_Localized: "Entrando\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688196
+    m_Localized: Reintentar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688197
+    m_Localized: "Necesitas conexi\xF3n para entrar."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688198
+    m_Localized: "Ahora no se puede iniciar sesi\xF3n en este m\xF3vil. Puedes seguir
+      sin cuenta."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688199
+    m_Localized: "No se pudo iniciar sesi\xF3n. Int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688200
+    m_Localized: Hola, {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688201
+    m_Localized: Has entrado como {0}
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688202
+    m_Localized: Tu cuenta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688203
+    m_Localized: "Sin sesi\xF3n"
     m_Metadata:
       m_Items: []
   references:

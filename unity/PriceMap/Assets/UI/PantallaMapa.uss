@@ -1219,7 +1219,7 @@
     color: var(--color-muted);
 }
 
-/* Avatar genérico de 40 dp (aún no hace nada: el perfil es de la historia 3.5) */
+/* Avatar de 40 dp: genérico o, con sesión, la letra del usuario sobre el acento (historia 3.3) */
 .buscador__avatar {
     width: var(--avatar);
     height: var(--avatar);
@@ -1237,6 +1237,31 @@
     width: var(--avatar-glifo);
     height: var(--avatar-glifo);
     color: var(--color-accent-text);
+}
+
+.buscador__avatar--sesion {
+    border-color: var(--color-accent);
+    background-color: var(--color-accent);
+}
+
+.buscador__avatar--sesion .buscador__avatar-glifo {
+    color: var(--color-accent-ink);
+}
+
+.buscador__avatar-inicial {
+    margin: 0;
+    padding: 0;
+    color: var(--color-accent-ink);
+    -unity-text-align: middle-center;
+}
+
+/* Zona del toque: 48 dp (los 40 del círculo y 4 por lado; -6 porque se mide desde dentro del borde de 2) */
+.buscador__avatar-zona {
+    position: absolute;
+    left: -6px;
+    top: -6px;
+    right: -6px;
+    bottom: -6px;
 }
 
 /* Contenido de la hoja: categorías y "Encuentra cerca" (lo que se ve antes de escribir) */
@@ -2590,4 +2615,159 @@
 .bienvenida--grande .explicacion-ubicacion__boton.bienvenida__boton--primero {
     margin-right: 0;
     margin-bottom: var(--espacio-2);
+}
+
+/* ───────── Entrar en la cuenta (historia 3.3; maqueta del 24/11/2026) ─────────
+   Hoja desde abajo sobre un velo o, tras la bienvenida, a pantalla completa y opaca. El texto se desplaza si no cabe. */
+.cuenta {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    justify-content: flex-end;
+    background-color: var(--color-velo-modal);
+}
+
+.cuenta--completa {
+    background-color: var(--color-bg);
+}
+
+.cuenta__tarjeta {
+    flex-shrink: 1;
+    max-height: 100%;
+    background-color: var(--color-surface);
+    border-top-left-radius: var(--radio-sheet);
+    border-top-right-radius: var(--radio-sheet);
+    border-top-width: 1px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-color: var(--color-border);
+}
+
+.cuenta--completa .cuenta__tarjeta {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top-width: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+}
+
+.cuenta__asa {
+    width: var(--asa-ancho);
+    height: var(--asa-alto);
+    flex-shrink: 0;
+    align-self: center;
+    margin-top: var(--espacio-2);
+    border-radius: 2px;
+    background-color: var(--color-border);
+}
+
+.cuenta__pagina {
+    flex-shrink: 1;
+}
+
+.cuenta--completa .cuenta__pagina {
+    flex-grow: 1;
+}
+
+.cuenta__pagina .unity-scroll-view__content-and-vertical-scroll-container {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.cuenta__pagina .unity-scroll-view__content-viewport {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.cuenta__pagina .unity-scroll-view__content-container {
+    flex-shrink: 0;
+    padding: var(--espacio-3) var(--espacio-5) var(--espacio-2) var(--espacio-5);
+}
+
+.cuenta--completa .cuenta__pagina .unity-scroll-view__content-container {
+    padding-top: var(--espacio-6);
+}
+
+.cuenta__titulo,
+.cuenta__para,
+.cuenta__aviso {
+    margin: 0 0 var(--espacio-3) 0;
+    padding: 0;
+    flex-shrink: 0;
+    white-space: normal;
+    color: var(--color-text);
+}
+
+.cuenta__para {
+    color: var(--color-muted);
+}
+
+.cuenta--completa .cuenta__titulo,
+.cuenta--completa .cuenta__para,
+.cuenta--completa .cuenta__aviso {
+    -unity-text-align: upper-center;
+}
+
+.cuenta__aviso {
+    padding: var(--espacio-3) var(--espacio-4);
+    border-radius: var(--radio-md);
+    background-color: var(--color-accent-soft);
+}
+
+.cuenta__pie {
+    flex-shrink: 0;
+    padding: var(--espacio-2) var(--espacio-5) var(--espacio-4) var(--espacio-5);
+}
+
+.cuenta__google,
+.cuenta__google:hover,
+.cuenta__google:active {
+    flex-direction: row;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--bienvenida-boton-alto);
+    margin: 0 0 var(--espacio-2) 0;
+    padding: var(--espacio-2) var(--espacio-4);
+    border-width: 1px;
+    border-radius: var(--radio-pill);
+    border-color: var(--color-google-borde);
+    background-color: var(--color-google-fondo);
+}
+
+.cuenta__google:active {
+    background-color: var(--color-google-pulsado);
+}
+
+.cuenta__google:focus {
+    border-width: 3px;
+    border-color: var(--color-focus);
+}
+
+.cuenta__google-icono {
+    width: var(--google-icono);
+    height: var(--google-icono);
+    flex-shrink: 0;
+    margin-right: var(--espacio-3);
+}
+
+.cuenta__google-texto {
+    flex-shrink: 1;
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-google-texto);
+    -unity-text-align: middle-center;
+}
+
+.explicacion-ubicacion__boton.cuenta__boton {
+    flex-shrink: 0;
+    min-height: var(--bienvenida-boton-alto);
+    margin: 0 0 var(--espacio-2) 0;
 }

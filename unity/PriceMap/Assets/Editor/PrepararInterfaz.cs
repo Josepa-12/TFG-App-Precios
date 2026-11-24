@@ -266,10 +266,24 @@ namespace PriceMap.EditorTools
             [ClavesTexto.AvisoSaleTitulo] = "Qué sale del móvil",
             [ClavesTexto.AvisoSale] = "El texto que buscas y los puntos que marcas en el mapa van a Photon; los de una ruta, con tu posición exacta, a Valhalla u OSRM. El mapa se descarga de OpenFreeMap. Al buscar, tu posición va redondeada a unos 100 m. Si pegas un enlace corto de Google Maps, se consulta a Google.",
             [ClavesTexto.AvisoGuardaTitulo] = "Qué se guarda",
-            [ClavesTexto.AvisoGuarda] = "En el móvil: tus ajustes y el mapa ya visto. Ni búsquedas ni recorridos.",
+            [ClavesTexto.AvisoGuarda] = "En el móvil: tus ajustes y el mapa ya visto. Ni búsquedas ni recorridos. Si creas una cuenta, Google (Firebase) guarda tu nombre, tu correo y tu foto.",
             [ClavesTexto.AvisoResponsableTitulo] = "Quién es el responsable",
             [ClavesTexto.AvisoResponsable] = "Jose Antonio Segovia Sarmiento, autor de este Trabajo de Fin de Grado.",
             [ClavesTexto.AvisoCorreo] = "jcoete37@gmail.com",
+            // Entrar en la cuenta (historia 3.3)
+            [ClavesTexto.CuentaTitulo] = "Entra en PriceMap",
+            [ClavesTexto.CuentaTituloCompleta] = "Crea tu cuenta",
+            [ClavesTexto.CuentaPara] = "Para guardar tus favoritos y no perder nada si cambias de móvil.",
+            [ClavesTexto.CuentaGoogle] = "Continuar con Google",
+            [ClavesTexto.CuentaEntrando] = "Entrando…",
+            [ClavesTexto.CuentaReintentar] = "Reintentar",
+            [ClavesTexto.CuentaErrorConexion] = "Necesitas conexión para entrar.",
+            [ClavesTexto.CuentaErrorServidor] = "Ahora no se puede iniciar sesión en este móvil. Puedes seguir sin cuenta.",
+            [ClavesTexto.CuentaError] = "No se pudo iniciar sesión. Inténtalo de nuevo.",
+            [ClavesTexto.CuentaHola] = "Hola, {0}",
+            [ClavesTexto.CuentaComoQuien] = "Has entrado como {0}",
+            [ClavesTexto.CuentaAvatar] = "Tu cuenta",
+            [ClavesTexto.CuentaSinSesion] = "Sin sesión",
         };
 
         [MenuItem("PriceMap/Preparar interfaz")]

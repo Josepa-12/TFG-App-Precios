@@ -222,3 +222,15 @@
 - source_spec: `spec-3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta.md`
   summary: Entrar con correo y contraseña (parte 2 de la 3.3; `spec-3-3b-entrar-con-correo.md`).
   evidence: La spec entera medía unos 1.950 tokens y el usuario eligió partirla; el enlace mágico se descartó por el límite de 5 al día.
+
+- source_spec: `spec-3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta.md`
+  summary: Probar la cuenta en un móvil: entrar con Google, cerrar el selector, SHA-1 mala, sin conexión, reabrir con sesión, TalkBack y zonas seguras (toast y hoja).
+  evidence: El selector de Google y el Java solo se ejecutan en Android; `Screen.safeArea` no se puede fijar en EditMode.
+
+- source_spec: `spec-3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta.md`
+  summary: Cerrar la hoja de la cuenta arrastrándola o tocando el velo.
+  evidence: Lleva el asa de las demás hojas (maqueta aprobada), pero solo se cierra con «Ahora no» o atrás.
+
+- source_spec: `spec-3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta.md`
+  summary: Enlazar el aviso de privacidad desde la hoja de la cuenta y completarlo (cómo salir y borrar la cuenta, sesión guardada en el móvil) con la 3.5.
+  evidence: Quien ya pasó la bienvenida no ve que Google (Firebase) guarda la cuenta; hasta la 3.5 no hay cerrar sesión.

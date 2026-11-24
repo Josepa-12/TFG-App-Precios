@@ -58,6 +58,10 @@ namespace PriceMap.Arranque
             // Bienvenida del primer arranque (historia 3.1); en la captura de pruebas la pone ella
             var bienvenida = CapturaPruebas.SePide() ? null : new ServicioBienvenida(preferencias, ubicacion, new NotificacionesAndroid());
 
+            // Servidor (historia 3.2), sin empezar aún, y la cuenta (historia 3.3), que lo espera
+            servidor = CrearServidor();
+            var cuentas = CapturaPruebas.SePide() ? CapturaPruebas.CuentasFalsas() : CrearCuentas(servidor, preferencias);
+
             // "mapa != null" usa la comparación de Unity (objeto destruido = nulo) antes de pasarlo como interfaz.
             // "Ahora" lo da el Arranque (AD-12): con él se calcula el resumen del precio de cada lugar.
             // "Quitar animaciones" del sistema (UX-DR19): la hoja del buscador cambia de altura sin transición
@@ -88,14 +92,14 @@ namespace PriceMap.Arranque
             if (!Componer(mapa != null ? mapa : null, pantallaMapa, tema, lugares, filtro, DateTime.UtcNow, ubicacion,
                     accesibilidadSistema, direcciones: direcciones, geocodificador: photon, resolutorEnlaces: resolutor, rutas: rutas,
                     navegacion: navegacion, pantallaSistema: new PantallaSistemaUnity(), voz: voz, calles: calles, inicio: inicio,
-                    bienvenida: bienvenida))
+                    cuentas: cuentas, bienvenida: bienvenida))
             { inicio?.Irse(null); enabled = false; return; }
 
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
 
-            // Servidor (historia 3.2): se prepara sin esperarlo, con la app ya en marcha; nada depende de él todavía
-            servidor = CrearServidor();
+            // Servidor: se prepara sin esperarlo, con la app ya en marcha
+            IniciarServidor(servidor);
 
             // Ubicaciones y textos compartidos con la app (historia 2.5, parte 3): al arrancar y al volver delante
             compartida = new EntradaCompartidaAndroid();
@@ -113,7 +117,7 @@ namespace PriceMap.Arranque
             return new VozNula();
         }
 
-        /// <summary>Firebase (Android, ya empezando) o ninguno (PC, editor y captura de pruebas: no se toca).</summary>
+        /// <summary>Firebase (Android, sin empezar) o ninguno (PC, editor y captura de pruebas: no se toca).</summary>
         internal static IServidor CrearServidor()
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -126,15 +130,19 @@ namespace PriceMap.Arranque
 
         internal static IServidor CrearServidor(bool conFirebase, Func<InicioFirebase> crear)
         {
-            if (conFirebase)
-            {
-                var firebase = crear();
-                firebase.Iniciar();
-                return firebase;
-            }
+            if (conFirebase) return crear();
             Debug.LogWarning("PriceMap: sin Firebase en esta plataforma; la app sigue sin cuenta ni servidor.");
             return new ServidorNulo();
         }
+
+        /// <summary>Empieza a preparar Firebase, sin esperarlo; sin él, nada.</summary>
+        internal static void IniciarServidor(IServidor servidor) => (servidor as InicioFirebase)?.Iniciar();
+
+        /// <summary>Las cuentas de Firebase o, sin él (PC y editor), las falsas, que no esperan a ningún servidor.</summary>
+        internal static ServicioCuentas CrearCuentas(IServidor servidor, IPreferencias preferencias) =>
+            servidor is ServidorNulo
+                ? new ServicioCuentas(new CuentasFalsas(), null, preferencias, Task.Delay)
+                : new ServicioCuentas(new CuentasFirebase(servidor), servidor, preferencias, Task.Delay);
 
         /// <summary>Lo compartido con la app y aún no leído va al buscador de la pantalla. Sin nada, nada.</summary>
         internal static void PasarCompartido(IEntradaCompartida entrada, PantallaMapa pantalla)
@@ -236,12 +244,13 @@ namespace PriceMap.Arranque
         /// <param name="calles">Calles guardadas del buscador (spec buscar-calles-guardadas); sin él, no se buscan.</param>
         /// <param name="inicio">Pantalla de inicio (spec pantalla-de-inicio); sin él, no hay.</param>
         /// <param name="bienvenida">Bienvenida del primer arranque (historia 3.1); sin él, no sale.</param>
+        /// <param name="cuentas">Cuenta del usuario (historia 3.3); sin él, el avatar no hace nada.</param>
         public static bool Componer(IMapa mapa, PantallaMapa pantallaMapa, ServicioTema tema, ServicioLugares lugares,
             ServicioFiltro filtro, DateTime ahora, ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null,
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
             ServicioNavegacion navegacion = null, IPantallaSistema pantallaSistema = null, ServicioVoz voz = null,
-            BuscadorCalles calles = null, ServicioInicio inicio = null, ServicioBienvenida bienvenida = null)
+            BuscadorCalles calles = null, ServicioInicio inicio = null, ServicioBienvenida bienvenida = null, ServicioCuentas cuentas = null)
         {
             if (mapa == null || pantallaMapa == null || tema == null || lugares == null || filtro == null)
             {
@@ -263,7 +272,7 @@ namespace PriceMap.Arranque
             // La pantalla no se apaga mientras se navega (historia 2.7, parte 2b; FR20)
             if (navegacion != null && pantallaSistema != null) _ = new PantallaEncendida(navegacion, pantallaSistema);
             pantallaMapa.Inicializar(mapa, tema, lugares, ahora, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca, geocodificador,
-                resolutorEnlaces, rutas, navegacion, voz, calles, inicio, bienvenida);
+                resolutorEnlaces, rutas, navegacion, voz, calles, inicio, bienvenida, cuentas);
             tema.Iniciar();
             filtro.Iniciar(); // filtro "Precios" guardado; Ninguno la primera vez (FR-2)
             ubicacion?.Iniciar(); // GPS y brújula, si ya hay permiso

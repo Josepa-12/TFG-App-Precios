@@ -321,9 +321,11 @@ namespace PriceMap.Tests.EditMode
             VisualElement precios = p.Pildora;
             while (precios.parent != raiz) precios = precios.parent;
             Assert.Greater(raiz.IndexOf(precios), velo, "La píldora y el menú quedan encima del velo.");
-            // Solo la explicación del permiso de ubicación (historia 1.7, modal) y la bienvenida (3.1) van encima: tapan la píldora
+            // Solo la explicación del permiso de ubicación (historia 1.7, modal), la cuenta (3.3) y la bienvenida (3.1) van
+            // encima: tapan la píldora
             var explicacion = arbol.Q("hueco-explicacion");
-            Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(explicacion), "La explicación de la ubicación, encima de todo lo demás.");
+            Assert.AreEqual(raiz.childCount - 3, raiz.IndexOf(explicacion), "La explicación de la ubicación, encima de todo lo demás.");
+            Assert.AreEqual(raiz.childCount - 2, raiz.IndexOf(arbol.Q("hueco-cuenta")), "La cuenta, solo debajo de la bienvenida.");
             Assert.AreEqual(raiz.childCount - 1, raiz.IndexOf(arbol.Q("hueco-bienvenida")), "La bienvenida es lo último.");
             // La ficha del lugar (historia 1.8) va encima de la píldora: con ella abierta, su velo tapa también el filtro;
             // cerrada no se ve (display: none) y no tapa nada
@@ -331,12 +333,15 @@ namespace PriceMap.Tests.EditMode
             // El buscador (historia 2.2) va entre la ficha y la explicación: desplegado tapa los controles; con la
             // ficha abierta la cápsula se oculta, así que nunca queda encima de ella
             var buscador = arbol.Q("hueco-buscador");
-            Assert.AreEqual(raiz.childCount - 3, raiz.IndexOf(buscador), "El buscador va justo debajo de la explicación.");
+            Assert.AreEqual(raiz.childCount - 5, raiz.IndexOf(buscador), "El buscador va debajo de la explicación.");
+            var avisos = arbol.Q("zona-segura-toast");
+            Assert.AreEqual(raiz.childCount - 4, raiz.IndexOf(avisos), "Entre los dos, los avisos breves, que no recogen toques.");
+            Assert.AreEqual(PickingMode.Ignore, avisos.pickingMode);
             // «Cómo llegar» (parte 5b), entre los dos: se abre encima de la ficha, que queda tapada
-            Assert.AreEqual(raiz.childCount - 4, raiz.IndexOf(arbol.Q("hueco-como-llegar")), "«Cómo llegar» va justo debajo del buscador.");
-            Assert.AreEqual(raiz.childCount - 5, raiz.IndexOf(ficha), "La ficha va justo debajo de «Cómo llegar».");
+            Assert.AreEqual(raiz.childCount - 6, raiz.IndexOf(arbol.Q("hueco-como-llegar")), "«Cómo llegar» va justo debajo del buscador.");
+            Assert.AreEqual(raiz.childCount - 7, raiz.IndexOf(ficha), "La ficha va justo debajo de «Cómo llegar».");
             Assert.AreEqual(DisplayStyle.None, p.Ficha.style.display.value, "Cerrada, la ficha no tapa la píldora.");
-            Assert.AreEqual(raiz.childCount - 6, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
+            Assert.AreEqual(raiz.childCount - 8, raiz.IndexOf(precios), "Nada más va encima de la píldora y el menú.");
         }
 
         static readonly Dictionary<FiltroPrecios, string> ClaveEsperada = new Dictionary<FiltroPrecios, string>

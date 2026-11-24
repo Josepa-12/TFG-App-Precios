@@ -96,6 +96,12 @@ namespace PriceMap.UI
             }
         }
 
+        /// <summary>
+        /// Ventana modal encima de otra que sigue abierta debajo (la de la cuenta sobre la ficha, historia 3.3): mientras no sea
+        /// null, el recorrido solo tiene los controles de ese grupo. No reconstruye: quien lo cambia decide cuándo.
+        /// </summary>
+        public object Exclusivo { get; set; }
+
         /// <summary>Último control al que se pidió llevar el foco (también sin lector, para las pruebas).</summary>
         public VisualElement Enfocado { get; private set; }
 
@@ -221,6 +227,7 @@ namespace PriceMap.UI
             foreach (var c in controles)
             {
                 if (Modal && !c.enModal) continue;
+                if (Exclusivo != null && c.grupo != Exclusivo) continue;
                 if (c.visible != null && !c.visible()) continue;
                 yield return c;
             }

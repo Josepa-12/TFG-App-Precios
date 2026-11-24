@@ -983,6 +983,58 @@ MonoBehaviour:
     m_Key: aviso.correo
     m_Metadata:
       m_Items: []
+  - m_Id: 2543020074328064
+    m_Key: cuenta.titulo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688192
+    m_Key: cuenta.titulo.completa
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688193
+    m_Key: cuenta.para
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688194
+    m_Key: cuenta.google
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688195
+    m_Key: cuenta.entrando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688196
+    m_Key: cuenta.reintentar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688197
+    m_Key: cuenta.error.conexion
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688198
+    m_Key: cuenta.error.servidor
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688199
+    m_Key: cuenta.error
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688200
+    m_Key: cuenta.hola
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688201
+    m_Key: cuenta.comoquien
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688202
+    m_Key: cuenta.avatar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2543020103688203
+    m_Key: cuenta.sinsesion
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:

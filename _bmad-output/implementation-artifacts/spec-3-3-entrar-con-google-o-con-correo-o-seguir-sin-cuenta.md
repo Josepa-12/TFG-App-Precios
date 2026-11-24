@@ -2,7 +2,8 @@
 title: 'Historia 3.3 (parte 1): entrar con Google o seguir sin cuenta'
 type: 'feature'
 created: '2026-11-24'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: 'dc10301bb1e2309607c60260166385431c059184'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -66,10 +67,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `ICuentas`, `ServicioCuentas` y `ExigirCuenta` con pruebas.
-- [ ] `CuentasFirebase`, `PuenteCuenta.java` y dependencias.
-- [ ] Hoja, pantalla tras la bienvenida, avatar y toast.
-- [ ] TalkBack, 200 %, textos y capturas `cuenta(-oscuro)`, `cuenta-bienvenida(-oscuro)`, `cuenta-200`.
+- [x] `ICuentas`, `ServicioCuentas` y `ExigirCuenta` con pruebas.
+- [x] `CuentasFirebase`, `PuenteCuenta.java` y dependencias.
+- [x] Hoja, pantalla tras la bienvenida, avatar y toast.
+- [x] TalkBack, 200 %, textos y capturas `cuenta(-oscuro)`, `cuenta-bienvenida(-oscuro)`, `cuenta-200`.
 
 **Acceptance Criteria:**
 - Dada la suite EditMode, cuando se ejecuta, entonces cada fila de la matriz pasa con cuentas falsas.
@@ -79,6 +80,53 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| Capa | Hallazgo | Veredicto | Prueba | Destino |
+|---|---|---|---|---|
+| blind | Acción pendiente con una sesión cancelada | high | `StateChanged` llega antes que la continuación y `AlCambiarSesion` la ejecutaba | patch |
+| blind | Dos cancelaciones podían dejar sesión | high | `esta != ultima` se saltaba `Salir` aunque la segunda también se cancelara | patch |
+| blind | El avatar enseña un momento una sesión revocada | medium | Mismo aviso intermedio | patch |
+| blind | Las pruebas no veían esas carreras | medium | `AuthFalso` no avisaba antes de acabar | patch |
+| blind | «Reintentar» no sirve con NoDisponible | low | La matriz pide mensaje y la intención, reintento; caso raro y reabrir lo arregla | reject |
+| blind | Fallos permanentes con mensaje de reintentar | low | Sin cuenta de Google, tras añadirla sí sirve; los demás son raros | reject |
+| blind | Sin límite de tiempo en el selector o Firebase | low | «Ahora no» corta siempre; el SDK tiene el suyo | reject |
+| blind | Cuenta sin nombre ni correo | low | Google siempre da el correo | reject |
+| blind | El aviso no llega a quien ya pasó la bienvenida | medium | Ya estaba en pendientes poder leerlo desde Ajustes (3.5) | defer |
+| blind | Aviso incompleto (salir, borrar, sesión en el móvil) | medium | Salir y borrar son la 3.5; va con lo del RGPD pendiente | defer |
+| blind | La hoja parece arrastrable y no lo es | medium | El asa está en la maqueta aprobada; arrastrar es un gesto nuevo | defer |
+| blind | TalkBack no dice que se está entrando | medium | Solo cambiaba la etiqueta | patch |
+| blind | Excepción de la UI contada como fallo al entrar | low | Solo con un fallo propio de la UI; la acción pendiente se hace fuera del try | reject |
+| blind | `EscucharSiListo` no se recupera | low | Listo solo llega una vez; no hay cuándo reintentar | reject |
+| blind | Cobertura: avatar al 200 % y oscuro, «Cómo llegar», llegada | medium | Sin prueba ni captura | patch |
+| blind | Memoria y CLAUDE.md; requisitos de Firebase | low | Al cerrar; LEEME lo explica | reject |
+| edge | Dos cancelaciones podían dejar sesión | high | Igual que blind | patch |
+| edge | Aviso antes de la continuación | high | Igual que blind | patch |
+| edge | «[16] Cancelled by user.» | medium | Cerrar el selector enseñaba un error | patch |
+| edge | NoCredentialException | low | Igual que blind | reject |
+| edge | Sin nombre ni correo | low | Igual que blind | reject |
+| edge | Enlace corto compartido con la cuenta abierta | medium | Se perdía `abrirSolo` | patch |
+| edge | ExigirCuenta con la explicación abierta | false | El avatar no abre con una modal y nadie más llama aún a ExigirCuenta | reject |
+| edge | Marcas con Modal falso y Exclusivo | false | El aviso no puede estar abierto debajo: mismo motivo | reject |
+| edge | «Hola» cortado por el foco | medium | El foco va en la pasada siguiente | patch |
+| edge | Entrada ya abierta al crear la pantalla | false | El servicio se crea cerrado y solo lo abre la pantalla | reject |
+| edge | Toast encima de la ficha | medium | Antes quedaba debajo | patch |
+| edge | Acción pendiente con sesión cancelada (claim) | high | Igual que blind | patch |
+| gap | Avatar en el recorrido de otras modales | medium | Pruebas añadidas | patch |
+| gap | Valor del avatar con la sesión guardada | medium | Prueba añadida | patch |
+| gap | «Entrando…» en el nodo | medium | Prueba añadida | patch |
+| gap | Menú Precios abierto | medium | Prueba añadida | patch |
+| gap | Sitio del toast sin ruta | medium | La captura lo comprueba | patch |
+| gap | Selector de Google sin ejecutar | medium | `IPuenteCuenta` con uno falso; el Java, en el móvil | patch + defer |
+| gap | Zona segura del toast y de la hoja | low | `Screen.safeArea` no se puede fijar en EditMode; como las demás zonas | defer |
+| gap | Sesión tras cancelar | high | Igual que blind | patch |
+| gap | Acción pendiente | high | Igual que blind | patch |
+| gap | «Hola» cortado | medium | Igual que edge | patch |
+| gap | Toast encima | medium | Igual que edge | patch |
+
+## Implementation Notes
+
+- Verificado (24/11/2026): 1687/1687 pruebas, APK con `PuenteCuenta` y sin permisos nuevos, PC y captura sin errores. Google de verdad, sin probar en un móvil.
+- El botón de Google va en Nunito Sans (no hay Roboto en el proyecto).
 
 ## Verification
 

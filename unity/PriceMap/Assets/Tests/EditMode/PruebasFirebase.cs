@@ -129,18 +129,23 @@ namespace PriceMap.Tests.EditMode
             var tarea = new TaskCompletionSource<string>();
             var servidor = Arranque.Arranque.CrearServidor(true, () => new InicioFirebase(() => { veces++; return tarea.Task; }));
             Assert.IsInstanceOf<InicioFirebase>(servidor);
+            Assert.AreEqual(0, veces, "Aún sin empezar: se empieza con la app compuesta.");
+            Arranque.Arranque.IniciarServidor(servidor);
             Assert.AreEqual(1, veces, "Empezado.");
+            Assert.DoesNotThrow(() => Arranque.Arranque.IniciarServidor(new ServidorNulo()));
             Assert.AreEqual(EstadoServidor.Iniciando, servidor.Estado);
         }
 
         [Test]
-        public void Arranque_LoCreaAlFinalYSinEsperarlo()
+        public void Arranque_LoEmpiezaAlFinalYSinEsperarlo()
         {
             string codigo = File.ReadAllText("Assets/Scripts/Arranque/Arranque.cs");
             int compone = codigo.IndexOf("if (!Componer(", StringComparison.Ordinal);
             int crea = codigo.IndexOf("servidor = CrearServidor();", StringComparison.Ordinal);
-            Assert.Greater(compone, 0);
-            Assert.Greater(crea, compone, "Con la app ya compuesta.");
+            int empieza = codigo.IndexOf("            IniciarServidor(servidor);", StringComparison.Ordinal);
+            Assert.Greater(crea, 0);
+            Assert.Greater(compone, crea, "La cuenta (3.3) lo necesita al componer.");
+            Assert.Greater(empieza, compone, "Con la app ya compuesta.");
             StringAssert.Contains("void Start()", codigo);
             StringAssert.DoesNotContain("async void Start()", codigo);
             StringAssert.DoesNotContain("await ", codigo);

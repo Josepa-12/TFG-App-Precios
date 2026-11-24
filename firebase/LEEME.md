@@ -56,3 +56,7 @@ El repositorio es público, así que la configuración de la app no se sube (est
 La clave de API que lleva el archivo también va dentro de cada APK: no es secreta, y lo que protege los datos son las reglas. Aun así, conviene limitarla en Google Cloud (APIs y servicios → Credenciales) a la app `com.pricemap.app` con su huella SHA-1.
 
 Si se firma la app con otra clave (otro ordenador u otro almacén de claves), hay que añadir su huella SHA-1 en esa misma página y volver a descargar el archivo, o la entrada con Google no funcionará.
+
+## Entrar con Google
+
+En la consola de Firebase, Authentication → Método de acceso, el proveedor **Google** debe estar activado, y en la app Android debe estar la huella SHA-1 con la que se firma la APK. Si falta la huella, Google rechaza la entrada y la app dice «No se pudo iniciar sesión». Si la clave de API está limitada y falla con «Requests from this Android client application are blocked», hay que quitar ese límite.

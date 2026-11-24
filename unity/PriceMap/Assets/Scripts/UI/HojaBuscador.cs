@@ -88,6 +88,15 @@ namespace PriceMap.UI
         public TextField Campo { get; }
         public VisualElement Lupa { get; }
         public VisualElement Avatar { get; }
+        /// <summary>Zona que recoge el toque del avatar (48 dp); es su nodo de TalkBack.</summary>
+        public VisualElement ZonaAvatar { get; }
+        /// <summary>Con sesión, la letra del usuario en lugar del glifo genérico.</summary>
+        public Label Inicial { get; }
+        /// <summary>El toque del avatar, para las pruebas.</summary>
+        internal Clickable ToqueAvatar { get; }
+        readonly VisualElement glifoAvatar;
+        /// <summary>Se ha pulsado el avatar.</summary>
+        public event Action AvatarPulsado;
         public ScrollView Panel { get; }
         /// <summary>Chips de categorías en el orden de Categorias.</summary>
         public IReadOnlyList<VisualElement> Chips => chips;
@@ -204,10 +213,21 @@ namespace PriceMap.UI
             Borrar.AddManipulator(new Clickable(BorrarTexto));
             CajaCampo.Add(Borrar);
 
-            // Avatar genérico: captura el toque (no despliega la hoja) y aún no hace nada (perfil, historia 3.5)
+            // Avatar: la cuenta (historia 3.3). Captura el toque, que no despliega la hoja
             Avatar = new VisualElement { name = "buscador-avatar", pickingMode = PickingMode.Position };
             Avatar.AddToClassList("buscador__avatar");
-            Avatar.Add(Glifo(IconosLugar.Avatar, "buscador-avatar-glifo", "buscador__avatar-glifo"));
+            glifoAvatar = Glifo(IconosLugar.Avatar, "buscador-avatar-glifo", "buscador__avatar-glifo");
+            Avatar.Add(glifoAvatar);
+            Inicial = new Label { name = "buscador-avatar-inicial", pickingMode = PickingMode.Ignore };
+            Inicial.AddToClassList("buscador__avatar-inicial");
+            Inicial.AddToClassList("t-heading");
+            Inicial.style.display = DisplayStyle.None;
+            Avatar.Add(Inicial);
+            // El círculo mide 40 dp: 4 más por cada lado recogen también el toque (48 dp) y dan el marco de TalkBack
+            ZonaAvatar = new VisualElement { name = "buscador-avatar-zona", pickingMode = PickingMode.Position };
+            ZonaAvatar.AddToClassList("buscador__avatar-zona");
+            Avatar.Add(ZonaAvatar);
+            Avatar.AddManipulator(ToqueAvatar = new Clickable(PulsarAvatar));
             Linea.Add(Avatar);
 
             // Sin barras de desplazamiento (no hay tema por defecto de Unity que las dibuje): se arrastra con el dedo
@@ -614,6 +634,21 @@ namespace PriceMap.UI
             }
             style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
         }
+
+        public void PulsarAvatar() => AvatarPulsado?.Invoke();
+
+        /// <summary>El avatar con la letra del usuario (sesión, historia 3.3) o, con null o vacía, el glifo genérico.</summary>
+        /// <param name="conSesion">Con sesión va en el color de acento, también sin letra.</param>
+        public void PonerSesion(bool conSesion, string inicial)
+        {
+            bool letra = conSesion && !string.IsNullOrEmpty(inicial);
+            Avatar.EnableInClassList(ClaseAvatarSesion, conSesion);
+            Inicial.text = letra ? inicial : "";
+            Inicial.style.display = letra ? DisplayStyle.Flex : DisplayStyle.None;
+            glifoAvatar.style.display = letra ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        public const string ClaseAvatarSesion = "buscador__avatar--sesion";
 
         void EnfocarCampo()
         {

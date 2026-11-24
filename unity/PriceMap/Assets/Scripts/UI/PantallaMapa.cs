@@ -63,10 +63,10 @@ namespace PriceMap.UI
         bool temaYaAnunciado;// el primer tema (al arrancar) no se anuncia: solo los cambios del usuario
 
         // Ruta dibujada (historia 2.6, parte 2a)
-        VisualElement zonaSeguraRuta, pilaDerecha;
+        VisualElement zonaSeguraRuta, zonaSeguraToast, pilaDerecha;
         TarjetaManiobra tarjetaManiobra;
         TarjetaRuta tarjetaRuta;
-        Toast toast;                         // avisos breves (parte 2b: bajo la tarjeta de la ruta)
+        Toast toast;                         // avisos breves (arriba, bajo la tarjeta de la ruta o los controles)
         TarjetaLlegada tarjetaLlegada;       // "Has llegado", en el sitio de la de maniobras (historia 2.9)
         HojaLlegada hojaLlegada;             // "Finalizar ruta" y el aviso del cierre, en el sitio de la de la ruta
         string anuncioLlegada;               // lo que falta por anunciar de la llegada (al llevar el foco); null si nada
@@ -108,6 +108,11 @@ namespace PriceMap.UI
         ServicioBienvenida bienvenida;         // null = no sale (ya vista, o sin interfaz)
         PantallaBienvenida vistaBienvenida;    // a la vista, encima de todo; null al acabar
         int paginaBienvenida;                  // la última que se enseñó (al cerrar el aviso, el foco vuelve a su enlace)
+        // La cuenta (historia 3.3)
+        ServicioCuentas cuentas;               // null = el avatar no hace nada
+        HojaCuenta vistaCuenta;                // la entrada, a la vista; null cerrada
+        VisualElement origenCuenta;            // dónde estaba el foco al abrirla
+        bool entrandoCuenta;                   // se estaba entrando la última vez que se enseñó
         // Indicaciones por voz (historia 2.8)
         ServicioVoz voz;                       // null = sin botón de voz
         BotonRedondo botonVoz;                 // en la columna, encima de "Volver a centrar"; solo se ve navegando
@@ -129,17 +134,19 @@ namespace PriceMap.UI
         /// <param name="calles">Calles guardadas (spec buscar-calles-guardadas); sin él, el buscador no las busca.</param>
         /// <param name="inicio">Pantalla de inicio que tapa la app (spec pantalla-de-inicio); sin él, no hay.</param>
         /// <param name="bienvenida">Bienvenida del primer arranque (historia 3.1); sin él, o ya vista, no sale.</param>
+        /// <param name="cuentas">Cuenta del usuario (historia 3.3); sin él, el avatar no hace nada.</param>
         public void Inicializar(IMapa mapa, ServicioTema tema, ServicioLugares lugares, DateTime ahora, ServicioFiltro filtro,
             ServicioUbicacion ubicacion = null, IAccesibilidadSistema accesibilidadSistema = null, ServicioBusqueda busqueda = null,
             BuscadorDirecciones direcciones = null, ServicioCerca cerca = null, IGeocodificador geocodificador = null,
             IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null, ServicioNavegacion navegacion = null,
-            ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null, ServicioBienvenida bienvenida = null)
+            ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null, ServicioBienvenida bienvenida = null,
+            ServicioCuentas cuentas = null)
         {
             var documento = GetComponent<UIDocument>();
             var raizDocumento = documento != null ? documento.rootVisualElement : null;
             if (raizDocumento != null) raizDocumento.pickingMode = PickingMode.Ignore; // la raíz no tapa el mapa
             Inicializar(mapa, tema, lugares, ahora, raizDocumento, filtro, ubicacion, accesibilidadSistema, busqueda, direcciones, cerca,
-                geocodificador, resolutorEnlaces, rutas, navegacion, voz, calles, inicio, bienvenida);
+                geocodificador, resolutorEnlaces, rutas, navegacion, voz, calles, inicio, bienvenida, cuentas);
         }
 
         /// <summary>Igual, con el árbol de la interfaz dado (las pruebas lo construyen sin panel).</summary>
@@ -148,7 +155,7 @@ namespace PriceMap.UI
             ServicioBusqueda busqueda = null, BuscadorDirecciones direcciones = null, ServicioCerca cerca = null,
             IGeocodificador geocodificador = null, IResolutorEnlaces resolutorEnlaces = null, ServicioRutas rutas = null,
             ServicioNavegacion navegacion = null, ServicioVoz voz = null, BuscadorCalles calles = null, ServicioInicio inicio = null,
-            ServicioBienvenida bienvenida = null)
+            ServicioBienvenida bienvenida = null, ServicioCuentas cuentas = null)
         {
             this.mapa = mapa;
             this.navegacion = rutas != null ? navegacion : null; // sin rutas no hay Ir
@@ -219,6 +226,10 @@ namespace PriceMap.UI
             foreach (var columna in raiz.Query(className: "columna-controles").ToList()) SombraSuave.Poner(columna, conBorde: true);
 
             accesibilidad = new AccesibilidadPantalla(raiz);
+            // Avisos breves, encima del buscador y de la ficha (la ruta y la cuenta)
+            zonaSeguraToast = raiz.Q("zona-segura-toast");
+            toast = new Toast();
+            (zonaSeguraToast ?? raiz).Add(toast);
             // Con ruta, la tarjeta de acciones (arriba) es lo primero que lee TalkBack (historia 2.6, parte 2a)
             if (this.rutas != null) CrearRuta();
             if (this.filtro != null) CrearFiltro(); // la píldora va arriba a la izquierda: primera en TalkBack
@@ -302,6 +313,7 @@ namespace PriceMap.UI
 
             // Buscador (historia 2.2): cápsula abajo que se despliega en hoja, encima de los controles del mapa
             CrearBuscador();
+            if (cuentas != null) CrearCuenta(cuentas);
 
             // Posición del usuario, encima de lugares y puntos, y la explicación del permiso (modal)
             if (this.ubicacion != null) CrearUbicacion();
@@ -406,6 +418,7 @@ namespace PriceMap.UI
             accesibilidad.QuitarControles(vista);
             accesibilidad.Modal = false; // reconstruye: vuelven los botones y los marcadores
             accesibilidad.PedirFoco(botonUbicacion);
+            cuentas?.Ofrecer(); // «Crea tu cuenta», una sola vez; al cerrarla, el foco también va ahí
         }
 
         void OlvidarBienvenida()
@@ -415,6 +428,144 @@ namespace PriceMap.UI
             bienvenida.ConsentimientoCambiado -= AlCambiarConsentimiento;
             bienvenida.Terminada -= AlTerminarBienvenida;
             bienvenida = null;
+        }
+
+        // ───────────────────────── La cuenta (historia 3.3) ─────────────────────────
+
+        /// <summary>La entrada en la cuenta (hoja o pantalla completa) está a la vista.</summary>
+        public bool CuentaAbierta => vistaCuenta != null;
+
+        void CrearCuenta(ServicioCuentas servicio)
+        {
+            cuentas = servicio;
+            cuentas.EntradaCambiada += AlCambiarEntrada;
+            cuentas.SesionCambiada += AlCambiarSesion;
+            cuentas.HaEntrado += AlEntrar;
+            if (buscador == null) return;
+            buscador.AvatarPulsado += TocarAvatar;
+            var usuario = cuentas.Usuario;
+            buscador.PonerSesion(usuario != null, usuario?.Inicial);
+            // TalkBack: en la cápsula, detrás del campo; desplegada, también en la hoja
+            accesibilidad.Boton(buscador.ZonaAvatar, () => Textos.T(ClavesTexto.CuentaAvatar), TocarAvatar,
+                () => cuentas.Usuario != null ? cuentas.Usuario.Identidad : Textos.T(ClavesTexto.CuentaSinSesion),
+                visible: () => buscador.Visible && !ModalUbicacionAbierta && !FichaAbierta && !MenuAbierto, enModal: true);
+        }
+
+        /// <summary>El avatar de la cápsula: sin sesión abre la hoja de la cuenta; con ella dice con qué se ha entrado.</summary>
+        public void TocarAvatar()
+        {
+            if (cuentas == null || ModalUbicacionAbierta) return;
+            if (cuentas.Usuario != null) { MostrarToast(Textos.T(ClavesTexto.CuentaComoQuien, cuentas.Usuario.Identidad)); return; }
+            origenCuenta = buscador.ZonaAvatar;
+            cuentas.Abrir();
+        }
+
+        void AlCambiarEntrada()
+        {
+            if (cuentas.Entrada == EntradaCuenta.Cerrada) CerrarCuenta();
+            else if (vistaCuenta == null) AbrirCuenta();
+            else ActualizarCuenta();
+        }
+
+        // Modal y encima de lo que hubiera; la ficha o «Cómo llegar» siguen debajo (la acción que exige cuenta vuelve a ellas)
+        void AbrirCuenta()
+        {
+            origenCuenta = origenCuenta ?? accesibilidad.UltimoFoco;
+            if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
+            if (FilaVozAbierta) CerrarFilaVoz();
+            PlegarBuscadorPorOtraVentana();
+            toast?.Ocultar();
+            vistaCuenta = new HojaCuenta(cuentas);
+            (raiz.Q("hueco-cuenta") ?? raiz).Add(vistaCuenta);
+            entrandoCuenta = cuentas.Entrando;
+            foreach (var c in vistaCuenta.Controles())
+            {
+                var control = c;
+                var vista = vistaCuenta;
+                Func<bool> visible = () => vista == vistaCuenta && control.Visible();
+                Action alEnfocar = () => vista.DesplazarHasta(control.Elemento);
+                if (control.Accion == null)
+                    accesibilidad.Texto(control.Elemento, control.Etiqueta, visible, enModal: true, grupo: vista, alEnfocar: alEnfocar);
+                else
+                    accesibilidad.Boton(control.Elemento, control.Etiqueta, control.Accion, visible: visible, enModal: true, grupo: vista);
+            }
+            AjustarCuenta();
+            accesibilidad.Exclusivo = vistaCuenta;
+            ModalNuevo();
+            accesibilidad.PedirFoco(vistaCuenta.Titulo);
+        }
+
+        // Empieza a entrar (cambian los textos) o falla: con un error, el foco va a «Reintentar» y TalkBack lo dice
+        void ActualizarCuenta()
+        {
+            bool acaba = entrandoCuenta && !cuentas.Entrando;
+            bool empieza = !entrandoCuenta && cuentas.Entrando;
+            entrandoCuenta = cuentas.Entrando;
+            var antes = vistaCuenta.Entrar;
+            vistaCuenta.Actualizar();
+            if (!acaba && antes == vistaCuenta.Entrar)
+            {
+                accesibilidad.RefrescarEtiqueta(antes);
+                if (empieza) AccesibilidadPantalla.Anunciar(Textos.T(ClavesTexto.CuentaEntrando));
+                return;
+            }
+            accesibilidad.Reconstruir();
+            if (vistaCuenta.AvisoVisible) accesibilidad.PedirFoco(vistaCuenta.Reintentar, anuncio: vistaCuenta.Aviso.text);
+            else accesibilidad.PedirFoco(vistaCuenta.Google);
+        }
+
+        // Se quita; vuelve lo que hubiera debajo y el foco va a donde estaba
+        void CerrarCuenta()
+        {
+            if (vistaCuenta == null) return;
+            var vista = vistaCuenta;
+            var origen = origenCuenta;
+            vistaCuenta = null;
+            origenCuenta = null;
+            EscalaFuente.Olvidar(vista);
+            vista.RemoveFromHierarchy();
+            accesibilidad.QuitarControles(vista);
+            accesibilidad.Exclusivo = null;
+            if (FichaAbierta) accesibilidad.Reconstruir(); // sigue siendo modal, la de la ficha
+            else accesibilidad.Modal = false;
+            if (LlegadaVisible) EnfocarLlegada(); // ha llegado con ella delante
+            else accesibilidad.PedirFoco(origen ?? (VisualElement)botonUbicacion);
+            AbrirSiToca(); // un enlace compartido que se ha resuelto con ella delante
+        }
+
+        void AlCambiarSesion()
+        {
+            var usuario = cuentas.Usuario;
+            if (buscador == null) return;
+            buscador.PonerSesion(usuario != null, usuario?.Inicial);
+            accesibilidad.RefrescarEtiqueta(buscador.ZonaAvatar);
+        }
+
+        // El anuncio va con el foco que acaba de pedir CerrarCuenta: antes, TalkBack lo cortaría al moverlo
+        void AlEntrar(UsuarioCuenta usuario)
+        {
+            string hola = Textos.T(ClavesTexto.CuentaHola, usuario.Saludo);
+            PonerToast(hola);
+            accesibilidad.PedirFoco(accesibilidad.Enfocado, anuncio: hola);
+        }
+
+        void AjustarCuenta()
+        {
+            float escala = EscalaDp;
+            if (vistaCuenta == null || escala <= 0f) return;
+            var segura = Screen.safeArea;
+            vistaCuenta.PonerZonaSegura(segura.xMin * escala, (Screen.height - segura.yMax) * escala,
+                (Screen.width - segura.xMax) * escala, segura.yMin * escala);
+        }
+
+        void OlvidarCuenta()
+        {
+            if (cuentas == null) return;
+            cuentas.EntradaCambiada -= AlCambiarEntrada;
+            cuentas.SesionCambiada -= AlCambiarSesion;
+            cuentas.HaEntrado -= AlEntrar;
+            if (buscador != null) buscador.AvatarPulsado -= TocarAvatar;
+            cuentas.AhoraNo(); // sin pantalla no se puede acabar de entrar
         }
 
         // ───────────────────────── Pantalla de inicio (spec pantalla-de-inicio) ─────────────────────────
@@ -502,8 +653,8 @@ namespace PriceMap.UI
         /// <summary>True con el aviso de ubicación desactivada a la vista.</summary>
         public bool AvisoAbierto => aviso != null && aviso.Abierta;
 
-        /// <summary>True con alguna ventana modal de la ubicación (explicación o aviso) o la bienvenida a la vista.</summary>
-        public bool ModalUbicacionAbierta => ExplicacionAbierta || AvisoAbierto || BienvenidaAbierta;
+        /// <summary>True con alguna ventana modal de la ubicación (explicación o aviso), la bienvenida o la cuenta a la vista.</summary>
+        public bool ModalUbicacionAbierta => ExplicacionAbierta || AvisoAbierto || BienvenidaAbierta || CuentaAbierta;
 
         /// <summary>
         /// Lo que hace el botón de ubicación (ServicioUbicacion.AlTocarBoton): sin permiso vuelve a salir la
@@ -694,7 +845,7 @@ namespace PriceMap.UI
 
         /// <summary>
         /// TalkBack (historia 2.2, parte 2). Plegada, la cápsula es un botón "Buscar en Sanlúcar" detrás de los
-        /// controles del mapa (el avatar no está: aún no hace nada). Desplegada a cualquier altura, la hoja es modal:
+        /// controles del mapa (el avatar lo declara CrearCuenta). Desplegada a cualquier altura, la hoja es modal:
         /// el campo, "Expandir" (si no está abierta del todo) y "Contraer" (botones que solo ve el lector), los 8 chips
         /// y "Encuentra cerca" (botones, historia 2.4). Ni marcadores ni controles del mapa.
         /// </summary>
@@ -914,7 +1065,7 @@ namespace PriceMap.UI
 
         // ───────────────────────── Compartido con PriceMap (historia 2.5, parte 3) ─────────────────────────
 
-        string compartidoPendiente; // texto para el campo que espera a que se cierre la ventana de ubicación o la bienvenida
+        string compartidoPendiente; // texto para el campo que espera a que se cierre la ventana de ubicación, la bienvenida o la cuenta
         string abrirSolo;           // texto compartido cuya ficha de punto se abre sola al reconocerse (null: ninguno)
 
         /// <summary>Hay algo compartido esperando a que se cierre la ventana de ubicación.</summary>
@@ -925,7 +1076,7 @@ namespace PriceMap.UI
         /// volver delante). Va al campo del buscador como si se hubiera pegado (parte 2): solo el enlace si lo lleva o el
         /// texto en una línea de 200 caracteres como mucho. Se cierra la ficha y se abre la hoja; si es una ubicación
         /// reconocida, su ficha de punto libre se abre sola (al momento o al resolverse el enlace corto). Con la
-        /// explicación o el aviso de ubicación o la bienvenida a la vista, espera a que se cierren. Vacío: nada. Nada se guarda.
+        /// explicación o el aviso de ubicación, la bienvenida o la cuenta a la vista, espera a que se cierren. Vacío: nada. Nada se guarda.
         /// </summary>
         public void RecibirCompartido(string texto)
         {
@@ -971,6 +1122,7 @@ namespace PriceMap.UI
             if (abrirSolo == null || buscador == null) return;
             if (cercaActiva || abrirSolo != buscador.Campo.value || abrirSolo != textoEnlace) { abrirSolo = null; return; }
             if (peticionEnlace != null) return; // se abrirá al llegar la respuesta (ResolverEnlace)
+            if (CuentaAbierta) return;          // se abrirá al cerrarla (CerrarCuenta)
             abrirSolo = null;
             if (FichaAbierta) return; // el usuario ya ha abierto otra ficha mientras se resolvía: se queda la suya
             if (enlaceLocales != null && enlaceLocales.Count == 1 && enlaceLocales[0].Tipo == TipoResultado.Coordenada)
@@ -1475,6 +1627,7 @@ namespace PriceMap.UI
         // El usuario empieza a desplegar el buscador: la ficha y el menú nunca están abiertos a la vez que la hoja
         void AlDesplegarBuscador()
         {
+            toast?.Ocultar(); // no se queda encima de la hoja
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             CerrarFicha();
             bool eraModal = modalBuscador;
@@ -1544,6 +1697,7 @@ namespace PriceMap.UI
         bool PrepararFicha()
         {
             DejarDeElegir();
+            toast?.Ocultar(); // no se queda encima de la ficha
             centrarAlAbrir = false; // la ficha centra lo suyo
             if (MenuAbierto) Cerrar(enfocar: false, porNavegacion: false);
             // La hoja del buscador se pliega y la cápsula se oculta mientras la ficha está abierta
@@ -2150,14 +2304,21 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Enseña el toast bajo la tarjeta de arriba durante 3 s y TalkBack lo anuncia (después de llevar el foco).
+        /// Enseña el toast arriba (bajo la tarjeta de la ruta o, sin ella, bajo los controles) durante 3 s y TalkBack lo
+        /// anuncia (después de llevar el foco).
         /// </summary>
         void MostrarToast(string texto)
         {
             if (toast == null) return;
+            PonerToast(texto);
+            AccesibilidadPantalla.Anunciar(texto);
+        }
+
+        // Sin anunciarlo
+        void PonerToast(string texto)
+        {
             ColocarToast();
             toast.Mostrar(texto);
-            AccesibilidadPantalla.Anunciar(texto);
         }
 
         /// <summary>Separación (dp) entre la tarjeta de arriba y el toast (--espacio-3).</summary>
@@ -2177,11 +2338,23 @@ namespace PriceMap.UI
             return !float.IsNaN(l.yMax) && l.height > 0f ? l.yMax : 16f + AltoSupuestoTarjetaManiobraDp;
         }
 
-        // El toast va 12 dp bajo la tarjeta de arriba; con la pastilla "Buscando señal GPS" a la vista, 8 dp bajo ella
+        /// <summary>Borde de abajo (dp) supuesto de la columna de controles antes de medirla: 16 + dos botones de 48.</summary>
+        public const float AbajoSupuestoControlesDp = 112f;
+
+        // Borde de abajo (dp) de la columna de controles: queda por debajo también de la píldora "Precios"
+        float AbajoControles()
+        {
+            var l = raiz.Q("pila-derecha")?.layout ?? Rect.zero;
+            return !float.IsNaN(l.yMax) && l.height > 0f ? l.yMax : AbajoSupuestoControlesDp;
+        }
+
+        // El toast va 12 dp bajo la tarjeta de arriba; con la pastilla "Buscando señal GPS" a la vista, 8 dp bajo ella. Sin
+        // ruta a la vista, 12 dp bajo la columna de controles
         void ColocarToast()
         {
-            if (toast == null || tarjetaManiobra == null) return;
-            if (pastillaSenal != null && pastillaSenal.Visible) toast.Colocar(pastillaSenal.Abajo + EspacioBajoPastillaDp);
+            if (toast == null) return;
+            if (!RutaALaVista || tarjetaManiobra == null) toast.Colocar(AbajoControles() + EspacioBajoTarjetaDp);
+            else if (pastillaSenal != null && pastillaSenal.Visible) toast.Colocar(pastillaSenal.Abajo + EspacioBajoPastillaDp);
             else toast.Colocar(AbajoTarjetaManiobra() + EspacioBajoTarjetaDp);
         }
 
@@ -2768,7 +2941,7 @@ namespace PriceMap.UI
         /// <summary>Tarjeta de acciones (arriba) y de la ruta (abajo); null sin interfaz o sin servicio de rutas.</summary>
         public TarjetaManiobra TarjetaManiobra => tarjetaManiobra;
         public TarjetaRuta TarjetaRuta => tarjetaRuta;
-        /// <summary>Aviso breve (toast) de la pantalla; null sin interfaz o sin servicio de rutas.</summary>
+        /// <summary>Aviso breve (toast) de la pantalla; null sin interfaz.</summary>
         public Toast Toast => toast;
         /// <summary>Pastilla "Buscando señal GPS"; null sin interfaz o sin servicio de rutas.</summary>
         public PastillaSenal PastillaSenal => pastillaSenal;
@@ -2795,8 +2968,6 @@ namespace PriceMap.UI
             hojaLlegada.FinalizarPulsado += QuitarRuta;
             pastillaSenal = new PastillaSenal();
             (zonaSeguraRuta ?? raiz).Add(pastillaSenal);
-            toast = new Toast();
-            (zonaSeguraRuta ?? raiz).Add(toast);
             foreach (var t in new VisualElement[] { tarjetaManiobra, tarjetaRuta, tarjetaLlegada, hojaLlegada })
                 t.RegisterCallback<GeometryChangedEvent>(_ => AlMedirTarjetaRuta());
             accesibilidad.Texto(tarjetaManiobra, () => tarjetaManiobra.Anuncio, () => TarjetasRutaVisibles);
@@ -3175,7 +3346,7 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Botón atrás de Android (KeyCode.Escape): con la bienvenida vuelve al paso anterior (en el primero, nada) y con la explicación de la ubicación abierta es "Ahora no"; con la
+        /// Botón atrás de Android (KeyCode.Escape): con la bienvenida vuelve al paso anterior (en el primero, nada) y con la cuenta o la explicación de la ubicación abiertas es "Ahora no"; con la
         /// hoja del buscador desplegada la pliega; con «Cómo llegar» abierta, vuelve la ficha; con la ficha del lugar abierta la cierra; con la hoja de la ruta
         /// desplegada la pliega; con el menú abierto lo cierra sin cambiar el filtro. Con una ruta iniciada y nada
         /// encima (también al llegar) no hace nada: la ruta solo se termina con «Finalizar ruta» (historia 2.9). Si no,
@@ -3184,6 +3355,7 @@ namespace PriceMap.UI
         public bool Atras()
         {
             if (BienvenidaAbierta) { bienvenida.Atras(); return true; }
+            if (CuentaAbierta) { cuentas.AhoraNo(); return true; }
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (AvisoAbierto) { CerrarAviso(); return true; }
             if (FilaVozAbierta) { CerrarFilaVoz(); return true; } // historia 2.8
@@ -3222,6 +3394,7 @@ namespace PriceMap.UI
             if (mapa != null) mapa.GestoUsuario -= AlGestoUsuario;
             if (inicio != null) inicio.Terminada -= AlTerminarInicio;
             OlvidarBienvenida();
+            OlvidarCuenta();
             if (ficha != null && mapa != null)
             {
                 mapa.Toque -= AlTocarMapa;
@@ -3307,6 +3480,10 @@ namespace PriceMap.UI
         public AvisoUbicacion Aviso => aviso;
         /// <summary>Bienvenida del primer arranque (historia 3.1); null si no está a la vista.</summary>
         public PantallaBienvenida Bienvenida => vistaBienvenida;
+        /// <summary>Entrada en la cuenta (historia 3.3); null si no está a la vista.</summary>
+        public HojaCuenta Cuenta => vistaCuenta;
+        /// <summary>Servicio de cuentas que recibió al iniciarse; null sin él.</summary>
+        public ServicioCuentas Cuentas => cuentas;
         /// <summary>Ficha del lugar; null sin interfaz.</summary>
         public FichaLugar Ficha => ficha;
         /// <summary>Cápsula y hoja del buscador; null sin interfaz.</summary>
@@ -3410,6 +3587,7 @@ namespace PriceMap.UI
         {
             EscalaFuente.Aplicar(raiz, EscalaFuente.Sistema);
             AjustarBienvenida();
+            AjustarCuenta();
 
             var segura = Screen.safeArea;
             float ancho = raiz.layout.width;
@@ -3419,7 +3597,7 @@ namespace PriceMap.UI
             anchoAplicado = ancho;
             float escala = ancho / Screen.width; // píxeles de pantalla → dp del panel
             // La píldora va en su propia zona segura, encima del velo del menú: mismos márgenes
-            foreach (var zona in new[] { zonaSegura, zonaSeguraPrecios, zonaSeguraRuta })
+            foreach (var zona in new[] { zonaSegura, zonaSeguraPrecios, zonaSeguraRuta, zonaSeguraToast })
             {
                 if (zona == null) continue;
                 zona.style.left = segura.xMin * escala;

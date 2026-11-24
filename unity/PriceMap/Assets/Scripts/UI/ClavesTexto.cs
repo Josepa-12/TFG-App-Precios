@@ -104,6 +104,24 @@ namespace PriceMap.UI
         public const string AvisoResponsable = "aviso.responsable";
         public const string AvisoCorreo = "aviso.correo";
 
+        /// <summary>Entrar en la cuenta (historia 3.3): título de la hoja y de la pantalla completa tras la bienvenida.</summary>
+        public const string CuentaTitulo = "cuenta.titulo";
+        public const string CuentaTituloCompleta = "cuenta.titulo.completa";
+        public const string CuentaPara = "cuenta.para";
+        public const string CuentaGoogle = "cuenta.google";
+        public const string CuentaEntrando = "cuenta.entrando";
+        public const string CuentaReintentar = "cuenta.reintentar";
+        public const string CuentaErrorConexion = "cuenta.error.conexion";
+        public const string CuentaErrorServidor = "cuenta.error.servidor";
+        public const string CuentaError = "cuenta.error";
+        /// <summary>Toast al entrar: {0} nombre o, sin nombre, correo.</summary>
+        public const string CuentaHola = "cuenta.hola";
+        /// <summary>Toast del avatar con sesión: {0} correo.</summary>
+        public const string CuentaComoQuien = "cuenta.comoquien";
+        /// <summary>TalkBack del avatar y su valor sin sesión.</summary>
+        public const string CuentaAvatar = "cuenta.avatar";
+        public const string CuentaSinSesion = "cuenta.sinsesion";
+
         /// <summary>Botón de ubicación para TalkBack (con posición).</summary>
         public const string UbicacionCentrar = "ubicacion.centrar";
         /// <summary>Explicación antes de pedir el permiso de ubicación.</summary>
@@ -440,6 +458,8 @@ namespace PriceMap.UI
             BienvenidaPermitido, BienvenidaDespues, BienvenidaCambiar, BienvenidaEmpezar, BienvenidaAtras, BienvenidaPasoDe,
             BienvenidaAnuncioPermiso, AvisoTitulo, AvisoDatosTitulo, AvisoDatos, AvisoSaleTitulo, AvisoSale,
             AvisoGuardaTitulo, AvisoGuarda, AvisoResponsableTitulo, AvisoResponsable, AvisoCorreo,
+            CuentaTitulo, CuentaTituloCompleta, CuentaPara, CuentaGoogle, CuentaEntrando, CuentaReintentar,
+            CuentaErrorConexion, CuentaErrorServidor, CuentaError, CuentaHola, CuentaComoQuien, CuentaAvatar, CuentaSinSesion,
             ComoLlegarTitulo, ComoLlegarA, ComoLlegarCerrar, ComoLlegarCalculando, ComoLlegarDetalle, ComoLlegarMasRapida,
             ComoLlegarIniciar, ComoLlegarAnuncio, ComoLlegarAnuncioMinuto, ComoLlegarAnuncioAprox, ComoLlegarAnuncioAproxMinuto,
             ComoLlegarAnuncioRapida, ComoLlegarElegida,

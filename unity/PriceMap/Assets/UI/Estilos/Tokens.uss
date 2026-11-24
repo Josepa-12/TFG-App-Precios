@@ -121,6 +121,12 @@
     /* Toast (DESIGN.md · Toast; historia 2.6, parte 2b): fondo text, texto bg, para contrastar con todo */
     --color-toast: #13235B;
     --color-toast-texto: #F3F5FB;
+    /* Botón oficial «Continuar con Google» (historia 3.3): el blanco de su marca, igual en los dos temas y fuera de la
+       paleta; por eso no se redefine en .tema-oscuro. Los cuatro colores de la «G», en IconoGoogle */
+    --color-google-fondo: #FFFFFF;
+    --color-google-borde: #747775;
+    --color-google-texto: #1F1F1F;
+    --color-google-pulsado: #E8E8E8;
 
     /* Espaciado (4 / 8 / 12 / 16 / 24 / 32) */
     --espacio-1: 4px;
@@ -216,6 +222,7 @@
     --bienvenida-punto-actual: 25px;
     --radio-bienvenida-punto: 4.5px; /* 9 / 2 */
     --bienvenida-boton-alto: 52px;
+    --google-icono: 20px;            /* «G» del botón de Google (historia 3.3) */
     --asa-ancho: 36px;
     --asa-alto: 4px;
 
@@ -306,4 +313,6 @@
 .t-maniobra { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 20px; }
 /* "Has llegado" (historia 2.9): el destino y el aviso del cierre, 15 sp, 600 */
 .t-llegada { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 15px; }
+/* Botón «Continuar con Google» (historia 3.3): 16 sp, 600 */
+.t-google { -unity-font: url("../Fuentes/NunitoSans-SemiBold.ttf"); font-size: 16px; }
 .t-price { -unity-font: url("../Fuentes/NunitoSans-ExtraBold.ttf"); font-size: 22px; }
