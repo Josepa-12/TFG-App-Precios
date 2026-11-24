@@ -1,6 +1,6 @@
 # Firebase de PriceMap
 
-PriceMap no tiene servidor propio: usa Firebase en el plan gratuito (Spark), solo **Authentication** (Google y enlace por correo) y **Cloud Firestore**. Las reglas de esta carpeta son lo que protege los datos.
+PriceMap no tiene servidor propio: usa Firebase en el plan gratuito (Spark), solo **Authentication** (Google, y correo y contraseña) y **Cloud Firestore**. Las reglas de esta carpeta son lo que protege los datos.
 
 ## Qué hay
 
@@ -57,6 +57,8 @@ La clave de API que lleva el archivo también va dentro de cada APK: no es secre
 
 Si se firma la app con otra clave (otro ordenador u otro almacén de claves), hay que añadir su huella SHA-1 en esa misma página y volver a descargar el archivo, o la entrada con Google no funcionará.
 
-## Entrar con Google
+## Entrar con Google o con correo
 
 En la consola de Firebase, Authentication → Método de acceso, el proveedor **Google** debe estar activado, y en la app Android debe estar la huella SHA-1 con la que se firma la APK. Si falta la huella, Google rechaza la entrada y la app dice «No se pudo iniciar sesión». Si la clave de API está limitada y falla con «Requests from this Android client application are blocked», hay que quitar ese límite.
+
+Para entrar con correo, en esa misma página debe estar activado **Correo electrónico/contraseña** (sin el enlace por correo); si no, la app dice que no se pudo entrar o crear la cuenta. Las contraseñas las guarda Firebase. Conviene dejar activada la protección contra la enumeración de correos (Authentication → Configuración), para que no se sepa qué correos tienen cuenta. Si se pone una política de contraseñas más estricta que 8 caracteres, hay que cambiar el texto de la app.

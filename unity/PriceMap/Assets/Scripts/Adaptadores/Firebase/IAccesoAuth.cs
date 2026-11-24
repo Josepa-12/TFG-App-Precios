@@ -12,6 +12,10 @@ namespace PriceMap.Adaptadores.Firebase
         /// <summary>Los avisos pueden llegar en otro hilo.</summary>
         void Escuchar(Action alCambiar);
         Task<UsuarioCuenta> Entrar(string idToken);
+        Task<UsuarioCuenta> CrearConCorreo(string correo, string contrasena);
+        Task<UsuarioCuenta> EntrarConCorreo(string correo, string contrasena);
+        /// <summary>El correo de Firebase para poner otra contraseña, en español.</summary>
+        Task EnviarContrasena(string correo);
         void Salir();
     }
 
@@ -35,6 +39,27 @@ namespace PriceMap.Adaptadores.Firebase
                 default: return e is OperationCanceledException ? ErroresCuenta.Cancelado : ErroresCuenta.Desconocido;
             }
         }
+
+        /// <summary>Con correo y contraseña; con Google esos mismos códigos no hablan de lo que se ha escrito.</summary>
+        public static string DeCorreo(Exception e)
+        {
+            switch ((e as FalloAuth)?.Codigo)
+            {
+                case "WrongPassword":
+                case UsuarioDesconocido:
+                case "InvalidCredential": return ErroresCuenta.NoCoinciden;
+                case "EmailAlreadyInUse": return ErroresCuenta.CorreoUsado;
+                case "InvalidEmail":
+                case "MissingEmail": return ErroresCuenta.CorreoNoValido;
+                case "WeakPassword": return ErroresCuenta.ContrasenaDebil;
+                case "TooManyRequests":
+                case "QuotaExceeded": return ErroresCuenta.DemasiadosIntentos;
+                default: return De(e);
+            }
+        }
+
+        /// <summary>No hay cuenta con ese correo.</summary>
+        public const string UsuarioDesconocido = "UserNotFound";
     }
 
     internal enum EstadoGoogle

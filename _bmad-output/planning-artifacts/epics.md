@@ -55,7 +55,7 @@ FR33: Cada precio guarda su última confirmación y se clasifica en al día / po
 FR34: Un cliente puede avisar de que un precio cambió, el servicio ya no se ofrece o el negocio cerró; cada aviso pesa según la reputación (×1, ×1,5, ×2).
 FR35: Con 3 puntos de aviso el precio pasa a "en revisión", se marca en la ficha y la pregunta de llegada pide confirmarlo; se cierra cuando un cliente lo confirma o aporta otro.
 FR36: Aportes, avisos, precios declarados y ofertas se guardan en un servidor y los ven todos los usuarios en menos de 1 minuto.
-FR37: El usuario inicia sesión con Google (principal) o con correo, sin contraseñas propias de la app.
+FR37: El usuario inicia sesión con Google (principal) o con correo y contraseña; la contraseña la guarda Firebase, nunca la app.
 FR38: Sin cuenta se puede ver el mapa y las fichas, buscar y navegar; para aportar, ganar recompensas o guardar favoritos se pide crear cuenta.
 FR39: Al registrarse se elige Cliente o Negocio; un negocio no recibe preguntas, no tiene monedas ni tienda y no aporta como cliente.
 FR40: El progreso del cliente (monedas, XP, aportes, favoritos, plan, cosméticos, ajustes) se guarda en su cuenta y se recupera en otro dispositivo.
@@ -670,13 +670,13 @@ para no perder nada y que nadie toque lo mío.
 
 Como usuario,
 quiero entrar con mi cuenta de Google o con mi correo, o seguir mirando sin cuenta,
-para empezar rápido y sin contraseñas nuevas.
+para empezar rápido.
 
 **Criterios de aceptación:**
 
 **Dado** la hoja de cuenta
 **Cuando** elijo "Continuar con Google" o "Con correo"
-**Entonces** inicio sesión con Firebase Authentication sin que la app gestione contraseñas propias (FR37, UX-DR14)
+**Entonces** inicio sesión con Firebase Authentication (con correo, la contraseña la guarda Firebase y la app no la guarda ni la registra) (FR37, UX-DR14)
 
 **Dado** "Ahora no"
 **Cuando** sigo sin cuenta

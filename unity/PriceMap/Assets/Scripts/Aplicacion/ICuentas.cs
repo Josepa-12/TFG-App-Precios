@@ -20,6 +20,16 @@ namespace PriceMap.Aplicacion
         /// <summary>Pide al usuario su cuenta de Google y entra con ella. Al acabar bien, Usuario ya es el nuevo.</summary>
         /// <param name="ct">Cancelada, acaba con Cancelado y sin sesión.</param>
         Task<Resultado<UsuarioCuenta>> EntrarConGoogle(CancellationToken ct);
+
+        /// <summary>Crea una cuenta con correo y contraseña y entra con ella. La contraseña la guarda el servidor de cuentas.</summary>
+        /// <param name="ct">Cancelada, acaba con Cancelado y sin sesión (la cuenta puede haberse creado ya).</param>
+        Task<Resultado<UsuarioCuenta>> CrearConCorreo(string correo, string contrasena, CancellationToken ct);
+
+        /// <summary>Entra con una cuenta de correo y contraseña que ya existe.</summary>
+        Task<Resultado<UsuarioCuenta>> EntrarConCorreo(string correo, string contrasena, CancellationToken ct);
+
+        /// <summary>Pide el correo para poner otra contraseña; sale bien aunque no haya cuenta con ese correo.</summary>
+        Task<Resultado<bool>> EnviarContrasena(string correo, CancellationToken ct);
     }
 
     /// <summary>Quién ha entrado. Sus datos nunca van al registro.</summary>
@@ -65,5 +75,17 @@ namespace PriceMap.Aplicacion
         /// <summary>No hay servidor o el móvil no puede entrar con Google.</summary>
         public const string NoDisponible = "cuenta-no-disponible";
         public const string Desconocido = "cuenta-desconocido";
+
+        // Solo con correo
+        /// <summary>Al crear: ya hay una cuenta con ese correo (puede ser de Google).</summary>
+        public const string CorreoUsado = "cuenta-correo-usado";
+        public const string CorreoNoValido = "cuenta-correo-no-valido";
+        /// <summary>Al crear: demasiado corta.</summary>
+        public const string ContrasenaDebil = "cuenta-contrasena-debil";
+        /// <summary>Al entrar: sin contraseña escrita.</summary>
+        public const string ContrasenaVacia = "cuenta-contrasena-vacia";
+        /// <summary>El correo o la contraseña (no se dice cuál).</summary>
+        public const string NoCoinciden = "cuenta-no-coinciden";
+        public const string DemasiadosIntentos = "cuenta-demasiados-intentos";
     }
 }

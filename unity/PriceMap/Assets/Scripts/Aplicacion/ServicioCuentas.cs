@@ -14,10 +14,22 @@ namespace PriceMap.Aplicacion
         Completa,
     }
 
+    /// <summary>Qué se ve de la entrada abierta: los botones o un formulario del correo (historia 3.3, parte 2).</summary>
+    public enum PasoCuenta
+    {
+        /// <summary>Google, «Con correo» y «Ahora no».</summary>
+        Botones,
+        Crear,
+        Entrar,
+        /// <summary>«He olvidado la contraseña».</summary>
+        Olvidada,
+    }
+
     /// <summary>
     /// Cuenta del usuario (historia 3.3): quién ha entrado y la entrada (hoja o pantalla completa), que siempre se puede
     /// cerrar sin cuenta. ExigirCuenta la abre para una acción y sigue con ella al entrar. La UI enseña su estado y le manda
-    /// lo que se pulsa. Los datos del usuario nunca van al registro.
+    /// lo que se pulsa. Los datos del usuario nunca van al registro; el correo y la contraseña que se escriben tampoco se
+    /// guardan aquí: solo pasan a ICuentas.
     /// </summary>
     public class ServicioCuentas
     {
@@ -26,6 +38,9 @@ namespace PriceMap.Aplicacion
 
         /// <summary>Lo que se espera a que el servidor acabe de prepararse al pedir entrar.</summary>
         public static readonly TimeSpan EsperaServidor = TimeSpan.FromSeconds(10);
+
+        /// <summary>Lo que debe medir al menos la contraseña al crear la cuenta.</summary>
+        public const int ContrasenaMinima = 8;
 
         readonly ICuentas cuentas;
         readonly IServidor servidor;
@@ -50,15 +65,24 @@ namespace PriceMap.Aplicacion
 
         public EntradaCuenta Entrada { get; private set; }
 
+        /// <summary>Qué se ve de la entrada: los botones o un formulario del correo. Cerrada, los botones.</summary>
+        public PasoCuenta Paso { get; private set; }
+
+        /// <summary>En «He olvidado la contraseña»: el enlace ya se ha pedido (haya o no cuenta con ese correo).</summary>
+        public bool Enviado { get; private set; }
+
         /// <summary>Hay una petición de entrar en curso.</summary>
         public bool Entrando => peticion != null;
 
         /// <summary>Código de ErroresCuenta del último intento (sigue mientras se reintenta); null si no hay que decir nada.</summary>
         public string Error { get; private set; }
 
+        /// <summary>Fallos que ha habido que decir (para distinguir dos iguales seguidos).</summary>
+        public int Fallos { get; private set; }
+
         /// <summary>Ha cambiado Usuario.</summary>
         public event Action SesionCambiada;
-        /// <summary>Ha cambiado Entrada, Entrando o Error.</summary>
+        /// <summary>Ha cambiado Entrada, Paso, Entrando, Enviado o Error.</summary>
         public event Action EntradaCambiada;
         /// <summary>El usuario acaba de entrar (no al recuperar la sesión guardada). La entrada ya está cerrada.</summary>
         public event Action<UsuarioCuenta> HaEntrado;
@@ -99,34 +123,102 @@ namespace PriceMap.Aplicacion
             if (Entrada != EntradaCuenta.Cerrada) Cerrar(entrado: false);
         }
 
-        /// <summary>«Continuar con Google» o «Reintentar»: una sola petición a la vez. Al entrar se cierra y sigue la acción pendiente.</summary>
-        public async Task EntrarConGoogle()
+        /// <summary>
+        /// «Con correo» (a Crear), de un formulario a otro o de vuelta a los botones. La petición en curso se cancela y el
+        /// error se olvida.
+        /// </summary>
+        public void IrA(PasoCuenta paso)
         {
-            if (Entrada == EntradaCuenta.Cerrada || Entrando) return;
+            if (Entrada == EntradaCuenta.Cerrada || Paso == paso) return;
+            AcabarPeticion();
+            Error = null;
+            Enviado = false;
+            Paso = paso;
+            EntradaCambiada?.Invoke();
+        }
+
+        /// <summary>Atrás: de un formulario, a los botones; en ellos, «Ahora no».</summary>
+        public void Atras()
+        {
+            if (Paso != PasoCuenta.Botones) IrA(PasoCuenta.Botones);
+            else AhoraNo();
+        }
+
+        /// <summary>«Continuar con Google» o «Reintentar»: una sola petición a la vez. Al entrar se cierra y sigue la acción pendiente.</summary>
+        public Task EntrarConGoogle() => Pedir(PasoCuenta.Botones, cuentas.EntrarConGoogle, Acabar);
+
+        /// <summary>«Crear cuenta», como Google. Con un correo no válido o una contraseña corta, su error sin pedir nada.</summary>
+        public Task CrearConCorreo(string correo, string contrasena) =>
+            PedirConCorreo(PasoCuenta.Crear, correo,
+                (contrasena ?? "").Length < ContrasenaMinima ? ErroresCuenta.ContrasenaDebil : null,
+                (c, ct) => cuentas.CrearConCorreo(c, contrasena, ct), Acabar);
+
+        /// <summary>«Entrar», como Google. Con un correo no válido o sin contraseña, su error sin pedir nada.</summary>
+        public Task EntrarConCorreo(string correo, string contrasena) =>
+            PedirConCorreo(PasoCuenta.Entrar, correo, string.IsNullOrEmpty(contrasena) ? ErroresCuenta.ContrasenaVacia : null,
+                (c, ct) => cuentas.EntrarConCorreo(c, contrasena, ct), Acabar);
+
+        /// <summary>«Enviar enlace» o «Enviar otro». Con un correo no válido, su error sin pedir nada.</summary>
+        public Task EnviarContrasena(string correo) =>
+            PedirConCorreo(PasoCuenta.Olvidada, correo, null, cuentas.EnviarContrasena, _ => Enviado = true);
+
+        /// <summary>Correo con una «@» y un punto dentro del dominio, sin espacios (los de los lados no cuentan).</summary>
+        public static bool CorreoValido(string correo)
+        {
+            string c = (correo ?? "").Trim();
+            int arroba = c.IndexOf('@');
+            if (arroba <= 0 || arroba != c.LastIndexOf('@')) return false;
+            foreach (char letra in c) if (char.IsWhiteSpace(letra)) return false;
+            string dominio = c.Substring(arroba + 1);
+            return dominio.IndexOf('.') > 0 && dominio[dominio.Length - 1] != '.';
+        }
+
+        Task PedirConCorreo<T>(PasoCuenta paso, string correo, string fallo,
+            Func<string, CancellationToken, Task<Resultado<T>>> pedir, Action<T> bien)
+        {
+            if (Entrada == EntradaCuenta.Cerrada || Paso != paso || Entrando) return Task.CompletedTask;
+            string limpio = (correo ?? "").Trim();
+            if (!CorreoValido(limpio)) fallo = ErroresCuenta.CorreoNoValido;
+            if (fallo == null) return Pedir(paso, ct => pedir(limpio, ct), bien);
+            Fallar(fallo);
+            return Task.CompletedTask;
+        }
+
+        void Acabar(UsuarioCuenta usuario) => Cerrar(entrado: true, saludar: usuario);
+
+        void Fallar(string error)
+        {
+            Error = error;
+            Enviado = false;
+            Fallos++;
+            EntradaCambiada?.Invoke();
+        }
+
+        async Task Pedir<T>(PasoCuenta paso, Func<CancellationToken, Task<Resultado<T>>> pedir, Action<T> bien)
+        {
+            if (Entrada == EntradaCuenta.Cerrada || Paso != paso || Entrando) return;
             var esta = new CancellationTokenSource();
             var ct = esta.Token;
             peticion = esta;
             EntradaCambiada?.Invoke();
 
-            Resultado<UsuarioCuenta> r;
-            bool conGoogle = false;
+            Resultado<T> r;
             try
             {
-                if (!await ServidorListo(ct)) r = Resultado<UsuarioCuenta>.Fallo(ErroresCuenta.NoDisponible);
-                else if (Usuario != null) r = Resultado<UsuarioCuenta>.Exito(Usuario); // al prepararse había una sesión guardada
-                else
-                {
-                    conGoogle = true;
-                    r = await cuentas.EntrarConGoogle(ct);
-                }
+                if (!await ServidorListo(ct)) r = Resultado<T>.Fallo(ErroresCuenta.NoDisponible);
+                else if (Usuario != null) r = default; // al prepararse había una sesión guardada: se cierra abajo
+                else r = await pedir(ct);
             }
-            catch (OperationCanceledException) { r = Resultado<UsuarioCuenta>.Fallo(ErroresCuenta.Cancelado); }
-            catch (Exception) { r = Resultado<UsuarioCuenta>.Fallo(ErroresCuenta.Desconocido); }
+            catch (OperationCanceledException) { r = Resultado<T>.Fallo(ErroresCuenta.Cancelado); }
+            catch (Exception) { r = Resultado<T>.Fallo(ErroresCuenta.Desconocido); }
 
-            if (peticion != esta) return; // cerrada mientras tanto
-            if (r.Ok) { Cerrar(entrado: true, saludar: conGoogle ? r.Valor : null); return; }
+            if (peticion != esta) return; // cerrada o en otro paso mientras tanto
+            if (r.Ok) bien(r.Valor);
+            if (peticion != esta) return; // ha entrado: cerrada
+            if (Usuario != null) { Cerrar(entrado: true); return; } // la guardada ha llegado mientras tanto: sin saludar
             AcabarPeticion();
-            Error = r.Error == ErroresCuenta.Cancelado ? null : r.Error;
+            if (!r.Ok && r.Error != ErroresCuenta.Cancelado) { Fallar(r.Error); return; }
+            Error = null;
             EntradaCambiada?.Invoke();
         }
 
@@ -150,7 +242,7 @@ namespace PriceMap.Aplicacion
         {
             SesionCambiada?.Invoke();
             // La sesión guardada llega con la entrada abierta (el servidor acababa de prepararse): ya no hace falta.
-            // Si se está entrando, la cierra EntrarConGoogle
+            // Si se está entrando, la cierra Pedir
             if (Usuario != null && Entrada != EntradaCuenta.Cerrada && !Entrando) Cerrar(entrado: true);
         }
 
@@ -159,6 +251,8 @@ namespace PriceMap.Aplicacion
             var accion = entrado ? pendiente : null;
             pendiente = null;
             Error = null;
+            Enviado = false;
+            Paso = PasoCuenta.Botones;
             Entrada = EntradaCuenta.Cerrada;
             AcabarPeticion();
             EntradaCambiada?.Invoke();

@@ -19,7 +19,7 @@ Dar identidad al usuario sin obligarle a tenerla: acepta la privacidad y decide 
 
 - **Bienvenida:** solo en el primer arranque y antes del mapa; aviso de privacidad y consentimiento explícito (aceptar o rechazar) de ubicación y de notificaciones. Rechazar no bloquea nada: la app funciona con lo permitido y Ajustes explica cómo activarlo después. Pasada una vez, la app va directa al mapa.
 - **Sin cuenta:** mapa, fichas, búsqueda y navegación funcionan siempre. Aportar, recompensas y favoritos piden cuenta; tras entrar se vuelve a la acción que la pidió.
-- **Inicio de sesión:** Google como opción principal, o correo; la app no gestiona contraseñas propias. Si falla: mensaje claro con reintento y la app sigue usable sin cuenta.
+- **Inicio de sesión:** Google como opción principal, o correo y contraseña (la guarda Firebase, nunca la app). Si falla: mensaje claro con reintento y la app sigue usable sin cuenta.
 - **Tipo de cuenta:** se elige Cliente o Negocio en el primer inicio de sesión y se guarda en la cuenta. Una cuenta de negocio no recibe preguntas de llegada, no tiene monedas ni tienda y no puede crear visitas, aportes ni avisos; lo impide el servidor, no solo la app.
 - **Cerrar sesión / borrar cuenta:** cerrar sesión (con confirmación) devuelve al uso sin cuenta. Borrar cuenta se confirma en dos pasos que explican qué se borra, y elimina la cuenta y los datos personales de Firebase (RGPD: acceso y borrado).
 - **Progreso:** favoritos y ajustes (y lo que añadan las épicas siguientes) se recuperan al entrar en otro móvil.

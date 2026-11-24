@@ -2771,3 +2771,171 @@
     min-height: var(--bienvenida-boton-alto);
     margin: 0 0 var(--espacio-2) 0;
 }
+
+/* ───────── Con correo (historia 3.3, parte 2) ─────────
+   Crear cuenta, entrar y otra contraseña, a pantalla completa. Todo va en la página, que se desplaza: los botones, abajo
+   del todo o, con un campo enfocado (--teclado), justo debajo de los campos. */
+.cuenta--formulario {
+    background-color: var(--color-bg);
+}
+
+.cuenta-form {
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.cuenta-form__cabecera {
+    flex-direction: row;
+    flex-shrink: 0;
+    align-items: center;
+    min-height: var(--zona-tactil-min);
+    padding: var(--espacio-1) var(--espacio-5) var(--espacio-1) var(--espacio-2);
+}
+
+.cuenta-form__titulo {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0 0 0 var(--espacio-1);
+    padding: 0;
+    white-space: normal;
+    color: var(--color-text);
+}
+
+.cuenta-form__pagina {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+}
+
+.cuenta-form__pagina .unity-scroll-view__content-and-vertical-scroll-container {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.cuenta-form__pagina .unity-scroll-view__content-viewport {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+}
+
+.cuenta-form__pagina .unity-scroll-view__content-container {
+    flex-shrink: 0;
+    min-height: 100%;
+    padding: var(--espacio-3) var(--espacio-5) var(--espacio-4) var(--espacio-5);
+}
+
+.cuenta-form__grupo {
+    flex-shrink: 0;
+    margin-bottom: var(--espacio-4);
+}
+
+.cuenta-form__etiqueta,
+.cuenta-form__ayuda,
+.cuenta-form__error,
+.cuenta-form__para {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    white-space: normal;
+    color: var(--color-text);
+}
+
+.cuenta-form__etiqueta {
+    margin-bottom: var(--espacio-1);
+}
+
+.cuenta-form__para {
+    margin-bottom: var(--espacio-4);
+    color: var(--color-muted);
+}
+
+.cuenta-form__error,
+.cuenta-form__ayuda {
+    margin-top: var(--espacio-1);
+}
+
+.cuenta-form__ayuda {
+    color: var(--color-muted);
+}
+
+.cuenta-form__error {
+    color: var(--color-error-texto);
+}
+
+.cuenta-form__caja {
+    flex-direction: row;
+    flex-shrink: 0;
+    align-items: stretch;
+    min-height: var(--bienvenida-boton-alto);
+    border-width: 2px;
+    border-radius: var(--radio-md);
+    border-color: var(--color-control-edge);
+    background-color: var(--color-surface);
+}
+
+.cuenta-form__caja--foco {
+    border-color: var(--color-focus);
+}
+
+.cuenta-form__caja--mal {
+    border-color: var(--color-error-texto);
+}
+
+/* Enfocado y con error: el foco se ve; el error sigue escrito debajo, en rojo */
+.cuenta-form__caja--mal.cuenta-form__caja--foco {
+    border-color: var(--color-focus);
+}
+
+/* Como el campo del buscador: sin fondo ni borde propios; un texto largo se recorta dentro */
+.cuenta-form__texto {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 0;
+    flex-direction: row;
+    align-items: stretch;
+    min-width: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0 var(--espacio-4);
+    color: var(--color-text);
+}
+
+.cuenta-form__texto .unity-base-text-field__input {
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    background-color: rgba(0, 0, 0, 0);
+    color: var(--color-text);
+    --unity-cursor-color: var(--color-accent);
+    --unity-selection-color: var(--color-seleccion);
+}
+
+.bienvenida__enlace.cuenta-form__enlace {
+    align-self: flex-start;
+    margin-left: -2px; /* su borde transparente: alineado con los campos */
+    padding-left: 0;
+}
+
+.bienvenida__enlace.cuenta-form__ver {
+    align-self: center;
+    margin-left: 0;
+    min-width: var(--zona-tactil-min);
+    padding: 0 var(--espacio-3);
+}
+
+.cuenta-form__hueco {
+    flex-grow: 1;
+    flex-shrink: 0;
+    min-height: var(--espacio-2);
+}
+
+.cuenta-form--teclado .cuenta-form__hueco {
+    flex-grow: 0;
+}

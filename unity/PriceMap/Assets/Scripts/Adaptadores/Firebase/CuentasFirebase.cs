@@ -8,8 +8,9 @@ namespace PriceMap.Adaptadores.Firebase
 {
     /// <summary>
     /// Cuentas con Firebase Auth (historia 3.3): el selector de Google del móvil da el idToken y con él se entra en Firebase,
-    /// que guarda la sesión. Se crea y se usa en el hilo principal, y responde en él. Los registros solo llevan el código y
-    /// el tipo del error: nunca el correo, el nombre ni el token.
+    /// que guarda la sesión; o correo y contraseña, que guarda Firebase y aquí solo pasan (parte 2). Se crea y se usa en el
+    /// hilo principal, y responde en él. Los registros solo llevan el código y el tipo del error: nunca el correo, la
+    /// contraseña, el nombre ni el token.
     /// </summary>
     public sealed class CuentasFirebase : ICuentas
     {
@@ -19,7 +20,7 @@ namespace PriceMap.Adaptadores.Firebase
         readonly Func<bool> hayConexion;
         readonly SynchronizationContext hilo = SynchronizationContext.Current;
         bool escuchando;
-        Task entrando; // la entrada en Firebase en curso; null si no hay ninguna. De una en una
+        Task entrando; // la petición a Firebase en curso; null si no hay ninguna. De una en una
 
         public CuentasFirebase(IServidor servidor) : this(servidor, new AccesoAuth(), new SelectorGoogleAndroid(),
             () => Application.internetReachability != NetworkReachability.NotReachable) { }
@@ -37,51 +38,75 @@ namespace PriceMap.Adaptadores.Firebase
         public UsuarioCuenta Usuario { get; private set; }
         public event Action Cambiado;
 
-        public async Task<Resultado<UsuarioCuenta>> EntrarConGoogle(CancellationToken ct)
+        public Task<Resultado<UsuarioCuenta>> EntrarConGoogle(CancellationToken ct) => Pedir(async () =>
         {
-            if (servidor.Estado != EstadoServidor.Listo) return Fallo(ErroresCuenta.NoDisponible);
+            var respuesta = await google.Pedir(ct);
+            if (ct.IsCancellationRequested) return Fallo(ErroresCuenta.Cancelado);
+            if (respuesta.Estado != EstadoGoogle.Hecha) return Fallo(CodigoDe(respuesta));
+            return await EntrarEnFirebase(() => acceso.Entrar(respuesta.IdToken), ct);
+        }, CodigosAuth.De, ct);
+
+        public Task<Resultado<UsuarioCuenta>> CrearConCorreo(string correo, string contrasena, CancellationToken ct) =>
+            Pedir(() => EntrarEnFirebase(() => acceso.CrearConCorreo(correo, contrasena), ct), CodigosAuth.DeCorreo, ct);
+
+        public Task<Resultado<UsuarioCuenta>> EntrarConCorreo(string correo, string contrasena, CancellationToken ct) =>
+            Pedir(() => EntrarEnFirebase(() => acceso.EntrarConCorreo(correo, contrasena), ct), CodigosAuth.DeCorreo, ct);
+
+        public Task<Resultado<bool>> EnviarContrasena(string correo, CancellationToken ct) => Pedir(() => EntrarEnFirebase(async () =>
+        {
+            try { await acceso.EnviarContrasena(correo); }
+            catch (FalloAuth e) when (e.Codigo == CodigosAuth.UsuarioDesconocido) { } // no se dice si el correo existe
+            return true;
+        }, ct, abreSesion: false), CodigosAuth.DeCorreo, ct, "enviar el correo de la contraseña");
+
+        async Task<Resultado<T>> Pedir<T>(Func<Task<Resultado<T>>> pedir, Func<Exception, string> codigoDe, CancellationToken ct,
+            string que = "entrar en la cuenta")
+        {
+            if (servidor.Estado != EstadoServidor.Listo) return Resultado<T>.Fallo(ErroresCuenta.NoDisponible);
             try
             {
-                if (!hayConexion()) return Fallo(ErroresCuenta.SinConexion);
-                var respuesta = await google.Pedir(ct);
-                if (ct.IsCancellationRequested) return Fallo(ErroresCuenta.Cancelado);
-                if (respuesta.Estado != EstadoGoogle.Hecha) return Fallo(CodigoDe(respuesta));
-
-                return await EntrarEnFirebase(respuesta.IdToken, ct);
+                if (!hayConexion()) return Resultado<T>.Fallo(ErroresCuenta.SinConexion);
+                return await pedir();
             }
             catch (Exception e)
             {
-                string codigo = ct.IsCancellationRequested ? ErroresCuenta.Cancelado : CodigosAuth.De(e);
+                string codigo = ct.IsCancellationRequested ? ErroresCuenta.Cancelado : codigoDe(e);
                 if (codigo != ErroresCuenta.Cancelado)
-                    Debug.LogWarning($"PriceMap: no se pudo entrar en la cuenta ({codigo}, {(e as FalloAuth)?.Codigo ?? e.GetType().Name}).");
-                return Fallo(codigo);
+                    Debug.LogWarning($"PriceMap: no se pudo {que} ({codigo}, {(e as FalloAuth)?.Codigo ?? e.GetType().Name}).");
+                return Resultado<T>.Fallo(codigo);
             }
+        }
+
+        async Task<Resultado<UsuarioCuenta>> EntrarEnFirebase(Func<Task<UsuarioCuenta>> entrar, CancellationToken ct)
+        {
+            var r = await EntrarEnFirebase<UsuarioCuenta>(entrar, ct);
+            if (!r.Ok) return r;
+            var usuario = Usuario ?? r.Valor;
+            return usuario != null ? Resultado<UsuarioCuenta>.Exito(usuario) : Fallo(ErroresCuenta.Desconocido);
         }
 
         // De una en una: una cancelada que aún contesta acaba (y sale) antes de que entre la siguiente. La sesión se lee una
         // vez, al acabar: la de una cancelada no se ve nunca
-        async Task<Resultado<UsuarioCuenta>> EntrarEnFirebase(string idToken, CancellationToken ct)
+        async Task<Resultado<T>> EntrarEnFirebase<T>(Func<Task<T>> pedir, CancellationToken ct, bool abreSesion = true)
         {
             while (entrando != null) await entrando;
-            if (ct.IsCancellationRequested) return Fallo(ErroresCuenta.Cancelado);
+            if (ct.IsCancellationRequested) return Resultado<T>.Fallo(ErroresCuenta.Cancelado);
             var acabada = new TaskCompletionSource<bool>();
             entrando = acabada.Task;
             try
             {
-                UsuarioCuenta usuario;
+                T valor;
                 try
                 {
-                    usuario = await acceso.Entrar(idToken);
-                    if (ct.IsCancellationRequested) acceso.Salir(); // cerrada mientras Firebase contestaba
+                    valor = await pedir();
+                    if (abreSesion && ct.IsCancellationRequested) acceso.Salir(); // cerrada mientras Firebase contestaba
                 }
                 finally
                 {
                     entrando = null;
                     Leer();
                 }
-                if (ct.IsCancellationRequested) return Fallo(ErroresCuenta.Cancelado);
-                usuario = Usuario ?? usuario;
-                return usuario != null ? Resultado<UsuarioCuenta>.Exito(usuario) : Fallo(ErroresCuenta.Desconocido);
+                return ct.IsCancellationRequested ? Resultado<T>.Fallo(ErroresCuenta.Cancelado) : Resultado<T>.Exito(valor);
             }
             finally { acabada.SetResult(true); }
         }

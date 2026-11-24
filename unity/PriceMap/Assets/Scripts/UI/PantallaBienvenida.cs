@@ -37,6 +37,8 @@ namespace PriceMap.UI
         {
             public VisualElement Elemento;
             public Func<string> Etiqueta;
+            /// <summary>Valor del nodo (lo escrito en un campo); null si no tiene.</summary>
+            public Func<string> Valor;
             public Action Accion;
             public Func<bool> Visible;
         }

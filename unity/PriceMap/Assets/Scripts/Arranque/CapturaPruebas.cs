@@ -319,6 +319,7 @@ namespace PriceMap.Arranque
             yield return Llegada();
             yield return Bienvenida();
             yield return Cuenta();
+            yield return CuentaCorreo();
 
             // Recorrido: unos 5,5 km al norte y vuelta; las teselas lejanas se liberan (nunca más de 7×7)
             Debug.Log($"PriceMap: teselas cargadas al inicio: {mapa.TeselasCargadas} (cámara a {FindFirstObjectByType<CamaraMapa>().distancia:F0} m, inclinación {FindFirstObjectByType<CamaraMapa>().inclinacion:F0}°)");
@@ -2542,7 +2543,7 @@ namespace PriceMap.Arranque
         }
 
         /// <summary>
-        /// Historia 3.3, capturas "cuenta", "cuenta-error" y "cuenta-bienvenida" (y "-oscuro"), "cuenta-sesion" (y "-oscuro"
+        /// Historia 3.3 (el correo, en CuentaCorreo), capturas "cuenta", "cuenta-error" y "cuenta-bienvenida" (y "-oscuro"), "cuenta-sesion" (y "-oscuro"
         /// y "-200": la letra cabe en el avatar y el toast no pisa los controles) y, con el texto al 200 %, "cuenta-200" y
         /// "cuenta-bienvenida-200". En cada una, que ningún texto se corta ni se sale y que los botones llegan a 48 dp; al 200 %,
         /// también con 360 dp de ancho.
@@ -2639,6 +2640,160 @@ namespace PriceMap.Arranque
                 else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
             }
             yield return new WaitForSeconds(0.5f);
+        }
+
+        /// <summary>
+        /// Historia 3.3, parte 2: capturas "cuenta-correo" (y "-oscuro"), "cuenta-correo-entrar" con un error,
+        /// "cuenta-correo-usado", "cuenta-correo-olvidada" (oscuro), "cuenta-correo-teclado" (con el campo enfocado) y, al
+        /// 200 %, "cuenta-correo-200". En cada paso, que ningún texto se corta ni se sale y que los botones llegan a 48 dp;
+        /// con el campo enfocado, que el botón principal queda en la mitad de arriba. Al 200 %, también con 360 dp de ancho.
+        /// </summary>
+        IEnumerator CuentaCorreo()
+        {
+            var cuentas = pantalla != null ? pantalla.Cuentas : null;
+            if (cuentas == null || cuentasCaptura == null) yield break;
+            var temaGuardado = preferencias.Leer(ServicioTema.ClavePreferencia);
+            var responder = cuentasCaptura.ResponderCorreo;
+            void Fallar(string error) =>
+                cuentasCaptura.ResponderCorreo = (_, __, ___) => System.Threading.Tasks.Task.FromResult(Resultado<UsuarioCuenta>.Fallo(error));
+            void Abrir(PasoCuenta paso, string contrasena)
+            {
+                cuentas.AhoraNo();
+                pantalla.TocarAvatar();
+                cuentas.IrA(paso);
+                var f = pantalla.Cuenta.Formulario;
+                f.Correo.SetValueWithoutNotify("ana@example.com");
+                f.Contrasena.SetValueWithoutNotify(contrasena);
+            }
+            try
+            {
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                foreach (var sufijo in new[] { "", "-oscuro" })
+                {
+                    if (sufijo != "") { cuentas.AhoraNo(); tema.Alternar(); yield return new WaitForSeconds(1f); }
+                    Abrir(PasoCuenta.Crear, "12345678");
+                    yield return new WaitForSeconds(0.7f);
+                    ComprobarFormulario("crear" + sufijo, cabeEntera: true);
+                    yield return Capturar("cuenta-correo" + sufijo);
+                    yield return new WaitForSeconds(0.5f);
+
+                    Fallar(ErroresCuenta.NoCoinciden);
+                    Abrir(PasoCuenta.Entrar, "12345");
+                    pantalla.Cuenta.Formulario.Enviar();
+                    yield return new WaitForSeconds(0.7f);
+                    ComprobarFormulario("entrar con error" + sufijo, cabeEntera: true);
+                    if (!pantalla.Cuenta.Formulario.CajaContrasena.ClassListContains(FormularioCuenta.ClaseMal)) Debug.LogError("PriceMap: el error de la contraseña no está junto a su campo.");
+                    yield return Capturar("cuenta-correo-entrar" + sufijo);
+                    yield return new WaitForSeconds(0.5f);
+
+                    Fallar(ErroresCuenta.CorreoUsado);
+                    Abrir(PasoCuenta.Crear, "12345678");
+                    pantalla.Cuenta.Formulario.Enviar();
+                    yield return new WaitForSeconds(0.7f);
+                    ComprobarFormulario("correo usado" + sufijo, cabeEntera: true);
+                    yield return Capturar("cuenta-correo-usado" + sufijo);
+                    yield return new WaitForSeconds(0.5f);
+
+                    Abrir(PasoCuenta.Olvidada, "");
+                    pantalla.Cuenta.Formulario.Enviar();
+                    yield return new WaitForSeconds(0.7f);
+                    if (!cuentas.Enviado) Debug.LogError("PriceMap: no sale el aviso del enlace enviado.");
+                    ComprobarFormulario("enlace enviado" + sufijo, cabeEntera: true);
+                    yield return Capturar("cuenta-correo-olvidada" + sufijo);
+                    yield return new WaitForSeconds(0.5f);
+                }
+                cuentas.AhoraNo();
+                tema.Alternar();
+                yield return new WaitForSeconds(1f);
+
+                // Con el campo enfocado: los botones, debajo de los campos
+                cuentasCaptura.ResponderCorreo = responder;
+                Abrir(PasoCuenta.Crear, "12345678");
+                yield return new WaitForSeconds(0.5f);
+                pantalla.Cuenta.Formulario.Contrasena.Focus();
+                yield return new WaitForSeconds(0.7f);
+                var conTeclado = pantalla.Cuenta.Formulario;
+                float mitad = conTeclado.worldBound.yMin + conTeclado.layout.height * (1f - FormularioCuenta.FraccionTeclado);
+                if (!conTeclado.ConTeclado || conTeclado.Principal.worldBound.yMax > mitad)
+                    Debug.LogError($"PriceMap: con el teclado ({conTeclado.ConTeclado}), el botón {conTeclado.Principal.worldBound} pasa de {mitad:F0}.");
+                ComprobarFormulario("con el teclado", cabeEntera: false);
+                yield return Capturar("cuenta-correo-teclado");
+                yield return new WaitForSeconds(0.5f);
+
+                // Con el texto del sistema al 200 %
+                EscalaFuente.Forzada = () => 2f;
+                foreach (float ancho in new[] { AnchoMovilDp, 360f })
+                {
+                    CambiarAnchoPanel(ancho);
+                    foreach (var (paso, error) in new[] { (PasoCuenta.Crear, null), (PasoCuenta.Crear, ErroresCuenta.CorreoUsado),
+                        (PasoCuenta.Crear, ErroresCuenta.NoDisponible), (PasoCuenta.Entrar, ErroresCuenta.NoCoinciden), (PasoCuenta.Olvidada, "") })
+                    {
+                        Abrir(paso, "12345678");
+                        if (!string.IsNullOrEmpty(error)) Fallar(error);
+                        if (error != null) pantalla.Cuenta.Formulario.Enviar();
+                        yield return new WaitForSeconds(0.8f);
+                        ComprobarFormulario($"{paso} {error} al 200 % con {ancho:F0} dp", cabeEntera: false);
+                        var f = pantalla.Cuenta.Formulario;
+                        if (ancho == AnchoMovilDp && error == null) yield return Capturar("cuenta-correo-200");
+                        if (ancho == AnchoMovilDp && error == ErroresCuenta.CorreoUsado) yield return Capturar("cuenta-correo-usado-200");
+                        // Hasta el final: los botones se ven enteros
+                        f.Pagina.scrollOffset = new Vector2(0f, 100000f);
+                        yield return new WaitForSeconds(0.3f);
+                        if (f.Secundario.worldBound.yMax > f.Pagina.contentViewport.worldBound.yMax + 0.5f)
+                            Debug.LogError($"PriceMap: {paso} {error} al 200 %: los botones no se ven ni desplazando ({f.Secundario.worldBound}).");
+                        yield return new WaitForSeconds(0.2f);
+                    }
+                    cuentasCaptura.ResponderCorreo = responder;
+                    Abrir(PasoCuenta.Crear, "12345678");
+                    yield return new WaitForSeconds(0.5f);
+                    pantalla.Cuenta.Formulario.Contrasena.Focus();
+                    yield return new WaitForSeconds(0.7f);
+                    var g = pantalla.Cuenta.Formulario;
+                    float tope = g.worldBound.yMin + g.layout.height * (1f - FormularioCuenta.FraccionTeclado);
+                    Debug.Log($"PriceMap: cuenta con correo al 200 % con el teclado y {ancho:F0} dp: botón {g.Principal.worldBound}, hasta {tope:F0}.");
+                    g.Pagina.scrollOffset = new Vector2(0f, 100000f);
+                    yield return new WaitForSeconds(0.3f);
+                    if (g.Principal.worldBound.yMax > tope + 0.5f) Debug.LogError($"PriceMap: al 200 % el teclado tapa el botón incluso desplazando ({g.Principal.worldBound}, hasta {tope:F0}).");
+                }
+
+                // Entra: se cierra con su saludo
+                Abrir(PasoCuenta.Crear, "12345678");
+                pantalla.Cuenta.Formulario.Enviar();
+                yield return new WaitForSeconds(0.5f);
+                if (pantalla.CuentaAbierta || cuentas.Usuario == null) Debug.LogError("PriceMap: con correo no se entra.");
+            }
+            finally
+            {
+                cuentas.AhoraNo();
+                cuentasCaptura.ResponderCorreo = responder;
+                if (cuentas.Usuario != null) cuentasCaptura.Poner(null);
+                RestaurarAnchoYFuente();
+                if (tema.Actual != Tema.Claro) tema.Alternar();
+                if (temaGuardado == null) preferencias.Borrar(ServicioTema.ClavePreferencia);
+                else preferencias.Guardar(ServicioTema.ClavePreferencia, temaGuardado);
+            }
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        /// <summary>Los textos y botones del formulario a la vista (RevisarTextos) y, si toca, todo sin desplazar.</summary>
+        void ComprobarFormulario(string caso, bool cabeEntera)
+        {
+            var vista = pantalla.Cuenta?.Formulario;
+            if (vista == null) { Debug.LogError($"PriceMap: el formulario de la cuenta ({caso}) no está abierto."); return; }
+            int malos = 0;
+            string ejemplo = "-";
+            void Mal(string que) { malos++; if (ejemplo == "-") ejemplo = que; }
+            int textos = RevisarTextos(vista, Mal);
+            float contenido = vista.Pagina.contentContainer.layout.height, visto = vista.Pagina.contentViewport.layout.height;
+            var zona = vista.parent.worldBound;
+            if (vista.worldBound.yMax > zona.yMax + 0.5f || vista.worldBound.yMin < zona.yMin - 0.5f) Mal($"{vista.worldBound} se sale de {zona}");
+            foreach (var c in new VisualElement[] { vista.CajaCorreo, vista.CajaContrasena, vista.BotonAtras })
+                if (c.worldBound.height > 0f && c.worldBound.height < 47f) Mal( // medio píxel de redondeo
+                    $"{c.name} mide {c.worldBound}");
+            if (cabeEntera && contenido > visto + 0.5f) Mal($"el contenido mide {contenido:F0} dp y se ven {visto:F0}");
+            Debug.Log($"PriceMap: cuenta con correo ({caso}): {textos} textos; contenido {contenido:F0} en {visto:F0} dp; mal {malos} ({ejemplo}); " +
+                      $"TalkBack: {string.Join(" | ", pantalla.Accesibilidad.Recorrido())}");
+            if (textos == 0 || malos > 0) Debug.LogError($"PriceMap: el formulario de la cuenta ({caso}) tiene {malos} fallos: {ejemplo}");
         }
 
         /// <summary>

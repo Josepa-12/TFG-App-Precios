@@ -114,6 +114,38 @@ namespace PriceMap.UI
         public const string CuentaErrorConexion = "cuenta.error.conexion";
         public const string CuentaErrorServidor = "cuenta.error.servidor";
         public const string CuentaError = "cuenta.error";
+        /// <summary>Con correo (parte 2): botón, títulos, campos, botones y errores.</summary>
+        public const string CuentaConCorreo = "cuenta.concorreo";
+        public const string CuentaCorreo = "cuenta.correo";
+        public const string CuentaContrasena = "cuenta.contrasena";
+        public const string CuentaContrasenaAyuda = "cuenta.contrasena.ayuda";
+        public const string CuentaVer = "cuenta.ver";
+        public const string CuentaOcultar = "cuenta.ocultar";
+        /// <summary>«Ver» y «Ocultar» para TalkBack.</summary>
+        public const string CuentaVerLector = "cuenta.ver.lector";
+        public const string CuentaOcultarLector = "cuenta.ocultar.lector";
+        public const string CuentaCrear = "cuenta.crear";
+        public const string CuentaCreando = "cuenta.creando";
+        public const string CuentaYaTengo = "cuenta.yatengo";
+        public const string CuentaEntrar = "cuenta.entrar";
+        public const string CuentaOlvidada = "cuenta.olvidada";
+        public const string CuentaNuevaContrasena = "cuenta.nuevacontrasena";
+        public const string CuentaOlvidadaPara = "cuenta.olvidada.para";
+        public const string CuentaEnviar = "cuenta.enviar";
+        public const string CuentaEnviando = "cuenta.enviando";
+        public const string CuentaEnviarOtro = "cuenta.enviarotro";
+        public const string CuentaEnviado = "cuenta.enviado";
+        public const string CuentaVolverEntrar = "cuenta.volverentrar";
+        public const string CuentaErrorCorreo = "cuenta.error.correo";
+        public const string CuentaErrorCorreoUsado = "cuenta.error.correousado";
+        public const string CuentaErrorContrasena = "cuenta.error.contrasena";
+        public const string CuentaErrorNoCoinciden = "cuenta.error.nocoinciden";
+        public const string CuentaErrorIntentos = "cuenta.error.intentos";
+        public const string CuentaErrorContrasenaVacia = "cuenta.error.contrasenavacia";
+        /// <summary>Fallo genérico al crear y al pedir el enlace; sin servidor, en los formularios.</summary>
+        public const string CuentaErrorCrear = "cuenta.error.crear";
+        public const string CuentaErrorEnviar = "cuenta.error.enviar";
+        public const string CuentaErrorServidorCorreo = "cuenta.error.servidor.correo";
         /// <summary>Toast al entrar: {0} nombre o, sin nombre, correo.</summary>
         public const string CuentaHola = "cuenta.hola";
         /// <summary>Toast del avatar con sesión: {0} correo.</summary>
@@ -460,6 +492,11 @@ namespace PriceMap.UI
             AvisoGuardaTitulo, AvisoGuarda, AvisoResponsableTitulo, AvisoResponsable, AvisoCorreo,
             CuentaTitulo, CuentaTituloCompleta, CuentaPara, CuentaGoogle, CuentaEntrando, CuentaReintentar,
             CuentaErrorConexion, CuentaErrorServidor, CuentaError, CuentaHola, CuentaComoQuien, CuentaAvatar, CuentaSinSesion,
+            CuentaConCorreo, CuentaCorreo, CuentaContrasena, CuentaContrasenaAyuda, CuentaVer, CuentaOcultar, CuentaVerLector,
+            CuentaOcultarLector, CuentaCrear, CuentaCreando, CuentaYaTengo, CuentaEntrar, CuentaOlvidada, CuentaNuevaContrasena,
+            CuentaOlvidadaPara, CuentaEnviar, CuentaEnviando, CuentaEnviarOtro, CuentaEnviado, CuentaVolverEntrar,
+            CuentaErrorCorreo, CuentaErrorCorreoUsado, CuentaErrorContrasena, CuentaErrorNoCoinciden, CuentaErrorIntentos,
+            CuentaErrorContrasenaVacia, CuentaErrorCrear, CuentaErrorEnviar, CuentaErrorServidorCorreo,
             ComoLlegarTitulo, ComoLlegarA, ComoLlegarCerrar, ComoLlegarCalculando, ComoLlegarDetalle, ComoLlegarMasRapida,
             ComoLlegarIniciar, ComoLlegarAnuncio, ComoLlegarAnuncioMinuto, ComoLlegarAnuncioAprox, ComoLlegarAnuncioAproxMinuto,
             ComoLlegarAnuncioRapida, ComoLlegarElegida,

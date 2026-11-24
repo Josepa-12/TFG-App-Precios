@@ -256,7 +256,7 @@ Los aportes, avisos, precios declarados y ofertas se guardan en un servidor y lo
 **Descripción:** Dos tipos de cuenta con papeles separados, para que ningún negocio aporte precios de la competencia. Realiza UJ-2 y UJ-3.
 
 #### FR-37: Inicio de sesión real
-El usuario inicia sesión con Google (opción principal) o con correo; la app no gestiona contraseñas propias. También puede usar la app sin cuenta para mirar.
+El usuario inicia sesión con Google (opción principal) o con correo y contraseña; la contraseña la guarda Firebase y la app no la guarda ni la registra. También puede usar la app sin cuenta para mirar.
 
 #### FR-38: Uso sin cuenta
 Sin cuenta se puede ver el mapa y las fichas, buscar y navegar; para aportar, ganar recompensas o guardar favoritos se pide crear cuenta.

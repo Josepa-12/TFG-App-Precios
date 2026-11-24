@@ -112,7 +112,10 @@ namespace PriceMap.UI
         ServicioCuentas cuentas;               // null = el avatar no hace nada
         HojaCuenta vistaCuenta;                // la entrada, a la vista; null cerrada
         VisualElement origenCuenta;            // dónde estaba el foco al abrirla
-        bool entrandoCuenta;                   // se estaba entrando la última vez que se enseñó
+        // Lo que se enseñó la última vez
+        bool entrandoCuenta;
+        PasoCuenta pasoCuenta;
+        int fallosCuenta;
         // Indicaciones por voz (historia 2.8)
         ServicioVoz voz;                       // null = sin botón de voz
         BotonRedondo botonVoz;                 // en la columna, encima de "Volver a centrar"; solo se ve navegando
@@ -477,7 +480,8 @@ namespace PriceMap.UI
             toast?.Ocultar();
             vistaCuenta = new HojaCuenta(cuentas);
             (raiz.Q("hueco-cuenta") ?? raiz).Add(vistaCuenta);
-            entrandoCuenta = cuentas.Entrando;
+            AnotarCuenta();
+            vistaCuenta.Formulario.EtiquetaCambiada += accesibilidad.RefrescarEtiqueta;
             foreach (var c in vistaCuenta.Controles())
             {
                 var control = c;
@@ -487,7 +491,8 @@ namespace PriceMap.UI
                 if (control.Accion == null)
                     accesibilidad.Texto(control.Elemento, control.Etiqueta, visible, enModal: true, grupo: vista, alEnfocar: alEnfocar);
                 else
-                    accesibilidad.Boton(control.Elemento, control.Etiqueta, control.Accion, visible: visible, enModal: true, grupo: vista);
+                    accesibilidad.Boton(control.Elemento, control.Etiqueta, control.Accion, control.Valor, visible, enModal: true,
+                        grupo: vista, alEnfocar: alEnfocar);
             }
             AjustarCuenta();
             accesibilidad.Exclusivo = vistaCuenta;
@@ -495,23 +500,36 @@ namespace PriceMap.UI
             accesibilidad.PedirFoco(vistaCuenta.Titulo);
         }
 
-        // Empieza a entrar (cambian los textos) o falla: con un error, el foco va a «Reintentar» y TalkBack lo dice
+        void AnotarCuenta()
+        {
+            entrandoCuenta = cuentas.Entrando;
+            pasoCuenta = cuentas.Paso;
+            fallosCuenta = cuentas.Fallos;
+        }
+
+        // Otro paso: el foco, a su título o, en los botones, a «Con correo». Empieza a entrar: cambian los textos. Acaba o
+        // falla: el foco va al botón de entrar y TalkBack dice el error o el aviso
         void ActualizarCuenta()
         {
-            bool acaba = entrandoCuenta && !cuentas.Entrando;
+            bool acaba = entrandoCuenta && !cuentas.Entrando || fallosCuenta != cuentas.Fallos;
             bool empieza = !entrandoCuenta && cuentas.Entrando;
-            entrandoCuenta = cuentas.Entrando;
-            var antes = vistaCuenta.Entrar;
+            bool otroPaso = pasoCuenta != cuentas.Paso;
+            AnotarCuenta();
             vistaCuenta.Actualizar();
-            if (!acaba && antes == vistaCuenta.Entrar)
+            if (otroPaso)
             {
-                accesibilidad.RefrescarEtiqueta(antes);
-                if (empieza) AccesibilidadPantalla.Anunciar(Textos.T(ClavesTexto.CuentaEntrando));
+                accesibilidad.Reconstruir();
+                accesibilidad.PedirFoco(cuentas.Paso == PasoCuenta.Botones ? (VisualElement)vistaCuenta.ConCorreo : vistaCuenta.TituloVisto);
+                return;
+            }
+            if (!acaba)
+            {
+                accesibilidad.RefrescarEtiqueta(vistaCuenta.Entrar);
+                if (empieza) AccesibilidadPantalla.Anunciar(vistaCuenta.TextoEntrando);
                 return;
             }
             accesibilidad.Reconstruir();
-            if (vistaCuenta.AvisoVisible) accesibilidad.PedirFoco(vistaCuenta.Reintentar, anuncio: vistaCuenta.Aviso.text);
-            else accesibilidad.PedirFoco(vistaCuenta.Google);
+            accesibilidad.PedirFoco(vistaCuenta.Entrar, anuncio: vistaCuenta.Mensaje);
         }
 
         // Se quita; vuelve lo que hubiera debajo y el foco va a donde estaba
@@ -522,6 +540,8 @@ namespace PriceMap.UI
             var origen = origenCuenta;
             vistaCuenta = null;
             origenCuenta = null;
+            vista.Formulario.VaciarContrasena();
+            vista.Formulario.EtiquetaCambiada -= accesibilidad.RefrescarEtiqueta;
             EscalaFuente.Olvidar(vista);
             vista.RemoveFromHierarchy();
             accesibilidad.QuitarControles(vista);
@@ -566,6 +586,7 @@ namespace PriceMap.UI
             cuentas.HaEntrado -= AlEntrar;
             if (buscador != null) buscador.AvatarPulsado -= TocarAvatar;
             cuentas.AhoraNo(); // sin pantalla no se puede acabar de entrar
+            vistaCuenta?.Formulario.VaciarContrasena();
         }
 
         // ───────────────────────── Pantalla de inicio (spec pantalla-de-inicio) ─────────────────────────
@@ -3346,7 +3367,7 @@ namespace PriceMap.UI
         }
 
         /// <summary>
-        /// Botón atrás de Android (KeyCode.Escape): con la bienvenida vuelve al paso anterior (en el primero, nada) y con la cuenta o la explicación de la ubicación abiertas es "Ahora no"; con la
+        /// Botón atrás de Android (KeyCode.Escape): con la bienvenida vuelve al paso anterior (en el primero, nada), con un formulario de la cuenta vuelve a sus botones y con la cuenta o la explicación de la ubicación abiertas es "Ahora no"; con la
         /// hoja del buscador desplegada la pliega; con «Cómo llegar» abierta, vuelve la ficha; con la ficha del lugar abierta la cierra; con la hoja de la ruta
         /// desplegada la pliega; con el menú abierto lo cierra sin cambiar el filtro. Con una ruta iniciada y nada
         /// encima (también al llegar) no hace nada: la ruta solo se termina con «Finalizar ruta» (historia 2.9). Si no,
@@ -3355,7 +3376,7 @@ namespace PriceMap.UI
         public bool Atras()
         {
             if (BienvenidaAbierta) { bienvenida.Atras(); return true; }
-            if (CuentaAbierta) { cuentas.AhoraNo(); return true; }
+            if (CuentaAbierta) { cuentas.Atras(); return true; }
             if (ExplicacionAbierta) { AhoraNoUbicacion(); return true; }
             if (AvisoAbierto) { CerrarAviso(); return true; }
             if (FilaVozAbierta) { CerrarFilaVoz(); return true; } // historia 2.8
@@ -3579,6 +3600,7 @@ namespace PriceMap.UI
                 tarjetaLlegada?.Repintar();
                 hojaComoLlegar?.Repintar();
                 vistaBienvenida?.Repintar();
+                vistaCuenta?.Repintar();
             });
         }
 

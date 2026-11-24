@@ -978,7 +978,12 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Motivo:** hace falta una cuenta para favoritos y aportes, pero nunca obligatoria.
     - **Solución:** puerto `ICuentas` y `ServicioCuentas` (quién ha entrado, la hoja, la oferta única tras la bienvenida y `ExigirCuenta`, que sigue con la acción al entrar). Google se pide con Credential Manager desde un plugin Java propio y el resultado entra en Firebase Auth. Botón oficial de Google, hoja desde el avatar y pantalla completa una sola vez.
     - **Comprobación:** tras la revisión de código (10 arreglos) pasan 1687 pruebas y la APK no pide permisos nuevos. La revisión encontró que al cancelar y volver a entrar podía quedar una sesión cancelada o hacerse una acción sin sesión: ahora las entradas van de una en una y una cancelada nunca se publica.
-    - **Pendiente:** probar Google en el móvil; entrar con correo (parte 2); cerrar sesión (3.5).
+    - **Pendiente:** probar Google en el móvil; cerrar sesión (3.5).
+  - *Historia 3.3 (parte 2): entrar con correo (24/11/2026).* **[Parcial]**
+    - **Motivo:** quien no usa Google también debe poder tener cuenta (FR-37).
+    - **Solución:** crear cuenta, entrar y recuperar la contraseña con Firebase, que es quien la guarda; formularios a pantalla completa con los errores junto a su campo y los botones por encima del teclado. Al recuperarla no se dice si el correo tiene cuenta.
+    - **Comprobación:** tras la revisión de código (14 arreglos) pasan 1787 pruebas y las capturas salen sin cortes, también al 200 %.
+    - **Pendiente:** probar el teclado y el correo en el móvil; la 8.1 tendrá que verificar el correo.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -1162,3 +1167,4 @@ Ideas de trabajo futuro ya identificadas:
 | 24/11/2026 | Historia 3.2 parte 2 implementada y revisada (16 arreglos, 1601 pruebas en verde, APK y captura de PC bien): Firebase Unity SDK 14.1.0 detrás de un adaptador, inicio sin esperar, paquetes fuera de git con script y SHA-256, Analytics desactivado | La app debe funcionar igual sin servidor, y el repositorio público no puede llevar la configuración. La revisión vio que un dato con cambios sin enviar se daba por confirmado y que la prueba de capas dejaba pasar un ensamblado sin `overrideReferences` |
 | 24/11/2026 | Historia 3.3 (decisiones del usuario): correo y contraseña de Firebase en vez del enlace sin contraseña; el avatar abre la hoja; pantalla «Crea tu cuenta» una vez tras la bienvenida; botón de Google blanco oficial; partida en dos | El plan gratuito de Firebase solo envía 5 enlaces de entrada al día y el SDK de Unity no los trae; la contraseña la guarda Firebase, no la app |
 | 24/11/2026 | Historia 3.3 parte 1 implementada y revisada (10 arreglos, 1687 pruebas en verde, APK y captura bien) | La revisión encontró carreras al cancelar mientras Firebase contesta, que las pruebas no veían porque el Firebase falso no avisaba antes de acabar |
+| 24/11/2026 | Historia 3.3 parte 2 implementada y revisada (14 arreglos, 1787 pruebas en verde, APK y captura bien); FR-37 matizado: la contraseña la guarda Firebase, nunca la app | La revisión encontró que el hueco del teclado podía quedarse puesto, que cancelar «He olvidado la contraseña» podía cerrar una sesión y que se podían cambiar crear y entrar sin que fallara ninguna prueba |

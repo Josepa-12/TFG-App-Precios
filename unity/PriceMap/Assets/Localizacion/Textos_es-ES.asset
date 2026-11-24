@@ -985,8 +985,8 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 2353802987429916
     m_Localized: "En el m\xF3vil: tus ajustes y el mapa ya visto. Ni b\xFAsquedas
-      ni recorridos. Si creas una cuenta, Google (Firebase) guarda tu nombre, tu
-      correo y tu foto."
+      ni recorridos. Si creas una cuenta, Google (Firebase) guarda tu correo y, seg\xFAn
+      c\xF3mo entres, tu nombre y tu foto o tu contrase\xF1a cifrada."
     m_Metadata:
       m_Items: []
   - m_Id: 2353802987429917
@@ -1053,6 +1053,125 @@ MonoBehaviour:
       m_Items: []
   - m_Id: 2543020103688203
     m_Localized: "Sin sesi\xF3n"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568373166080
+    m_Localized: Con correo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526208
+    m_Localized: Correo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526209
+    m_Localized: "Contrase\xF1a"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526210
+    m_Localized: "8 caracteres como m\xEDnimo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526211
+    m_Localized: Ver
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526212
+    m_Localized: Ocultar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526213
+    m_Localized: "Ver la contrase\xF1a"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526214
+    m_Localized: "Ocultar la contrase\xF1a"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526215
+    m_Localized: Crear cuenta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526216
+    m_Localized: "Creando la cuenta\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526217
+    m_Localized: Ya tengo cuenta
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526218
+    m_Localized: Entrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526219
+    m_Localized: "He olvidado la contrase\xF1a"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526220
+    m_Localized: "Nueva contrase\xF1a"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526221
+    m_Localized: "Te enviaremos un enlace para poner otra contrase\xF1a."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526222
+    m_Localized: Enviar enlace
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526223
+    m_Localized: "Enviando\u2026"
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526224
+    m_Localized: Enviar otro
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526225
+    m_Localized: "Si hay una cuenta con ese correo, te llegar\xE1 un enlace para
+      poner otra contrase\xF1a. Mira tambi\xE9n en spam."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526226
+    m_Localized: Volver a entrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526227
+    m_Localized: "Escribe un correo v\xE1lido, como ana@example.com."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526228
+    m_Localized: Ya hay una cuenta con ese correo. Entra o, si la creaste con Google,
+      usa Google.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526229
+    m_Localized: "La contrase\xF1a debe tener 8 caracteres como m\xEDnimo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526230
+    m_Localized: "El correo o la contrase\xF1a no coinciden."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526231
+    m_Localized: Demasiados intentos. Espera un rato.
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712036204544
+    m_Localized: "Escribe la contrase\xF1a."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712065564672
+    m_Localized: "No se pudo crear la cuenta. Int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712065564673
+    m_Localized: "No se pudo enviar el correo. Int\xE9ntalo de nuevo."
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712065564674
+    m_Localized: "Ahora no se pueden usar las cuentas en este m\xF3vil. Puedes seguir
+      sin cuenta."
     m_Metadata:
       m_Items: []
   references:

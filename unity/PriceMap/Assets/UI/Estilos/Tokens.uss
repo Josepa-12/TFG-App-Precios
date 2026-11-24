@@ -20,6 +20,8 @@
     --color-success: #0E7A4F;
     --color-success-ink: #FFFFFF; /* marca de hecho sobre success (historia 2.9) */
     --color-danger: #D6334A;
+    --color-seleccion: rgba(47, 91, 234, 0.25);   /* texto seleccionado: se pinta encima de las letras */
+    --color-error-texto: #C42A40; /* texto de error sobre bg: danger no llega a 4,5:1 (formulario de la cuenta, 3.3) */
     --color-control-edge: #6E7A99;
     --color-focus: #2F5BEA;
     --color-ahora-texto: #2F5BEA; /* chip "Ahora" de la variante vigente sobre surface-2 */
@@ -247,6 +249,8 @@
     --color-success: #4ADE9B;
     --color-success-ink: #0B1020;
     --color-danger: #FF6B81;
+    --color-seleccion: rgba(143, 176, 255, 0.35);
+    --color-error-texto: #FF6B81;
     --color-control-edge: #7F8BAA;
     --color-focus: #8FB0FF;
     --color-ahora-texto: #8FB0FF; /* el acento oscuro no llega a 4,5:1 sobre surface-2 */

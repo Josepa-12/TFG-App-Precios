@@ -25,6 +25,28 @@ namespace PriceMap.Adaptadores.Firebase
             catch (Exception e) { throw Traducido(e); }
         }
 
+        public async Task<UsuarioCuenta> CrearConCorreo(string correo, string contrasena)
+        {
+            try { return Leido((await FirebaseAuth.DefaultInstance.CreateUserWithEmailAndPasswordAsync(correo, contrasena)).User); }
+            catch (Exception e) { throw Traducido(e); }
+        }
+
+        public async Task<UsuarioCuenta> EntrarConCorreo(string correo, string contrasena)
+        {
+            try { return Leido((await FirebaseAuth.DefaultInstance.SignInWithEmailAndPasswordAsync(correo, contrasena)).User); }
+            catch (Exception e) { throw Traducido(e); }
+        }
+
+        public async Task EnviarContrasena(string correo)
+        {
+            try
+            {
+                FirebaseAuth.DefaultInstance.LanguageCode = "es";
+                await FirebaseAuth.DefaultInstance.SendPasswordResetEmailAsync(correo);
+            }
+            catch (Exception e) { throw Traducido(e); }
+        }
+
         public void Salir() => FirebaseAuth.DefaultInstance.SignOut();
 
         static UsuarioCuenta Leido(FirebaseUser u) => u == null ? null : new UsuarioCuenta(u.UserId, u.DisplayName, u.Email);

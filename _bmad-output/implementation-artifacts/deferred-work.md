@@ -234,3 +234,11 @@
 - source_spec: `spec-3-3-entrar-con-google-o-con-correo-o-seguir-sin-cuenta.md`
   summary: Enlazar el aviso de privacidad desde la hoja de la cuenta y completarlo (cómo salir y borrar la cuenta, sesión guardada en el móvil) con la 3.5.
   evidence: Quien ya pasó la bienvenida no ve que Google (Firebase) guarda la cuenta; hasta la 3.5 no hay cerrar sesión.
+
+- source_spec: `spec-3-3b-entrar-con-correo.md`
+  summary: Probar los formularios del correo en un móvil: teclado (tapa o no el botón, Intro, primer toque fuera), TalkBack en los campos, crear, entrar, contraseña mala, correo ya usado y recuperarla.
+  evidence: El alto del teclado se supone (la mitad de la pantalla), el Intro del móvil se deduce de su cierre y el SDK no se ejecuta en EditMode; los campos se anuncian como botones.
+
+- source_spec: `spec-3-3b-entrar-con-correo.md`
+  summary: La 8.1 pide `email_verified` y las cuentas de correo y contraseña no se verifican.
+  evidence: `spec-8-1` cuenta con el enlace de correo, que se descartó; habrá que enviar la verificación allí o antes.

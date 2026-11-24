@@ -20,11 +20,11 @@ using UnityEngine.UIElements;
 namespace PriceMap.Tests.EditMode
 {
     /// <summary>
-    /// Entrar con Google o seguir sin cuenta (historia 3.3, parte 1): cada fila de la matriz con cuentas falsas y la pantalla
+    /// Entrar con Google o seguir sin cuenta (historia 3.3, parte 1; el correo, en PruebasCuentasCorreo.cs): cada fila de la matriz con cuentas falsas y la pantalla
     /// del mapa real, TalkBack, los textos, el contraste, el adaptador de Firebase Auth con uno falso, el plugin de Android y
     /// la composición.
     /// </summary>
-    public class PruebasCuentas
+    public partial class PruebasCuentas
     {
         static readonly DateTime Ahora = new DateTime(2026, 11, 24, 12, 0, 0, DateTimeKind.Utc);
         static readonly Coordenada Usuario = new Coordenada(36.7790, -6.3540);
@@ -750,7 +750,7 @@ namespace PriceMap.Tests.EditMode
             var antes = Recorrido();
             var foco = pantalla.Accesibilidad.Enfocado;
             cuentas.ExigirCuenta(() => { });
-            CollectionAssert.AreEqual(new[] { "Entra en PriceMap", T(ClavesTexto.CuentaPara), "Continuar con Google", "Ahora no" }, Recorrido());
+            CollectionAssert.AreEqual(new[] { "Entra en PriceMap", T(ClavesTexto.CuentaPara), "Continuar con Google", "Con correo", "Ahora no" }, Recorrido());
             Assert.IsTrue(pantalla.Atras());
             Assert.IsFalse(pantalla.CuentaAbierta);
             Assert.IsTrue(pantalla.EligiendoRuta);
@@ -813,10 +813,10 @@ namespace PriceMap.Tests.EditMode
             var acc = pantalla.Accesibilidad;
             Assert.IsTrue(acc.Modal);
             Assert.AreSame(pantalla.Cuenta.Titulo, acc.Enfocado);
-            CollectionAssert.AreEqual(new[] { "Entra en PriceMap", T(ClavesTexto.CuentaPara), "Continuar con Google", "Ahora no" }, Recorrido());
+            CollectionAssert.AreEqual(new[] { "Entra en PriceMap", T(ClavesTexto.CuentaPara), "Continuar con Google", "Con correo", "Ahora no" }, Recorrido());
             ContestarFallo(ErroresCuenta.SinConexion);
             pantalla.Cuenta.PulsarEntrar();
-            CollectionAssert.AreEqual(new[] { "Entra en PriceMap", "Necesitas conexión para entrar.", "Reintentar", "Ahora no" }, Recorrido());
+            CollectionAssert.AreEqual(new[] { "Entra en PriceMap", "Necesitas conexión para entrar.", "Reintentar", "Con correo", "Ahora no" }, Recorrido());
             cuentas.AhoraNo();
             Assert.IsFalse(acc.Modal);
             Assert.IsNull(acc.Exclusivo);
@@ -834,7 +834,7 @@ namespace PriceMap.Tests.EditMode
             Activar(pantalla.Buscador.ZonaAvatar);
             Assert.IsTrue(pantalla.CuentaAbierta);
             foreach (var n in AssistiveSupport.activeHierarchy.rootNodes)
-                Assert.AreEqual(n.label == "Continuar con Google" || n.label == "Ahora no" ? AccessibilityRole.Button : AccessibilityRole.StaticText, n.role, n.label);
+                Assert.AreEqual(new[] { "Continuar con Google", "Con correo", "Ahora no" }.Contains(n.label) ? AccessibilityRole.Button : AccessibilityRole.StaticText, n.role, n.label);
             Activar(pantalla.Cuenta.AhoraNo);
             Assert.IsFalse(pantalla.CuentaAbierta);
             Activar(pantalla.Buscador.ZonaAvatar);
@@ -945,9 +945,9 @@ namespace PriceMap.Tests.EditMode
         [Test]
         public void ElAvisoDeLaBienvenidaDiceQuienGuardaLaCuenta()
         {
-            StringAssert.Contains("Si creas una cuenta, Google (Firebase) guarda tu nombre, tu correo y tu foto.", T(ClavesTexto.AvisoGuarda));
+            StringAssert.Contains("Si creas una cuenta, Google (Firebase) guarda tu correo y, según cómo entres, tu nombre y tu foto o tu contraseña cifrada.", T(ClavesTexto.AvisoGuarda));
             var claves = ClavesTexto.Todas.Where(c => c.StartsWith("cuenta.")).ToList();
-            Assert.AreEqual(13, claves.Count);
+            Assert.AreEqual(42, claves.Count);
             foreach (var c in claves) Assert.IsNotEmpty(T(c), c);
         }
 
@@ -970,7 +970,6 @@ namespace PriceMap.Tests.EditMode
             var hoja = new HojaCuenta(cuentas);
             Assert.IsNotNull(hoja.Google.Q<IconoGoogle>());
             Assert.AreEqual("Continuar con Google", hoja.TextoGoogle.text);
-            Assert.IsNull(hoja.Query<Button>().ToList().FirstOrDefault(b => b.text.Contains("correo")), "El correo es la parte 2.");
         }
 
         [TestCase(false)]
@@ -1021,6 +1020,9 @@ namespace PriceMap.Tests.EditMode
             public void EntrarYAvisar() { guardado = CuentasFalsas.Ana; alCambiar(); }
             public int escuchas, entradas, salidas;
             public string token;
+            /// <summary>Lo último que se ha pedido con correo: qué, el correo y la contraseña.</summary>
+            public (string que, string correo, string contrasena) conCorreo;
+            public Func<Task> alEnviar;
             public UsuarioCuenta Usuario => guardado;
             public void Escuchar(Action alCambiar) { escuchas++; this.alCambiar = alCambiar; }
             public Task<UsuarioCuenta> Entrar(string idToken)
@@ -1028,6 +1030,18 @@ namespace PriceMap.Tests.EditMode
                 entradas++;
                 token = idToken;
                 return alEntrar != null ? alEntrar(idToken) : Task.FromResult(guardado = CuentasFalsas.Ana);
+            }
+            public Task<UsuarioCuenta> CrearConCorreo(string correo, string contrasena) => ConCorreo("crear", correo, contrasena);
+            public Task<UsuarioCuenta> EntrarConCorreo(string correo, string contrasena) => ConCorreo("entrar", correo, contrasena);
+            Task<UsuarioCuenta> ConCorreo(string que, string correo, string contrasena)
+            {
+                conCorreo = (que, correo, contrasena);
+                return Entrar(null);
+            }
+            public Task EnviarContrasena(string correo)
+            {
+                conCorreo = ("enviar", correo, null);
+                return alEnviar != null ? alEnviar() : Task.CompletedTask;
             }
             public void Salir() { salidas++; guardado = null; alCambiar?.Invoke(); }
         }

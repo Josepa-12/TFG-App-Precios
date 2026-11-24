@@ -1035,6 +1035,122 @@ MonoBehaviour:
     m_Key: cuenta.sinsesion
     m_Metadata:
       m_Items: []
+  - m_Id: 2554568373166080
+    m_Key: cuenta.concorreo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526208
+    m_Key: cuenta.correo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526209
+    m_Key: cuenta.contrasena
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526210
+    m_Key: cuenta.contrasena.ayuda
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526211
+    m_Key: cuenta.ver
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526212
+    m_Key: cuenta.ocultar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526213
+    m_Key: cuenta.ver.lector
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526214
+    m_Key: cuenta.ocultar.lector
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526215
+    m_Key: cuenta.crear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526216
+    m_Key: cuenta.creando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526217
+    m_Key: cuenta.yatengo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526218
+    m_Key: cuenta.entrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526219
+    m_Key: cuenta.olvidada
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526220
+    m_Key: cuenta.nuevacontrasena
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526221
+    m_Key: cuenta.olvidada.para
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526222
+    m_Key: cuenta.enviar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526223
+    m_Key: cuenta.enviando
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526224
+    m_Key: cuenta.enviarotro
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526225
+    m_Key: cuenta.enviado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526226
+    m_Key: cuenta.volverentrar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526227
+    m_Key: cuenta.error.correo
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526228
+    m_Key: cuenta.error.correousado
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526229
+    m_Key: cuenta.error.contrasena
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526230
+    m_Key: cuenta.error.nocoinciden
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2554568402526231
+    m_Key: cuenta.error.intentos
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712036204544
+    m_Key: cuenta.error.contrasenavacia
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712065564672
+    m_Key: cuenta.error.crear
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712065564673
+    m_Key: cuenta.error.enviar
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2618712065564674
+    m_Key: cuenta.error.servidor.correo
+    m_Metadata:
+      m_Items: []
   m_Metadata:
     m_Items: []
   m_KeyGenerator:
