@@ -1,0 +1,10 @@
+- [Memoria TFG viva](memoria-tfg-viva.md) — update docs/memoria-tfg.md after every decision/progress step
+- [Sin commits sin revisión](sin-commits-sin-revision.md) — no commit/push hasta que el usuario revise; trabajar en rama "revision"
+- [BMAD sin saltar pasos](bmad-sin-saltar-pasos.md) — ejecutar todos los pasos de los flujos BMAD, incluido el pulido final
+- [Commit de seguridad](commit-de-seguridad.md) — commit al terminar implementación+revisión, antes de la revisión del usuario
+- [Nombre de la app: PriceMap](nombre-app-pricemap.md) — PriceMap, com.pricemap.app, mapa OSM sin Cesium
+- [Ahorrar tokens](ahorrar-tokens.md) — usar CLAUDE.md como mapa, leer solo rangos, mantenerlo al día
+- [Estado del trabajo](estado-planificacion-app-final.md) — épica 2, pantalla de inicio, 3.1, 3.2 y 3.3 parte 1 (Google) hechas (sin push); siguiente: 3.3 parte 2 (correo) y prueba en el móvil
+- [Captura al cerrar historia](captura-al-cerrar-historia.md) — página Artifact con capturas de lo hecho al terminar cada historia; maqueta antes de cambios visuales
+- [Ritmo de la tanda seguida](ritmo-implementacion-seguida.md) — preguntas una a una, parar por épica, subagentes sí, commit por historia
+- [Tokens en la pregunta de tamaño](tokens-en-pregunta-tamano.md) — al preguntar si se parte un spec, decir cuántos tokens mide el total
