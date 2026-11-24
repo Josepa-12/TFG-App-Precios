@@ -41,6 +41,13 @@ serviceAccount*.json.meta
 unity/PriceMap/Assets/Plugins/Android/FirebaseApp.androidlib/
 unity/PriceMap/Assets/Plugins/Android/FirebaseApp.androidlib.meta
 google-services.xml*
+# De la carpeta StreamingAssets solo hay google-services-desktop.json
+unity/PriceMap/Assets/StreamingAssets.meta
+
+# Firebase Unity SDK (firebase/descargar-sdk.ps1) y las bibliotecas que EDM4U copia de él
+unity/PriceMap/Packages/Firebase/*.tgz
+unity/PriceMap/Assets/GeneratedLocalRepo/
+unity/PriceMap/Assets/GeneratedLocalRepo.meta
 
 # Firebase: emulador y línea de comandos
 .firebase/

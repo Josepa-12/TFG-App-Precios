@@ -205,7 +205,7 @@ flowchart LR
 |---|---|
 | Unity (render integrado) | 6000.3.28f1 (6.3 LTS) |
 | UI Toolkit | Integrado en Unity 6.3 |
-| Firebase Unity SDK (Auth, Firestore) | 14.1.0 (confirmar en el registro oficial al instalar) |
+| Firebase Unity SDK (Auth, Firestore) | 14.1.0, con EDM4U 1.2.190 (del registro oficial de Google, 24/11/2026; `.tgz` locales con `firebase/descargar-sdk.ps1`) |
 | Mobile Notifications (`com.unity.mobile.notifications`) | 2.3.2 (o la última compatible con 6.3 en el gestor de paquetes) |
 | Localization (`com.unity.localization`) | La que ofrezca el gestor de paquetes de 6.3 al instalar |
 | Input System (modo "Both") | Paquete instalado en el proyecto |

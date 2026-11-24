@@ -206,3 +206,15 @@
 - source_spec: `spec-3-2-mis-datos-en-firebase-protegidos-y-disponibles-sin-conexion.md`
   summary: En la 3.2b, comprobar desde la app que las reglas publicadas en `pricemap-98f78` son las del repositorio.
   evidence: Las pruebas usan el emulador; el usuario las publica a mano y nada compara lo publicado.
+
+- source_spec: `spec-3-2b-firebase-dentro-de-la-app.md`
+  summary: Comprobar Firebase en un móvil y Firestore de verdad con el emulador (dos escrituras parciales, `DelMovil`, escuchar, IL2CPP).
+  evidence: Las pruebas usan un Firestore falso y `AccesoFirestore` nunca se ha ejecutado en la APK (recorte de IL2CPP, medium sin verificar); en el móvil falta ver «PriceMap: Firebase listo» y que sin conexión abre. Encaja en la 3.3.
+
+- source_spec: `spec-3-2b-firebase-dentro-de-la-app.md`
+  summary: Vaciar la copia de Firestore al cerrar sesión o cambiar de cuenta, y poder borrar documentos y campos.
+  evidence: `IAlmacen` solo lee, escribe y escucha; lo necesitan la 3.3 (sesión), favoritos y borrar la cuenta.
+
+- source_spec: `spec-3-2b-firebase-dentro-de-la-app.md`
+  summary: Nombrar Firebase en «Qué sale del móvil» cuando la app empiece a usarlo (3.3).
+  evidence: Firebase se inicia antes de la bienvenida; Analytics está apagado y no consta que salga nada (por confirmar con una captura de red), pero el aviso no lo menciona (medium sin verificar).

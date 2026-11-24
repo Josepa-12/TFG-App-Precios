@@ -1,0 +1,21 @@
+{
+    "name": "PriceMap.Adaptadores.Firebase",
+    "rootNamespace": "PriceMap.Adaptadores.Firebase",
+    "references": [
+        "PriceMap.Aplicacion",
+        "PriceMap.Dominio"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Firebase.App.dll",
+        "Firebase.Auth.dll",
+        "Firebase.Firestore.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

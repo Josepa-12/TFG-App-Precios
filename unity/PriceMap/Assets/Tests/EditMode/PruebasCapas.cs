@@ -18,6 +18,8 @@ namespace PriceMap.Tests.EditMode
         {
             public string name;
             public string[] references = new string[0];
+            public bool overrideReferences; // como Unity: sin la clave, false
+            public string[] precompiledReferences = new string[0];
             public bool noEngineReferences;
         }
 
@@ -35,11 +37,12 @@ namespace PriceMap.Tests.EditMode
         static bool EsHerramienta(string nombre) => nombre == "PriceMap.Editor" || nombre.StartsWith("PriceMap.Tests.");
 
         /// <summary>Lee los .asmdef del proyecto; las referencias guardadas como "GUID:..." se traducen a su nombre.</summary>
-        static List<Asmdef> LeerTodos() =>
+        static List<Asmdef> LeerTodos() => LeerConHerramientas().Where(a => !EsHerramienta(a.name)).ToList();
+
+        static List<Asmdef> LeerConHerramientas() =>
             Directory.GetFiles(Application.dataPath, "*.asmdef", SearchOption.AllDirectories)
                 .Select(r => JsonUtility.FromJson<Asmdef>(File.ReadAllText(r)))
                 .Select(a => { a.references = a.references.Select(NombreDeReferencia).ToArray(); return a; })
-                .Where(a => !EsHerramienta(a.name))
                 .ToList();
 
         static string NombreDeReferencia(string referencia)
@@ -85,6 +88,66 @@ namespace PriceMap.Tests.EditMode
             return errores;
         }
 
+        const string Firebase = "PriceMap.Adaptadores.Firebase";
+
+        /// <summary>
+        /// Quién, además de su adaptador, usa Firebase (historia 3.2, AD-2). Sus .dll se referencian solas: sin
+        /// overrideReferences, cualquier ensamblado las vería sin nombrarlas.
+        /// </summary>
+        static List<string> UsosDeFirebase(IEnumerable<Asmdef> ensamblados)
+        {
+            var errores = new List<string>();
+            foreach (var a in ensamblados.Where(a => a.name != Firebase))
+            {
+                foreach (var r in a.references.Concat(a.precompiledReferences).Where(r => r.StartsWith("Firebase.")))
+                    errores.Add($"{a.name} → {r}");
+                if (!a.overrideReferences) errores.Add($"{a.name} necesita overrideReferences: true");
+            }
+            return errores;
+        }
+
+        [Test]
+        public void SoloSuAdaptadorUsaFirebase()
+        {
+            var todos = LeerConHerramientas();
+            CollectionAssert.Contains(todos.Single(a => a.name == Firebase).precompiledReferences, "Firebase.Firestore.dll");
+            var errores = UsosDeFirebase(todos);
+            Assert.IsEmpty(errores, "Firebase fuera de su adaptador:\n" + string.Join("\n", errores));
+        }
+
+        [Test]
+        public void LaComprobacionDetectaFirebaseFueraDeSuAdaptador()
+        {
+            CollectionAssert.AreEquivalent(new[]
+            {
+                "PriceMap.UI → Firebase.Firestore.dll",
+                "PriceMap.Aplicacion → Firebase.App.Internal",
+                "PriceMap.Vectorial necesita overrideReferences: true",
+            }, UsosDeFirebase(new[]
+            {
+                new Asmdef { name = "PriceMap.UI", overrideReferences = true, precompiledReferences = new[] { "Firebase.Firestore.dll" } },
+                new Asmdef { name = Aplicacion, overrideReferences = true, references = new[] { Dominio, "Firebase.App.Internal" } },
+                JsonUtility.FromJson<Asmdef>("{\"name\": \"PriceMap.Vectorial\"}"),
+                new Asmdef { name = Firebase, overrideReferences = true, precompiledReferences = new[] { "Firebase.App.dll" } },
+                new Asmdef { name = Dominio, overrideReferences = true },
+            }));
+        }
+
+        /// <summary>Un script sin .asmdef iría a Assembly-CSharp, que ve Firebase y todas las capas; un .asmref lo metería en otra.</summary>
+        [Test]
+        public void TodosLosScriptsTienenSuEnsamblado()
+        {
+            Assert.IsEmpty(Directory.GetFiles(Application.dataPath, "*.asmref", SearchOption.AllDirectories));
+            string raiz = Path.GetFullPath(Application.dataPath);
+            var sueltos = Directory.GetFiles(raiz, "*.cs", SearchOption.AllDirectories).Where(f =>
+            {
+                for (var d = new FileInfo(f).Directory; d != null && d.FullName.Length >= raiz.Length; d = d.Parent)
+                    if (d.GetFiles("*.asmdef").Length > 0) return false;
+                return true;
+            });
+            Assert.IsEmpty(sueltos, "Scripts sin .asmdef:\n" + string.Join("\n", sueltos));
+        }
+
         [Test]
         public void ExistenTodasLasCapas()
         {
@@ -113,6 +176,7 @@ namespace PriceMap.Tests.EditMode
                 new Asmdef { name = "PriceMap.Extra" },
                 new Asmdef { name = "PriceMap.Adaptadores.Rutas", references = new[] { Aplicacion, Red } },
                 new Asmdef { name = "PriceMap.UI", references = new[] { Red } },
+                new Asmdef { name = "PriceMap.UI", references = new[] { Firebase } },
                 new Asmdef { name = Red, references = new[] { Aplicacion } },
                 new Asmdef { name = "PriceMap.Arranque", references = new[] { "PriceMap.UI", "PriceMap.Vectorial" } },
             };
@@ -123,6 +187,7 @@ namespace PriceMap.Tests.EditMode
                 "PriceMap.Dominio → PriceMap.Aplicacion",
                 "PriceMap.Dominio → Unity.Localization",
                 "PriceMap.UI → PriceMap.Adaptadores.Red",
+                "PriceMap.UI → PriceMap.Adaptadores.Firebase",
                 "PriceMap.Adaptadores.Red → PriceMap.Aplicacion",
 
                 "PriceMap.Dominio debe tener noEngineReferences: true",

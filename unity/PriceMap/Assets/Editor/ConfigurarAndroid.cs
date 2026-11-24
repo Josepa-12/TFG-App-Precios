@@ -94,6 +94,12 @@ namespace PriceMap.EditorTools
             Directory.CreateDirectory(Path.GetDirectoryName(RutaApk));
             EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android);
 
+            if (!ResolverDependencias())
+            {
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                return;
+            }
+
             // Las tablas de Localization viajan como contenido de Addressables: se construye antes de la APK
             AddressableAssetSettingsDefaultObject.GetSettings(true);
             AddressableAssetSettings.BuildPlayerContent(out var contenido);
@@ -112,7 +118,40 @@ namespace PriceMap.EditorTools
                 options = BuildOptions.None,
             });
 
+            // Sin sus bibliotecas la app iría igual, callada y sin servidor: mejor que falle aquí
+            if (informe.summary.result == BuildResult.Succeeded && !LlevaFirestore(RutaApk))
+            {
+                Debug.LogError("PriceMap: la APK no lleva las bibliotecas de Firestore (plantillas Gradle de Assets/Plugins/Android).");
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                return;
+            }
             Terminar(informe, RutaApk);
+        }
+
+        static bool LlevaFirestore(string apk)
+        {
+            using (var zip = System.IO.Compression.ZipFile.OpenRead(apk))
+                return zip.GetEntry("lib/arm64-v8a/libFirebaseCppFirestore.so") != null;
+        }
+
+        /// <summary>
+        /// Dependencias Android de Firebase (historia 3.2): EDM4U las pone en las plantillas Gradle de Assets/Plugins/Android
+        /// y copia las bibliotecas del SDK a Assets/GeneratedLocalRepo. Por su nombre: EDM4U llega como .tgz (firebase/LEEME.md).
+        /// </summary>
+        static bool ResolverDependencias()
+        {
+            if (!File.Exists("Assets/google-services.json"))
+                Debug.LogWarning("PriceMap: falta Assets/google-services.json (firebase/LEEME.md); la app irá sin cuenta ni servidor.");
+            var resolver = System.Type.GetType("GooglePlayServices.PlayServicesResolver, Google.JarResolver")
+                ?.GetMethod("ResolveSync", new[] { typeof(bool) });
+            if (resolver == null)
+            {
+                Debug.LogError("PriceMap: no se encuentra EDM4U; descarga el SDK con firebase/descargar-sdk.ps1.");
+                return false;
+            }
+            bool ok = (bool)resolver.Invoke(null, new object[] { true });
+            if (!ok) Debug.LogError("PriceMap: EDM4U no pudo resolver las dependencias Android de Firebase.");
+            return ok;
         }
 
         /// <summary>

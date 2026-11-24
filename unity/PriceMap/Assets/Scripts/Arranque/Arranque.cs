@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using PriceMap.Adaptadores.Busqueda;
 using PriceMap.Adaptadores.Datos;
+using PriceMap.Adaptadores.Firebase;
 using PriceMap.Adaptadores.Gps;
 using PriceMap.Adaptadores.Rutas;
 using PriceMap.Adaptadores.Sistema;
@@ -24,6 +25,7 @@ namespace PriceMap.Arranque
 
         ServicioUbicacion ubicacion;
         ServicioVoz voz;
+        IServidor servidor;
 
         /// <summary>Fotogramas por segundo con la app delante: Android limita a 30 por defecto (NFR-1 pide ≥ 30).</summary>
         public const int FotogramasDelante = 60;
@@ -92,6 +94,9 @@ namespace PriceMap.Arranque
             mapa.EntradaBloqueada = pantallaMapa.TapaPunto;
             CapturaPruebas.SiSePide(gameObject, tema, filtro, preferencias, mapa, pantallaMapa);
 
+            // Servidor (historia 3.2): se prepara sin esperarlo, con la app ya en marcha; nada depende de él todavía
+            servidor = CrearServidor();
+
             // Ubicaciones y textos compartidos con la app (historia 2.5, parte 3): al arrancar y al volver delante
             compartida = new EntradaCompartidaAndroid();
             PasarCompartido(compartida, pantallaMapa);
@@ -106,6 +111,29 @@ namespace PriceMap.Arranque
             if (!CapturaPruebas.SePide()) return new VozAndroid();
 #endif
             return new VozNula();
+        }
+
+        /// <summary>Firebase (Android, ya empezando) o ninguno (PC, editor y captura de pruebas: no se toca).</summary>
+        internal static IServidor CrearServidor()
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            bool conFirebase = !CapturaPruebas.SePide();
+#else
+            bool conFirebase = false;
+#endif
+            return CrearServidor(conFirebase, () => new InicioFirebase());
+        }
+
+        internal static IServidor CrearServidor(bool conFirebase, Func<InicioFirebase> crear)
+        {
+            if (conFirebase)
+            {
+                var firebase = crear();
+                firebase.Iniciar();
+                return firebase;
+            }
+            Debug.LogWarning("PriceMap: sin Firebase en esta plataforma; la app sigue sin cuenta ni servidor.");
+            return new ServidorNulo();
         }
 
         /// <summary>Lo compartido con la app y aún no leído va al buscador de la pantalla. Sin nada, nada.</summary>

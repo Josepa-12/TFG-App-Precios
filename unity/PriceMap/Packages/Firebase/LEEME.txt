@@ -1,0 +1,6 @@
+Aquí va el Firebase Unity SDK (archivos .tgz de Google, unos 80 MB), que no se sube al repositorio.
+Si Unity dice que no encuentra los paquetes de esta carpeta, ejecuta en la raíz del repositorio:
+
+  powershell -NoProfile -ExecutionPolicy Bypass -File firebase/descargar-sdk.ps1
+
+Más en firebase/LEEME.md.

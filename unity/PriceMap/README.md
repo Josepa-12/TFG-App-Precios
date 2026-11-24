@@ -3,6 +3,8 @@
 App Android de PriceMap hecha con Unity 6.3 (6000.3.28f1, render integrado). El mapa real de Sanlúcar se dibuja a partir de las teselas vectoriales de OpenStreetMap que sirve OpenFreeMap, sin Cesium ni proveedores con cuenta.
 
 ## Abrirlo
+Antes de la primera vez, descarga el SDK de Firebase (no está en el repositorio): `powershell -NoProfile -ExecutionPolicy Bypass -File firebase/descargar-sdk.ps1` en la raíz. Sin él, Unity no abre el proyecto ([firebase/LEEME.md](../../firebase/LEEME.md)).
+
 En Unity Hub, **Add / Añadir** → carpeta `unity/PriceMap`, con el editor 6000.3.28f1. La escena `Assets/Scenes/Principal.unity` se abre sola la primera vez. Pulsa **Play** para cargar el mapa.
 
 Para volver a generar la escena desde cero: menú **PriceMap ▸ Preparar escena principal**.
