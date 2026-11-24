@@ -984,6 +984,11 @@ Todo se hizo en la rama `revision`, sin integrarlo en `main` hasta la revisión 
     - **Solución:** crear cuenta, entrar y recuperar la contraseña con Firebase, que es quien la guarda; formularios a pantalla completa con los errores junto a su campo y los botones por encima del teclado. Al recuperarla no se dice si el correo tiene cuenta.
     - **Comprobación:** tras la revisión de código (14 arreglos) pasan 1787 pruebas y las capturas salen sin cortes, también al 200 %.
     - **Pendiente:** probar el teclado y el correo en el móvil; la 8.1 tendrá que verificar el correo.
+  - *Brújula más calmada (24/11/2026).* **[Parcial]**
+    - **Motivo:** el cono de la posición seguía a la brújula al instante y con un grado de cambio ya se movía, así que temblaba sin parar.
+    - **Solución:** un filtro puro del dominio (`FiltroBrujula`) quita primero el temblor del sensor con un suavizado exponencial corto (0,15 s) y deja el rumbo quieto hasta que el móvil gira 10°; entonces gira suave por el lado corto, en alrededor de medio segundo, y vuelve a quedarse quieto. A cambio, el cono puede apuntar hasta 10° desviado. La cámara al navegar a pie usa el mismo rumbo.
+    - **Comprobación:** tras la revisión de código pasan 1802 pruebas, entre ellas el balanceo de la mano al andar, el paso por el norte y distintos fotogramas por segundo.
+    - **Pendiente:** probarlo en el móvil.
 - **5.3 Modelo de datos:** implementación del modelo de 4.3.
 - **5.4 Lógica de precios:** implementación de 4.6 y simulación.
 - **5.5 Gamificación**
@@ -1168,3 +1173,4 @@ Ideas de trabajo futuro ya identificadas:
 | 24/11/2026 | Historia 3.3 (decisiones del usuario): correo y contraseña de Firebase en vez del enlace sin contraseña; el avatar abre la hoja; pantalla «Crea tu cuenta» una vez tras la bienvenida; botón de Google blanco oficial; partida en dos | El plan gratuito de Firebase solo envía 5 enlaces de entrada al día y el SDK de Unity no los trae; la contraseña la guarda Firebase, no la app |
 | 24/11/2026 | Historia 3.3 parte 1 implementada y revisada (10 arreglos, 1687 pruebas en verde, APK y captura bien) | La revisión encontró carreras al cancelar mientras Firebase contesta, que las pruebas no veían porque el Firebase falso no avisaba antes de acabar |
 | 24/11/2026 | Historia 3.3 parte 2 implementada y revisada (14 arreglos, 1787 pruebas en verde, APK y captura bien); FR-37 matizado: la contraseña la guarda Firebase, nunca la app | La revisión encontró que el hueco del teclado podía quedarse puesto, que cancelar «He olvidado la contraseña» podía cerrar una sesión y que se podían cambiar crear y entrar sin que fallara ninguna prueba |
+| 24/11/2026 | El cono de la brújula no se mueve hasta que el móvil gira unos 10° (entre 5°, 10° y 20°) y entonces gira suave | Decisión del usuario: se movía demasiado; 10° es poco más que el balanceo de la mano al andar |

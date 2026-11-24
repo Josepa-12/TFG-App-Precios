@@ -1235,33 +1235,188 @@ namespace PriceMap.Tests.EditMode
             Assert.AreEqual(EstadoUbicacion.Activa, gps.Estado);
         }
 
-        [Test]
-        public void GpsRumboConUmbralDe1Grado()
+        // Brújula más calmada (24/11/2026): GPS con reloj falso a 60 fotogramas por segundo
+        class Brujula
         {
-            var fuente = new FuenteFalsa { TienePermiso = true };
-            var gps = new UbicacionGps(fuente);
-            gps.Iniciar();
-            fuente.Leer(Usuario, 1.0);
-            fuente.Rumbo = 90f;
-            gps.Actualizar();
-            Assert.AreEqual(90f, gps.Rumbo);
+            public readonly FuenteFalsa fuente = new FuenteFalsa { TienePermiso = true };
+            public readonly UbicacionGps gps;
+            public int avisos;
+            double ahora = 100.0;
 
-            int avisos = 0;
-            gps.Cambiado += () => avisos++;
-            fuente.Rumbo = 90.6f; // tiembla menos de 1°: no se avisa
-            gps.Actualizar();
-            Assert.AreEqual(90f, gps.Rumbo);
-            Assert.AreEqual(0, avisos);
-            fuente.Rumbo = 92f;
-            gps.Actualizar();
-            Assert.AreEqual(92f, gps.Rumbo);
-            Assert.AreEqual(1, avisos);
-            fuente.Rumbo = -10f; // se normaliza a [0, 360)
-            gps.Actualizar();
-            Assert.AreEqual(350f, gps.Rumbo.Value, 0.001f);
-            fuente.Rumbo = null; // sin brújula: solo el círculo
-            gps.Actualizar();
-            Assert.IsNull(gps.Rumbo);
+            public Brujula(float rumbo)
+            {
+                gps = new UbicacionGps(fuente, null, () => ahora);
+                gps.Iniciar();
+                fuente.Leer(Usuario, 1.0);
+                Girar(rumbo, 1.0 / 60.0);
+                gps.Cambiado += () => avisos++;
+            }
+
+            /// <summary>Deja la brújula en ese rumbo los segundos dados; devuelve el mayor salto entre fotogramas.</summary>
+            public float Girar(float rumbo, double segundos)
+            {
+                float salto = 0f;
+                int fotogramas = Mathf.RoundToInt((float)segundos * 60f);
+                for (int i = 0; i < fotogramas; i++)
+                {
+                    var antes = gps.Rumbo;
+                    Volver(rumbo, 1.0 / 60.0);
+                    if (antes.HasValue) salto = Mathf.Max(salto, Mathf.Abs(Mathf.DeltaAngle(antes.Value, gps.Rumbo.Value)));
+                }
+                return salto;
+            }
+
+            /// <summary>Un solo fotograma, los segundos dados después del anterior.</summary>
+            public void Volver(float rumbo, double segundos)
+            {
+                fuente.Rumbo = rumbo;
+                ahora += segundos;
+                gps.Actualizar();
+            }
+        }
+
+        [Test]
+        public void BrujulaPrimeraLecturaTalCualYNormalizada()
+        {
+            Assert.AreEqual(90f, new Brujula(90f).gps.Rumbo);
+            Assert.AreEqual(350f, new Brujula(-10f).gps.Rumbo.Value, 0.001f);
+        }
+
+        [Test]
+        public void BrujulaQuietaMientrasNoGireDiezGrados()
+        {
+            var b = new Brujula(90f);
+            b.Girar(99f, 5.0);
+            b.Girar(81f, 5.0);
+            Assert.AreEqual(90f, b.gps.Rumbo, "9° a cada lado: el cono no se mueve.");
+            Assert.AreEqual(0, b.avisos);
+            b.Girar(102f, 2.0);
+            Assert.AreEqual(102f, b.gps.Rumbo.Value, 1f, "12°: gira.");
+        }
+
+        [Test]
+        public void BrujulaTemblorFuerteYCortoNoMueveElCono()
+        {
+            var b = new Brujula(90f);
+            for (int i = 0; i < 60; i++)
+            {
+                b.Girar(105f, 1.0 / 60.0);
+                b.Girar(75f, 1.0 / 60.0);
+            }
+            Assert.AreEqual(90f, b.gps.Rumbo, "Temblor de ±15° de un fotograma a otro: se quita antes de mirar los 10°.");
+            Assert.AreEqual(0, b.avisos);
+        }
+
+        [Test]
+        public void BrujulaGiroDeVerdadSuaveYSinPasarse()
+        {
+            var b = new Brujula(90f);
+            float salto = b.Girar(180f, 0.5);
+            Assert.Greater(b.gps.Rumbo.Value, 150f, "A medio segundo ha hecho casi todo el giro.");
+            Assert.Less(salto, 8f, "90° sin saltos: menos de 8° por fotograma.");
+            float maximo = 0f;
+            b.gps.Cambiado += () => maximo = Mathf.Max(maximo, b.gps.Rumbo.Value);
+            Assert.Less(b.Girar(180f, 1.5), 8f);
+            Assert.AreEqual(180f, b.gps.Rumbo.Value, 1f);
+            Assert.LessOrEqual(maximo, 180f, "No se pasa.");
+
+            // Y vuelve a quedarse quieto
+            b.avisos = 0;
+            float final = b.gps.Rumbo.Value;
+            b.Girar(188f, 3.0);
+            Assert.AreEqual(final, b.gps.Rumbo.Value);
+            Assert.AreEqual(0, b.avisos);
+        }
+
+        // Balanceo de la mano al andar (un paso por segundo y dos) y temblor más rápido, recién terminado un giro
+        [TestCase(1.0, 6f)]
+        [TestCase(2.0, 8f)]
+        [TestCase(5.0, 15f)]
+        public void BrujulaBalanceoTrasUnGiroSeQuedaQuieta(double hercios, float grados)
+        {
+            var b = new Brujula(90f);
+            int n = 0;
+            void Balancear(float centro, int fotogramas)
+            {
+                for (int i = 0; i < fotogramas; i++, n++)
+                    b.Girar(centro + grados * Mathf.Sin((float)(2.0 * Math.PI * hercios * n / 60.0)), 1.0 / 60.0);
+            }
+            Balancear(180f, 180); // gira 90° balanceándose y le da tiempo a pararse
+            float parado = b.gps.Rumbo.Value;
+            Assert.AreEqual(180f, parado, 10f);
+            b.avisos = 0;
+            Balancear(180f, 600);
+            Assert.AreEqual(parado, b.gps.Rumbo.Value);
+            Assert.AreEqual(0, b.avisos, "Diez segundos andando recto: el cono no se mueve.");
+        }
+
+        [TestCase(5)]
+        [TestCase(15)]
+        [TestCase(30)]
+        [TestCase(120)]
+        public void BrujulaGiraIgualConOtrosFotogramasPorSegundo(int fps)
+        {
+            var b = new Brujula(90f);
+            for (int i = 0; i < fps; i++) b.Volver(180f, 1.0 / fps);
+            Assert.AreEqual(180f, b.gps.Rumbo.Value, 3f, "Un segundo después ha llegado.");
+        }
+
+        [Test]
+        public void BrujulaGiraPorElLadoCortoAlPasarPorElNorte()
+        {
+            var b = new Brujula(350f);
+            bool fuera = false;
+            b.gps.Cambiado += () => { float r = b.gps.Rumbo.Value; if (r > 21f && r < 349f) fuera = true; };
+            b.Girar(20f, 2.0);
+            Assert.AreEqual(20f, b.gps.Rumbo.Value, 1f);
+            b.Girar(350f, 2.0);
+            Assert.AreEqual(0f, Mathf.DeltaAngle(350f, b.gps.Rumbo.Value), 1f);
+            Assert.IsFalse(fuera, "De 350° a 20° y vuelta por el norte, no por el sur.");
+        }
+
+        [Test]
+        public void BrujulaAlVolverDeLaPausaApuntaYaAlRumboNuevo()
+        {
+            var b = new Brujula(90f);
+            b.Volver(200f, 30.0);
+            Assert.AreEqual(200f, b.gps.Rumbo.Value, 0.5f);
+        }
+
+        [Test]
+        public void BrujulaRelojParadoOHaciaAtrasNoMueveNiRompe()
+        {
+            var b = new Brujula(90f);
+            b.Volver(200f, 0.0);
+            b.Volver(200f, -5.0);
+            Assert.AreEqual(90f, b.gps.Rumbo);
+            b.Girar(200f, 3.0);
+            Assert.AreEqual(200f, b.gps.Rumbo.Value, 1f);
+        }
+
+        [Test]
+        public void BrujulaLecturaImposibleNoSeQueda()
+        {
+            var b = new Brujula(90f);
+            b.Girar(float.NaN, 0.5);
+            Assert.AreEqual(90f, b.gps.Rumbo);
+            b.Girar(200f, 2.0);
+            Assert.AreEqual(200f, b.gps.Rumbo.Value, 1f);
+
+            b.fuente.Rumbo = null;
+            b.gps.Actualizar();
+            b.Volver(float.NaN, 0.1);
+            Assert.IsNull(b.gps.Rumbo, "Sin rumbo antes: sigue sin cono, no apunta al norte.");
+        }
+
+        [Test]
+        public void BrujulaSinLecturaSoloElCirculoYDespuesEmpiezaDeNuevo()
+        {
+            var b = new Brujula(90f);
+            b.fuente.Rumbo = null;
+            b.gps.Actualizar();
+            Assert.IsNull(b.gps.Rumbo, "Sin brújula: solo el círculo.");
+            b.Volver(95f, 1.0 / 60.0);
+            Assert.AreEqual(95f, b.gps.Rumbo, "La primera lectura tras no tener rumbo sale tal cual, aunque esté a 5°.");
         }
 
         // ───────────────────────── Historia 2.1: GPS durante una ruta ─────────────────────────

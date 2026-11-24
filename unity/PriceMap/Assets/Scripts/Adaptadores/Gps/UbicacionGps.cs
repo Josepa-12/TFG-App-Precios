@@ -19,8 +19,6 @@ namespace PriceMap.Adaptadores.Gps
         public const string AjustesApp = "android.settings.APPLICATION_DETAILS_SETTINGS";
         /// <summary>Intent de los ajustes de ubicación del móvil: ubicación apagada.</summary>
         public const string AjustesUbicacion = "android.settings.LOCATION_SOURCE_SETTINGS";
-        /// <summary>Cambio de rumbo (grados) por debajo del cual no se avisa: la brújula tiembla.</summary>
-        public const float UmbralRumbo = 1f;
         /// <summary>Error de IniciarRuta sin permiso de ubicación.</summary>
         public const string ErrorSinPermiso = "Sin permiso de ubicación no se puede iniciar la ruta.";
 
@@ -29,6 +27,9 @@ namespace PriceMap.Adaptadores.Gps
         EstadoUbicacion estado = EstadoUbicacion.SinPermiso;
         Coordenada? posicion;
         float? rumbo;
+        readonly FiltroBrujula filtroBrujula = new FiltroBrujula(); // la brújula tiembla
+        readonly Func<double> reloj;
+        double ultimaBrujula; // segundos de la lectura anterior de la brújula
         bool quiereFuncionar; // Iniciar sin Detener después: la app está delante
         bool encendido;       // GPS y brújula encendidos
         double ultimaLectura;
@@ -49,8 +50,10 @@ namespace PriceMap.Adaptadores.Gps
         int respuestaNotificaciones; // como respuestaPendiente, para POST_NOTIFICATIONS
 
         /// <param name="servicioRuta">Servicio nativo de la ruta; null fuera de Android.</param>
-        public UbicacionGps(IFuenteUbicacion fuente, IServicioRuta servicioRuta = null)
+        /// <param name="reloj">Segundos que no retroceden (por defecto, los de Unity), para calmar la brújula.</param>
+        public UbicacionGps(IFuenteUbicacion fuente, IServicioRuta servicioRuta = null, Func<double> reloj = null)
         {
+            this.reloj = reloj ?? (() => Time.realtimeSinceStartupAsDouble);
             this.fuente = fuente ?? throw new ArgumentNullException(nameof(fuente));
             this.servicioRuta = servicioRuta;
             if (fuente.TienePermiso) estado = EstadoUbicacion.Buscando;
@@ -295,13 +298,22 @@ namespace PriceMap.Adaptadores.Gps
                 }
             }
             // Sin brújula (o sin lecturas aún): solo el círculo
-            float? nuevoRumbo = fuente.Rumbo.HasValue ? Normalizar(fuente.Rumbo.Value) : (float?)null;
-            if (nuevoRumbo.HasValue && rumbo.HasValue && Mathf.Abs(Mathf.DeltaAngle(nuevoRumbo.Value, rumbo.Value)) < UmbralRumbo)
-                nuevoRumbo = rumbo;
-            Cambiar(nuevoEstado, nuevaPosicion, nuevoRumbo);
+            Cambiar(nuevoEstado, nuevaPosicion, LeerBrujula());
         }
 
-        static float Normalizar(float grados) => Mathf.Repeat(grados, 360f);
+        /// <summary>Rumbo de la brújula ya calmado (FiltroBrujula); la primera lectura tras no tener rumbo, tal cual.</summary>
+        float? LeerBrujula()
+        {
+            var lectura = fuente.Rumbo;
+            if (!lectura.HasValue) return null;
+            // Una lectura imposible no cuenta: dentro del filtro no saldría nunca
+            if (float.IsNaN(lectura.Value) || float.IsInfinity(lectura.Value)) return rumbo;
+            if (!rumbo.HasValue) filtroBrujula.Reiniciar();
+            double ahora = reloj();
+            double segundos = ahora - ultimaBrujula;
+            ultimaBrujula = ahora;
+            return Mathf.Repeat((float)filtroBrujula.Filtrar(lectura.Value, segundos), 360f);
+        }
 
         void Cambiar(EstadoUbicacion nuevoEstado, Coordenada? nuevaPosicion, float? nuevoRumbo)
         {

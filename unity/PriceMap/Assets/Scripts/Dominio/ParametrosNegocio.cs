@@ -121,6 +121,16 @@ namespace PriceMap.Dominio
         /// <summary>Grados que tiene que moverse la brújula, a pie y sin posición nueva, para volver a girar la cámara.</summary>
         public const float CamaraBrujulaMinimaGrados = 2f;
 
+        // Brújula más calmada (FiltroBrujula; decisión del 24/11/2026)
+        /// <summary>Grados que tiene que girar el móvil para que el rumbo mostrado (el cono) se mueva.</summary>
+        public const double BrujulaGiroMinimoGrados = 10.0;
+        /// <summary>Grados que faltan para dar por terminado un giro: el rumbo mostrado vuelve a quedarse quieto.</summary>
+        public const double BrujulaLlegadaGrados = 0.5;
+        /// <summary>Constante de tiempo (s) del suavizado que quita el temblor del sensor.</summary>
+        public const double BrujulaTemblorSegundos = 0.15;
+        /// <summary>Constante de tiempo (s) del giro del rumbo mostrado.</summary>
+        public const double BrujulaGiroSegundos = 0.17;
+
         // Flecha y sin señal (historia 2.7, parte 2c; decisiones del 22/11/2026)
         /// <summary>
         /// Segundos sin ninguna lectura nueva del GPS (también cuenta una con la misma coordenada) a partir de los cuales,

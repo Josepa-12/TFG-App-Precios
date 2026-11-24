@@ -20,7 +20,7 @@ namespace PriceMap.Aplicacion
         /// </summary>
         Coordenada? UltimaConocida => null;
 
-        /// <summary>Rumbo del móvil en grados respecto al norte real (0 = norte, 90 = este); null sin brújula.</summary>
+        /// <summary>Rumbo del móvil en grados respecto al norte real (0 = norte, 90 = este), calmado: puede ir hasta 10° desviado (FiltroBrujula); null sin brújula.</summary>
         float? Rumbo { get; }
 
         /// <summary>Se lanza cuando cambia el estado, la posición o el rumbo.</summary>
