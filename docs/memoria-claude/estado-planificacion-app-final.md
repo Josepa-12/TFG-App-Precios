@@ -4,7 +4,7 @@ description: "Dónde quedó el trabajo: épica 2 y pantalla de inicio hechas, si
 metadata:
   node_type: memory
   type: project
-  modified: 2026-11-22T22:39:23.828Z
+  modified: 2026-11-25T10:04:24.249Z
 ---
 
 Situación a 18/11/2026, en la rama `unity`. La planificación BMAD está completa (`_bmad-output/planning-artifacts/`) y el sprint está en `_bmad-output/implementation-artifacts/sprint-status.yaml`.
@@ -79,3 +79,4 @@ Commits:
 
 - **24/11 (7, 17:15):** 3.3 parte 2 (`spec-3-3b`, `in-review`, baseline `e5ac722`) implementada y **sin commit** en el árbol de trabajo: 1775/1775, APK y captura bien. En marcha las tres revisiones (blind-hunter, edge-case, verification-gap) sobre el diff desde `e5ac722`. **Para retomar:** si se perdieron, relanzar `bmad-build` con `spec-3-3b` (paso 4), arreglar, pruebas + APK + captura, cerrar docs (triage, `deferred-work`, memoria TFG, CLAUDE.md, sprint 3-3 a `review`) y commit de seguridad. Decisiones del agente por confirmar: los formularios no llevan «Ahora no» (atrás vuelve a la hoja); el aviso de privacidad no nombra la contraseña. El usuario probará la APK esta tarde (Google; teclado de Android en los formularios); copia de la parte 1 en `Builds/PriceMap-3-3-google.apk`. En el móvil hace falta activar «Correo electrónico/contraseña» en Firebase. 27 commits de `unity` sin subir. Siguiente: 3.4.
 - **24/11 (8):** 3.3 parte 2 revisada (14 arreglos), 1787/1787, commit `ca4184b`; `unity` entera subida a origin por petición del usuario (los siguientes, solo si lo pide). **Siguiente:** 3.4 (`spec-3-4`).
+- **24/11 (9):** primera prueba en el Redmi, cortada (el usuario ya no tiene el móvil). Le gustó la pantalla de inicio. Cono calmado a 10° `a25e7cc` y hoja del buscador (bucle de disposición, arrastre, teclado) `23102db`, 1817/1817; comprobado el 25/11: ya están en `origin/unity` (la rama `memoria-claude` de GitHub quedó en el estado del 24/11 a las 17:23, sin esta entrada). En el móvil está instalada la APK de las 18:41 (con el cono, sin la hoja) y una copia en Descargas; la buena es `Builds/PriceMap.apk` de las 19:09. **Al volver el móvil:** instalar esa (Xiaomi rechaza por USB hasta aceptar en pantalla), registro con `adb logcat`, probar hoja, texto al cerrar el teclado con atrás, cono, bienvenida, Google/correo y el resto de la lista. Visto ya en el Redmi por el registro: «Firebase listo», 3 rutas reales en «Cómo llegar», iniciar y parar la ruta, reabrir. Sin ningún intento de entrar con Google ni correo. **Siguiente sin móvil:** 3.4.

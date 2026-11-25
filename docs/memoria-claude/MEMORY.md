@@ -4,7 +4,7 @@
 - [Commit de seguridad](commit-de-seguridad.md) — commit al terminar implementación+revisión, antes de la revisión del usuario
 - [Nombre de la app: PriceMap](nombre-app-pricemap.md) — PriceMap, com.pricemap.app, mapa OSM sin Cesium
 - [Ahorrar tokens](ahorrar-tokens.md) — usar CLAUDE.md como mapa, leer solo rangos, mantenerlo al día
-- [Estado del trabajo](estado-planificacion-app-final.md) — épica 2, pantalla de inicio, 3.1, 3.2 y 3.3 hechas (unity subida el 24/11); siguiente: 3.4 y prueba en el móvil
+- [Estado del trabajo](estado-planificacion-app-final.md) — épica 2, pantalla de inicio, 3.1, 3.2 y 3.3 hechas; arreglos tras la primera prueba en el Redmi (cono, hoja del buscador) ya en origin/unity; siguiente: 3.4 y seguir la prueba en el móvil
 - [Captura al cerrar historia](captura-al-cerrar-historia.md) — página Artifact con capturas de lo hecho al terminar cada historia; maqueta antes de cambios visuales
 - [Ritmo de la tanda seguida](ritmo-implementacion-seguida.md) — preguntas una a una, parar por épica, subagentes sí, commit por historia
 - [Tokens en la pregunta de tamaño](tokens-en-pregunta-tamano.md) — al preguntar si se parte un spec, decir cuántos tokens mide el total
